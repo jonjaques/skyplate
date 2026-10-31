@@ -191,6 +191,12 @@ export interface FileRecord {
   vendored: boolean;
   /** One very long line, or average line length > 300: almost certainly built output. */
   minified: boolean;
+  /**
+   * Looks like it holds credentials (.env files, private keys, keystores, credential JSON).
+   * Measured like any file, but its contents are never embedded, whatever the options say:
+   * a report is something people share, and one leaked key outweighs any convenience.
+   */
+  secret: boolean;
 
   /** Line counts. All zero for binary files. code + comment + blank === lines. */
   lines: number;
@@ -472,6 +478,149 @@ export interface SourceChunk {
   files: Record<number, string>;
 }
 
+// ─── Code intelligence (TypeScript / JavaScript, from the compiler) ──────────────────────────
+
+/**
+ * What a symbol is. "component" and "hook" are React conventions layered on functions
+ * (PascalCase returning JSX; `use` + capital), kept as kinds because readers search for them.
+ * "module" is one synthetic symbol per file that owns its top-level statements, so a
+ * reference made outside any function still has a caller.
+ */
+export type SymbolKind =
+  | "function"
+  | "method"
+  | "constructor"
+  | "getter"
+  | "setter"
+  | "property"
+  | "variable"
+  | "class"
+  | "interface"
+  | "type"
+  | "enum"
+  | "namespace"
+  | "component"
+  | "hook"
+  | "module";
+
+/** Bit flags on CodeSymbols.symbols.flags. */
+export const SymbolFlag = {
+  exported: 1 << 0,
+  defaultExport: 1 << 1,
+  async: 1 << 2,
+  generator: 1 << 3,
+  static: 1 << 4,
+  abstract: 1 << 5,
+  private: 1 << 6, //   `private` or `#name`
+  protected: 1 << 7,
+  deprecated: 1 << 8, // JSDoc @deprecated
+  test: 1 << 9, //      declared in a test file
+  ambient: 1 << 10, //  `declare` or in a .d.ts
+  /** Exported, but nothing outside its own file references it. */
+  unusedExport: 1 << 11,
+} as const;
+
+/**
+ * How a reference uses its symbol. Stored as the index into REF_KINDS to keep the reference
+ * table to small integers.
+ */
+export const REF_KINDS = [
+  "read",
+  "write",
+  "call",
+  "new",
+  "jsx",
+  "type",
+  "import",
+  "export",
+  "extends",
+  "implements",
+] as const;
+export type RefKind = (typeof REF_KINDS)[number];
+
+/**
+ * Symbol table, columnar: index i across every array is symbol i. Positions are 0-based
+ * line and UTF-16 column of the declaration's name, matching what the source reader counts.
+ */
+export interface SymbolTable {
+  name: string[];
+  kind: SymbolKind[];
+  file: number[]; //       file id
+  line: number[];
+  col: number[];
+  /** Last line of the declaration body (inclusive), for highlighting the whole definition. */
+  endLine: number[];
+  /** Enclosing symbol (class for a method, namespace for a member), -1 at top level. */
+  parent: number[];
+  flags: number[]; //      SymbolFlag bits
+  /** Printed type or signature from the checker, ≤ 240 chars ("" when not computed). */
+  signature: string[];
+  /** First sentence of the JSDoc comment, ≤ 200 chars. */
+  doc: string[];
+  /** AST cyclomatic complexity of the body (1 + decision points); 0 for non-callables. */
+  complexity: number[];
+  params: number[];
+  /** Totals derived from the reference table, precomputed for sorting and labels. */
+  refs: number[];
+  callers: number[]; //    distinct enclosing symbols that reference it
+  files: number[]; //      distinct files that reference it
+}
+
+/**
+ * Every resolved reference to an in-repo symbol, columnar, grouped by file then position so
+ * the source reader can decorate one file with a contiguous slice (see `fileRefStart`).
+ */
+export interface RefTable {
+  symbol: number[];
+  file: number[];
+  line: number[];
+  col: number[];
+  /** Length of the referencing identifier in UTF-16 units. */
+  len: number[];
+  kind: number[]; //       index into REF_KINDS
+  /** Enclosing symbol making the reference (the caller), or the file's module symbol. */
+  from: number[];
+}
+
+/** Aggregated symbol-to-symbol edges: one row per (from, to, kind). */
+export interface CallTable {
+  from: number[];
+  to: number[];
+  kind: number[]; //       index into REF_KINDS
+  count: number[];
+}
+
+export interface CodeSymbols {
+  engine: { name: "typescript"; version: string };
+  /** tsconfig/jsconfig projects analyzed ("" for an inferred project) and files each owned. */
+  projects: { config: string; files: number; ms: number }[];
+  symbols: SymbolTable;
+  refs: RefTable;
+  calls: CallTable;
+  /** For file id f, its refs are refs[fileRefStart[f] .. fileRefStart[f + 1]). Length files + 1. */
+  fileRefStart: number[];
+  /** The synthetic "module" symbol id for each file id, or -1 for files not analyzed. */
+  moduleSymbol: number[];
+  stats: {
+    files: number;
+    symbols: number;
+    references: number;
+    unresolved: number;
+    unusedExports: number;
+    /** References dropped by the size cap; 0 when nothing was dropped. */
+    truncated: number;
+    ms: number;
+  };
+}
+
+/** What Report carries about code intelligence; the tables ship in their own data file. */
+export interface CodeSymbolsIndex {
+  /** Relative URL of the data file, e.g. "data/symbols.js". */
+  url: string;
+  engine: CodeSymbols["engine"];
+  stats: CodeSymbols["stats"];
+}
+
 // ─── The report ──────────────────────────────────────────────────────────────────────────────
 
 export interface Report {
@@ -530,6 +679,8 @@ export interface Report {
   findings: Finding[];
   layout: Layouts;
   source?: SourceIndex;
+  /** Present when TypeScript/JavaScript files were analyzed by the compiler. */
+  symbols?: CodeSymbolsIndex;
 
   /** Non-fatal problems, shown in the report's about panel. */
   warnings: string[];
@@ -543,7 +694,11 @@ export interface Report {
  * plain <script src>. Each data file is one call:
  *
  *   window.__starchart.resolve("report", { ...Report });
+ *   window.__starchart.resolve("symbols", { ...CodeSymbols });
  *   window.__starchart.resolve("source/12", { chunk: 12, files: {...} });
+ *
+ * The report loads first and paints; symbols and source chunks load on demand, so a large
+ * repository's first view never waits on its reference table.
  *
  * The viewer installs `window.__starchart` before injecting the tags.
  */
