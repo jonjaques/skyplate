@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>starchart · vitejs/vite · Gate Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{--board:#121315;--board2:#1b1d20;--line:#2b2e33;--panel:#f3f4f1;--ink:#121315;--amber:#ffb21a;--gray:#8a8f94;
+        --blue:#5b8fd0;--aqua:#3fa883;--orange:#d27a52;
+        --sign:"Barlow Condensed",sans-serif;--mono:"JetBrains Mono",monospace}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1440px;height:900px;overflow:hidden;background:var(--board);color:var(--panel);font:400 13px/1.4 var(--mono);font-variant-numeric:tabular-nums}
+  /* shell header: brand + standard tabs + report actions */
+  header{height:56px;display:flex;align-items:center;gap:32px;padding:0 24px;border-bottom:1px solid var(--line)}
+  .brand{font:700 26px/1 var(--sign);letter-spacing:.02em}
+  nav{display:flex;height:100%}
+  nav a{display:flex;align-items:center;padding:0 20px;font:600 22px/1 var(--sign);color:var(--gray);text-decoration:none;border-bottom:3px solid transparent}
+  nav a[aria-current]{color:var(--panel);border-bottom-color:var(--panel)}
+  .hdr-right{margin-left:auto;display:flex;gap:10px;align-items:center}
+  input,select,button{font:400 13px var(--mono);border-radius:4px;height:34px;padding:0 12px}
+  input{width:260px;background:var(--board2);border:1px solid var(--line);color:var(--panel)}
+  button{background:var(--panel);color:var(--ink);border:0;font-weight:600}
+  button.ghost{background:transparent;color:var(--panel);border:1px solid var(--line)}
+  /* project pass: segmented off-white strip, tabular figures */
+  .pass{height:104px;margin:16px 24px 0;background:var(--panel);color:var(--ink);border-radius:6px;display:flex;overflow:hidden}
+  .seg{padding:14px 22px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px dashed #b9bcb8}
+  .seg:first-child{flex:1.6}
+  .seg label{font:600 15px/1 var(--sign);text-transform:none;color:#5d6166}
+  .seg b{font:600 40px/1 var(--sign);letter-spacing:.01em}
+  .seg b.m{font:600 34px/1 var(--mono)}
+  .seg:last-of-type{border-right:2px dashed #b9bcb8}
+  .code{width:230px;padding:14px 20px;display:flex;flex-direction:column;justify-content:space-between}
+  .bars{height:52px;background:repeating-linear-gradient(90deg,var(--ink) 0 2px,transparent 2px 4px,var(--ink) 4px 5px,transparent 5px 8px,var(--ink) 8px 11px,transparent 11px 12px,var(--ink) 12px 13px,transparent 13px 17px)}
+  .code span{font:400 11px var(--mono);letter-spacing:.18em}
+  /* work area */
+  main{display:grid;grid-template-columns:1fr 480px;gap:16px;padding:16px 24px 24px;height:724px}
+  .map{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;
+    background:
+      radial-gradient(circle at 34% 46%,rgba(91,143,208,.42) 0 3%,rgba(91,143,208,.12) 14%,transparent 26%),
+      radial-gradient(circle at 64% 32%,rgba(63,168,131,.34) 0 2%,rgba(63,168,131,.10) 10%,transparent 18%),
+      radial-gradient(circle at 70% 72%,rgba(210,122,82,.30) 0 2%,rgba(210,122,82,.08) 9%,transparent 16%),
+      radial-gradient(circle at 20% 76%,rgba(138,143,148,.22) 0 1%,transparent 11%),
+      radial-gradient(1px 1px at 12% 18%,#fff 50%,transparent),radial-gradient(1px 1px at 44% 12%,#fff 50%,transparent),
+      radial-gradient(1px 1px at 82% 20%,#fff 50%,transparent),radial-gradient(1px 1px at 90% 58%,#fff 50%,transparent),
+      radial-gradient(1px 1px at 8% 52%,#fff 50%,transparent),radial-gradient(1px 1px at 52% 88%,#fff 50%,transparent),
+      var(--board)}
+  /* labels sit on solid board chips: over a lit cluster the gray tags dropped below 3:1 */
+  .maptools{position:absolute;top:0;left:0;right:0;display:flex;gap:8px;align-items:center;padding:12px 16px;background:var(--board);border-bottom:1px solid var(--line)}
+  .maptools h2{font:600 28px/1 var(--sign);margin-right:auto}
+  select{background:var(--board2);color:var(--panel);border:1px solid var(--line)}
+  svg{position:absolute;inset:0}
+  .legend{position:absolute;left:16px;bottom:16px;display:flex;gap:18px;background:var(--board);padding:10px 14px;border:1px solid var(--line);border-radius:4px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px}
+  .zoom{position:absolute;right:16px;bottom:16px;display:flex;flex-direction:column;gap:6px}
+  .zoom button{width:34px;padding:0}
+  .tag{position:absolute;font:600 16px/1 var(--sign);color:var(--panel);background:var(--board);padding:3px 6px;border-radius:3px}
+  /* signature move: departure board */
+  .board{background:var(--board2);border:1px solid var(--line);border-radius:6px;display:flex;flex-direction:column;overflow:hidden}
+  .bhead{display:flex;align-items:center;gap:12px;padding:16px 18px 12px}
+  .bhead h2{font:700 34px/1 var(--sign);margin-right:auto}
+  .bhead select{width:230px}
+  .meta{padding:0 18px 12px;color:var(--gray);font-size:12px;display:flex;justify-content:space-between}
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  th{font:600 16px/1 var(--sign);color:var(--gray);text-align:left;padding:10px 8px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  th[aria-sort]{color:var(--panel)} th[aria-sort]::after{content:" \2193"}
+  td{padding:0 8px;height:46px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}
+  td:first-child,th:first-child{padding-left:18px} td.n{text-align:right} th.n{text-align:right}
+  td.rk{font:700 24px/1 var(--sign)}
+  tr.chg td{background:var(--amber);color:var(--ink);border-bottom-color:#c98a0c}
+  .st{font:600 15px/1 var(--sign);letter-spacing:.04em}
+  tr.chg .st::before{content:"";display:inline-block;width:8px;height:8px;background:var(--ink);border-radius:50%;margin-right:6px;vertical-align:1px}
+  .bfoot{margin-top:auto;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);color:var(--gray);font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">starchart</div>
+  <nav aria-label="Report views">
+    <a href="#" aria-current="page">Map</a><a href="#">Charts</a><a href="#">Files</a><a href="#">Source</a>
+  </nav>
+  <div class="hdr-right">
+    <input type="search" placeholder="Jump to file, symbol, owner">
+    <button class="ghost">Compare runs</button>
+    <button>Share report</button>
+  </div>
+</header>
+
+<section class="pass" aria-label="Project pass">
+  <div class="seg"><label>Repository</label><b>vitejs/vite</b></div>
+  <div class="seg"><label>Files</label><b class="m">3,912</b></div>
+  <div class="seg"><label>Lines</label><b class="m">412K</b></div>
+  <div class="seg"><label>Languages</label><b class="m">31</b></div>
+  <div class="seg"><label>Contributors</label><b class="m">1,104</b></div>
+  <div class="seg"><label>Since</label><b class="m">2020-04</b></div>
+  <div class="code"><div class="bars"></div><span>SC 9800 · RUN 2026-10-31</span></div>
+</section>
+
+<main>
+  <section class="map" aria-label="Galaxy map">
+    <div class="maptools">
+      <h2>Galaxy</h2>
+      <select><option>Color by: language</option></select>
+      <select><option>Glow by: churn, 90 days</option></select>
+      <select><option>Edges: imports</option></select>
+    </div>
+    <svg viewBox="0 0 912 724" aria-hidden="true">
+      <g stroke="#8a8f94" stroke-opacity=".22" fill="none">
+        <path d="M310 333 C 400 260, 500 240, 584 232"/><path d="M310 333 C 420 420, 560 500, 640 520"/>
+        <path d="M584 232 C 620 340, 640 420, 640 520"/><path d="M310 333 C 250 430, 200 500, 182 550"/>
+      </g>
+      <g fill="#5b8fd0"><circle cx="310" cy="333" r="18"/><circle cx="268" cy="300" r="9"/><circle cx="350" cy="372" r="11"/><circle cx="290" cy="390" r="6"/><circle cx="356" cy="296" r="7"/><circle cx="236" cy="352" r="5"/><circle cx="330" cy="420" r="4"/></g>
+      <g fill="#3fa883"><circle cx="584" cy="232" r="12"/><circle cx="612" cy="262" r="6"/><circle cx="556" cy="206" r="5"/><circle cx="620" cy="210" r="4"/></g>
+      <g fill="#d27a52"><circle cx="640" cy="520" r="10"/><circle cx="670" cy="548" r="5"/><circle cx="612" cy="548" r="4"/></g>
+      <g fill="#8a8f94"><circle cx="182" cy="550" r="6"/><circle cx="160" cy="530" r="3"/><circle cx="204" cy="574" r="3"/></g>
+      <!-- the two changed hotspots from the board, ringed in the reserved alert color -->
+      <g fill="none" stroke="#ffb21a" stroke-width="2"><circle cx="310" cy="333" r="28"/><circle cx="350" cy="372" r="19"/></g>
+    </svg>
+    <span class="tag" style="left:250px;top:450px">packages/vite</span>
+    <span class="tag" style="left:560px;top:166px">playground</span>
+    <span class="tag" style="left:600px;top:584px">docs</span>
+    <span class="tag" style="left:124px;top:600px">create-vite</span>
+    <div class="legend"><span><i style="background:var(--blue)"></i>TypeScript</span><span><i style="background:var(--aqua)"></i>Vue / JSX</span><span><i style="background:var(--orange)"></i>Markdown</span><span><i style="background:var(--gray)"></i>Other 28</span></div>
+    <div class="zoom"><button aria-label="Zoom in">+</button><button aria-label="Zoom out">−</button></div>
+  </section>
+
+  <section class="board" aria-label="Hotspots">
+    <div class="bhead">
+      <h2>Hotspots</h2>
+      <select aria-label="Rank by"><option>Rank by: churn x complexity</option></select>
+    </div>
+    <div class="meta"><span>Top 10 of 3,912 files</span><span>2 changed since last run</span></div>
+    <table>
+      <colgroup><col style="width:56px"><col><col style="width:62px"><col style="width:58px"><col style="width:80px"><col style="width:82px"></colgroup>
+      <thead><tr><th>Rank</th><th>File</th><th class="n" aria-sort="descending">Churn</th><th class="n">Cplx</th><th>Owner</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr class="chg"><td class="rk">01</td><td>node/server/index.ts</td><td class="n">412</td><td class="n">88</td><td>sapphi</td><td class="st">Up 3</td></tr>
+        <tr class="chg"><td class="rk">02</td><td>node/plugins/css.ts</td><td class="n">387</td><td class="n">96</td><td>bluwy</td><td class="st">New</td></tr>
+        <tr><td class="rk">03</td><td>node/config.ts</td><td class="n">351</td><td class="n">74</td><td>patak</td><td class="st">Held</td></tr>
+        <tr><td class="rk">04</td><td>node/optimizer/index.ts</td><td class="n">298</td><td class="n">81</td><td>sapphi</td><td class="st">Held</td></tr>
+        <tr><td class="rk">05</td><td>node/plugins/importAnalysis.ts</td><td class="n">276</td><td class="n">79</td><td>bluwy</td><td class="st">Held</td></tr>
+        <tr><td class="rk">06</td><td>node/build.ts</td><td class="n">254</td><td class="n">70</td><td>patak</td><td class="st">Down 1</td></tr>
+        <tr><td class="rk">07</td><td>client/client.ts</td><td class="n">211</td><td class="n">52</td><td>hi-ogawa</td><td class="st">Held</td></tr>
+        <tr><td class="rk">08</td><td>node/server/hmr.ts</td><td class="n">198</td><td class="n">58</td><td>sapphi</td><td class="st">Held</td></tr>
+        <tr><td class="rk">09</td><td>create-vite/src/index.ts</td><td class="n">164</td><td class="n">41</td><td>bluwy</td><td class="st">Held</td></tr>
+        <tr><td class="rk">10</td><td>node/ssr/ssrTransform.ts</td><td class="n">152</td><td class="n">63</td><td>hi-ogawa</td><td class="st">Down 2</td></tr>
+      </tbody>
+    </table>
+    <div class="bfoot"><span>Paths relative to packages/vite/src</span><button class="ghost">Mark changes seen</button></div>
+  </section>
+</main>
+</body>
+</html>

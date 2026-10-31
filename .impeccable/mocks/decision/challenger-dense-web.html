@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>starchart · vitejs/vite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--w:#fff;--ink:#1a1a1a;--red:#d7000f;--bd:#e5e8eb;--fill:#f4f5f7;--dark:#0d1117;--blue:#2a78d6;--org:#eb6834;--aqua:#1baf7a;--mut:#5d636b}
+body{width:1440px;height:900px;overflow:hidden;background:var(--w);color:var(--ink);font:12px/1.35 "Zen Kaku Gothic New",sans-serif}
+.n{font-family:"JetBrains Mono",monospace;font-variant-numeric:tabular-nums}
+header{border-bottom:1px solid var(--bd)}
+.r1{height:46px;display:flex;align-items:center;gap:14px;padding:0 14px;background:var(--ink);color:#fff}
+.wm{font-weight:900;font-size:24px;letter-spacing:-.02em}.wm b{color:var(--red)}
+.repo{display:flex;gap:6px;align-items:center;background:#2b2b2b;border:1px solid #3a3a3a;padding:4px 8px;font-size:12px}
+.repo .n{color:#aab}
+.srch{flex:1;max-width:520px;height:28px;border:0;background:#fff;padding:0 10px;font:12px "Zen Kaku Gothic New";color:var(--ink)}
+.btn{height:28px;padding:0 10px;border:1px solid #4a4a4a;background:transparent;color:#fff;font:500 12px "Zen Kaku Gothic New"}
+.btn.p{background:var(--red);border-color:var(--red)}
+.sp{flex:1}.meta{font-size:11px;color:#aab}
+.r2{height:34px;display:flex;align-items:stretch;padding:0 14px;background:var(--fill);border-bottom:2px solid var(--red)}
+.r2 a{display:flex;align-items:center;padding:0 16px;font-weight:700;font-size:13px;color:var(--ink);text-decoration:none;border-right:1px solid var(--bd)}
+.r2 a.on{background:var(--red);color:#fff}
+.r2 a i{font-style:normal;font-weight:400;font-size:10px;margin-left:6px;color:var(--mut)}.r2 a.on i{color:#fff}
+main{height:820px;display:grid;gap:1px;background:var(--bd);border-bottom:1px solid var(--bd);
+grid-template-columns:270px 270px 1fr 284px;grid-template-rows:62px repeat(4,1fr);
+grid-template-areas:"k k k k" "lang hot gal act" "lang hot gal pun" "ft cyc gal big" "own todo rec imp"}
+.m{background:var(--w);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.m>h2{display:flex;align-items:flex-end;justify-content:space-between;border-bottom:1px solid var(--bd);height:24px;padding-right:8px;font-size:12px;font-weight:700}
+.m>h2 span{background:var(--red);color:#fff;padding:4px 10px 3px;line-height:1.2}
+.m>h2 em{font-style:normal;font-weight:400;font-size:10px;color:var(--mut);padding-bottom:4px}
+.b{padding:7px 9px;flex:1;min-height:0}
+.k{grid-area:k;display:grid;grid-template-columns:repeat(6,1fr);gap:1px;background:var(--bd)}
+.k div{background:var(--w);padding:8px 12px;display:flex;flex-direction:column;justify-content:center}
+.k b{font:600 26px/1 "JetBrains Mono",monospace;letter-spacing:-.03em}.k small{font-size:11px;color:var(--mut);margin-top:3px}
+.k .al{background:#fff3f3}.k .al b{color:var(--red)}
+.bar{display:grid;grid-template-columns:78px 1fr 40px;gap:6px;align-items:center;height:19px;font-size:11px}
+.bar u{display:block;height:8px;background:var(--fill)}.bar u s{display:block;height:100%}
+.bar .n{text-align:right;font-size:10px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{text-align:left;font-weight:700;background:var(--fill);padding:3px 6px;border-bottom:1px solid var(--bd);font-size:10px;white-space:nowrap}
+th.s:after{content:" ▾";color:var(--red)}
+td{padding:3px 6px;border-bottom:1px solid var(--bd);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+td.n{text-align:right;font-size:10px}
+tr.alert td{background:var(--red);color:#fff;font-weight:700}
+.gal{grid-area:gal;background:var(--dark)}
+.gal>h2{border-color:#222a35;color:#fff}.gal>h2 em{color:#8b949e}
+.gv{position:relative;flex:1;background:
+radial-gradient(circle at 34% 42%,rgba(42,120,214,.35),transparent 18%),radial-gradient(circle at 66% 58%,rgba(235,104,52,.28),transparent 14%),
+radial-gradient(circle at 54% 26%,rgba(27,175,122,.25),transparent 12%),radial-gradient(1px 1px at 20% 30%,#fff8,transparent),
+radial-gradient(ellipse at 50% 50%,#141b26,var(--dark) 70%)}
+.gv svg{position:absolute;inset:0;width:100%;height:100%}
+.gtools{position:absolute;top:10px;left:10px;display:flex;gap:4px}
+.gtools button,.gtools select{height:24px;padding:0 8px;background:#161b22;border:1px solid #30363d;color:#e6edf3;font:11px "Zen Kaku Gothic New"}
+.gtools button.on{background:var(--red);border-color:var(--red)}
+.leg{position:absolute;left:10px;bottom:10px;display:flex;gap:10px;color:#c9d1d9;font-size:11px;background:#0d1117cc;padding:5px 8px;border:1px solid #30363d}
+.leg i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.tip{position:absolute;right:12px;top:46px;width:210px;background:#161b22;border:1px solid #30363d;color:#e6edf3;padding:8px;font-size:11px}
+.tip b{display:block;font-size:12px}.tip .n{color:#8b949e;font-size:10px}
+.tip .w{margin-top:6px;background:var(--red);color:#fff;padding:3px 6px;font-weight:700}
+.cols{display:flex;align-items:flex-end;gap:2px;height:100%}
+.cols i{flex:1;background:var(--blue)}.cols i.h{background:var(--red)}
+.pc{display:grid;grid-template-columns:22px repeat(12,1fr);gap:2px;font-size:9px;color:var(--mut)}
+.pc i{height:14px;background:var(--blue)}
+.o1{opacity:.12}.o2{opacity:.3}.o3{opacity:.55}.o4{opacity:.8}.o5{opacity:1}
+.cy{border:1px solid var(--red);background:#fff3f3;padding:6px 8px;margin-bottom:6px}
+.cy b{color:var(--red);font-size:12px}.cy p{font-size:10px;font-family:"JetBrains Mono",monospace;color:var(--ink);margin-top:2px}
+.tag{display:inline-block;font-size:10px;padding:1px 5px;background:var(--fill);border:1px solid var(--bd)}
+.tag.r{background:var(--red);color:#fff;border-color:var(--red)}
+.foot{display:flex;justify-content:space-between;font-size:10px;color:var(--mut);margin-top:4px}
+.foot a{color:var(--blue);text-decoration:none}
+</style></head><body>
+<header>
+<div class="r1"><div class="wm">star<b>chart</b></div>
+<div class="repo">vitejs/vite <span class="n">main · 4f2a9c1</span></div>
+<input class="srch" placeholder="Search files, symbols, owners  ( / )">
+<span class="sp"></span><span class="meta">Report generated 31 Oct 2026 · 14:02</span>
+<button class="btn">Theme: light</button><button class="btn">Compare run</button><button class="btn p">Export report</button></div>
+<nav class="r2"><a class="on" href="#">Map<i>3,912</i></a><a href="#">Languages<i>31</i></a><a href="#">History<i>9,814</i></a><a href="#">Hotspots<i>4</i></a><a href="#">Dependencies<i>3 cycles</i></a><a href="#">Owners<i>1,127</i></a><a href="#">Files</a><a href="#">Source</a></nav>
+</header>
+<main>
+<section class="k"><div><b>3,912</b><small>Files tracked</small></div><div><b>412.6K</b><small>Lines of code</small></div><div><b>31</b><small>Languages and formats</small></div><div><b>1,127</b><small>Contributors</small></div><div><b>9,814</b><small>Commits since 2020</small></div><div class="al"><b>3</b><small>Dependency cycles, up from 1</small></div></section>
+<section class="m" style="grid-area:lang"><h2><span>Languages</span><em>by lines</em></h2><div class="b">
+<div class="bar">TypeScript<u><s style="width:64%;background:var(--blue)"></s></u><span class="n">64.1%</span></div>
+<div class="bar">Markdown<u><s style="width:12%;background:var(--aqua)"></s></u><span class="n">12.3%</span></div>
+<div class="bar">JavaScript<u><s style="width:9%;background:var(--org)"></s></u><span class="n">8.7%</span></div>
+<div class="bar">Vue<u><s style="width:4%;background:var(--aqua)"></s></u><span class="n">3.9%</span></div>
+<div class="bar">CSS<u><s style="width:3%;background:var(--blue)"></s></u><span class="n">3.1%</span></div>
+<div class="bar">JSON<u><s style="width:3%;background:var(--org)"></s></u><span class="n">2.8%</span></div>
+<div class="bar">HTML<u><s style="width:2%;background:var(--blue)"></s></u><span class="n">1.9%</span></div>
+<div class="bar">Svelte<u><s style="width:1%;background:var(--org)"></s></u><span class="n">0.9%</span></div>
+<div class="bar">25 others<u><s style="width:2%;background:#9aa1a9"></s></u><span class="n">2.3%</span></div>
+<div class="foot"><span>31 detected</span><a href="#">All languages</a></div></div></section>
+<section class="m" style="grid-area:hot"><h2><span>Hotspots</span><em>churn × size, 90 days</em></h2><div class="b" style="padding:0">
+<table><tr><th>File</th><th class="s">Churn</th><th>LOC</th></tr>
+<tr class="alert"><td>node/server/index.ts</td><td class="n">148</td><td class="n">1,204</td></tr>
+<tr><td>node/plugins/css.ts</td><td class="n">97</td><td class="n">3,318</td></tr>
+<tr><td>node/config.ts</td><td class="n">91</td><td class="n">1,876</td></tr>
+<tr><td>node/plugins/importAnalysis.ts</td><td class="n">74</td><td class="n">1,092</td></tr>
+<tr><td>node/optimizer/index.ts</td><td class="n">61</td><td class="n">1,381</td></tr>
+<tr><td>node/build.ts</td><td class="n">58</td><td class="n">1,544</td></tr>
+<tr><td>client/client.ts</td><td class="n">43</td><td class="n">612</td></tr>
+<tr><td>node/server/hmr.ts</td><td class="n">39</td><td class="n">958</td></tr>
+<tr><td>create-vite/src/index.ts</td><td class="n">31</td><td class="n">684</td></tr>
+<tr><td>node/plugins/asset.ts</td><td class="n">27</td><td class="n">471</td></tr>
+<tr><td>node/ssr/ssrTransform.ts</td><td class="n">24</td><td class="n">702</td></tr>
+<tr><td>docs/config/server-options.md</td><td class="n">22</td><td class="n">418</td></tr>
+</table></div></section>
+<section class="m gal"><h2><span>Galaxy map</span><em>3,912 files · size = LOC · glow = churn · lanes = imports</em></h2><div class="gv">
+<svg viewBox="0 0 620 440" preserveAspectRatio="xMidYMid slice">
+<g stroke="#2a78d6" stroke-opacity=".28" fill="none"><path d="M210 185 Q300 200 410 255"/><path d="M210 185 Q260 120 335 115"/><path d="M335 115 Q380 190 410 255"/><path d="M410 255 Q470 330 520 350"/><path d="M210 185 Q150 270 120 330"/></g>
+<path d="M210 185 Q260 120 335 115 Q380 190 410 255 Q300 200 210 185" stroke="#d7000f" stroke-width="1.5" fill="none" stroke-dasharray="4 3"/>
+<g fill="#2a78d6"><circle cx="210" cy="185" r="13"/><circle cx="182" cy="168" r="6"/><circle cx="236" cy="208" r="7"/><circle cx="190" cy="214" r="4"/><circle cx="228" cy="160" r="5"/><circle cx="165" cy="196" r="3"/><circle cx="250" cy="182" r="3"/><circle cx="200" cy="240" r="2.5"/></g>
+<g fill="#eb6834"><circle cx="410" cy="255" r="10"/><circle cx="388" cy="276" r="5"/><circle cx="436" cy="240" r="4"/><circle cx="430" cy="282" r="6"/><circle cx="395" cy="236" r="3"/><circle cx="455" cy="265" r="2.5"/></g>
+<g fill="#1baf7a"><circle cx="335" cy="115" r="8"/><circle cx="356" cy="98" r="4"/><circle cx="318" cy="94" r="3"/><circle cx="350" cy="132" r="3"/><circle cx="520" cy="350" r="6"/><circle cx="540" cy="335" r="3"/><circle cx="120" cy="330" r="5"/><circle cx="100" cy="345" r="3"/></g>
+<g fill="#c9d1d9" opacity=".55"><circle cx="70" cy="60" r="1.5"/><circle cx="560" cy="90" r="1.5"/><circle cx="480" cy="140" r="2"/><circle cx="90" cy="150" r="1.5"/><circle cx="280" cy="380" r="2"/><circle cx="590" cy="220" r="1.5"/><circle cx="300" cy="300" r="1.5"/><circle cx="150" cy="400" r="1.5"/><circle cx="460" cy="400" r="2"/><circle cx="40" cy="250" r="1.5"/></g>
+<circle cx="210" cy="185" r="22" fill="none" stroke="#d7000f" stroke-width="2"/><circle cx="210" cy="185" r="34" fill="#d7000f" opacity=".12"/>
+</svg>
+<div class="gtools"><button class="on">Language</button><button>Churn</button><button>Owner</button><select><option>All packages</option></select><button>Reset view</button></div>
+<div class="tip"><b>packages/vite/src/node/server/index.ts</b><span class="n">1,204 LOC · 148 commits / 90d · 38 importers</span><div class="w">Hotspot: churn 3.4× package median</div></div>
+<div class="leg"><span><i style="background:#2a78d6"></i>TypeScript</span><span><i style="background:#eb6834"></i>JavaScript</span><span><i style="background:#1baf7a"></i>Markdown, Vue</span><span style="color:#ff6b73">- - cycle</span></div>
+</div></section>
+<section class="m" style="grid-area:act"><h2><span>Commit activity</span><em>weekly, 26 wks</em></h2><div class="b"><div class="cols">
+<i style="height:40%"></i><i style="height:52%"></i><i style="height:35%"></i><i style="height:61%"></i><i style="height:48%"></i><i style="height:70%"></i><i style="height:44%"></i><i style="height:38%"></i><i style="height:55%"></i><i style="height:66%"></i><i style="height:50%"></i><i style="height:42%"></i><i style="height:58%"></i><i style="height:72%"></i><i style="height:63%"></i><i style="height:47%"></i><i style="height:39%"></i><i style="height:54%"></i><i class="h" style="height:96%"></i><i style="height:68%"></i><i style="height:51%"></i><i style="height:45%"></i><i style="height:60%"></i><i style="height:57%"></i><i style="height:49%"></i><i style="height:62%"></i></div></div></section>
+<section class="m" style="grid-area:pun"><h2><span>Punchcard</span><em>UTC, 2-hr bins</em></h2><div class="b"><div class="pc">
+<span>Mon</span><i class="o1"></i><i class="o1"></i><i class="o1"></i><i class="o2"></i><i class="o3"></i><i class="o4"></i><i class="o5"></i><i class="o4"></i><i class="o4"></i><i class="o3"></i><i class="o2"></i><i class="o1"></i>
+<span>Tue</span><i class="o1"></i><i class="o1"></i><i class="o2"></i><i class="o2"></i><i class="o4"></i><i class="o5"></i><i class="o5"></i><i class="o4"></i><i class="o3"></i><i class="o3"></i><i class="o2"></i><i class="o1"></i>
+<span>Wed</span><i class="o1"></i><i class="o1"></i><i class="o1"></i><i class="o3"></i><i class="o4"></i><i class="o4"></i><i class="o5"></i><i class="o5"></i><i class="o4"></i><i class="o2"></i><i class="o2"></i><i class="o1"></i>
+<span>Thu</span><i class="o1"></i><i class="o1"></i><i class="o2"></i><i class="o2"></i><i class="o3"></i><i class="o4"></i><i class="o4"></i><i class="o4"></i><i class="o3"></i><i class="o3"></i><i class="o1"></i><i class="o1"></i>
+<span>Fri</span><i class="o1"></i><i class="o1"></i><i class="o1"></i><i class="o2"></i><i class="o3"></i><i class="o3"></i><i class="o4"></i><i class="o3"></i><i class="o2"></i><i class="o2"></i><i class="o1"></i><i class="o1"></i>
+<span>Sat</span><i class="o1"></i><i class="o1"></i><i class="o1"></i><i class="o1"></i><i class="o2"></i><i class="o2"></i><i class="o2"></i><i class="o2"></i><i class="o2"></i><i class="o1"></i><i class="o1"></i><i class="o1"></i>
+</div></div></section>
+<section class="m" style="grid-area:ft"><h2><span>File types</span><em>by count</em></h2><div class="b">
+<div class="bar">.ts<u><s style="width:46%;background:var(--blue)"></s></u><span class="n">1,802</span></div>
+<div class="bar">.md<u><s style="width:14%;background:var(--aqua)"></s></u><span class="n">541</span></div>
+<div class="bar">.js<u><s style="width:12%;background:var(--org)"></s></u><span class="n">468</span></div>
+<div class="bar">.json<u><s style="width:9%;background:var(--org)"></s></u><span class="n">352</span></div>
+<div class="bar">.vue<u><s style="width:5%;background:var(--aqua)"></s></u><span class="n">197</span></div>
+<div class="bar">.css<u><s style="width:4%;background:var(--blue)"></s></u><span class="n">163</span></div></div></section>
+<section class="m" style="grid-area:cyc"><h2><span>Cycles</span><em>import graph</em></h2><div class="b">
+<div class="cy"><b>Warning: 3 cycles found</b><p>config.ts → plugins/index.ts → server/index.ts → config.ts</p></div>
+<div style="font-size:11px;line-height:1.7"><span class="tag r">new</span> optimizer/index.ts ↔ optimizer/scan.ts<br><span class="tag">known</span> ssr/ssrModuleLoader.ts ↔ server/moduleGraph.ts</div></div></section>
+<section class="m" style="grid-area:big"><h2><span>Largest files</span><em>LOC</em></h2><div class="b" style="padding:0"><table>
+<tr><td>node/plugins/css.ts</td><td class="n">3,318</td></tr><tr><td>node/config.ts</td><td class="n">1,876</td></tr><tr><td>node/build.ts</td><td class="n">1,544</td></tr><tr><td>node/optimizer/index.ts</td><td class="n">1,381</td></tr><tr><td>node/server/index.ts</td><td class="n">1,204</td></tr></table></div></section>
+<section class="m" style="grid-area:own"><h2><span>Owners</span><em>by lines last touched</em></h2><div class="b" style="padding:0"><table>
+<tr><td>sapphi-red</td><td class="n">21.4%</td></tr><tr><td>bluwy</td><td class="n">17.9%</td></tr><tr><td>patak-dev</td><td class="n">12.6%</td></tr><tr><td>antfu</td><td class="n">6.8%</td></tr><tr><td>1,123 others</td><td class="n">41.3%</td></tr></table></div></section>
+<section class="m" style="grid-area:todo"><h2><span>TODO density</span><em>per 1K lines</em></h2><div class="b">
+<div class="bar">packages/vite<u><s style="width:62%;background:var(--org)"></s></u><span class="n">1.9</span></div>
+<div class="bar">playground<u><s style="width:28%;background:var(--org)"></s></u><span class="n">0.8</span></div>
+<div class="bar">create-vite<u><s style="width:14%;background:var(--org)"></s></u><span class="n">0.4</span></div>
+<div class="bar">docs<u><s style="width:6%;background:var(--org)"></s></u><span class="n">0.2</span></div>
+<div class="foot"><span>412 markers total</span><a href="#">Open list</a></div></div></section>
+<section class="m" style="grid-area:rec"><h2><span>Recent changes</span><em>last 7 days · 64 commits</em></h2><div class="b" style="padding:0"><table>
+<tr><th>Commit</th><th>Message</th><th>Author</th><th class="s">When</th></tr>
+<tr><td class="n">4f2a9c1</td><td>fix(hmr): avoid full reload on css-only change</td><td>sapphi-red</td><td class="n">2h</td></tr>
+<tr><td class="n">b81e07d</td><td>feat(server): warmup entries from config</td><td>bluwy</td><td class="n">9h</td></tr>
+<tr><td class="n">2c9d4fa</td><td>docs: update server options for proxy</td><td>patak-dev</td><td class="n">1d</td></tr>
+<tr><td class="n">e7a1350</td><td>chore(deps): update esbuild to 0.25</td><td>renovate</td><td class="n">2d</td></tr></table></div></section>
+<section class="m" style="grid-area:imp"><h2><span>Most imported</span><em>in-degree</em></h2><div class="b" style="padding:0"><table>
+<tr><td>node/utils.ts</td><td class="n">214</td></tr><tr><td>node/constants.ts</td><td class="n">167</td></tr><tr><td>node/config.ts</td><td class="n">121</td></tr><tr><td>shared/utils.ts</td><td class="n">88</td></tr><tr><td>node/server/index.ts</td><td class="n">38</td></tr></table></div></section>
+</main>
+</body></html>

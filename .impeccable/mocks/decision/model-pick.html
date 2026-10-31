@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>starchart · vitejs/vite · Geological survey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--g:#fbfbf8;--ink:#1b1d1c;--mut:#5d625f;--rule:#d6d6cf;--grn:#3f8f6b;--rst:#c8553d;--blu:#3b6fb6;--och:#d9a326;--vio:#8a6fb3;--paper:#f2f1ea}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1440px;height:900px;overflow:hidden;background:var(--g);color:var(--ink);font:400 13px/1.4 Barlow,sans-serif;display:grid;grid-template-rows:52px 1fr 236px;grid-template-columns:200px 1fr 320px}
+.mono{font-family:"IBM Plex Mono",monospace}
+header{grid-column:1/-1;background:var(--ink);color:#fbfbf8;display:flex;align-items:center;gap:28px;padding:0 20px}
+.wm{font:700 24px/1 "Barlow Condensed";letter-spacing:.01em;display:flex;align-items:center;gap:10px}
+.wm i{width:22px;height:22px;display:block;background:linear-gradient(var(--blu) 0 40%,var(--och) 40% 62%,var(--rst) 62% 80%,var(--grn) 80%);border:1.5px solid #fbfbf8}
+.repo{font:500 13px "IBM Plex Mono";color:#c9cbc6;padding-left:20px;border-left:1px solid #3a3d3b}
+nav{display:flex;height:100%;margin-left:12px}
+nav a{display:flex;align-items:center;padding:0 18px;font:600 15px Barlow;color:#b5b8b3;text-decoration:none;border-bottom:3px solid transparent}
+nav a.on{color:#fff;border-bottom-color:var(--och)}
+.hr{margin-left:auto;display:flex;gap:10px;align-items:center}
+.btn{font:600 13px Barlow;padding:7px 14px;border:1px solid #4a4e4b;color:#fbfbf8;background:transparent;border-radius:3px}
+.btn.p{background:var(--och);border-color:var(--och);color:var(--ink)}
+/* Signature: stratigraphic column = legend + filter + composition chart */
+aside.col{grid-row:2/4;border-right:1px solid var(--ink);padding:16px 14px 14px;display:flex;flex-direction:column;background:var(--paper)}
+aside.col h2{font:700 22px/1.1 "Barlow Condensed";margin-bottom:4px}
+aside.col .sub{font:500 12px "IBM Plex Mono";color:var(--mut);margin-bottom:12px}
+.strat{flex:1;display:flex;flex-direction:column;border:1.5px solid var(--ink)}
+.b{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--ink);padding:0 8px;font:600 12px "IBM Plex Mono"}
+.b:first-child{border-top:0}.b span:last-child{font-weight:400}
+.b.off{background-image:repeating-linear-gradient(45deg,transparent 0 5px,rgba(27,29,28,.18) 5px 6px)!important;opacity:.5}
+.colfoot{font:500 12px Barlow;color:var(--mut);margin-top:10px}
+main{position:relative;border-right:1px solid var(--rule);overflow:hidden}
+.tb{position:absolute;top:0;left:0;right:0;height:56px;display:flex;align-items:center;gap:12px;padding:0 20px;border-bottom:1px solid var(--rule);background:var(--g);z-index:2}
+.tb h1{font:700 28px/1 "Barlow Condensed";margin-right:auto}
+.tb h1 small{font:500 13px "IBM Plex Mono";color:var(--mut);margin-left:10px}
+select,input{font:500 13px Barlow;height:32px;border:1px solid #9fa29d;background:#fff;border-radius:3px;padding:0 10px;color:var(--ink)}
+input{width:220px}
+.seg{display:flex;border:1px solid #9fa29d;border-radius:3px;overflow:hidden}.seg b{font:600 12px Barlow;padding:8px 12px;background:#fff}.seg b.on{background:var(--ink);color:#fff}
+.sheet{position:absolute;inset:56px 0 0 0;background:radial-gradient(circle,#1b1d1c 1px,transparent 1.4px) 0 0/14px 14px,var(--g)}
+.sheet svg{position:absolute;inset:0}
+.fm{font:700 15px "IBM Plex Mono";fill:var(--ink)}
+.fl{font:600 12px Barlow;fill:var(--ink)}
+.scale{position:absolute;left:20px;bottom:16px;display:flex;align-items:center;gap:8px;font:500 12px "IBM Plex Mono"}
+.scale i{display:block;width:120px;height:8px;border:1px solid var(--ink);background:linear-gradient(90deg,var(--ink) 0 25%,#fff 25% 50%,var(--ink) 50% 75%,#fff 75%)}
+.kpis{position:absolute;right:20px;bottom:14px;display:flex;gap:0;border:1px solid var(--ink);background:#fff}
+.kpis div{padding:6px 14px;border-left:1px solid var(--rule)}.kpis div:first-child{border-left:0}
+.kpis b{display:block;font:600 22px/1.1 "IBM Plex Mono"}.kpis span{font:500 12px Barlow;color:var(--mut)}
+aside.det{padding:18px 18px 0;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.det h3{font:700 22px/1.15 "Barlow Condensed"}
+.path{font:500 12px "IBM Plex Mono";color:var(--mut);word-break:break-all}
+.chip{display:inline-flex;align-items:center;gap:6px;font:600 12px "IBM Plex Mono";padding:3px 8px;border:1px solid var(--ink);background:var(--blu);color:#fff}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:6px 0;border-bottom:1px solid var(--rule)}td:last-child{text-align:right;font:500 13px "IBM Plex Mono"}
+.alert{border:1.5px solid var(--rst);background:#f6e3dd;padding:12px 14px}
+.alert h4{font:700 20px/1.2 "Barlow Condensed";color:#8f3422;margin-bottom:4px}
+.alert p{font-size:12px}.alert .acts{display:flex;gap:8px;margin-top:10px}
+.alert .acts b{font:600 12px Barlow;padding:6px 10px;border:1px solid var(--rst);background:#fff;border-radius:3px}.alert .acts b:first-child{background:var(--rst);color:#fff}
+.warn{border:1.5px solid var(--och);background:#f8efd6;padding:10px 14px}
+.warn h4{font:700 18px/1.2 "Barlow Condensed";color:#7a5a0c}.warn p{font:500 12px "IBM Plex Mono"}
+section.xs{grid-column:2/4;border-top:1.5px solid var(--ink);padding:12px 20px 14px;display:flex;flex-direction:column}
+.xh{display:flex;align-items:baseline;gap:16px;margin-bottom:8px}
+.xh h2{font:700 24px/1 "Barlow Condensed"}
+.xh .tabs{margin-left:auto;display:flex;gap:4px}.xh .tabs b{font:600 12px Barlow;padding:5px 10px;border:1px solid #9fa29d;border-radius:3px}.xh .tabs b.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.eras{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--ink);border-bottom:0}
+.eras div{font:600 13px "IBM Plex Mono";padding:3px 8px;border-left:1px solid var(--ink)}.eras div:first-child{border-left:0}
+.xs svg{flex:1;width:100%;border:1px solid var(--ink);display:block}
+</style></head><body>
+<header>
+  <div class="wm"><i></i>starchart</div><div class="repo">vitejs/vite · main @ 4f1c2e9</div>
+  <nav><a class="on" href="#">Map</a><a href="#">Charts</a><a href="#">Files</a><a href="#">Source</a></nav>
+  <div class="hr"><span class="mono" style="font-size:12px;color:#9a9d98">Surveyed 31 Oct 2026, 09:14</span><button class="btn">Compare run</button><button class="btn p">Share report</button></div>
+</header>
+<aside class="col">
+  <h2>Formations</h2><div class="sub">412,318 lines · 31 kinds</div>
+  <div class="strat">
+    <div class="b" style="flex:58;background:var(--blu);color:#fff"><span>Ts</span><span>58.2%</span></div>
+    <div class="b" style="flex:14;background:var(--vio);color:#fff"><span>Md</span><span>13.9%</span></div>
+    <div class="b" style="flex:9;background:var(--och)"><span>Js</span><span>9.1%</span></div>
+    <div class="b" style="flex:7;background:var(--rst);color:#fff"><span>Jn</span><span>6.8%</span></div>
+    <div class="b off" style="flex:4;background:var(--grn)"><span>Vu</span><span>4.0%</span></div>
+    <div class="b" style="flex:3;background:#9db8dc"><span>Cs</span><span>3.2%</span></div>
+    <div class="b" style="flex:2.4;background:#e6a493"><span>Ht</span><span>2.1%</span></div>
+    <div class="b" style="flex:2.6;background:#c9c8bf"><span>Ox</span><span>2.7%</span></div>
+  </div>
+  <div class="colfoot">Click a band to filter. Vu hidden.</div>
+</aside>
+<main>
+  <div class="tb"><h1>Map sheet <small>3,912 files · 7,440 imports</small></h1>
+    <input placeholder="Find file or symbol"><select><option>Size: lines of code</option></select><select><option>Glow: churn, 90 days</option></select>
+    <div class="seg"><b class="on">Clusters</b><b>Imports</b><b>Owners</b></div></div>
+  <div class="sheet"><svg viewBox="0 0 920 566" preserveAspectRatio="none">
+    <path d="M60 70 L330 40 L420 130 L380 300 L210 330 L70 250Z" fill="#3b6fb6" fill-opacity=".55" stroke="#1b1d1c" stroke-width="1.5"/>
+    <path d="M420 130 L600 60 L760 120 L720 280 L560 300 L380 300Z" fill="#8a6fb3" fill-opacity=".5" stroke="#1b1d1c" stroke-width="1.5"/>
+    <path d="M210 330 L380 300 L560 300 L540 470 L330 500 L180 450Z" fill="#d9a326" fill-opacity=".55" stroke="#1b1d1c" stroke-width="1.5"/>
+    <path d="M560 300 L720 280 L860 340 L840 480 L660 500 L540 470Z" fill="#3f8f6b" fill-opacity=".5" stroke="#1b1d1c" stroke-width="1.5"/>
+    <path d="M70 250 L210 330 L180 450 L60 430Z" fill="#c8553d" fill-opacity=".5" stroke="#1b1d1c" stroke-width="1.5"/>
+    <path d="M150 160 C300 200 480 210 640 190 M250 260 C380 360 520 380 700 400 M300 120 C330 260 420 330 450 420" fill="none" stroke="#1b1d1c" stroke-width="1" stroke-dasharray="5 4" opacity=".55"/>
+    <g fill="#1b1d1c"><circle cx="230" cy="170" r="11"/><circle cx="190" cy="140" r="6"/><circle cx="280" cy="210" r="7"/><circle cx="320" cy="150" r="5"/><circle cx="150" cy="210" r="4"/><circle cx="560" cy="160" r="8"/><circle cx="620" cy="210" r="5"/><circle cx="510" cy="230" r="4"/><circle cx="360" cy="400" r="9"/><circle cx="430" cy="370" r="5"/><circle cx="300" cy="430" r="4"/><circle cx="700" cy="380" r="6"/><circle cx="760" cy="420" r="4"/><circle cx="120" cy="330" r="5"/></g>
+    <circle cx="230" cy="170" r="22" fill="none" stroke="#c8553d" stroke-width="3"/><circle cx="230" cy="170" r="32" fill="none" stroke="#c8553d" stroke-width="1" stroke-dasharray="3 3"/>
+    <path d="M280 210 L250 160 L320 150Z" fill="none" stroke="#d9a326" stroke-width="2.5"/>
+    <text class="fm" x="96" y="105">Ts</text><text class="fl" x="96" y="122">packages/vite/src/node</text>
+    <text class="fm" x="600" y="110">Md</text><text class="fl" x="600" y="127">docs/</text>
+    <text class="fm" x="260" y="470">Js</text><text class="fl" x="260" y="487">playground/</text>
+    <text class="fm" x="720" y="460">Vu</text><text class="fl" x="720" y="477">playground/vue*</text>
+    <text class="fm" x="82" y="400">Jn</text><text class="fl" x="82" y="417">fixtures</text>
+  </svg>
+  <div class="scale"><i></i>1 ring = 2 import hops</div>
+  <div class="kpis"><div><b>1,142</b><span>contributors</span></div><div><b>9,816</b><span>commits since 2020</span></div><div><b>14</b><span>hotspots</span></div></div></div>
+</main>
+<aside class="det">
+  <div><h3>server/index.ts</h3><div class="path">packages/vite/src/node/server/index.ts</div></div>
+  <div><span class="chip">Ts · TypeScript</span></div>
+  <table><tr><td>Lines of code</td><td>1,284</td></tr><tr><td>Commits, 90 days</td><td>47</td></tr><tr><td>Authors</td><td>23</td></tr><tr><td>Imports / imported by</td><td>38 / 61</td></tr><tr><td>Last changed</td><td>2 days ago</td></tr></table>
+  <div class="alert"><h4>Hotspot: top 1% churn</h4><p>Changed in 47 of the last 90 days by 23 authors. Churn is up 3.1x on the prior quarter.</p><div class="acts"><b>Open in source</b><b>Show history</b></div></div>
+  <div class="warn"><h4>Import cycle, 3 files</h4><p>server/index.ts → ws.ts → hmr.ts</p></div>
+</aside>
+<section class="xs">
+  <div class="xh"><h2>Cross-section</h2><span class="mono" style="font-size:12px;color:var(--mut)">commits per month, stacked by formation</span><div class="tabs"><b class="on">Commits</b><b>Lines</b><b>Authors</b></div></div>
+  <div class="eras"><div style="background:#e9eef6">2020</div><div style="background:#efe9f5">2021</div><div style="background:#f7eed6">2022</div><div style="background:#f4e1db">2023</div><div style="background:#e2efe8">2024</div><div style="background:#e9eef6">2025</div><div style="background:#efe9f5">2026</div></div>
+  <svg viewBox="0 0 1100 130" preserveAspectRatio="none">
+    <path d="M0 130 L0 112 C150 100 250 70 400 76 C560 82 700 60 850 66 C960 70 1040 58 1100 54 L1100 130Z" fill="#c9c8bf" stroke="#1b1d1c" stroke-width=".8"/>
+    <path d="M0 130 L0 116 C150 106 250 82 400 86 C560 92 700 74 850 78 C960 82 1040 72 1100 68 L1100 130Z" fill="#3f8f6b" stroke="#1b1d1c" stroke-width=".8"/>
+    <path d="M0 130 L0 120 C150 112 250 94 400 96 C560 102 700 88 850 90 C960 94 1040 86 1100 82 L1100 130Z" fill="#c8553d" stroke="#1b1d1c" stroke-width=".8"/>
+    <path d="M0 130 L0 123 C150 117 250 102 400 104 C560 108 700 98 850 99 C960 101 1040 96 1100 93 L1100 130Z" fill="#d9a326" stroke="#1b1d1c" stroke-width=".8"/>
+    <path d="M0 130 L0 126 C150 121 250 110 400 112 C560 114 700 106 850 108 C960 109 1040 105 1100 103 L1100 130Z" fill="#8a6fb3" stroke="#1b1d1c" stroke-width=".8"/>
+    <path d="M0 130 L0 128 C150 125 250 120 400 121 C560 122 700 118 850 119 C960 119 1040 117 1100 116 L1100 130Z" fill="#3b6fb6" stroke="#1b1d1c" stroke-width=".8"/>
+    <line x1="786" y1="0" x2="786" y2="130" stroke="#1b1d1c" stroke-width="1.5" stroke-dasharray="4 3"/><text x="794" y="16" style="font:600 12px 'IBM Plex Mono'">v5.0 · Nov 2023</text>
+  </svg>
+</section>
+</body></html>

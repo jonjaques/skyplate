@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>starchart — vitejs/vite</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..800&family=Archivo+Narrow:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--ground:#f6f7f5;--rail:#4e6170;--rail-d:#41525f;--ink:#15191c;--mute:#5d666d;--rule:#d5d9d6;--red:#c23a2b;--plate:#0b1016;--b:#2a78d6;--o:#eb6834;--a:#1baf7a;--y:#eda100;--m:#e87ba4}
+*{box-sizing:border-box;margin:0;padding:0}
+body{width:1440px;height:900px;overflow:hidden;background:var(--ground);color:var(--ink);font:13px/1.35 "Archivo",sans-serif;font-stretch:87%;display:grid;grid-template-columns:260px 1fr 340px;grid-template-rows:52px 1fr 216px}
+.mono{font-family:"JetBrains Mono",monospace;font-size:12px}
+/* rail: the archival box — drawers are directories */
+.rail{grid-row:1/4;background:var(--rail);color:#e9eef1;display:flex;flex-direction:column}
+.mark{height:84px;padding:20px 22px 0;border-bottom:1px solid #6b7e8c}
+.mark b{font:700 28px/1 "Archivo";font-stretch:80%;letter-spacing:-.01em;color:#fff}
+.mark span{display:block;margin-top:6px;font-size:12px;color:#dfe6eb}
+.rail h3{font:600 12px "Archivo Narrow";color:#dfe6eb;padding:16px 22px 8px}
+.drawer{display:flex;justify-content:space-between;align-items:center;height:38px;padding:0 22px;border-top:1px solid #5d707e;font-size:14px;font-weight:500}
+.drawer:last-of-type{border-bottom:1px solid #5d707e}
+.drawer.on{background:var(--ground);color:var(--ink)}
+.drawer .mono{color:#dfe6eb}.drawer.on .mono{color:var(--mute)}
+.rail .foot{margin-top:auto;padding:16px 22px;border-top:1px solid #6b7e8c;font-size:12px;color:#dfe6eb}
+/* top bar */
+.top{grid-column:2/4;display:flex;align-items:center;gap:20px;padding:0 20px;border-bottom:1px solid var(--rule);background:#fff}
+.tabs{display:flex;height:100%}
+.tabs a{display:flex;align-items:center;padding:0 16px;font-weight:600;font-size:14px;color:var(--mute);text-decoration:none;border-bottom:2px solid transparent}
+.tabs a.on{color:var(--ink);border-bottom-color:var(--ink)}
+input,select,button{font:inherit;font-size:13px;height:32px;border:1px solid #b9c0c4;border-radius:3px;background:#fff;padding:0 10px;color:var(--ink)}
+input{width:280px;margin-left:auto}
+button{background:var(--rail);color:#fff;border-color:var(--rail);font-weight:600}
+/* galaxy plate */
+.plate{position:relative;background:var(--plate);overflow:hidden;
+background-image:radial-gradient(circle at 34% 44%,rgba(42,120,214,.55),transparent 16%),radial-gradient(circle at 62% 30%,rgba(235,104,52,.42),transparent 12%),radial-gradient(circle at 70% 70%,rgba(27,175,122,.4),transparent 13%),radial-gradient(circle at 18% 74%,rgba(237,161,0,.35),transparent 10%),radial-gradient(circle at 86% 46%,rgba(232,123,164,.3),transparent 8%),radial-gradient(1px 1px at 20px 30px,#fff8 50%,transparent),radial-gradient(1px 1px at 70px 90px,#fff6 50%,transparent);background-size:auto,auto,auto,auto,auto,97px 113px,151px 137px}
+.plate h1{position:absolute;left:24px;top:18px;font:600 24px "Archivo";font-stretch:85%;color:#fff}
+.plate .legend{position:absolute;left:24px;bottom:16px;display:flex;gap:16px;color:#aeb8bf;font-size:12px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.plate svg{position:absolute;inset:0}
+/* signature move: specimen labels pinned to stars */
+.label{position:absolute;width:196px;background:#fff;color:var(--ink);padding:8px 10px 7px;font-size:11px;border:1px solid #fff}
+.label .t{font:700 13px "Archivo";font-stretch:80%;border-bottom:1px solid var(--ink);padding-bottom:4px;margin-bottom:5px}
+.label dl{display:grid;grid-template-columns:62px 1fr;row-gap:2px}
+.label dt{font-family:"Archivo Narrow";color:var(--mute)}
+.label dd{font-family:"JetBrains Mono";font-size:10.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.label .det{margin-top:5px;padding-top:4px;border-top:1px solid var(--rule);font-style:italic;color:var(--mute)}
+.label.holo{background:var(--red);border-color:var(--red);color:#fff;width:216px}
+.label.holo .t{border-color:#fff}.label.holo dt,.label.holo .det{color:#fff3f1}.label.holo .det{border-color:#e07a6e}
+/* accession record */
+.rec{grid-row:2/4;grid-column:3;border-left:1px solid var(--rule);background:#fff;padding:20px 22px;display:flex;flex-direction:column;gap:16px}
+.rec h2{font:700 22px/1.15 "Archivo";font-stretch:80%;word-break:break-all}
+.rec h2 small{display:block;font:500 12px "JetBrains Mono";color:var(--mute);margin-bottom:6px}
+.tag{display:inline-block;background:var(--red);color:#fff;font-weight:600;font-size:12px;padding:3px 8px;border-radius:2px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--rule)}
+.grid2 div{padding:9px 0;border-bottom:1px solid var(--rule)}
+.grid2 div:nth-child(odd){border-right:1px solid var(--rule);padding-right:12px}.grid2 div:nth-child(even){padding-left:12px}
+.grid2 span{display:block;font-size:12px;color:var(--mute)}.grid2 b{font:500 22px "JetBrains Mono"}
+.rec h4{font:600 13px "Archivo";margin-bottom:6px}
+.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--rule)}
+.bar{height:6px;background:var(--b);margin-top:3px}
+/* unit trays */
+.trays{grid-column:2;display:grid;grid-template-columns:1.15fr 1fr 1.2fr;border-top:1px solid var(--ink)}
+.tray{padding:14px 18px;border-right:1px solid var(--rule)}.tray:last-child{border-right:0}
+.tray h3{display:flex;justify-content:space-between;font:600 14px "Archivo";margin-bottom:10px}
+.big{font:500 30px "JetBrains Mono";letter-spacing:-.02em}
+.comp{display:flex;height:22px;margin:10px 0 8px}
+.keys{display:grid;grid-template-columns:1fr 1fr;gap:3px 12px;font-size:12px}
+.spark{display:flex;align-items:flex-end;gap:3px;height:88px;margin-top:10px;border-bottom:1px solid var(--ink)}
+.spark i{flex:1;background:var(--rail)}
+.alert{display:flex;gap:10px;align-items:flex-start;background:#fbe9e4;border:1px solid #e7a597;padding:8px 10px;margin-bottom:6px;font-size:12px}
+.alert b{color:#8f2618}
+.hs{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--rule)}
+</style></head><body>
+<nav class="rail">
+ <div class="mark"><b>starchart</b><span>vitejs/vite · main @ 4f2c19a</span></div>
+ <h3>Drawers · 3,904 files</h3>
+ <div class="drawer on">packages/vite <span class="mono">1,214</span></div>
+ <div class="drawer">playground <span class="mono">1,602</span></div>
+ <div class="drawer">docs <span class="mono">412</span></div>
+ <div class="drawer">packages/create-vite <span class="mono">286</span></div>
+ <div class="drawer">packages/plugin-legacy <span class="mono">96</span></div>
+ <div class="drawer">.github <span class="mono">44</span></div>
+ <div class="drawer">scripts <span class="mono">38</span></div>
+ <div class="drawer">Root files <span class="mono">212</span></div>
+ <div class="foot">Report generated 31 Oct 2026<br>412,180 lines · 31 languages</div>
+</nav>
+<header class="top">
+ <div class="tabs"><a class="on">Galaxy</a><a>Charts</a><a>Explorer</a><a>Source</a><a>Audits</a></div>
+ <input placeholder="Find a file, author, or symbol">
+ <select><option>Color by language</option></select>
+ <button>Export report</button>
+</header>
+<main class="plate">
+ <h1>packages/vite · 1,214 specimens</h1>
+ <svg width="840" height="632" viewBox="0 0 840 632">
+  <g stroke="#7f96b4" stroke-opacity=".22" fill="none"><path d="M286 278 L520 190 L590 440 Z"/><path d="M286 278 L150 468 M286 278 L722 290 M520 190 L722 290"/></g>
+  <g fill="#2a78d6"><circle cx="286" cy="278" r="9"/><circle cx="262" cy="300" r="4"/><circle cx="312" cy="252" r="5"/><circle cx="240" cy="262" r="3"/><circle cx="300" cy="316" r="3"/><circle cx="330" cy="290" r="2.5"/></g>
+  <g fill="#eb6834"><circle cx="520" cy="190" r="6"/><circle cx="540" cy="172" r="3"/><circle cx="500" cy="204" r="3"/><circle cx="546" cy="206" r="2"/></g>
+  <g fill="#1baf7a"><circle cx="590" cy="440" r="7"/><circle cx="612" cy="420" r="3"/><circle cx="566" cy="458" r="3.5"/><circle cx="620" cy="460" r="2"/></g>
+  <g fill="#eda100"><circle cx="150" cy="468" r="5"/><circle cx="170" cy="450" r="2.5"/><circle cx="132" cy="482" r="2"/></g>
+  <g fill="#e87ba4"><circle cx="722" cy="290" r="4"/><circle cx="736" cy="278" r="2"/></g>
+  <circle cx="286" cy="278" r="16" fill="none" stroke="#c23a2b" stroke-width="1.5"/><circle cx="520" cy="190" r="14" fill="none" stroke="#eb6834" stroke-opacity=".6"/>
+  <g stroke="#fff" stroke-width="1" fill="#fff"><path d="M286 278 L118 150"/><circle cx="118" cy="150" r="2"/><path d="M520 190 L612 110"/><circle cx="612" cy="110" r="2"/><path d="M590 440 L432 512"/><circle cx="432" cy="512" r="2"/></g>
+ </svg>
+ <div class="label holo" style="left:22px;top:62px"><div class="t">Holotype · config.ts</div><dl><dt>Language</dt><dd>TypeScript</dd><dt>Category</dt><dd>node / config</dd><dt>Path</dt><dd>src/node/config.ts</dd><dt>Collector</dt><dd>patak-dev</dd><dt>Collected</dt><dd>2020-12-08</dd></dl><div class="det">det. 412 dependents, most in drawer</div></div>
+ <div class="label" style="left:612px;top:24px"><div class="t">server/index.ts</div><dl><dt>Language</dt><dd>TypeScript</dd><dt>Category</dt><dd>node / server</dd><dt>Collector</dt><dd>sapphi-red</dd><dt>Collected</dt><dd>2021-01-02</dd></dl><div class="det">det. churn 3.1x baseline</div></div>
+ <div class="label" style="left:236px;top:500px"><div class="t">client/overlay.ts</div><dl><dt>Language</dt><dd>TypeScript</dd><dt>Category</dt><dd>client / hmr</dd><dt>Collector</dt><dd>bluwy</dd><dt>Collected</dt><dd>2021-02-19</dd></dl><div class="det">det. 1,016 lines</div></div>
+ <div class="legend"><span><i style="background:var(--b)"></i>TypeScript</span><span><i style="background:var(--o)"></i>JavaScript</span><span><i style="background:var(--a)"></i>Vue</span><span><i style="background:var(--y)"></i>CSS</span><span><i style="background:var(--m)"></i>Markdown</span></div>
+</main>
+<aside class="rec">
+ <h2><small>Accession record · VT-0001</small>packages/vite/src/node/config.ts</h2>
+ <div><span class="tag">Holotype · most depended on</span></div>
+ <div class="grid2"><div><span>Lines</span><b>2,148</b></div><div><span>Commits</span><b>612</b></div><div><span>Imports</span><b>47</b></div><div><span>Imported by</span><b>412</b></div><div><span>Churn, 90 days</span><b>+1.8x</b></div><div><span>Authors</span><b>164</b></div></div>
+ <div><h4>Top authors</h4>
+  <div class="row"><span>patak-dev</span><span class="mono">138</span></div><div class="bar" style="width:100%"></div>
+  <div class="row"><span>sapphi-red</span><span class="mono">104</span></div><div class="bar" style="width:75%"></div>
+  <div class="row"><span>bluwy</span><span class="mono">87</span></div><div class="bar" style="width:63%"></div>
+  <div class="row"><span>yyx990803</span><span class="mono">71</span></div><div class="bar" style="width:51%"></div>
+ </div>
+ <button style="margin-top:auto">Open in source reader</button>
+</aside>
+<section class="trays">
+ <div class="tray"><h3>Language composition <span class="mono">31</span></h3><div class="big">412,180</div>
+  <div class="comp"><i style="flex:58;background:var(--b)"></i><i style="flex:12;background:var(--o)"></i><i style="flex:9;background:var(--a)"></i><i style="flex:8;background:var(--y)"></i><i style="flex:7;background:var(--m)"></i><i style="flex:6;background:#9aa4aa"></i></div>
+  <div class="keys"><span>TypeScript 58%</span><span>JavaScript 12%</span><span>Vue 9%</span><span>CSS 8%</span><span>Markdown 7%</span><span>26 others 6%</span></div></div>
+ <div class="tray"><h3>Commit activity <span class="mono">9,812</span></h3><div class="big">1,143</div>
+  <div class="spark"><i style="height:30%"></i><i style="height:52%"></i><i style="height:44%"></i><i style="height:70%"></i><i style="height:96%"></i><i style="height:78%"></i><i style="height:64%"></i><i style="height:82%"></i><i style="height:58%"></i><i style="height:74%"></i><i style="height:88%"></i><i style="height:60%"></i></div></div>
+ <div class="tray"><h3>Hotspots <span class="mono">90 days</span></h3>
+  <div class="alert"><b>Alert</b><span>server/index.ts churn 3.1x baseline, 22 authors</span></div>
+  <div class="hs"><span class="mono">node/plugins/css.ts</span><span class="mono">+2.4x</span></div>
+  <div class="hs"><span class="mono">node/config.ts</span><span class="mono">+1.8x</span></div>
+  <div class="hs"><span class="mono">node/build.ts</span><span class="mono">+1.5x</span></div></div>
+</section>
+</body></html>

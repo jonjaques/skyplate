@@ -1,0 +1,38 @@
+{
+  "name": "starchart",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun --hot src/index.ts",
+    "start": "NODE_ENV=production bun src/index.ts",
+    "build": "bun run build.ts",
+    "typecheck": "bun check"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.9",
+    "@react-three/fiber": "^9.8.2",
+    "@react-three/postprocessing": "^3.2.2",
+    "bun-plugin-tailwind": "^0.1.2",
+    "d3": "^7.9.0",
+    "d3-force-3d": "^3.0.6",
+    "ignore": "^7.0.14",
+    "postprocessing": "^6.39.5",
+    "react": "^19",
+    "react-dom": "^19",
+    "tailwindcss": "^4.1.11",
+    "three": "^0.187.0",
+    "zustand": "^5.0.16"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/d3": "^7.4.3",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.187.0"
+  },
+  "peerDependencies": {
+    "typescript": "^7"
+  },
+  "description": "Point it at any project; get an explorable 3D galaxy map, statistics dashboard, and source reader as a static site."
+}
