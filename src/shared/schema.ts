@@ -331,6 +331,12 @@ export interface Author {
   last: number;
   /** Files this author owns (is `owner` of). */
   owned: number;
+  /**
+   * Automation account (dependabot[bot], renovate, github-actions...). Bots keep their
+   * commits in the history views but never count as an owner or toward the truck factor:
+   * a bot that bumps every lockfile is not the person who knows that code.
+   */
+  bot: boolean;
 }
 
 /**

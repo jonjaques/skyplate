@@ -186,6 +186,12 @@ export type ReadManifests = (
   readText: (path: string) => string | undefined,
 ) => { manifests: Manifest[]; dependencies: ExternalDependency[] };
 
+/** README description (first prose paragraph, plain text, ≤ 400 chars) and license guess. */
+export type ReadProjectInfo = (
+  paths: string[],
+  readText: (path: string) => string | undefined,
+) => { description?: string; readme?: string; license?: string };
+
 // ─── src/core/git.ts ─────────────────────────────────────────────────────────────────────────
 
 export interface GitInput {
