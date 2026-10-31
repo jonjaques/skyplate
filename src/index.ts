@@ -1,41 +1,38 @@
+/**
+ * Development server: the viewer with hot reload, plus a report folder's data files.
+ *
+ *   bun dev                                  # serves .starchart/dev (write one with the CLI)
+ *   STARCHART_REPORT=path/to/report bun dev  # serves any report folder's data
+ *
+ * The viewer always requests data relative to the page ("data/report.js"), exactly as it does
+ * from a built report folder, so dev and production exercise the same loading path.
+ */
+
 import { serve } from "bun";
-import index from "./index.html";
+import path from "node:path";
+import index from "./viewer/index.html";
+
+const reportDir = path.resolve(process.env.STARCHART_REPORT ?? ".starchart/dev");
+const port = Number(process.env.PORT ?? 4317);
 
 const server = serve({
+  port,
   routes: {
-    // Serve index.html for all unmatched routes.
+    "/data/*": async (req) => {
+      const rel = decodeURIComponent(new URL(req.url).pathname).replace(/^\/+/, "");
+      const file = path.resolve(reportDir, rel);
+      // Refuse anything that escapes the report folder (../ in the URL).
+      if (!file.startsWith(reportDir + path.sep)) return new Response("Not found", { status: 404 });
+      const blob = Bun.file(file);
+      if (!(await blob.exists())) return new Response("Not found", { status: 404 });
+      return new Response(blob, { headers: { "Cache-Control": "no-store" } });
+    },
     "/*": index,
-
-    "/api/hello": {
-      GET() {
-        return Response.json({
-          message: "Hello, world!",
-          method: "GET",
-        });
-      },
-      PUT() {
-        return Response.json({
-          message: "Hello, world!",
-          method: "PUT",
-        });
-      },
-    },
-
-    "/api/hello/:name": (req) => {
-      const name = req.params.name;
-      return Response.json({
-        message: `Hello, ${name}!`,
-      });
-    },
   },
-
   development: process.env.NODE_ENV !== "production" && {
-    // Enable browser hot reloading in development
     hmr: true,
-
-    // Echo console logs from the browser to the server
     console: true,
   },
 });
 
-console.log(`🚀 Server running at ${server.url}`);
+console.log(`starchart dev server at ${server.url} (report data from ${reportDir})`);

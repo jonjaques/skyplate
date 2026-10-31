@@ -1,0 +1,161 @@
+/*
+ * starchart viewer styles: the Specimen Cabinet world.
+ *
+ * Direction contract: .impeccable/surfaces/src-viewer-index-html.md. Tray-white ground ruled by
+ * hairlines into unit trays (no cards, no shadows), an archival gray-blue rail of drawers, ink
+ * text, holotype red reserved for each region's most-depended-on file, and a dark glass plate
+ * for the galaxy that stays dark in both themes.
+ *
+ * Every color below was checked with the dataviz skill's validate_palette.js against the
+ * surface it renders on. The categorical slots are the skill's reference palette minus slot 8
+ * (red): red already means "holotype" here, and a red language would impersonate it.
+ * Light-mode slots 2-5 sit under 3:1 on the tray, so every chart ships direct labels or a
+ * table view as relief (validator WARN, not dismissable).
+ */
+
+@import "tailwindcss";
+@import "./fonts.css";
+
+@theme {
+  --font-sans: "Archivo Variable", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+
+  /* Surfaces and ink (light). Dark overrides live in the theme blocks below. */
+  --color-tray: #f6f7f5;
+  --color-paper: #ffffff;
+  --color-wash: #eef0ee; /*         hover and quiet fills, one step off the tray */
+  --color-ink: #15191c;
+  --color-ink-2: #3b4348; /*        secondary text */
+  --color-muted: #5d666d; /*        5.45:1 on tray */
+  --color-rule: #d5d9d6; /*         hairline */
+  --color-rule-strong: #b9c0c4; /*  control borders */
+
+  --color-rail: #4e6170;
+  --color-rail-deep: #41525f;
+  --color-rail-line: #5d707e;
+  --color-rail-ink: #ffffff;
+  --color-rail-muted: #dfe6eb; /*   5.10:1 on rail */
+
+  --color-holotype: #c23a2b; /*     reserved: most-depended-on file per region */
+  --color-holotype-ink: #ffffff;
+
+  --color-plate: #0b1016; /*        the galaxy's glass, identical in both themes */
+  --color-plate-ink: #e9eef1;
+  --color-plate-muted: #aeb8bf;
+  --color-plate-rule: #26313a;
+
+  /* Status (fixed, never themed; always paired with an icon and a label). */
+  --color-good: #0ca30c;
+  --color-warning: #fab219;
+  --color-serious: #ec835a;
+  --color-critical: #d03b3b;
+
+  /* Categorical slots, light trays. Plate and dark trays use the --series-dark-* steps. */
+  --color-series-1: #2a78d6;
+  --color-series-2: #eb6834;
+  --color-series-3: #1baf7a;
+  --color-series-4: #eda100;
+  --color-series-5: #e87ba4;
+  --color-series-6: #008300;
+  --color-series-7: #6250d6;
+  --color-series-other: #9aa4aa;
+
+  --color-series-dark-1: #3987e5;
+  --color-series-dark-2: #d95926;
+  --color-series-dark-3: #199e70;
+  --color-series-dark-4: #c98500;
+  --color-series-dark-5: #d55181;
+  --color-series-dark-6: #008300;
+  --color-series-dark-7: #9085e9;
+  --color-series-dark-other: #6b767d;
+
+  /* Sequential (magnitude) ramp, one hue, light to dark. */
+  --color-seq-100: #cde2fb;
+  --color-seq-200: #9ec5f4;
+  --color-seq-300: #6da7ec;
+  --color-seq-400: #3987e5;
+  --color-seq-500: #256abf;
+  --color-seq-600: #184f95;
+  --color-seq-700: #0d366b;
+
+  --ease-damped: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Dark theme: the rail deepens, trays go to slate, the plate does not change. Declared for
+   both the OS setting and the explicit toggle; the toggle must win in both directions, so
+   the media block is guarded by :not([data-theme="light"]) and wrapped in :where() to keep
+   its specificity under the [data-theme="dark"] block. */
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --color-tray: #161c20;
+    --color-paper: #1c2328;
+    --color-wash: #222a30;
+    --color-ink: #e8ecee;
+    --color-ink-2: #c4ccd1;
+    --color-muted: #9aa5ad;
+    --color-rule: #2b3439;
+    --color-rule-strong: #3d484f;
+    --color-rail: #2c3a45;
+    --color-rail-deep: #24303a;
+    --color-rail-line: #3a4a56;
+    --color-rail-muted: #d8dfe4;
+    --color-holotype: #b8402f;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-tray: #161c20;
+  --color-paper: #1c2328;
+  --color-wash: #222a30;
+  --color-ink: #e8ecee;
+  --color-ink-2: #c4ccd1;
+  --color-muted: #9aa5ad;
+  --color-rule: #2b3439;
+  --color-rule-strong: #3d484f;
+  --color-rail: #2c3a45;
+  --color-rail-deep: #24303a;
+  --color-rail-line: #3a4a56;
+  --color-rail-muted: #d8dfe4;
+  --color-holotype: #b8402f;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-tray text-ink font-sans antialiased;
+    /* Archivo's width axis: UI text runs slightly condensed, like small-set label stock. */
+    font-stretch: 88%;
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  ::selection {
+    background: var(--color-seq-200);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-series-1);
+    outline-offset: 2px;
+  }
+  /* Figures that line up in columns; big standalone numbers stay proportional. */
+  .figures {
+    font-variant-numeric: tabular-nums;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rule-strong) transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
