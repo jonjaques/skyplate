@@ -67,7 +67,7 @@ export function BarList({
     const inner = row.width - 8;
     const trackStart = row.left - box.left + 4 + inner * lw;
     const x = trackStart + (inner * (1 - lw) - 64) * frac + 48;
-    setTip({ x, y: row.top - box.top, title: item.label, rows: [{ value: item.valueText }, ...item.tip] });
+    setTip({ x, y: row.top - box.top, title: item.label, path: item.path, rows: [{ value: item.valueText }, ...item.tip] });
   }
   function hide() {
     setTip(null);

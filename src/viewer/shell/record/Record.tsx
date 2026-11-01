@@ -100,7 +100,12 @@ function Guide() {
 
       {holotypes.length > 0 && (
         <Section title="Holotypes">
-          <p className="mb-1.5 text-xs text-ink-3">The most depended-on file in each region, marked red on the plate.</p>
+          {/* Picked by PageRank, not by importer count, so the copy names the measure: "most
+              depended on" beside a figure of 251 read as false when a neighbor had 256. */}
+          <p className="mb-1.5 text-xs text-ink-3">
+            The most central file in each region, by PageRank (indirect dependents count too), marked red on the plate. The
+            figure is its direct importers.
+          </p>
           <div className="border-t border-rule">
             {holotypes.map(({ dir, file }) => (
               <RowButton key={file} onClick={() => show({ kind: "file", id: file })} title={report.files[file]!.path} aside={formatInt(report.files[file]!.fanIn)}>

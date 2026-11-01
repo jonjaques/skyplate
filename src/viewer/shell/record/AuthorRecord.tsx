@@ -12,8 +12,18 @@ import { RecordHeading } from "./common";
 export function AuthorRecordView({ report, model, author, id }: { report: Report; model: Model; author: Author; id: number }) {
   const git = report.git!;
   const [limit, setLimit] = useState(8);
+  // The analyzer's `owned` (the tile) leaves out lockfiles, generated and vendored files:
+  // owning one is not knowledge of the code. model.authorFiles keeps every file the author is
+  // top writer of, so the list applies the same rule, or the tile said 1,443 above a list of
+  // 1,452 (core/git.ts, GitInput.exclude).
   const owned = useMemo(
-    () => [...(model.authorFiles[id] ?? [])].sort((a, b) => report.files[b]!.lines - report.files[a]!.lines),
+    () =>
+      (model.authorFiles[id] ?? [])
+        .filter((f) => {
+          const file = report.files[f]!;
+          return file.category !== "lockfile" && !file.generated && !file.vendored;
+        })
+        .sort((a, b) => report.files[b]!.lines - report.files[a]!.lines),
     [model, id, report],
   );
 

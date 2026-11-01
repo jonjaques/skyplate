@@ -17,7 +17,8 @@ import { useSurface } from "../theme";
 import { RecordHeading } from "./common";
 
 export function DirRecordView({ report, model, dir }: { report: Report; model: Model; dir: DirRec }) {
-  const summary = useMemo(() => summarizeDir(model, dir.id), [model, dir.id]);
+  const filters = useViewer((s) => s.filters);
+  const summary = useMemo(() => summarizeDir(model, dir.id, filters), [model, dir.id, filters]);
   const focusDir = useViewer((s) => s.focusDir);
   const surface = useSurface();
   const holotype = model.holotypeOfDir.get(dir.id);
@@ -84,7 +85,10 @@ export function DirRecordView({ report, model, dir }: { report: Report; model: M
               </div>
             )}
           </div>
-          <Quiet className="text-xs">Share of code lines, comments and blanks excluded.</Quiet>
+          <Quiet className="text-xs">
+            Share of code lines, comments and blanks excluded.
+            {summary.filteredOut > 0 && ` Leaves out ${plural(summary.filteredOut, "file")} the filters hide, as the trays do.`}
+          </Quiet>
         </Section>
       )}
 
@@ -94,7 +98,7 @@ export function DirRecordView({ report, model, dir }: { report: Report; model: M
             <span className="size-2 shrink-0 rounded-full bg-holotype" aria-hidden />
             <PathText path={report.files[holotype]!.path} className="text-xs" />
           </RowButton>
-          <Quiet className="text-xs">The most depended-on file in this region.</Quiet>
+          <Quiet className="text-xs">The most central file in this region: the highest PageRank, which counts files that depend on it through others, not only its direct importers.</Quiet>
         </Section>
       )}
 

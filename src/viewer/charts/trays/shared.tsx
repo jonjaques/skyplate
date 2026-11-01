@@ -10,10 +10,13 @@
  * that counted files the plate has dimmed would disagree with the picture above it.
  */
 
+import { ArrowUpRight } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { cn } from "../../lib/utils";
 import { useViewer } from "../../state/store";
 import { scopeFiles } from "../data";
+import { openChartsAt, type ChartsSection } from "../jump";
 
 export function TrayShell({
   title,
@@ -21,9 +24,16 @@ export function TrayShell({
   label,
   children,
   className,
+  open,
 }: {
   title: string;
   aside?: ReactNode;
+  /**
+   * The full chart behind this tray, on the Charts tab: its axes, its table view, its
+   * filters. A tray is sized to its cell and shows no table, so this is where its exact
+   * figures live.
+   */
+  open?: { section: ChartsSection; label: string };
   /** Accessible name, including the scope ("Language composition in apps/game"). */
   label?: string;
   children?: ReactNode;
@@ -35,7 +45,28 @@ export function TrayShell({
     // 200px, where the header aside and a two-column key would only show ellipses.
     <section aria-label={label ?? title} className={cn("@container flex h-full min-h-0 min-w-0 flex-col px-[18px] pt-3.5 pb-3", className)}>
       <div className="mb-2 flex min-w-0 items-baseline justify-between gap-3">
-        <h3 className="shrink-0 text-sm font-semibold whitespace-nowrap text-ink">{title}</h3>
+        {/* With somewhere to open, the title is the link: a 12px arrow beside it costs a third
+            of a separate icon button, which pushed the aside into an ellipsis at 288px. */}
+        <h3 className="shrink-0 text-sm font-semibold whitespace-nowrap text-ink">
+          {open ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="group inline-flex items-baseline gap-1 rounded-sm underline-offset-[3px] hover:underline"
+                  onClick={() => openChartsAt(open.section)}
+                  aria-label={`${title}. ${open.label}`}
+                >
+                  {title}
+                  <ArrowUpRight aria-hidden className="size-3 shrink-0 self-center text-ink-3 group-hover:text-ink" strokeWidth={2.25} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{open.label}</TooltipContent>
+            </Tooltip>
+          ) : (
+            title
+          )}
+        </h3>
         {aside && <div className="figures hidden min-w-0 truncate font-mono text-xs text-ink-3 @min-[250px]:block">{aside}</div>}
       </div>
       {children}

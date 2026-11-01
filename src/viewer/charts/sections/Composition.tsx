@@ -5,18 +5,17 @@
 
 import * as d3 from "d3";
 import { ChevronRight } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
-import type { CategoryGroup } from "../../../shared/schema";
+import { useMemo, useState } from "react";
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
-import { CATEGORY_GROUP_LABEL, categoryGroupColor, type Surface } from "../../lib/colors";
+import { CATEGORY_GROUP_LABEL, type Surface } from "../../lib/colors";
 import { formatBytes, formatCompact, formatInt, plural } from "../../lib/format";
 import { dirAncestry } from "../../model/indices";
 import { useHover, useViewer, type Target } from "../../state/store";
-import { aggregateDir, categoryGroups, isOwnCode, languageShares, log2Dist, sum } from "../data";
+import { aggregateDir, categoryGroups, hasSlot, isOwnCode, languageShares, log2Dist, sum } from "../data";
 import { BarList, type BarItem } from "../kit/BarList";
 import { Figure } from "../kit/Figure";
 import { useActiveIndex } from "../kit/interaction";
-import { Swatch } from "../kit/Legend";
+import { Legend, type LegendItem } from "../kit/Legend";
 import { Log2Histogram } from "../kit/Log2Histogram";
 import { measureColor, slotColor } from "../kit/theme";
 import { ChartTooltip, type Tip } from "../kit/Tooltip";
@@ -43,12 +42,17 @@ function LinesByLanguage() {
   const total = sum(shares.map((s) => s.code));
   const shown = shares.slice(0, 12);
   const rest = shares.slice(12);
+  // A bar wears its language's galaxy hue when it has one. The Other gray is kept for the
+  // folded "N more languages" row alone: Markdown and JSON in that same gray, ranked second
+  // and fourth, read as part of the remainder. A named language with no hue of its own wears
+  // the plain measure slate, the color of every single-series bar on this tab.
+  const unslotted = shown.some((s) => !hasSlot(s.slot));
   const items: BarItem[] = shown.map((s) => ({
     key: s.id,
     label: s.name,
     value: s.code,
     valueText: formatInt(s.code),
-    color: slotColor(s.slot, surface),
+    color: hasSlot(s.slot) ? slotColor(s.slot, surface) : measureColor(surface),
     tip: [
       { value: formatShare(s.code / total), label: "of code lines" },
       { value: formatInt(s.files), label: s.files === 1 ? "file" : "files" },
@@ -63,14 +67,17 @@ function LinesByLanguage() {
       valueText: formatInt(restCode),
       color: slotColor(-1, surface),
       rest: true,
-      tip: rest.slice(0, 5).map((s) => ({ value: formatInt(s.code), label: s.name })),
+      tip: [
+        ...rest.slice(0, 5).map((s) => ({ value: formatInt(s.code), label: s.name })),
+        ...(rest.length > 5 ? [{ value: formatInt(rest.length - 5), label: "more languages" }] : []),
+      ],
     });
   }
   return (
     <Figure
       className={span(6)}
       title="Code lines by language"
-      subtitle={`${formatInt(total)} code lines across ${plural(shares.length, "language")}, comments and blanks excluded`}
+      subtitle={`${formatInt(total)} code lines across ${plural(shares.length, "language")}, comments and blanks excluded${unslotted ? ". Slate bars are languages the galaxy draws in gray" : ""}`}
       height={items.length * 28}
       empty={shares.length === 0 ? "No code lines in view. Widen the filters to see languages." : null}
       table={() => ({
@@ -85,49 +92,73 @@ function LinesByLanguage() {
 
 // ─── Category groups ─────────────────────────────────────────────────────────────────────────
 
+/**
+ * Category groups as a paired share list: each group's share of the files and of the lines,
+ * both on one scale so a group that is 10% of the files and 40% of the lines shows it.
+ *
+ * Not a stacked bar in the seven palette hues any more. Those hues are the language slots,
+ * and this chart sits beside "Code lines by language": orange meant TSX there and Tests here,
+ * blue TypeScript there and Code here. Groups are nominal and every row is labeled, so they
+ * need no hue of their own; the bars wear the measure slate. The list is its own table: every
+ * share is printed, nothing waits behind a hover. Counts follow each share where the figure is
+ * wide enough; in a narrow one they would leave the bars a few pixels long, so they drop out
+ * and stay in the table view.
+ */
 function CategoryGroups() {
   const { report, files, surface } = useScope();
   const groups = useMemo(() => categoryGroups(report, files.ids), [report, files]);
   const totals = { files: sum(groups.map((g) => g.files)), lines: sum(groups.map((g) => g.lines)) };
   const present = groups.filter((g) => g.files > 0);
+  const share = (n: number, d: number) => (d > 0 ? n / d : 0);
+  const top = Math.max(1e-9, ...present.flatMap((g) => [share(g.files, totals.files), share(g.lines, totals.lines)]));
+  const color = measureColor(surface);
   return (
     <Figure
       className={span(6)}
       title="Files and lines by category"
-      subtitle="Share of each category group, by file count and by line count"
-      height={150}
+      subtitle="Each category group's share of the files and of the lines in view, on one scale"
+      height={30 + present.length * 28}
       empty={totals.files === 0 ? "No files in view. Widen the filters to see categories." : null}
+      table={() => ({
+        columns: [{ label: "Category group" }, { label: "Files", align: "right", mono: true }, { label: "Share", align: "right", mono: true }, { label: "Lines", align: "right", mono: true }, { label: "Share", align: "right", mono: true }],
+        rows: present.map((g) => [
+          CATEGORY_GROUP_LABEL[g.group],
+          g.files,
+          { text: formatShare(share(g.files, totals.files)), sort: g.files },
+          g.lines,
+          { text: formatShare(share(g.lines, totals.lines)), sort: g.lines },
+        ]),
+      })}
     >
-      {(width) => (
-        <div className="flex flex-col gap-4 pt-1">
-          <StackRow label="Files" total={totals.files} unit="files" groups={present.map((g) => ({ group: g.group, value: g.files }))} width={width} surface={surface} />
-          <StackRow label="Lines" total={totals.lines} unit="lines" groups={present.map((g) => ({ group: g.group, value: g.lines }))} width={width} surface={surface} />
-          {/* The key doubles as the legend and the table view: every swatch with its exact
-              figures, so no value is reachable only by hovering a thin segment. */}
-          <table className="mt-1 w-full table-fixed text-xs">
+      {() => (
+        <div className="@container [--share-reserve:44px] @min-[440px]:[--share-reserve:100px]">
+          <table className="w-full table-fixed text-xs">
             <caption className="sr-only">Files and lines by category group</caption>
             <thead>
               <tr className="border-b border-rule text-ink-3">
-                <th className="py-1 text-left font-normal">Category group</th>
-                <th className="w-[18%] py-1 text-right font-normal">Files</th>
-                <th className="w-[12%] py-1 text-right font-normal">Share</th>
-                <th className="w-[20%] py-1 text-right font-normal">Lines</th>
-                <th className="w-[12%] py-1 text-right font-normal">Share</th>
+                <th scope="col" className="w-[30%] py-1 text-left font-normal">
+                  Category group
+                </th>
+                <th scope="col" className="py-1 pl-3 text-left font-normal">
+                  Share of files
+                </th>
+                <th scope="col" className="py-1 pl-3 text-left font-normal">
+                  Share of lines
+                </th>
               </tr>
             </thead>
             <tbody>
               {present.map((g) => (
-                <tr key={g.group} className="border-b border-rule last:border-b-0">
-                  <td className="py-1">
-                    <span className="flex min-w-0 items-center gap-1.5 text-ink">
-                      <Swatch color={categoryGroupColor(g.group, surface)} />
-                      <span className="truncate">{CATEGORY_GROUP_LABEL[g.group]}</span>
-                    </span>
+                <tr key={g.group} className="h-7 border-b border-rule last:border-b-0">
+                  <th scope="row" className="truncate text-left font-normal text-ink">
+                    {CATEGORY_GROUP_LABEL[g.group]}
+                  </th>
+                  <td className="pl-3">
+                    <ShareBar share={share(g.files, totals.files)} count={g.files} top={top} color={color} />
                   </td>
-                  <td className="figures py-1 text-right font-mono text-[11px] text-ink">{formatInt(g.files)}</td>
-                  <td className="figures py-1 text-right font-mono text-[11px] text-ink-3">{formatShare(g.files / totals.files)}</td>
-                  <td className="figures py-1 text-right font-mono text-[11px] text-ink">{formatInt(g.lines)}</td>
-                  <td className="figures py-1 text-right font-mono text-[11px] text-ink-3">{formatShare(totals.lines ? g.lines / totals.lines : 0)}</td>
+                  <td className="pl-3">
+                    <ShareBar share={share(g.lines, totals.lines)} count={g.lines} top={top} color={color} />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -138,70 +169,19 @@ function CategoryGroups() {
   );
 }
 
-/** Labels inside a fill: white, except on the light yellow slot and the light gray, which take ink. */
-function inkOn(slot: number, surface: Surface): string {
-  if (surface === "dark") return "#ffffff";
-  return slot === 3 || slot < 0 || slot > 6 ? "#15191c" : "#ffffff";
-}
-
-function StackRow({
-  label,
-  total,
-  unit,
-  groups,
-  width,
-  surface,
-}: {
-  label: string;
-  total: number;
-  unit: string;
-  groups: { group: CategoryGroup; value: number }[];
-  width: number;
-  surface: Surface;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [tip, setTip] = useState<Tip | null>(null);
-  const LABEL_W = 44;
-  const barW = width - LABEL_W;
-  const drawn = groups.filter((g) => total > 0 && g.value / total >= 0.003);
-  const gaps = Math.max(0, drawn.length - 1) * 2;
+/** One bar of the paired list: the share at the tip in ink, the count after it, quieter. */
+function ShareBar({ share, count, top, color }: { share: number; count: number; top: number; color: string }) {
   return (
-    <div ref={ref} className="relative flex items-center" onPointerLeave={() => setTip(null)}>
-      <span className="w-11 shrink-0 text-xs text-ink-2">{label}</span>
-      <div className="flex h-6 min-w-0 flex-1 gap-[2px]" role="img" aria-label={`${label}: ${drawn.map((g) => `${CATEGORY_GROUP_LABEL[g.group]} ${formatShare(g.value / total)}`).join(", ")}`}>
-        {drawn.map((g) => {
-          const share = g.value / total;
-          const px = (barW - gaps) * share;
-          const text = formatShare(share);
-          const slot = ["code", "test", "docs", "config", "data", "markup", "asset"].indexOf(g.group);
-          return (
-            <div
-              key={g.group}
-              className="flex h-full min-w-px items-center justify-center overflow-visible last:rounded-r-[4px] hover:brightness-110"
-              style={{ flex: `${g.value} 0 0`, background: categoryGroupColor(g.group, surface) }}
-              onPointerEnter={(e) => {
-                const box = ref.current!.getBoundingClientRect();
-                const r = e.currentTarget.getBoundingClientRect();
-                setTip({
-                  x: r.left - box.left + r.width / 2,
-                  y: r.bottom - box.top + 4,
-                  title: CATEGORY_GROUP_LABEL[g.group],
-                  rows: [{ value: formatInt(g.value), label: unit }, { value: text, label: `of ${unit}` }],
-                });
-              }}
-            >
-              {/* A share label only when it fits with room on both sides; never clipped. */}
-              {px >= text.length * 7 + 12 && (
-                <span className="figures font-mono text-[10px] font-medium" style={{ color: inkOn(slot, surface) }}>
-                  {text}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-      <ChartTooltip tip={tip} width={width} />
-    </div>
+    <span className="flex min-w-0 items-center">
+      <span
+        aria-hidden
+        className="h-3 shrink-0 rounded-r-[4px]"
+        // The track keeps room for both figures, so the longest bar never pushes them out.
+        style={{ width: `calc((100% - var(--share-reserve)) * ${Math.min(1, share / top)})`, minWidth: share > 0 ? 2 : 0, background: color }}
+      />
+      <span className="figures ml-1.5 shrink-0 font-mono text-[11px] text-ink">{formatShare(share)}</span>
+      <span className="figures ml-1.5 hidden min-w-0 truncate font-mono text-[11px] text-ink-3 @min-[440px]:inline">{formatInt(count)}</span>
+    </span>
   );
 }
 
@@ -221,6 +201,25 @@ interface TNode {
 }
 
 const TREEMAP_H = 380;
+
+/**
+ * Treemap fills. A treemap is an all-pairs form (any cell can touch any other), and the
+ * palette validates all-pairs only for its first three slots, so only those three languages
+ * keep their galaxy hue here; every other language shares one neutral. The neutral is the
+ * strong rule tone, not the Other gray: the validator put the mid gray within ΔE 14 of aqua
+ * (slot 3) under normal vision, below the 15 floor, while rule-strong clears it (19.3) in
+ * both modes. Hues are the documented slot values at full strength; the old 60% tints were
+ * mixes the validator had never seen, and they failed it (protan ΔE 2.8).
+ *
+ * Labels follow the palette's rule for text inside a fill: white on the hues, ink on the
+ * neutral.
+ */
+const TREEMAP_SLOTS = 3;
+
+function treemapFill(slot: number, surface: Surface): { fill: string; ink: string; ink2: string } {
+  if (slot >= 0 && slot < TREEMAP_SLOTS) return { fill: slotColor(slot, surface), ink: "#ffffff", ink2: "rgb(255 255 255 / 0.85)" };
+  return { fill: "var(--color-rule-strong)", ink: "var(--color-ink)", ink2: "var(--color-ink-2)" };
+}
 
 function DirTreemap() {
   const { report, model, files, surface } = useScope();
@@ -262,6 +261,26 @@ function DirTreemap() {
     return { key: "root", target: { kind: "dir" as const, id: root }, name: top.name, path: top.path, value: 0, files: 0, lang: "", children };
   }, [report, model, files, measure, root]);
 
+  // The key: the hued languages that actually color a cell here, then the neutral.
+  const legend = useMemo((): LegendItem[] => {
+    const used = new Set<number>();
+    let neutral = false;
+    const visit = (n: TNode) => {
+      if (n.children) return n.children.forEach(visit);
+      const slot = n.lang ? (model.languageSlot.get(n.lang) ?? -1) : -1;
+      if (slot >= 0 && slot < TREEMAP_SLOTS) used.add(slot);
+      else neutral = true;
+    };
+    visit(tree);
+    const items: LegendItem[] = [...used]
+      .sort((a, b) => a - b)
+      .map((slot) => ({ label: report.languages.find((l) => l.slot === slot)?.name ?? `Slot ${slot + 1}`, color: treemapFill(slot, surface).fill }));
+    // With no hued language in view (a docs drawer, say) every cell is gray and the subtitle
+    // already says what gray means; a key of one gray swatch would only repeat it.
+    if (neutral && items.length) items.push({ label: "Every other language", color: treemapFill(-1, surface).fill });
+    return items;
+  }, [tree, model, report, surface]);
+
   const crumbs = dirAncestry(report, root);
   const unit = measure === "lines" ? "lines" : measure === "bytes" ? "" : "files";
   const fmt = (v: number) => (measure === "bytes" ? formatBytes(v) : `${formatInt(v)} ${unit}`);
@@ -271,8 +290,9 @@ function DirTreemap() {
     <Figure
       className={span(8)}
       title="Directory map"
-      subtitle="Area is size, color is each directory's dominant language. Click a directory to open it as the drawer."
+      subtitle="Area is size, color the dominant language: the galaxy's first three language colors, every other language in gray. Click a directory to open it as the drawer."
       height={TREEMAP_H}
+      legend={legend.length ? <Legend items={legend} /> : undefined}
       empty={empty ? "Nothing to map in view. Widen the filters or close the drawer." : null}
       actions={
         <ToggleGroup type="single" variant="outline" size="sm" value={measure} onValueChange={(v) => v && setMeasure(v as Measure)} aria-label="Size cells by">
@@ -390,6 +410,7 @@ function Treemap({
     x: (l.x0 + l.x1) / 2,
     y: l.y0 + 8,
     title: l.data.path || l.data.name,
+    path: !!l.data.path,
     rows: [
       { value: format(l.value ?? 0) },
       ...(l.data.target.kind === "dir" ? [{ value: formatInt(l.data.files), label: l.data.files === 1 ? "file" : "files" }] : []),
@@ -439,6 +460,7 @@ function Treemap({
           const h = l.y1 - l.y0;
           if (w < 1 || h < 1) return null;
           const slot = l.data.lang ? languageSlot(l.data.lang) : -1;
+          const paint = treemapFill(slot, surface);
           // Names that do not fit are shortened with an ellipsis while four characters still
           // fit ("creat…" says more than an unlabeled block); narrower cells stay unlabeled and
           // keep their name in the tooltip and the table view.
@@ -457,24 +479,15 @@ function Treemap({
               }}
               onClick={() => onPick(l.data)}
             >
-              {/* A tint, not the full hue: a treemap is mostly large blocks, and saturated
-                  blocks that size shout over everything else on the page. */}
-              <rect
-                x={l.x0}
-                y={l.y0}
-                width={w}
-                height={h}
-                rx={Math.min(2, w / 2, h / 2)}
-                style={{ fill: `color-mix(in oklab, ${slotColor(slot, surface)} ${lit ? 78 : 60}%, var(--color-tray))` }}
-              />
+              <rect x={l.x0} y={l.y0} width={w} height={h} rx={Math.min(2, w / 2, h / 2)} style={{ fill: paint.fill }} />
               {lit && <rect x={l.x0 + 1} y={l.y0 + 1} width={Math.max(0, w - 2)} height={Math.max(0, h - 2)} fill="none" className="stroke-ink" strokeWidth={2} pointerEvents="none" />}
               {fits && (
-                <text x={l.x0 + 5} y={l.y0 + 13} className="pointer-events-none fill-ink text-[11px] font-medium">
+                <text x={l.x0 + 5} y={l.y0 + 13} className="pointer-events-none text-[11px] font-medium" style={{ fill: paint.ink }}>
                   {label}
                 </text>
               )}
               {fits && whole && h >= 32 && (
-                <text x={l.x0 + 5} y={l.y0 + 26} className="figures pointer-events-none fill-ink-2 font-mono text-[10px]">
+                <text x={l.x0 + 5} y={l.y0 + 26} className="figures pointer-events-none font-mono text-[10px]" style={{ fill: paint.ink2 }}>
                   {formatCompact(l.value ?? 0)}
                 </text>
               )}

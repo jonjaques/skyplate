@@ -26,13 +26,14 @@ import {
 import { useCallback, useDeferredValue, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../components/ui/command";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../components/ui/dialog";
-import { formatInt } from "../lib/format";
+import { formatInt, plural } from "../lib/format";
 import { ensureSymbols } from "../state/loaders";
+import { pushNextView } from "../state/url";
 import { useViewer, type ColorBy, type SizeBy, type Tab } from "../state/store";
 import { COLOR_BY_LABEL, NEEDS_GIT, SIZE_BY_LABEL, SYMBOL_KIND_LABEL } from "./labels";
 import { focusDrawer, openSymbolDefinition, show } from "./navigate";
 import { LanguageSwatch } from "./parts";
-import { rank, searchable, type Searchable } from "./search";
+import { queryTerms, rankScored, searchable, type Searchable } from "./search";
 import { useShell } from "./shell-state";
 import { TAB_ORDER } from "./TopBar";
 
@@ -93,6 +94,9 @@ function useIndex<T>(items: T[] | undefined, key: (t: T) => string): Searchable 
   return useMemo(() => (items ? searchable(items.map(key)) : null), [items]);
 }
 
+type GroupKey = "files" | "dirs" | "symbols" | "authors" | "actions";
+const GROUP_ORDER: GroupKey[] = ["files", "dirs", "symbols", "authors", "actions"];
+
 function Results({ query, close, setActive }: { query: string; close(): void; setActive(value: string): void }) {
   const report = useViewer((s) => s.report);
   const model = useViewer((s) => s.model);
@@ -111,46 +115,75 @@ function Results({ query, close, setActive }: { query: string; close(): void; se
     if (!report || !q) return null;
     const t = symbols?.symbols;
     return {
-      files: fileIndex ? rank(fileIndex, q, LIMIT.files, undefined, (i) => report.files[i]!.rank) : [],
-      dirs: dirIndex ? rank(dirIndex, q, LIMIT.dirs, (i) => i !== 0, (i) => report.dirs[i]!.totalFiles) : [],
+      files: fileIndex ? rankScored(fileIndex, q, LIMIT.files, undefined, (i) => report.files[i]!.rank) : [],
+      dirs: dirIndex ? rankScored(dirIndex, q, LIMIT.dirs, (i) => i !== 0, (i) => report.dirs[i]!.totalFiles) : [],
       symbols:
-        symbolIndex && t ? rank(symbolIndex, q, LIMIT.symbols, (i) => t.kind[i] !== "module", (i) => t.refs[i]!) : [],
-      authors: authorIndex ? rank(authorIndex, q, LIMIT.authors, undefined, (i) => report.git!.authors[i]!.commits) : [],
+        symbolIndex && t ? rankScored(symbolIndex, q, LIMIT.symbols, (i) => t.kind[i] !== "module", (i) => t.refs[i]!) : [],
+      authors: authorIndex ? rankScored(authorIndex, q, LIMIT.authors, undefined, (i) => report.git!.authors[i]!.commits) : [],
     };
   }, [report, q, fileIndex, dirIndex, symbolIndex, authorIndex, symbols]);
 
   const actions = useActions(close);
-  const matchingActions = useMemo(() => {
-    if (!q) return actions;
-    const terms = q.toLowerCase().split(/\s+/);
-    return actions.filter((a) => terms.every((term) => a.label.toLowerCase().includes(term)));
-  }, [actions, q]);
+  const actionIndex = useMemo(() => searchable(actions.map((a) => a.label)), [actions]);
+  // Actions match only when every typed term is a substring of the label: scattered letters
+  // match nearly any of these short sentences. Matches are scored like every other row, so
+  // "about" puts "About this report" first when nothing else matches as literally.
+  const actionHits = useMemo(() => {
+    if (!q) return actions.map((_, i) => ({ i, s: 0 }));
+    const terms = queryTerms(q);
+    return rankScored(actionIndex, q, actions.length, (i) => terms.every((term) => actionIndex.lower[i]!.includes(term)));
+  }, [actions, actionIndex, q]);
 
+  const symbolsReady = symbolsStatus === "ready";
+  const t = symbols?.symbols;
+
+  // Groups in order of their best hit, so an exact author or action is not buried under eight
+  // fuzzy file rows. A symbol whose name is exactly the query, and that something actually
+  // uses, goes first outright: typing "vec3" means the function, not the file named after it.
+  const order = useMemo<GroupKey[]>(() => {
+    if (!hits) return GROUP_ORDER;
+    const best: Record<GroupKey, number> = {
+      files: hits.files[0]?.s ?? -Infinity,
+      dirs: hits.dirs[0]?.s ?? -Infinity,
+      symbols: symbolsReady ? (hits.symbols[0]?.s ?? -Infinity) : -Infinity,
+      authors: hits.authors[0]?.s ?? -Infinity,
+      actions: actionHits[0]?.s ?? -Infinity,
+    };
+    const top = hits.symbols[0];
+    if (symbolsReady && t && top && t.name[top.i]!.toLowerCase() === q.toLowerCase() && t.refs[top.i]! > 0) {
+      best.symbols = Infinity;
+    }
+    return [...GROUP_ORDER].sort((a, b) => best[b] - best[a]);
+  }, [hits, actionHits, symbolsReady, t, q]);
+
+  const firstOf: Record<GroupKey, string | null> = {
+    files: hits?.files[0] ? `file:${hits.files[0].i}` : null,
+    dirs: hits?.dirs[0] ? `dir:${hits.dirs[0].i}` : null,
+    symbols: hits?.symbols[0] && symbolsReady ? `sym:${hits.symbols[0].i}` : null,
+    authors: hits?.authors[0] ? `author:${hits.authors[0].i}` : null,
+    actions: actionHits[0] ? `action:${actions[actionHits[0].i]!.id}` : null,
+  };
   const first = !hits
     ? model && model.holotypes.size > 0
       ? `file:${[...model.holotypes].sort((a, b) => report!.files[b]!.rank - report!.files[a]!.rank)[0]}`
       : (actions[0] && `action:${actions[0].id}`) || ""
-    : hits.files.length
-      ? `file:${hits.files[0]}`
-      : hits.dirs.length
-        ? `dir:${hits.dirs[0]}`
-        : hits.symbols.length && symbolsStatus === "ready"
-          ? `sym:${hits.symbols[0]}`
-          : hits.authors.length
-            ? `author:${hits.authors[0]}`
-            : (matchingActions[0] && `action:${matchingActions[0].id}`) || "";
+    : (order.map((g) => firstOf[g]).find(Boolean) ?? "");
   useEffect(() => setActive(first), [first, setActive]);
 
   if (!report || !model) return null;
 
+  // A pick from the palette is a deliberate move, so it gets a browser history entry (Back
+  // returns to where the reader was); see state/url.ts.
   const pickFile = (id: number) => {
     close();
+    pushNextView();
     // In the reader, picking a file means "read it"; elsewhere it means "select it".
     if (tab === "source") useViewer.getState().openSource({ file: id });
     else show({ kind: "file", id }, tab === "charts" || tab === "findings" ? "galaxy" : undefined);
   };
   const pickSymbol = (id: number) => {
     close();
+    pushNextView();
     if (tab === "source" && symbols) openSymbolDefinition(symbols, id);
     else show({ kind: "symbol", id }, tab === "charts" || tab === "findings" ? "galaxy" : undefined);
   };
@@ -161,7 +194,7 @@ function Results({ query, close, setActive }: { query: string; close(): void; se
     return (
       <>
         {top.length > 0 && (
-          <CommandGroup heading="Most depended-on files">
+          <CommandGroup heading="Holotypes, each region's most central file">
             {top.map((id) => (
               <FileItem key={id} id={id} onSelect={() => pickFile(id)} />
             ))}
@@ -173,95 +206,105 @@ function Results({ query, close, setActive }: { query: string; close(): void; se
   }
 
   const nothing =
-    hits.files.length + hits.dirs.length + hits.symbols.length + hits.authors.length + matchingActions.length === 0;
-  const t = symbols?.symbols;
+    hits.files.length + hits.dirs.length + hits.symbols.length + hits.authors.length + actionHits.length === 0;
+
+  const groups: Record<GroupKey, ReactNode> = {
+    files: hits.files.length > 0 && (
+      <CommandGroup key="files" heading="Files">
+        {hits.files.map(({ i: id }) => (
+          <FileItem key={id} id={id} onSelect={() => pickFile(id)} />
+        ))}
+      </CommandGroup>
+    ),
+    dirs: hits.dirs.length > 0 && (
+      <CommandGroup key="dirs" heading="Directories">
+        {hits.dirs.map(({ i: id }) => {
+          const d = report.dirs[id]!;
+          return (
+            <CommandItem
+              key={id}
+              value={`dir:${id}`}
+              onSelect={() => {
+                close();
+                pushNextView();
+                focusDrawer(id);
+              }}
+            >
+              <Folder />
+              <span className="min-w-0 flex-1 truncate font-mono text-[12.5px]">{d.path}</span>
+              <span className="figures font-mono text-xs text-ink-3">{formatInt(d.totalFiles)}</span>
+            </CommandItem>
+          );
+        })}
+      </CommandGroup>
+    ),
+    // The group shows while the tables load (so a symbol search is not mistaken for "no
+    // match"), and after that only when something matched.
+    symbols: report.symbols && (symbolsStatus !== "ready" || hits.symbols.length > 0) && (
+      <CommandGroup key="symbols" heading="Symbols">
+        {symbolsStatus === "loading" || symbolsStatus === "idle" ? (
+          <CommandItem disabled value="symbols-loading">
+            <LoaderCircle className="animate-spin" />
+            <span className="text-ink-3">Loading symbols…</span>
+          </CommandItem>
+        ) : symbolsStatus === "error" ? (
+          <CommandItem disabled value="symbols-error">
+            <span className="text-ink-3">The symbol tables did not load</span>
+          </CommandItem>
+        ) : (
+          t &&
+          symbolModel &&
+          hits.symbols.map(({ i: id }) => {
+            const file = report.files[t.file[id]!];
+            return (
+              <CommandItem key={id} value={`sym:${id}`} onSelect={() => pickSymbol(id)}>
+                <Braces />
+                <span className="min-w-0 truncate font-mono text-[12.5px] text-ink">{t.name[id]}</span>
+                <span className="shrink-0 text-xs text-ink-3">{SYMBOL_KIND_LABEL[t.kind[id]!]}</span>
+                <span className="ml-auto min-w-0 truncate font-mono text-xs text-ink-3">
+                  {file ? `${file.path}:${t.line[id]! + 1}` : ""}
+                </span>
+                {/* Two symbols can share a name ("Vec3" the interface, "Vec3" a test-local
+                    alias); how much the project uses each is what tells them apart. */}
+                <span className="figures w-[68px] shrink-0 text-right font-mono text-xs text-ink-3">
+                  {plural(t.refs[id]!, "ref")}
+                </span>
+              </CommandItem>
+            );
+          })
+        )}
+      </CommandGroup>
+    ),
+    authors: hits.authors.length > 0 && (
+      <CommandGroup key="authors" heading="Authors">
+        {hits.authors.map(({ i: id }) => {
+          const a = report.git!.authors[id]!;
+          return (
+            <CommandItem
+              key={id}
+              value={`author:${id}`}
+              onSelect={() => {
+                close();
+                pushNextView();
+                show({ kind: "author", id }, tab === "charts" || tab === "findings" ? "galaxy" : undefined);
+              }}
+            >
+              <User />
+              <span className="truncate">{a.name}</span>
+              <span className="min-w-0 truncate font-mono text-xs text-ink-3">{a.email}</span>
+              <span className="figures ml-auto shrink-0 font-mono text-xs text-ink-3">{plural(a.commits, "commit")}</span>
+            </CommandItem>
+          );
+        })}
+      </CommandGroup>
+    ),
+    actions: <ActionGroup key="actions" actions={actionHits.map((h) => actions[h.i]!)} />,
+  };
 
   return (
     <>
       {nothing && symbolsStatus !== "loading" && <CommandEmpty>Nothing in this report matches “{q}”.</CommandEmpty>}
-      {hits.files.length > 0 && (
-        <CommandGroup heading="Files">
-          {hits.files.map((id) => (
-            <FileItem key={id} id={id} onSelect={() => pickFile(id)} />
-          ))}
-        </CommandGroup>
-      )}
-      {hits.dirs.length > 0 && (
-        <CommandGroup heading="Directories">
-          {hits.dirs.map((id) => {
-            const d = report.dirs[id]!;
-            return (
-              <CommandItem
-                key={id}
-                value={`dir:${id}`}
-                onSelect={() => {
-                  close();
-                  focusDrawer(id);
-                }}
-              >
-                <Folder />
-                <span className="min-w-0 flex-1 truncate font-mono text-[12.5px]">{d.path}</span>
-                <span className="figures font-mono text-xs text-ink-3">{formatInt(d.totalFiles)}</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-      )}
-      {/* The group shows while the tables load (so a symbol search is not mistaken for "no
-          match"), and after that only when something matched. */}
-      {report.symbols && (symbolsStatus !== "ready" || hits.symbols.length > 0) && (
-        <CommandGroup heading="Symbols">
-          {symbolsStatus === "loading" || symbolsStatus === "idle" ? (
-            <CommandItem disabled value="symbols-loading">
-              <LoaderCircle className="animate-spin" />
-              <span className="text-ink-3">Loading symbols…</span>
-            </CommandItem>
-          ) : symbolsStatus === "error" ? (
-            <CommandItem disabled value="symbols-error">
-              <span className="text-ink-3">The symbol tables did not load</span>
-            </CommandItem>
-          ) : (
-            t &&
-            symbolModel &&
-            hits.symbols.map((id) => {
-              const file = report.files[t.file[id]!];
-              return (
-                <CommandItem key={id} value={`sym:${id}`} onSelect={() => pickSymbol(id)}>
-                  <Braces />
-                  <span className="min-w-0 truncate font-mono text-[12.5px] text-ink">{t.name[id]}</span>
-                  <span className="shrink-0 text-xs text-ink-3">{SYMBOL_KIND_LABEL[t.kind[id]!]}</span>
-                  <span className="ml-auto min-w-0 truncate font-mono text-xs text-ink-3">
-                    {file ? `${file.path}:${t.line[id]! + 1}` : ""}
-                  </span>
-                </CommandItem>
-              );
-            })
-          )}
-        </CommandGroup>
-      )}
-      {hits.authors.length > 0 && (
-        <CommandGroup heading="Authors">
-          {hits.authors.map((id) => {
-            const a = report.git!.authors[id]!;
-            return (
-              <CommandItem
-                key={id}
-                value={`author:${id}`}
-                onSelect={() => {
-                  close();
-                  show({ kind: "author", id }, tab === "charts" || tab === "findings" ? "galaxy" : undefined);
-                }}
-              >
-                <User />
-                <span className="truncate">{a.name}</span>
-                <span className="min-w-0 truncate font-mono text-xs text-ink-3">{a.email}</span>
-                <span className="figures ml-auto shrink-0 font-mono text-xs text-ink-3">{formatInt(a.commits)} commits</span>
-              </CommandItem>
-            );
-          })}
-        </CommandGroup>
-      )}
-      <ActionGroup actions={matchingActions} />
+      {order.map((g) => groups[g])}
     </>
   );
 }

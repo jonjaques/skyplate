@@ -4,25 +4,49 @@
  * chosen moment flash. HEAD (null in the store) is the present.
  *
  * The faint columns behind the slider are the weekly commit counts, the same series the
- * activity tray charts, so the reader can aim the scrubber at a burst of work.
+ * activity tray charts, on the same linear scale, so the reader can aim the scrubber at a burst
+ * of work and the strip and the tray never disagree about which week was busier.
  */
 
 import { Pause, Play } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Slider as SliderPrimitive } from "radix-ui";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Button } from "../components/ui/button";
-import { Slider } from "../components/ui/slider";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 import { formatDate, formatInt } from "../lib/format";
 import { useViewer } from "../state/store";
 import type { GalaxyEngine } from "./engine";
 
 const WEEK = 7 * 86400;
+/** Column width cap (px): past it a short history reads as a row of blocks, not a series. */
+const COLUMN_MAX = 24;
 
-function columnPath(columns: number[], from: number, to: number): string {
+/**
+ * SVG path for weekly columns `from`..`to` in a `width` × `height` box (pixels). Linear in
+ * commits against the busiest week, as in the activity tray: the strip used a square-root scale
+ * with a 4% floor, which drew an 81-commit week and a 39-commit week nearly level and made
+ * quiet weeks look like slow ones. A week with no commits draws nothing; a week with any draws
+ * at least one pixel. Columns are centered in their week's slot, at most COLUMN_MAX wide, and
+ * round only their data end (the top), not the baseline.
+ */
+export function columnPath(commits: readonly number[], from: number, to: number, width: number, height: number): string {
+  const n = commits.length;
+  if (n === 0 || width <= 0 || height <= 0) return "";
+  let max = 1;
+  for (const c of commits) if (c > max) max = c;
+  const slot = width / n;
+  const w = Math.min(COLUMN_MAX, slot * 0.76);
+  const r = Math.min(2, w / 2);
   let d = "";
-  for (let i = from; i < to; i++) {
-    const h = Math.max(4, columns[i]! * 100);
-    d += `M${i + 0.12} 100V${(100 - h).toFixed(1)}H${i + 0.88}V100Z`;
+  for (let i = Math.max(0, from); i < Math.min(n, to); i++) {
+    const c = commits[i]!;
+    if (c <= 0) continue;
+    const h = Math.max(1, (c / max) * height);
+    const x = i * slot + (slot - w) / 2;
+    const top = height - h;
+    const rr = Math.min(r, h);
+    const f = (v: number) => v.toFixed(2);
+    d += `M${f(x)} ${f(height)}V${f(top + rr)}Q${f(x)} ${f(top)} ${f(x + rr)} ${f(top)}H${f(x + w - rr)}Q${f(x + w)} ${f(top)} ${f(x + w)} ${f(top + rr)}V${f(height)}Z`;
   }
   return d;
 }
@@ -45,11 +69,20 @@ export function HistoryScrubber({ engine }: { engine: GalaxyEngine }) {
   const position = weekOf(time);
   const timeAt = (i: number): number | null => (i >= last ? null : Math.min(git.last, weekly[i]!.start + WEEK - 1));
 
-  const columns = useMemo(() => {
-    const max = Math.max(1, ...weekly.map((w) => w.commits));
-    // √ so a few release-week spikes do not flatten every other week to nothing.
-    return weekly.map((w) => Math.sqrt(w.commits / max));
-  }, [weekly]);
+  const commits = weekly.map((w) => w.commits);
+  // The columns are drawn in real pixels (a stretched viewBox cannot cap a column's width), so
+  // the strip measures itself.
+  const strip = useRef<HTMLDivElement>(null);
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    const el = strip.current;
+    if (!el) return;
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Playback sweeps the whole history in a fixed span (faster for long histories), updating
   // the store at ~20 Hz: enough for the flashes to read, without re-rendering every chart
@@ -86,11 +119,14 @@ export function HistoryScrubber({ engine }: { engine: GalaxyEngine }) {
 
   if (weekly.length < 2) return null;
   const at = time ?? git.last;
+  const valueText = time === null ? `${formatDate(at)}, HEAD, the present` : `${formatDate(at)}, ${formatInt(weekly[position]!.commits)} commits that week`;
   return (
+    // bg-plate: lanes and stars passed under the strip and through its date and columns. The
+    // plate's own color occludes them without drawing a panel.
     <div
       data-plate-chrome
       data-plate-inset="bottom"
-      className="absolute inset-x-0 bottom-0 z-20 flex h-[52px] items-center gap-3 border-t border-plate-rule px-4 text-xs text-plate-muted"
+      className="absolute inset-x-0 bottom-0 z-20 flex h-[52px] items-center gap-3 border-t border-plate-rule bg-plate px-4 text-xs text-plate-muted"
     >
       <Tooltip>
         <TooltipTrigger asChild>
@@ -113,17 +149,20 @@ export function HistoryScrubber({ engine }: { engine: GalaxyEngine }) {
       <div className="relative h-8 min-w-0 flex-1">
         {/* One path per side of the thumb: a 900-week history is 900 columns, too many for
             elements, and SVG keeps them crisp at any plate width. */}
-        <svg
-          className="pointer-events-none absolute inset-x-0 top-0 bottom-3 h-[calc(100%-0.75rem)] w-full"
-          viewBox={`0 0 ${columns.length} 100`}
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          <path d={columnPath(columns, 0, position + 1)} className="fill-plate-muted" fillOpacity={0.36} />
-          <path d={columnPath(columns, position + 1, columns.length)} className="fill-plate-muted" fillOpacity={0.12} />
-        </svg>
-        <Slider
-          className="absolute inset-x-0 bottom-0 [&_[data-slot=slider-range]]:bg-plate-ink/70 [&_[data-slot=slider-thumb]]:border-plate-ink [&_[data-slot=slider-track]]:h-1 [&_[data-slot=slider-track]]:bg-plate-rule"
+        <div ref={strip} className="pointer-events-none absolute inset-x-0 top-0 bottom-3">
+          <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${box.w || 1} ${box.h || 1}`} aria-hidden="true">
+            <path d={columnPath(commits, 0, position + 1, box.w, box.h)} className="fill-plate-muted" fillOpacity={0.4} />
+            <path d={columnPath(commits, position + 1, commits.length, box.w, box.h)} className="fill-plate-muted" fillOpacity={0.14} />
+          </svg>
+        </div>
+        {/* The Radix primitive rather than the shadcn Slider: the element a screen reader lands
+            on is the thumb (role=slider), and the wrapper renders its thumbs itself with no way
+            to name them. The root's aria-label never reached the thumb, which announced a bare
+            week index ("slider, 7") instead of a date. The markup and data-slot hooks match the
+            wrapper, restyled for the plate. */}
+        <SliderPrimitive.Root
+          data-slot="slider"
+          className="absolute inset-x-0 bottom-0 flex w-full touch-none items-center select-none"
           min={0}
           max={last}
           step={1}
@@ -132,8 +171,17 @@ export function HistoryScrubber({ engine }: { engine: GalaxyEngine }) {
             setPlaying(false);
             setTime(timeAt(v[0] ?? last));
           }}
-          aria-label="Point in history"
-        />
+        >
+          <SliderPrimitive.Track data-slot="slider-track" className="relative h-1 w-full grow overflow-hidden rounded-full bg-plate-rule">
+            <SliderPrimitive.Range data-slot="slider-range" className="absolute h-full bg-plate-ink/70" />
+          </SliderPrimitive.Track>
+          <SliderPrimitive.Thumb
+            data-slot="slider-thumb"
+            aria-label="Point in history"
+            aria-valuetext={valueText}
+            className="block size-4 shrink-0 rounded-full border border-plate-ink bg-white outline-none transition-[box-shadow] hover:ring-4 hover:ring-plate-ink/20 focus-visible:ring-2 focus-visible:ring-plate-ink focus-visible:ring-offset-2 focus-visible:ring-offset-plate"
+          />
+        </SliderPrimitive.Root>
       </div>
       {time !== null && (
         <Button

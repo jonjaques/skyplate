@@ -10,7 +10,7 @@ import { Button } from "../../components/ui/button";
 import { formatAgo, formatBytes, formatInt, formatIsoDate, formatPercent, plural } from "../../lib/format";
 import { neighbors, type Model } from "../../model/indices";
 import { useViewer } from "../../state/store";
-import { collectorsOf } from "../derived";
+import { collectorsOf, degree, edgeSplit } from "../derived";
 import { SYMBOL_KIND_LABEL } from "../labels";
 import { accession, openFile, show } from "../navigate";
 import { CategorySwatch, LanguageSwatch, MetricGrid, MoreButton, Quiet, RowButton, Section, Tag, type Metric, PathText } from "../parts";
@@ -71,8 +71,20 @@ export function FileRecordView({ report, model, file }: { report: Report; model:
     metrics.push({ label: "Commits", value: formatInt(file.git.commits), note: `+${formatInt(file.git.added)} −${formatInt(file.git.deleted)} lines` });
     metrics.push({ label: "Authors", value: formatInt(file.git.authors) });
   }
-  metrics.push({ label: "Imports", value: formatInt(file.fanOut), note: file.imports !== file.fanOut ? `${plural(file.imports, "statement")}` : undefined });
-  metrics.push({ label: "Imported by", value: formatInt(file.fanIn) });
+  // Code edges and document links are counted apart (see derived.edgeSplit). A document, with
+  // links and no code edges, would otherwise lead with "Imports 0 · Imported by 0".
+  const split = edgeSplit(report);
+  const linksOut = degree(split.linksTo, file.id);
+  const linksIn = degree(split.linkedFrom, file.id);
+  const document = linksOut + linksIn > 0 && file.fanIn + file.fanOut === 0;
+  if (!document) {
+    metrics.push({ label: "Imports", value: formatInt(file.fanOut), note: file.imports !== file.fanOut ? `${plural(file.imports, "statement")}` : undefined });
+    metrics.push({ label: "Imported by", value: formatInt(file.fanIn) });
+  }
+  if (linksOut + linksIn > 0) {
+    metrics.push({ label: "Links to", value: formatInt(linksOut), note: "files in this project" });
+    metrics.push({ label: "Linked from", value: formatInt(linksIn) });
+  }
   metrics.push({ label: "PageRank", value: file.rank.toFixed(3), note: "1 = most depended on" });
   if (file.lines > 0 && metrics.length % 2 === 1) metrics.push({ label: "Size", value: formatBytes(file.bytes) });
   if (file.git) {
@@ -88,7 +100,7 @@ export function FileRecordView({ report, model, file }: { report: Report; model:
           <span className="figures font-mono text-xs text-ink-3">{accession(file.id, report.files.length)}</span>
           {holotypeRegion !== undefined && (
             <span className="rounded-xs bg-holotype px-2 py-0.5 text-xs font-semibold text-holotype-ink">
-              Holotype · most depended on in {holotypeRegion === 0 ? "the root" : report.dirs[holotypeRegion]!.name}
+              Holotype · most central in {holotypeRegion === 0 ? "the root" : report.dirs[holotypeRegion]!.name}
             </span>
           )}
           {file.generated && <Tag>generated</Tag>}
@@ -119,8 +131,14 @@ export function FileRecordView({ report, model, file }: { report: Report; model:
       )}
 
       {report.git && <Collectors report={report} file={file} />}
-      <FileList title="Imports" ids={neighbors(model.imports, file.id)} report={report} empty="Imports nothing from this project." />
-      <FileList title="Imported by" ids={neighbors(model.importedBy, file.id)} report={report} empty="Nothing in this project imports it." />
+      {!document && (
+        <>
+          <FileList title="Imports" ids={neighbors(split.imports, file.id)} report={report} empty="Imports nothing from this project." />
+          <FileList title="Imported by" ids={neighbors(split.importedBy, file.id)} report={report} empty="Nothing in this project imports it." />
+        </>
+      )}
+      {linksOut > 0 && <FileList title="Links to" ids={neighbors(split.linksTo, file.id)} report={report} empty="" />}
+      {linksIn > 0 && <FileList title="Linked from" ids={neighbors(split.linkedFrom, file.id)} report={report} empty="" />}
       <DeclaredSymbols file={file} />
 
       <OpenInReader report={report} file={file} />
@@ -203,7 +221,9 @@ function Collectors({ report, file }: { report: Report; file: FileRec }) {
           );
         })}
       </div>
-      {owner && file.git && (
+      {/* Ownership is a share of added lines; a file whose commits added none (an image, a
+          rename) has no share to state, and "100% of its added lines" beside "+0" reads wrong. */}
+      {owner && file.git && file.git.added > 0 && (
         <Quiet className="text-xs">
           {owner.name} wrote {formatPercent(file.git.ownership)} of its added lines.
         </Quiet>

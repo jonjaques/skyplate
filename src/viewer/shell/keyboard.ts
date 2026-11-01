@@ -1,5 +1,6 @@
 /**
- * Global shortcuts: ⌘K / Ctrl+K and "/" open the palette, 1-5 switch tabs.
+ * Global shortcuts: ⌘K / Ctrl+K and "/" open the palette, 1-5 switch tabs, [ and ] step back
+ * and forward along the symbols the record has described (shell/trail.ts).
  *
  * Bare keys only fire when focus is not in a text field, and never with a modifier held, so
  * typing a "3" into the explorer filter or pressing ⌘1 for a browser tab does what the reader
@@ -9,6 +10,7 @@
 
 import { useEffect } from "react";
 import { useViewer, type Tab } from "../state/store";
+import { step } from "./trail";
 
 const TAB_KEYS: Record<string, Tab> = { "1": "galaxy", "2": "charts", "3": "explorer", "4": "source", "5": "findings" };
 
@@ -36,6 +38,13 @@ export function useGlobalShortcuts(): void {
       if (e.key === "/") {
         e.preventDefault();
         s.setPaletteOpen(true);
+        return;
+      }
+      // Bracket keys rather than Alt+arrows: Alt+Left is the browser's own Back on Windows and
+      // Linux, and the record's trail is a different, finer history than the browser's.
+      if (e.key === "[" || e.key === "]") {
+        e.preventDefault();
+        step(e.key === "[" ? -1 : 1);
         return;
       }
       const tab = TAB_KEYS[e.key];

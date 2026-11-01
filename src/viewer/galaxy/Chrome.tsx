@@ -1,15 +1,16 @@
 /**
- * Plate chrome: the drawer title, the color legend, the symbol-mode legend, status notes and
- * the compact controls (layout, lanes, reset view).
+ * Plate chrome: the drawer title, the filter chip, the color legend, the symbol-mode legend,
+ * status notes and the compact controls (layout, lanes, reset view).
  *
- * All of it is plate-styled: small, plate-ink text, plate-rule hairlines, no fills behind it,
- * so it reads as print on the glass rather than as panels floating over the galaxy. Every
- * element carries data-plate-chrome, which the label overlays read to keep clear of it.
+ * All of it is plate-styled: small, plate-ink text, plate-rule hairlines. The text sits on the
+ * plate's own color where stars or lanes can pass behind it (the controls, the legend inset,
+ * the scrubber), which occludes them without reading as a panel, since it is the color already
+ * there. Every element carries data-plate-chrome, which the label overlays read to keep clear.
  */
 
-import { AlertCircle, LoaderCircle, Maximize2, Spline } from "lucide-react";
+import { AlertCircle, LoaderCircle, Maximize2, Spline, X } from "lucide-react";
 import { useMemo } from "react";
-import { CATEGORY_GROUP } from "../../shared/schema";
+import { CATEGORY_GROUP, REF_KINDS, type Category, type CategoryGroup, type RefKind } from "../../shared/schema";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
@@ -21,11 +22,13 @@ import {
 } from "../components/ui/dropdown-menu";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
-import { CATEGORY_GROUPS, CATEGORY_GROUP_LABEL, categoryGroupColor, sequentialColor, seriesColor } from "../lib/colors";
+import { CATEGORY_GROUPS, CATEGORY_GROUP_LABEL, HOLOTYPE, categoryGroupColor, sequentialColor, seriesColor } from "../lib/colors";
 import { formatInt, plural } from "../lib/format";
 import { cn } from "../lib/utils";
-import { useViewer, type ColorBy, type EdgeMode, type LayoutMode, type SizeBy } from "../state/store";
+import { useViewer, type ColorBy, type EdgeMode, type Filters, type LayoutMode, type SizeBy } from "../state/store";
+import { isNarrowed, passesFilters } from "./encode";
 import type { GalaxyEngine } from "./engine";
+import { LANE_INK, LANE_INK_2, selectionLanes } from "./lanes";
 import type { SymbolScene } from "./symbolScene";
 
 // ─── Title ───────────────────────────────────────────────────────────────────────────────────
@@ -34,21 +37,32 @@ export function PlateTitle({ engine, compact }: { engine: GalaxyEngine; compact:
   const report = engine.model.report;
   const focusDir = useViewer((s) => s.focusDir);
   const time = useViewer((s) => s.time);
+  const filters = useViewer((s) => s.filters);
   const dir = focusDir !== null ? report.dirs[focusDir] : undefined;
-  const count = useMemo(() => {
-    if (time === null) return dir ? dir.totalFiles : report.totals.files;
+  const narrowed = isNarrowed(filters);
+  // [specimens present, of which pass the reader's filters]. A filter set on the Charts tab
+  // dims the plate too, and the title used to go on counting every specimen, so nothing on
+  // the Galaxy tab said the picture was narrowed.
+  const [count, inView] = useMemo(() => {
+    if (time === null && !narrowed) {
+      const c = dir ? dir.totalFiles : report.totals.files;
+      return [c, c];
+    }
     // At a point in history: the specimens collected by then (files without a recorded
     // creation date count as always present).
     const files = dir ? engine.model.fileOrder.subarray(engine.model.dirStart[dir.id]!, engine.model.dirEnd[dir.id]!) : null;
     let c = 0;
+    let v = 0;
     const n = files ? files.length : engine.n;
     for (let k = 0; k < n; k++) {
       const i = files ? files[k]! : k;
       const born = engine.model.created[i]!;
-      if (Number.isNaN(born) || born <= time) c++;
+      if (time !== null && !Number.isNaN(born) && born > time) continue;
+      c++;
+      if (!narrowed || passesFilters(engine.model, i, filters)) v++;
     }
-    return c;
-  }, [engine, dir, time, report]);
+    return [c, v];
+  }, [engine, dir, time, report, narrowed, filters]);
   const name = dir && dir.id !== 0 ? dir.path : report.project.name;
   return (
     <h2
@@ -65,9 +79,64 @@ export function PlateTitle({ engine, compact }: { engine: GalaxyEngine; compact:
           : "top-[18px] left-6 max-w-[calc(100%-288px)] text-2xl @max-[560px]:top-[58px] @max-[560px]:max-w-[calc(100%-3rem)] @max-[560px]:text-xl",
       )}
     >
-      {name} <span className="text-plate-muted">·</span> <span className="figures">{formatInt(count)}</span>{" "}
-      {count === 1 ? "specimen" : "specimens"}
+      {name} <span className="text-plate-muted">·</span>{" "}
+      {narrowed ? (
+        <>
+          <span className="figures">{formatInt(inView)}</span> <span className="text-plate-muted">of</span>{" "}
+        </>
+      ) : null}
+      <span className="figures">{formatInt(count)}</span> {count === 1 ? "specimen" : "specimens"}
     </h2>
+  );
+}
+
+// ─── Filter chip ─────────────────────────────────────────────────────────────────────────────
+
+function describeFilters(engine: GalaxyEngine, filters: Filters): string {
+  const parts: string[] = [];
+  if (filters.languages) {
+    const names = [...filters.languages].map((id) => engine.model.languages.get(id)?.name ?? id);
+    parts.push(names.length <= 2 ? names.join(" and ") : `${names.length} languages`);
+  }
+  if (filters.categories) {
+    const groups = new Set([...filters.categories].map((c) => CATEGORY_GROUP[c]));
+    const full = CATEGORY_GROUPS.filter((g) => groups.has(g));
+    parts.push(full.length <= 2 ? full.map((g) => CATEGORY_GROUP_LABEL[g].toLowerCase()).join(" and ") : `${filters.categories.size} categories`);
+  }
+  const shown = parts.length > 0 ? `Showing ${parts.join(", ")} only` : "";
+  const gen = filters.hideGenerated ? "generated files hidden" : "";
+  return [shown, gen].filter(Boolean).join("; ").replace(/^g/, "G");
+}
+
+/**
+ * What the reader has filtered to, wherever it was set (the legend here, or the Charts tab's
+ * filter row), with the way back. It sits under the title, so the count beside the name and
+ * the reason for the dimmed stars read together.
+ */
+export function PlateFilterChip({ engine, compact }: { engine: GalaxyEngine; compact: boolean }) {
+  const filters = useViewer((s) => s.filters);
+  const setFilters = useViewer((s) => s.setFilters);
+  if (!isNarrowed(filters)) return null;
+  return (
+    <div
+      data-plate-chrome
+      data-plate-inset="top"
+      className={cn(
+        "absolute z-20 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-sm border border-plate-rule bg-plate py-0.5 pr-0.5 pl-2 text-xs text-plate-ink",
+        compact ? "top-10 left-3" : "top-[58px] left-6 @max-[560px]:top-[92px]",
+      )}
+    >
+      <span className="truncate">{describeFilters(engine, filters)}</span>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="h-6 shrink-0 gap-1 px-1.5 text-xs font-semibold text-plate-muted [font-stretch:85%] hover:bg-plate-ink/10 hover:text-plate-ink focus-visible:ring-plate-ink/40"
+        onClick={() => setFilters({ languages: null, categories: null, hideGenerated: false })}
+      >
+        <X className="size-3" aria-hidden="true" />
+        Clear
+      </Button>
+    </div>
   );
 }
 
@@ -94,61 +163,176 @@ function Swatch({ color }: { color: string }) {
   return <i className="inline-block size-2 shrink-0 rounded-full" style={{ background: color }} />;
 }
 
+/** One color key: its files, as language ids or categories, for previewing and filtering. */
+interface LegendKey {
+  label: string;
+  color: string;
+  languages?: Set<string>;
+  categories?: Set<Category>;
+}
+
+/** A predicate for "is this file one of the key's", or null for no preview. */
+export type LegendPreview = ((file: number) => boolean) | null;
+
+function sameSet<T>(a: Set<T> | null, b: Set<T> | undefined): boolean {
+  if (!a || !b || a.size !== b.size) return false;
+  for (const v of a) if (!b.has(v)) return false;
+  return true;
+}
+
 export function PlateLegend({
   engine,
   compact,
   raised,
   scene,
+  onPreview,
 }: {
   engine: GalaxyEngine;
   compact: boolean;
   raised: boolean;
   /** A selected symbol's neighborhood: its key joins the legend, above the color key. */
   scene: SymbolScene | null;
+  /** Called as a key is hovered or focused (and with null when it is left). */
+  onPreview: (preview: LegendPreview) => void;
 }) {
   const colorBy = useViewer((s) => s.colorBy);
   const sizeBy = useViewer((s) => s.sizeBy);
-  const report = engine.model.report;
+  const filters = useViewer((s) => s.filters);
+  const setFilters = useViewer((s) => s.setFilters);
+  const selection = useViewer((s) => s.selection);
+  const edges = useViewer((s) => s.edges);
+  const model = engine.model;
+  const report = model.report;
 
-  const items = useMemo(() => {
+  const items = useMemo<LegendKey[] | null>(() => {
     if (colorBy === "language") {
       const slots = report.languages.filter((l) => l.slot >= 0).sort((a, b) => a.slot - b.slot);
-      const out = slots.map((l) => ({ label: l.name, color: seriesColor(l.slot, "dark") }));
-      if (report.languages.some((l) => l.slot < 0 && l.files > 0)) out.push({ label: "Other", color: seriesColor(-1, "dark") });
+      const out: LegendKey[] = slots.map((l) => ({ label: l.name, color: seriesColor(l.slot, "dark"), languages: new Set([l.id]) }));
+      const rest = report.languages.filter((l) => l.slot < 0 && l.files > 0);
+      if (rest.length > 0) out.push({ label: "Other", color: seriesColor(-1, "dark"), languages: new Set(rest.map((l) => l.id)) });
       return out;
     }
     if (colorBy === "category") {
-      const present = new Set(report.categories.filter((c) => c.files > 0).map((c) => CATEGORY_GROUP[c.category]));
-      return CATEGORY_GROUPS.filter((g) => present.has(g)).map((g) => ({ label: CATEGORY_GROUP_LABEL[g], color: categoryGroupColor(g, "dark") }));
+      const byGroup = new Map<CategoryGroup, Set<Category>>();
+      for (const c of report.categories) {
+        if (c.files === 0) continue;
+        const g = CATEGORY_GROUP[c.category];
+        if (!byGroup.has(g)) byGroup.set(g, new Set());
+        byGroup.get(g)!.add(c.category);
+      }
+      return CATEGORY_GROUPS.filter((g) => byGroup.has(g)).map((g) => ({
+        label: CATEGORY_GROUP_LABEL[g],
+        color: categoryGroupColor(g, "dark"),
+        categories: byGroup.get(g)!,
+      }));
     }
     return null;
   }, [colorBy, report]);
+
+  const shown = items?.slice(0, compact ? 5 : 8) ?? null;
+  const active = (k: LegendKey) => (k.languages ? sameSet(filters.languages, k.languages) : sameSet(filters.categories, k.categories));
+  const anyActive = !!shown?.some(active);
+  const predicate = (k: LegendKey): LegendPreview => {
+    const files = report.files;
+    if (k.languages) return (i) => k.languages!.has(files[i]!.language);
+    if (k.categories) return (i) => k.categories!.has(files[i]!.category);
+    return null;
+  };
+  // Click isolates: the key becomes the language or category filter (the same one the Charts
+  // tab sets, so every view narrows with it, and the chip under the title can clear it). A
+  // second click on the isolated key puts everything back. Hue alone could not tell seven
+  // languages apart for every reader; lighting one key's stars at a time can.
+  const toggle = (k: LegendKey) => {
+    onPreview(null);
+    if (k.languages) setFilters({ languages: active(k) ? null : new Set(k.languages) });
+    else if (k.categories) setFilters({ categories: active(k) ? null : new Set(k.categories) });
+  };
+
+  const fileLanes = !compact && selection?.kind === "file" && edges !== "none" ? selectionLanes(model, selection.id) : null;
+  const showHolotypeKey = !compact && model.holotypes.size > 0 && !scene;
 
   return (
     <div
       data-plate-chrome
       data-plate-inset="bottom"
       className={cn(
-        "pointer-events-none absolute left-6 z-20 flex max-w-[calc(100%-3rem)] flex-col gap-1.5 text-xs text-plate-muted",
+        // A solid plate backing with a hairline edge, like a map's legend inset: lanes and stars
+        // passing under the key made both unreadable over a dense region.
+        "absolute left-6 z-20 flex w-fit max-w-[calc(100%-3rem)] flex-col gap-1.5 rounded-xs border border-plate-rule bg-plate px-2.5 py-2 text-xs text-plate-muted",
         raised ? "bottom-[64px]" : "bottom-4",
-        compact && "left-3 bottom-2.5",
+        compact && "bottom-2.5 left-3 max-w-[calc(100%-1.5rem)] px-2 py-1.5",
       )}
     >
       {scene && !compact && <SymbolKey engine={engine} scene={scene} />}
-      {items ? (
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {items.slice(0, compact ? 5 : 8).map((it) => (
-            <span key={it.label} className="flex items-center gap-1.5">
-              <Swatch color={it.color} />
-              {it.label}
-            </span>
-          ))}
-        </div>
+      {scene && compact && <CompactSymbolKey scene={scene} />}
+      {fileLanes && fileLanes.imports.length + fileLanes.totalImporters > 0 && <LaneKey lanes={fileLanes} />}
+      {shown ? (
+        <ul className="flex flex-wrap gap-x-1 gap-y-0.5" aria-label={colorBy === "language" ? "Languages: click to show one alone" : "Categories: click to show one alone"}>
+          {shown.map((it) => {
+            const on = active(it);
+            return (
+              <li key={it.label}>
+                <button
+                  type="button"
+                  aria-pressed={on}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-xs px-1.5 py-0.5 text-left transition-[color,opacity] outline-none hover:text-plate-ink focus-visible:ring-1 focus-visible:ring-plate-ink/60",
+                    on ? "bg-plate-ink/10 text-plate-ink" : anyActive && "opacity-55 hover:opacity-100",
+                  )}
+                  onPointerEnter={() => onPreview(predicate(it))}
+                  onPointerLeave={() => onPreview(null)}
+                  onFocus={() => onPreview(predicate(it))}
+                  onBlur={() => onPreview(null)}
+                  onClick={() => toggle(it)}
+                  title={on ? `Show every ${colorBy}` : `Show ${it.label} alone`}
+                >
+                  <Swatch color={it.color} />
+                  {it.label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       ) : (
         <SequentialScale mode={colorBy as Exclude<ColorBy, "language" | "category">} />
       )}
-      {!compact && <span className="text-[11px] text-plate-muted/80">Star size: {SIZE_LABEL[sizeBy]}, square-root scaled</span>}
+      {!compact && (
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-plate-muted/90">
+          {showHolotypeKey && (
+            <span className="flex items-center gap-1.5">
+              <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" className="shrink-0">
+                <circle cx="6" cy="6" r="4.6" fill="none" stroke={HOLOTYPE} strokeWidth="1.4" />
+              </svg>
+              Holotype: its region's most depended-on file
+            </span>
+          )}
+          <span>Star size: {SIZE_LABEL[sizeBy]}, square-root scaled</span>
+        </span>
+      )}
     </div>
+  );
+}
+
+/** The key for a selected file's import lanes, with the cap spelled out when it applies. */
+function LaneKey({ lanes }: { lanes: ReturnType<typeof selectionLanes> }) {
+  const { imports, importers, hiddenImporters, totalImporters } = lanes;
+  return (
+    <span className="flex items-center gap-2">
+      <LineSample kind="import" />
+      <span>
+        Import lanes · <span className="figures font-mono">{formatInt(imports.length)}</span> out,{" "}
+        {hiddenImporters > 0 ? (
+          <>
+            <span className="figures font-mono">{formatInt(importers.length)}</span> of{" "}
+            <span className="figures font-mono">{formatInt(totalImporters)}</span> in, most depended-on first
+          </>
+        ) : (
+          <>
+            <span className="figures font-mono">{formatInt(totalImporters)}</span> in
+          </>
+        )}
+      </span>
+    </span>
   );
 }
 
@@ -171,17 +355,36 @@ function SequentialScale({ mode }: { mode: Exclude<ColorBy, "language" | "catego
 
 // ─── Symbol legend ───────────────────────────────────────────────────────────────────────────
 
-function LineSample({ kind }: { kind: "call" | "other" | "callee" }) {
+/** Reference kinds drawn as "other use" arcs, and how the legend names them. */
+const OTHER_KIND_ORDER = ["type", "read", "write", "import", "export"] as const satisfies readonly RefKind[];
+const OTHER_KIND_WORD: Record<(typeof OTHER_KIND_ORDER)[number], string> = {
+  type: "types",
+  read: "reads",
+  write: "writes",
+  import: "imports",
+  export: "re-exports",
+};
+
+function LineSample({ kind }: { kind: "call" | "other" | "callee" | "implementation" | "import" }) {
   return (
     <svg width="26" height="8" viewBox="0 0 26 8" className="shrink-0" aria-hidden="true">
       {kind === "call" && (
         <>
-          <line x1="1" y1="4" x2="25" y2="4" stroke="#dfe8ee" strokeOpacity="0.7" />
+          <line x1="1" y1="4" x2="25" y2="4" stroke={LANE_INK} strokeOpacity="0.7" />
           <circle cx="17" cy="4" r="2" fill="#ffffff" />
         </>
       )}
-      {kind === "other" && <line x1="1" y1="4" x2="25" y2="4" stroke="#dfe8ee" strokeOpacity="0.6" strokeDasharray="3 3" />}
-      {kind === "callee" && <line x1="1" y1="4" x2="25" y2="4" stroke="#dfe8ee" strokeOpacity="0.5" strokeDasharray="1 3" />}
+      {kind === "implementation" && (
+        <>
+          <line x1="1" y1="4" x2="25" y2="4" stroke={LANE_INK_2} strokeOpacity="0.85" strokeWidth="1.2" />
+          <circle cx="8" cy="4" r="1.6" fill={LANE_INK_2} />
+        </>
+      )}
+      {kind === "import" && (
+        <line x1="1" y1="4" x2="25" y2="4" stroke={LANE_INK} strokeOpacity="0.7" strokeDasharray="6 3" />
+      )}
+      {kind === "other" && <line x1="1" y1="4" x2="25" y2="4" stroke={LANE_INK} strokeOpacity="0.6" strokeDasharray="3 3" />}
+      {kind === "callee" && <line x1="1" y1="4" x2="25" y2="4" stroke={LANE_INK} strokeOpacity="0.5" strokeDasharray="1 3" />}
     </svg>
   );
 }
@@ -196,12 +399,28 @@ function SymbolKey({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene
   if (!symbols) return null;
   const t = symbols.symbols;
   const name = t.name[scene.symbol]!;
-  const { totals } = scene;
+  const { totals, own } = scene;
+  const arcCalls = totals.calls - own.calls;
+  const arcOther = totals.other - own.other;
+  const implElsewhere = scene.arcs.filter((a) => a.implementation).length;
+  // The kinds the dashed arcs actually carry, largest first: a type alias's uses are types and
+  // imports, and calling them "types, reads, imports" claimed reads that were never there.
+  // (Computed inline, not memoized: this runs after an early return, and it is a few hundred adds.)
+  const sum = new Array<number>(REF_KINDS.length).fill(0);
+  for (const a of scene.arcs) for (let k = 0; k < REF_KINDS.length; k++) sum[k] = sum[k]! + a.kinds[k]!;
+  const otherKinds = OTHER_KIND_ORDER.filter((k) => sum[REF_KINDS.indexOf(k)]! > 0)
+    .sort((a, b) => sum[REF_KINDS.indexOf(b)]! - sum[REF_KINDS.indexOf(a)]!)
+    .slice(0, 3)
+    .map((k) => OTHER_KIND_WORD[k])
+    .join(", ");
+  const n = (v: number) => <span className="figures font-mono">{formatInt(v)}</span>;
+  // Rows with nothing to show are left out: a type alias's "Calls · 0" and an interface's
+  // pulse legend described lines that were never drawn.
   return (
-    <div className="mb-1 flex max-w-[340px] flex-col gap-1">
+    <div className="mb-1 flex max-w-[360px] flex-col gap-1">
       <p className="mb-0.5 text-plate-ink">
-        <span className="font-mono">{name}</span> <span className="text-plate-muted">({t.kind[scene.symbol]})</span> reaches{" "}
-        {plural(totals.files, "file")}
+        <span className="font-mono">{name}</span> <span className="text-plate-muted">({t.kind[scene.symbol]})</span>{" "}
+        {scene.typeLevel || !scene.callable ? "is used in" : "reaches"} {plural(totals.files, "file")}
       </p>
       <span className="flex items-center gap-2">
         <svg width="26" height="12" viewBox="0 0 26 12" aria-hidden="true">
@@ -209,25 +428,56 @@ function SymbolKey({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene
         </svg>
         Definition, in {engine.model.report.files[scene.defFile]?.name}
       </span>
-      <span className="flex items-center gap-2">
-        <LineSample kind="call" /> Calls, pulsing toward the definition · <span className="figures font-mono">{formatInt(totals.calls)}</span>
-      </span>
-      <span className="flex items-center gap-2">
-        <LineSample kind="other" /> Other uses: types, reads, imports
-        {totals.implementations > 0 ? ", implementations" : ""} · <span className="figures font-mono">{formatInt(totals.other)}</span>
-      </span>
+      {arcCalls > 0 ? (
+        <span className="flex items-center gap-2">
+          <LineSample kind="call" /> Calls, pulsing toward the definition · {n(arcCalls)}
+          {own.calls > 0 && <> (+{n(own.calls)} in its own file)</>}
+        </span>
+      ) : own.calls > 0 ? (
+        <span className="pl-[34px]">
+          {plural(own.calls, "call")}, all in its own file
+        </span>
+      ) : null}
+      {totals.implementations > 0 && (
+        <span className="flex items-center gap-2">
+          <LineSample kind="implementation" /> Implementations · {n(implElsewhere)} {implElsewhere === 1 ? "file" : "files"}
+          {own.impl > 0 && <>, and in its own file</>}
+        </span>
+      )}
+      {arcOther > 0 && (
+        <span className="flex items-center gap-2">
+          <LineSample kind="other" /> {scene.callable || arcCalls > 0 ? "Other uses" : "Uses"}: {otherKinds} · {n(arcOther)}
+        </span>
+      )}
       {scene.callees.length > 0 && (
         <span className="flex items-center gap-2">
-          <LineSample kind="callee" /> What it calls · <span className="figures font-mono">{formatInt(scene.callees.length)}</span>{" "}
-          {scene.callees.length === 1 ? "file" : "files"}
+          <LineSample kind="callee" /> What it calls · {n(scene.callees.length)} {scene.callees.length === 1 ? "file" : "files"}
         </span>
       )}
       {totals.ripple > 0 && (
         <span className="pl-[34px]">
-          Callers of callers glow dimmer, up to 3 hops · <span className="figures font-mono">{formatInt(totals.ripple)}</span> more files
+          Callers of its callers glow dimmer, up to 3 hops · {n(totals.ripple)} more {totals.ripple === 1 ? "file" : "files"}
         </span>
       )}
     </div>
+  );
+}
+
+/**
+ * The Source tab's side plate has room for one line, and it is where a reader digging into a
+ * definition actually is: what is lit, how many files, what the line style means.
+ */
+function CompactSymbolKey({ scene }: { scene: SymbolScene }) {
+  const { totals } = scene;
+  const parts = [plural(totals.files, "file")];
+  if (totals.calls > 0) parts.push(plural(totals.calls, "call"));
+  if (totals.implementations > 0) parts.push(plural(totals.implementations, "implementation"));
+  if (totals.ripple > 0) parts.push(`${formatInt(totals.ripple)} ripple`);
+  return (
+    <span className="flex items-center gap-2 text-plate-ink">
+      <LineSample kind={totals.calls > 0 ? "call" : totals.implementations > 0 ? "implementation" : "other"} />
+      <span className="truncate">{parts.join(" · ")}</span>
+    </span>
   );
 }
 
@@ -236,13 +486,15 @@ function SymbolKey({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene
 export function PlateStatus() {
   const selection = useViewer((s) => s.selection);
   const status = useViewer((s) => s.symbolsStatus);
+  // Below the filter chip when there is one (both sit under the title).
+  const top = useViewer((s) => (isNarrowed(s.filters) ? "top-[92px]" : "top-[60px]"));
   if (selection?.kind !== "symbol") return null;
   if (status === "loading" || status === "idle")
     return (
       <p
         data-plate-chrome
         role="status"
-        className="pointer-events-none absolute top-[60px] left-6 z-20 flex items-center gap-1.5 text-xs text-plate-muted"
+        className={cn("pointer-events-none absolute left-6 z-20 flex items-center gap-1.5 text-xs text-plate-muted", top)}
       >
         <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
         Reading the code-intelligence tables
@@ -250,7 +502,7 @@ export function PlateStatus() {
     );
   if (status === "error" || status === "absent")
     return (
-      <p data-plate-chrome role="status" className="pointer-events-none absolute top-[60px] left-6 z-20 flex items-center gap-1.5 text-xs text-plate-ink">
+      <p data-plate-chrome role="status" className={cn("pointer-events-none absolute left-6 z-20 flex items-center gap-1.5 text-xs text-plate-ink", top)}>
         <AlertCircle className="size-3.5 text-serious" aria-hidden="true" />
         {status === "error" ? "The code-intelligence tables did not load, so usages cannot be drawn" : "This report has no code-intelligence tables"}
       </p>

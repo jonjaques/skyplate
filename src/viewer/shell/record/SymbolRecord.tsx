@@ -7,11 +7,15 @@
  * Every row that names a place opens the source reader there with the name marked, and keeps
  * this symbol selected, so the galaxy's lighting for it stays on while the reader follows a
  * call site. The crosshair at the end of a row is the other move: make that symbol the subject
- * of the record instead.
+ * of the record instead. The trail at the top walks those moves back (shell/trail.ts).
+ *
+ * Tests are grouped last everywhere. For a hub like a vector constructor most callers are test
+ * files' top level (171 of 283 for vec3), and listed by count they filled the first screen, so
+ * the production callers a reader came for started below the fold.
  */
 
-import { ArrowUpRight, ChevronRight, Crosshair, Repeat } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowUpRight, ChevronLeft, ChevronRight, Crosshair, Repeat } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
 import { REF_KINDS, SymbolFlag, type CodeSymbols, type Report } from "../../../shared/schema";
 import { Button } from "../../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
@@ -22,16 +26,30 @@ import { cn } from "../../lib/utils";
 import type { SymbolModel } from "../../model/symbols";
 import { useViewer } from "../../state/store";
 import { linesOf, useSourceText } from "../../source/useSource";
-import { callEdges, callSite, heritage, type CallEdge } from "../derived";
+import { callEdges, callSite, callsThroughBases, heritage, HERITAGE_KINDS, selfCalls, type CallEdge } from "../derived";
+import { InlineDoc } from "../inline-doc";
 import { SYMBOL_KIND_LABEL, symbolFlagLabels } from "../labels";
-import { openSourceKeepingSymbol, openSymbolDefinition, show } from "../navigate";
+import { dig, openSourceKeepingSymbol, openSymbolDefinition } from "../navigate";
 import { MetricGrid, MoreButton, PathText, Quiet, Section, Tag, type Metric } from "../parts";
+import { step, stepTo, useTrail } from "../trail";
 import { RecordHeading } from "./common";
 
 interface Ctx {
   report: Report;
   symbols: CodeSymbols;
   sm: SymbolModel;
+}
+
+/** Declared in a test file: by the checker's flag, or by the file's category. */
+function inTest(ctx: Ctx, s: number): boolean {
+  const t = ctx.symbols.symbols;
+  return (t.flags[s]! & SymbolFlag.test) !== 0 || ctx.report.files[t.file[s]!]?.category === "test";
+}
+
+/** "SaveStore.read" for a member, "vec3" for anything else. */
+function qualified(symbols: CodeSymbols, s: number): string {
+  const t = symbols.symbols;
+  return t.parent[s]! >= 0 ? `${t.name[t.parent[s]!]}.${t.name[s]}` : t.name[s]!;
 }
 
 export function SymbolRecordView({ report, symbols, sm, id }: Ctx & { id: number }) {
@@ -42,6 +60,9 @@ export function SymbolRecordView({ report, symbols, sm, id }: Ctx & { id: number
   const flags = symbolFlagLabels(t.flags[id]!, kind);
   const callable = ["function", "method", "constructor", "getter", "setter", "component", "hook"].includes(kind);
   const lines = t.endLine[id]! - t.line[id]! + 1;
+  const through = useMemo(() => callsThroughBases(symbols, id), [symbols, id]);
+  const self = useMemo(() => selfCalls(symbols, id), [symbols, id]);
+  if (self > 0) flags.push("recursive");
 
   const metrics: Metric[] = [
     { label: "References", value: formatInt(t.refs[id]!) },
@@ -56,6 +77,7 @@ export function SymbolRecordView({ report, symbols, sm, id }: Ctx & { id: number
 
   return (
     <div className="flex flex-col gap-5">
+      <TrailBar symbols={symbols} id={id} />
       <RecordHeading
         above={parent >= 0 ? `${t.name[parent]}.` : undefined}
         title={t.name[id]}
@@ -70,11 +92,15 @@ export function SymbolRecordView({ report, symbols, sm, id }: Ctx & { id: number
       </RecordHeading>
 
       {t.signature[id] && (
-        <pre className="border-y border-rule bg-tray px-2.5 py-2 font-mono text-[12px] leading-relaxed break-words whitespace-pre-wrap text-ink">
+        <pre className="border-y border-rule bg-tray px-2.5 py-2 font-mono text-[12px] leading-relaxed break-words whitespace-pre-wrap text-ink [font-variant-ligatures:none]">
           {t.signature[id]}
         </pre>
       )}
-      {t.doc[id] && <p className="-mt-2 text-[13px] text-ink-2 italic">{t.doc[id]}</p>}
+      {t.doc[id] && (
+        <p className="-mt-2 text-[13px] text-ink-2 italic">
+          <InlineDoc text={t.doc[id]} italic />
+        </p>
+      )}
 
       {file && (
         <button
@@ -94,38 +120,128 @@ export function SymbolRecordView({ report, symbols, sm, id }: Ctx & { id: number
 
       <MetricGrid items={metrics} />
 
+      {/* The figures count only callers that name this symbol; say so when the real ones
+          reach it through an interface, or "Callers 0" reads as dead code. */}
+      {t.callers[id] === 0 && through.length > 0 && (
+        <Quiet className="-mt-3">
+          Called through {through.map((g) => qualified(symbols, g.base)).join(" and ")}: nothing names it directly.
+        </Quiet>
+      )}
       {t.flags[id]! & SymbolFlag.unusedExport ? (
         <Quiet className="-mt-3">Exported, but nothing outside {file?.name ?? "its file"} uses it.</Quiet>
       ) : null}
       {parent >= 0 && (
         <Quiet className="-mt-3">
           Member of{" "}
-          <button type="button" className="font-mono text-xs text-ink underline underline-offset-2" onClick={() => show({ kind: "symbol", id: parent })}>
+          <button type="button" className="font-mono text-xs text-ink underline underline-offset-2" onClick={() => dig({ kind: "symbol", id: parent })}>
             {t.name[parent]}
           </button>
           .
         </Quiet>
       )}
 
-      <CallHierarchy report={report} symbols={symbols} sm={sm} id={id} />
+      <CallHierarchy report={report} symbols={symbols} sm={sm} id={id} through={through} self={self} />
       <TypeHierarchy report={report} symbols={symbols} sm={sm} id={id} />
       <References key={id} report={report} symbols={symbols} sm={sm} id={id} />
     </div>
   );
 }
 
+// ─── Trail ───────────────────────────────────────────────────────────────────────────────────
+
+/** Crumbs shown before the oldest fold into "…"; the record is 340px wide. */
+const CRUMBS = 3;
+
+/** Back, Forward and the symbols dug through to get here. Hidden until there is a trail. */
+function TrailBar({ symbols, id }: { symbols: CodeSymbols; id: number }) {
+  const trail = useTrail((s) => s.trail);
+  const at = useTrail((s) => s.at);
+  if (trail.length < 2) return null;
+  const t = symbols.symbols;
+  // The record can show a symbol that is not the trail's current one only for a moment (the
+  // selection lands before the subscription records it); treat it as the newest step.
+  const here = trail[at] === id ? at : trail.indexOf(id);
+  const canBack = here > 0 || here === -1;
+  const canForward = here >= 0 && here < trail.length - 1;
+  const first = Math.max(0, trail.length - CRUMBS);
+  const name = (i: number) => t.name[trail[i]!] ?? "";
+  return (
+    <nav aria-label="Symbols you dug through" className="-mt-1 -mb-2 flex min-w-0 items-center gap-0.5 text-xs text-ink-3">
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        disabled={!canBack}
+        onClick={() => step(-1)}
+        aria-label={canBack ? `Back to ${name(here === -1 ? at : here - 1)}` : "Back"}
+        aria-keyshortcuts="["
+        title="Back (press [)"
+        className="text-ink-3"
+      >
+        <ChevronLeft />
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon-xs"
+        disabled={!canForward}
+        onClick={() => step(1)}
+        aria-label={canForward ? `Forward to ${name(here + 1)}` : "Forward"}
+        aria-keyshortcuts="]"
+        title="Forward (press ])"
+        className="mr-1 text-ink-3"
+      >
+        <ChevronRight />
+      </Button>
+      <ol className="flex min-w-0 items-center gap-1">
+        {first > 0 && (
+          <li className="shrink-0" aria-hidden>
+            …
+          </li>
+        )}
+        {trail.slice(first).map((s, k) => {
+          const i = first + k;
+          const current = i === here;
+          return (
+            <li key={`${i}:${s}`} className="flex min-w-0 items-center gap-1">
+              {k > 0 && <ChevronRight aria-hidden className="size-3 shrink-0" />}
+              <button
+                type="button"
+                onClick={() => stepTo(i)}
+                aria-current={current ? "step" : undefined}
+                title={qualified(symbols, s)}
+                className={cn(
+                  "min-w-0 truncate font-mono underline-offset-2 hover:text-ink hover:underline",
+                  current ? "font-semibold text-ink" : "text-ink-3",
+                )}
+              >
+                {t.name[s]}
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
 // ─── Call hierarchy ──────────────────────────────────────────────────────────────────────────
 
-function CallHierarchy({ id, ...ctx }: Ctx & { id: number }) {
+function CallHierarchy({
+  id,
+  through,
+  self,
+  ...ctx
+}: Ctx & { id: number; through: { base: number; edges: CallEdge[] }[]; self: number }) {
   const incoming = useMemo(() => callEdges(ctx.symbols, id, "incoming"), [ctx.symbols, id]);
   const outgoing = useMemo(() => callEdges(ctx.symbols, id, "outgoing"), [ctx.symbols, id]);
+  const throughCount = through.reduce((n, g) => n + g.edges.length, 0);
+  const incomingCount = incoming.length + throughCount;
   return (
     <Section title="Call hierarchy">
-      <Tabs defaultValue={incoming.length || !outgoing.length ? "incoming" : "outgoing"} className="gap-0">
+      <Tabs defaultValue={incomingCount || !outgoing.length ? "incoming" : "outgoing"} className="gap-0">
         <TabsList variant="line" className="h-8 w-full justify-start gap-0 rounded-none border-b border-rule p-0">
           {(
             [
-              ["incoming", "Incoming", incoming.length],
+              ["incoming", "Incoming", incomingCount],
               ["outgoing", "Outgoing", outgoing.length],
             ] as const
           ).map(([value, label, n]) => (
@@ -140,10 +256,10 @@ function CallHierarchy({ id, ...ctx }: Ctx & { id: number }) {
           ))}
         </TabsList>
         <TabsContent value="incoming">
-          <EdgeList {...ctx} root={id} edges={incoming} direction="incoming" />
+          <TopEdges {...ctx} root={id} edges={incoming} direction="incoming" through={through} self={self} />
         </TabsContent>
         <TabsContent value="outgoing">
-          <EdgeList {...ctx} root={id} edges={outgoing} direction="outgoing" />
+          <TopEdges {...ctx} root={id} edges={outgoing} direction="outgoing" through={[]} self={self} />
         </TabsContent>
       </Tabs>
     </Section>
@@ -158,6 +274,81 @@ type Direction = "incoming" | "outgoing";
  */
 const EDGE_CAP = 10;
 
+/**
+ * One direction's first level: recursion, then production callers, then callers that go
+ * through an interface or base method, then tests in a group of their own (open only when
+ * nothing else calls it, so the reader never meets an empty list hiding its only callers).
+ */
+function TopEdges({
+  root,
+  edges,
+  direction,
+  through,
+  self,
+  ...ctx
+}: Ctx & { root: number; edges: CallEdge[]; direction: Direction; through: { base: number; edges: CallEdge[] }[]; self: number }) {
+  const { production, tests } = useMemo(() => {
+    const production: CallEdge[] = [];
+    const tests: CallEdge[] = [];
+    for (const e of edges) (inTest(ctx, e.symbol) ? tests : production).push(e);
+    return { production, tests };
+  }, [edges, ctx.symbols, ctx.report]);
+  const top = useMemo(() => new Set([root]), [root]);
+
+  let empty: string | null = null;
+  if (edges.length === 0) {
+    if (direction === "outgoing") empty = self > 0 ? "It calls nothing else in the project." : "It calls or uses nothing in the project.";
+    else if (through.length > 0) empty = "Nothing calls it by name; the project reaches it through what it implements.";
+    else empty = self > 0 ? "Nothing else in the project calls it." : "Nothing in the project calls or uses it.";
+  }
+
+  return (
+    <>
+      {self > 0 && (
+        <div className="flex items-center gap-1.5 border-b border-rule py-1.5 pl-1.5 text-xs text-ink-2">
+          <Repeat aria-hidden className="size-3.5 text-ink-3" />
+          Calls itself
+          <span className="figures font-mono text-[11px] text-ink-3">×{formatInt(self)}</span>
+        </div>
+      )}
+      {empty && <Quiet>{empty}</Quiet>}
+      {production.length > 0 && <EdgeList {...ctx} root={root} edges={production} direction={direction} />}
+      {through.map((g) => (
+        <EdgeGroup key={g.base} title={`Through ${qualified(ctx.symbols, g.base)}`} count={g.edges.length} defaultOpen>
+          <EdgeList {...ctx} root={g.base} edges={g.edges} direction={direction} ancestors={top} />
+        </EdgeGroup>
+      ))}
+      {tests.length > 0 && (
+        <EdgeGroup title="In tests" count={tests.length} defaultOpen={production.length === 0 && through.length === 0}>
+          <EdgeList {...ctx} root={root} edges={tests} direction={direction} />
+        </EdgeGroup>
+      )}
+    </>
+  );
+}
+
+/** A collapsible run of hierarchy rows under a ruled heading row. */
+function EdgeGroup({ title, count, defaultOpen, children }: { title: string; count?: number; defaultOpen: boolean; children: ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className="flex w-full min-w-0 items-center gap-1 border-b border-rule py-1.5 text-left text-xs font-medium text-ink-2 transition-colors duration-150 hover:bg-wash"
+      >
+        <span className="grid size-6 shrink-0 place-items-center text-ink-3">
+          <ChevronRight aria-hidden className={cn("size-3.5 transition-transform duration-200 ease-damped", open && "rotate-90")} />
+        </span>
+        <span className="min-w-0 truncate">{title}</span>
+        {count !== undefined && <span className="figures shrink-0 font-mono text-[11px] font-normal text-ink-3">{formatInt(count)}</span>}
+      </button>
+      {open && children}
+    </div>
+  );
+}
+
 function EdgeList({
   root,
   edges,
@@ -168,9 +359,6 @@ function EdgeList({
 }: Ctx & { root: number; edges: CallEdge[]; direction: Direction; ancestors?: ReadonlySet<number>; depth?: number }) {
   const [limit, setLimit] = useState(EDGE_CAP);
   const chain = useMemo(() => new Set([...(ancestors ?? []), root]), [ancestors, root]);
-  if (edges.length === 0 && depth === 0) {
-    return <Quiet>{direction === "incoming" ? "Nothing in the project calls or uses it." : "It calls or uses nothing in the project."}</Quiet>;
-  }
   return (
     <ul>
       {edges.slice(0, limit).map((e) => (
@@ -203,6 +391,7 @@ function EdgeRow({
   const expandable = !cycle && (direction === "incoming" ? sm.callersOf : sm.calleesOf).offsets[s + 1]! > (direction === "incoming" ? sm.callersOf : sm.calleesOf).offsets[s]!;
   const isModule = t.kind[s] === "module";
   const file = report.files[t.file[s]!];
+  const test = inTest(ctx, s);
 
   const site = () => {
     const from = direction === "incoming" ? s : parent;
@@ -233,6 +422,7 @@ function EdgeRow({
           <span className="flex min-w-0 items-baseline gap-1.5">
             <span className="truncate font-mono text-xs text-ink">{isModule ? (file?.name ?? "module") : t.name[s]}</span>
             <span className="shrink-0 text-[11px] text-ink-3">{isModule ? "top level" : SYMBOL_KIND_LABEL[t.kind[s]!].toLowerCase()}</span>
+            {test && <Tag className="shrink-0 self-center">test</Tag>}
           </span>
           {file && <PathText path={file.path} line={isModule ? undefined : t.line[s]! + 1} className="text-[11px] text-ink-3" />}
         </button>
@@ -252,7 +442,7 @@ function EdgeRow({
               <Button
                 variant="ghost"
                 size="icon-xs"
-                onClick={() => show({ kind: "symbol", id: s })}
+                onClick={() => dig({ kind: "symbol", id: s })}
                 aria-label={`Show the record for ${t.name[s]}`}
                 className="shrink-0 text-ink-3 opacity-60 group-hover:opacity-100"
               >
@@ -263,11 +453,11 @@ function EdgeRow({
           </Tooltip>
         )}
       </div>
-      {open && children && (
+      {open && children && children.length > 0 && (
         <EdgeList {...ctx} root={s} edges={children} direction={direction} ancestors={ancestors} depth={depth + 1} />
       )}
       {open && children?.length === 0 && (
-        <Quiet className="border-b border-rule text-xs" >
+        <Quiet className="border-b border-rule text-xs">
           <span style={{ paddingLeft: 22 + (depth + 1) * 14 }}>{direction === "incoming" ? "No callers." : "No callees."}</span>
         </Quiet>
       )}
@@ -281,25 +471,61 @@ function TypeHierarchy({ id, ...ctx }: Ctx & { id: number }) {
   const { bases, derived } = useMemo(() => heritage(ctx.symbols, id), [ctx.symbols, id]);
   if (bases.length === 0 && derived.length === 0) return null;
   const t = ctx.symbols.symbols;
-  const row = (s: number, kind: number) => {
+  const row = (s: number, kind: number, side: "base" | "derived") => {
     const file = ctx.report.files[t.file[s]!];
+    // A class the index does not record (declared inside a function body, like the test-local
+    // `class WatcherErrorEnvironment extends DevEnvironment` in vite's dev.spec.ts, or an
+    // anonymous class expression) has no symbol of its own, so the heritage row names its
+    // file's module symbol. Its "declaration" is line 1, and marking the module name's length
+    // there highlighted "import path". The `extends` clause is the place that means something,
+    // so the row opens that, and offers no record to dig into.
+    const anonymous = t.kind[s] === "module";
+    const clause = anonymous && side === "derived" ? callSite(ctx.symbols, ctx.sm.refsOf, s, id, HERITAGE_KINDS) : null;
+    const open = () => {
+      if (clause) {
+        openSourceKeepingSymbol({ file: clause.file, line: clause.line, marks: [clause] });
+        return;
+      }
+      const line = t.line[s]!;
+      openSourceKeepingSymbol({ file: t.file[s]!, line, marks: [{ line, col: t.col[s]!, len: t.name[s]!.length }] });
+    };
     return (
       <div key={s} className="group flex min-w-0 items-center border-b border-rule">
         <button
           type="button"
-          onClick={() => {
-            const line = t.line[s]!;
-            openSourceKeepingSymbol({ file: t.file[s]!, line, marks: [{ line, col: t.col[s]!, len: t.name[s]!.length }] });
-          }}
+          onClick={open}
           className="flex min-w-0 flex-1 items-baseline gap-1.5 py-1.5 text-left transition-colors duration-150 hover:bg-wash"
         >
           <Tag className="w-[68px] justify-center">{REF_KINDS[kind]}</Tag>
-          <span className="truncate font-mono text-xs text-ink">{t.parent[s]! >= 0 ? `${t.name[t.parent[s]!]}.${t.name[s]}` : t.name[s]}</span>
-          {file && <span className="ml-auto truncate font-mono text-[11px] text-ink-3">{file.name}</span>}
+          {anonymous ? (
+            <span className="min-w-0 truncate text-xs text-ink-2">
+              local class ·{" "}
+              <span className="font-mono text-ink">
+                {file?.name ?? "module"}
+                {clause ? `:${clause.line + 1}` : ""}
+              </span>
+            </span>
+          ) : (
+            <>
+              <span className="truncate font-mono text-xs text-ink">{qualified(ctx.symbols, s)}</span>
+              {file && <span className="ml-auto truncate font-mono text-[11px] text-ink-3">{file.name}</span>}
+            </>
+          )}
         </button>
-        <Button variant="ghost" size="icon-xs" onClick={() => show({ kind: "symbol", id: s })} aria-label={`Show the record for ${t.name[s]}`} className="shrink-0 text-ink-3 opacity-60 group-hover:opacity-100">
-          <Crosshair />
-        </Button>
+        {anonymous ? (
+          // Keeps the row's right edge aligned with its neighbors that do have a crosshair.
+          <span aria-hidden className="size-6 shrink-0" />
+        ) : (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            onClick={() => dig({ kind: "symbol", id: s })}
+            aria-label={`Show the record for ${t.name[s]}`}
+            className="shrink-0 text-ink-3 opacity-60 group-hover:opacity-100"
+          >
+            <Crosshair />
+          </Button>
+        )}
       </div>
     );
   };
@@ -307,12 +533,12 @@ function TypeHierarchy({ id, ...ctx }: Ctx & { id: number }) {
     <>
       {bases.length > 0 && (
         <Section title="Extends and implements" count={bases.length}>
-          <div className="border-t border-rule">{bases.map((b) => row(b.symbol, b.kind))}</div>
+          <div className="border-t border-rule">{bases.map((b) => row(b.symbol, b.kind, "base"))}</div>
         </Section>
       )}
       {derived.length > 0 && (
         <Section title="Implementations" count={derived.length}>
-          <div className="border-t border-rule">{derived.map((d) => row(d.symbol, d.kind))}</div>
+          <div className="border-t border-rule">{derived.map((d) => row(d.symbol, d.kind, "derived"))}</div>
         </Section>
       )}
     </>
@@ -353,10 +579,15 @@ function References({ id, ...ctx }: Ctx & { id: number }) {
       if (list) list.push(row);
       else byFile.set(f, [row]);
     }
-    return [...byFile]
+    const sorted = [...byFile]
       .map(([file, rows]) => ({ file, rows }))
       .sort((a, b) => b.rows.length - a.rows.length || report.files[a.file]!.path.localeCompare(report.files[b.file]!.path));
+    return {
+      production: sorted.filter((g) => report.files[g.file]?.category !== "test"),
+      tests: sorted.filter((g) => report.files[g.file]?.category === "test"),
+    };
   }, [all, kind, r, report]);
+  const testRefs = useMemo(() => groups.tests.reduce((n, g) => n + g.rows.length, 0), [groups]);
 
   const total = symbols.symbols.refs[id]!;
   const dropped = total - all.length;
@@ -389,11 +620,24 @@ function References({ id, ...ctx }: Ctx & { id: number }) {
             </ToggleGroup>
           )}
           <div className="border-t border-rule">
-            {groups.slice(0, groupLimit).map((g, i) => (
+            {groups.production.slice(0, groupLimit).map((g, i) => (
               <RefGroup key={`${kind}:${g.file}`} {...ctx} file={g.file} rows={g.rows} defaultOpen={i < OPEN_BY_DEFAULT} />
             ))}
           </div>
-          <MoreButton hidden={groups.length - groupLimit} noun={groups.length - groupLimit === 1 ? "more file" : "more files"} onClick={() => setGroupLimit((l) => l + 20)} />
+          <MoreButton
+            hidden={groups.production.length - groupLimit}
+            noun={groups.production.length - groupLimit === 1 ? "more file" : "more files"}
+            onClick={() => setGroupLimit((l) => l + 20)}
+          />
+          {groups.tests.length > 0 && (
+            <EdgeGroup
+              key={kind}
+              title={`In tests: ${plural(testRefs, "reference")} in ${plural(groups.tests.length, "file")}`}
+              defaultOpen={groups.production.length === 0}
+            >
+              <TestRefGroups {...ctx} groups={groups.tests} kind={kind} />
+            </EdgeGroup>
+          )}
           {dropped > 0 && (
             <Quiet className="text-xs">
               {plural(dropped, "reference")} beyond these were left out by the report's size cap; the totals above still count them.
@@ -402,6 +646,18 @@ function References({ id, ...ctx }: Ctx & { id: number }) {
         </>
       )}
     </Section>
+  );
+}
+
+function TestRefGroups({ groups, kind, ...ctx }: Ctx & { groups: { file: number; rows: number[] }[]; kind: string }) {
+  const [limit, setLimit] = useState(GROUP_CAP);
+  return (
+    <div className="pl-3">
+      {groups.slice(0, limit).map((g) => (
+        <RefGroup key={`${kind}:${g.file}`} {...ctx} file={g.file} rows={g.rows} defaultOpen={false} />
+      ))}
+      <MoreButton hidden={groups.length - limit} noun={groups.length - limit === 1 ? "more file" : "more files"} onClick={() => setLimit((l) => l + 20)} />
+    </div>
   );
 }
 
@@ -482,7 +738,7 @@ function Snippet({ text, col, len, loading }: { text: string | null; col: number
   const start = Math.max(Math.min(indent, col), col - lead);
   const end = Math.min(clean.length, col + len + 40);
   return (
-    <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] whitespace-pre text-ink-2">
+    <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] whitespace-pre text-ink-2 [font-variant-ligatures:none]">
       {start > indent && <span className="text-ink-3">…</span>}
       {clean.slice(start, col)}
       <mark className="rounded-[2px] bg-[#d6e6fa] font-semibold text-ink dark:bg-[#1f3550]">{clean.slice(col, col + len)}</mark>

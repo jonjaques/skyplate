@@ -1,0 +1,1201 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-01T04:57:50.077Z",
+  "title": "Design System: starchart",
+  "extensions": {
+    "colorMeta": {
+      "tray": {
+        "role": "neutral",
+        "displayName": "Tray",
+        "canonical": "#f6f7f5",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#242423",
+          "#3f403e",
+          "#5d5e5c",
+          "#7d7d7c",
+          "#9e9f9d",
+          "#c3c4c2",
+          "#eeefed"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "wash": {
+        "role": "neutral",
+        "displayName": "Wash",
+        "canonical": "#eef0ee",
+        "tonalRamp": [
+          "#0a0c0a",
+          "#232423",
+          "#3f403f",
+          "#5c5e5c",
+          "#7c7e7c",
+          "#9d9f9d",
+          "#c3c5c3",
+          "#edefed"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#15191c",
+        "tonalRamp": [
+          "#080c0e",
+          "#202528",
+          "#3c4044",
+          "#595e62",
+          "#797e82",
+          "#9a9fa3",
+          "#bfc5c9",
+          "#eaeff4"
+        ]
+      },
+      "ink-2": {
+        "role": "neutral",
+        "displayName": "Ink 2",
+        "canonical": "#3b4348",
+        "tonalRamp": [
+          "#060c10",
+          "#1e252a",
+          "#394146",
+          "#575f64",
+          "#767f84",
+          "#97a0a6",
+          "#bcc6cc",
+          "#e6f0f6"
+        ]
+      },
+      "ink-3": {
+        "role": "neutral",
+        "displayName": "Ink 3",
+        "canonical": "#5d666d",
+        "tonalRamp": [
+          "#060c11",
+          "#1d252b",
+          "#394147",
+          "#565f66",
+          "#757f86",
+          "#96a0a7",
+          "#bcc6ce",
+          "#e6f0f8"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "canonical": "#d5d9d6",
+        "tonalRamp": [
+          "#090c0a",
+          "#222523",
+          "#3d413e",
+          "#5b5f5c",
+          "#7b7e7c",
+          "#9c9f9d",
+          "#c1c5c2",
+          "#ecf0ed"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Rule Strong",
+        "canonical": "#b9c0c4",
+        "tonalRamp": [
+          "#070c0f",
+          "#202528",
+          "#3b4144",
+          "#585f62",
+          "#787e82",
+          "#99a0a3",
+          "#bec5c9",
+          "#e8f0f4"
+        ]
+      },
+      "rail": {
+        "role": "primary",
+        "displayName": "Archival Slate",
+        "canonical": "#4e6170",
+        "tonalRamp": [
+          "#010c18",
+          "#152633",
+          "#304250",
+          "#4d606f",
+          "#6c8090",
+          "#8da1b2",
+          "#b2c7d8",
+          "#dcf2ff"
+        ]
+      },
+      "rail-deep": {
+        "role": "primary",
+        "displayName": "Rail Deep",
+        "canonical": "#41525f",
+        "tonalRamp": [
+          "#010c17",
+          "#162631",
+          "#31424f",
+          "#4f606d",
+          "#6e808e",
+          "#8ea1b0",
+          "#b4c7d6",
+          "#ddf2ff"
+        ]
+      },
+      "rail-line": {
+        "role": "primary",
+        "displayName": "Rail Line",
+        "canonical": "#5d707e",
+        "tonalRamp": [
+          "#010d17",
+          "#152632",
+          "#31424f",
+          "#4e606e",
+          "#6d808f",
+          "#8da2b0",
+          "#b2c7d7",
+          "#dcf2ff"
+        ]
+      },
+      "rail-ink": {
+        "role": "primary",
+        "displayName": "Rail Ink",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "rail-muted": {
+        "role": "primary",
+        "displayName": "Rail Muted",
+        "canonical": "#dfe6eb",
+        "tonalRamp": [
+          "#070c0f",
+          "#202528",
+          "#3b4145",
+          "#595f63",
+          "#787e83",
+          "#999fa4",
+          "#bec5ca",
+          "#e9f0f5"
+        ]
+      },
+      "holotype": {
+        "role": "secondary",
+        "displayName": "Holotype Red",
+        "canonical": "#c23a2b",
+        "tonalRamp": [
+          "#380000",
+          "#5f0000",
+          "#840000",
+          "#aa2014",
+          "#d14838",
+          "#f86c59",
+          "#ff937e",
+          "#ffc1ab"
+        ]
+      },
+      "holotype-ink": {
+        "role": "secondary",
+        "displayName": "Holotype Ink",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "label-stock": {
+        "role": "neutral",
+        "displayName": "Label Stock",
+        "canonical": "#ffffff",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242424",
+          "#404040",
+          "#5d5d5d",
+          "#7d7d7d",
+          "#9e9e9e",
+          "#c4c4c4",
+          "#eeeeee"
+        ]
+      },
+      "plate": {
+        "role": "neutral",
+        "displayName": "Plate",
+        "canonical": "#0b1016",
+        "tonalRamp": [
+          "#070c11",
+          "#1f252b",
+          "#3a4048",
+          "#585e66",
+          "#777e86",
+          "#989fa8",
+          "#bec5ce",
+          "#e8eff9"
+        ]
+      },
+      "plate-ink": {
+        "role": "neutral",
+        "displayName": "Plate Ink",
+        "canonical": "#e9eef1",
+        "tonalRamp": [
+          "#090c0e",
+          "#212527",
+          "#3c4043",
+          "#5a5e61",
+          "#797e81",
+          "#9a9fa2",
+          "#c0c5c8",
+          "#eaeff2"
+        ]
+      },
+      "plate-muted": {
+        "role": "neutral",
+        "displayName": "Plate Muted",
+        "canonical": "#aeb8bf",
+        "tonalRamp": [
+          "#060c11",
+          "#1d252b",
+          "#394147",
+          "#565f65",
+          "#757f85",
+          "#96a0a7",
+          "#bcc6cd",
+          "#e6f0f8"
+        ]
+      },
+      "plate-rule": {
+        "role": "neutral",
+        "displayName": "Plate Rule",
+        "canonical": "#26313a",
+        "tonalRamp": [
+          "#040c14",
+          "#1b252e",
+          "#36414b",
+          "#535f69",
+          "#727f8a",
+          "#93a0ab",
+          "#b8c6d2",
+          "#e2f1fd"
+        ]
+      },
+      "good": {
+        "role": "tertiary",
+        "displayName": "Good",
+        "canonical": "#0ca30c",
+        "tonalRamp": [
+          "#001700",
+          "#003500",
+          "#005600",
+          "#007700",
+          "#009900",
+          "#39bd34",
+          "#6ce365",
+          "#a1ff99"
+        ]
+      },
+      "warning": {
+        "role": "tertiary",
+        "displayName": "Warning",
+        "canonical": "#fab219",
+        "tonalRamp": [
+          "#290000",
+          "#4b0600",
+          "#6c2b00",
+          "#8e4c00",
+          "#b16d00",
+          "#d58f00",
+          "#fdb520",
+          "#ffe062"
+        ]
+      },
+      "serious": {
+        "role": "tertiary",
+        "displayName": "Serious",
+        "canonical": "#ec835a",
+        "tonalRamp": [
+          "#310000",
+          "#540000",
+          "#771600",
+          "#9c3a09",
+          "#c05c33",
+          "#e67e55",
+          "#ffa47a",
+          "#ffcea3"
+        ]
+      },
+      "series-1": {
+        "role": "tertiary",
+        "displayName": "Series 1",
+        "canonical": "#2a78d6",
+        "tonalRamp": [
+          "#0d366b",
+          "#184f95",
+          "#256abf",
+          "#3987e5",
+          "#6da7ec",
+          "#9ec5f4",
+          "#cde2fb",
+          "#e6f0fd"
+        ]
+      },
+      "series-2": {
+        "role": "tertiary",
+        "displayName": "Series 2",
+        "canonical": "#eb6834",
+        "tonalRamp": [
+          "#370000",
+          "#5e0000",
+          "#830000",
+          "#a82800",
+          "#cf4e12",
+          "#f5713e",
+          "#ff9866",
+          "#ffc696"
+        ]
+      },
+      "series-3": {
+        "role": "tertiary",
+        "displayName": "Series 3",
+        "canonical": "#1baf7a",
+        "tonalRamp": [
+          "#001800",
+          "#00350a",
+          "#005427",
+          "#007444",
+          "#009663",
+          "#2db983",
+          "#5fe0a8",
+          "#8dffd2"
+        ]
+      },
+      "series-4": {
+        "role": "tertiary",
+        "displayName": "Series 4",
+        "canonical": "#eda100",
+        "tonalRamp": [
+          "#2b0000",
+          "#4c0300",
+          "#6d2900",
+          "#904a00",
+          "#b36b00",
+          "#d78d00",
+          "#ffb32e",
+          "#ffde67"
+        ]
+      },
+      "series-5": {
+        "role": "tertiary",
+        "displayName": "Series 5",
+        "canonical": "#e87ba4",
+        "tonalRamp": [
+          "#2e000b",
+          "#510024",
+          "#740c40",
+          "#98335e",
+          "#bd547e",
+          "#e2769f",
+          "#ff9cc5",
+          "#ffc6ef"
+        ]
+      },
+      "series-6": {
+        "role": "tertiary",
+        "displayName": "Series 6",
+        "canonical": "#008300",
+        "tonalRamp": [
+          "#001600",
+          "#003400",
+          "#005400",
+          "#007400",
+          "#279623",
+          "#4fb94a",
+          "#77e170",
+          "#a9ffa1"
+        ]
+      },
+      "series-7": {
+        "role": "tertiary",
+        "displayName": "Series 7",
+        "canonical": "#6250d6",
+        "tonalRamp": [
+          "#150051",
+          "#26007a",
+          "#3c17a1",
+          "#5641c6",
+          "#7364ec",
+          "#9287ff",
+          "#b6afff",
+          "#e0ddff"
+        ]
+      },
+      "series-other": {
+        "role": "tertiary",
+        "displayName": "Series Other",
+        "canonical": "#9aa4aa",
+        "tonalRamp": [
+          "#060c10",
+          "#1d252a",
+          "#394146",
+          "#565f65",
+          "#757f85",
+          "#96a0a6",
+          "#bcc6cc",
+          "#e6f0f7"
+        ]
+      },
+      "series-dark-1": {
+        "role": "tertiary",
+        "displayName": "Series Dark 1",
+        "canonical": "#3987e5",
+        "tonalRamp": [
+          "#00004b",
+          "#00166e",
+          "#003a91",
+          "#005bb5",
+          "#2e7dda",
+          "#52a0ff",
+          "#78c7ff",
+          "#a3f2ff"
+        ]
+      },
+      "series-dark-2": {
+        "role": "tertiary",
+        "displayName": "Series Dark 2",
+        "canonical": "#d95926",
+        "tonalRamp": [
+          "#370000",
+          "#5d0000",
+          "#820000",
+          "#a82900",
+          "#ce4f18",
+          "#f57242",
+          "#ff9968",
+          "#ffc697"
+        ]
+      },
+      "series-dark-3": {
+        "role": "tertiary",
+        "displayName": "Series Dark 3",
+        "canonical": "#199e70",
+        "tonalRamp": [
+          "#001700",
+          "#00340f",
+          "#00532b",
+          "#007348",
+          "#009467",
+          "#3fb787",
+          "#6adeac",
+          "#97ffd6"
+        ]
+      },
+      "series-dark-4": {
+        "role": "tertiary",
+        "displayName": "Series Dark 4",
+        "canonical": "#c98500",
+        "tonalRamp": [
+          "#290000",
+          "#490900",
+          "#6a2c00",
+          "#8c4c00",
+          "#af6d00",
+          "#d38e1a",
+          "#fbb44e",
+          "#ffdf7b"
+        ]
+      },
+      "series-dark-5": {
+        "role": "tertiary",
+        "displayName": "Series Dark 5",
+        "canonical": "#d55181",
+        "tonalRamp": [
+          "#330007",
+          "#59001f",
+          "#7e003b",
+          "#a42058",
+          "#ca4677",
+          "#f06a98",
+          "#ff90be",
+          "#ffbee8"
+        ]
+      },
+      "series-dark-6": {
+        "role": "tertiary",
+        "displayName": "Series Dark 6",
+        "canonical": "#008300",
+        "tonalRamp": [
+          "#001600",
+          "#003400",
+          "#005400",
+          "#007400",
+          "#279623",
+          "#4fb94a",
+          "#77e170",
+          "#a9ffa1"
+        ]
+      },
+      "series-dark-7": {
+        "role": "tertiary",
+        "displayName": "Series Dark 7",
+        "canonical": "#9085e9",
+        "tonalRamp": [
+          "#120043",
+          "#260364",
+          "#3e2b87",
+          "#5a4caa",
+          "#796dce",
+          "#998ef3",
+          "#beb5ff",
+          "#e8dfff"
+        ]
+      },
+      "series-dark-other": {
+        "role": "tertiary",
+        "displayName": "Series Dark Other",
+        "canonical": "#6b767d",
+        "tonalRamp": [
+          "#050c11",
+          "#1c252b",
+          "#374148",
+          "#555f66",
+          "#747f86",
+          "#95a0a8",
+          "#bac6ce",
+          "#e4f1f9"
+        ]
+      },
+      "seq-100": {
+        "role": "tertiary",
+        "displayName": "Seq 100",
+        "canonical": "#cde2fb",
+        "tonalRamp": [
+          "#0d366b",
+          "#184f95",
+          "#256abf",
+          "#3987e5",
+          "#6da7ec",
+          "#9ec5f4",
+          "#cde2fb",
+          "#e6f0fd"
+        ]
+      },
+      "seq-200": {
+        "role": "tertiary",
+        "displayName": "Seq 200",
+        "canonical": "#9ec5f4",
+        "tonalRamp": [
+          "#0d366b",
+          "#184f95",
+          "#256abf",
+          "#3987e5",
+          "#6da7ec",
+          "#9ec5f4",
+          "#cde2fb",
+          "#e6f0fd"
+        ]
+      },
+      "seq-300": {
+        "role": "tertiary",
+        "displayName": "Seq 300",
+        "canonical": "#6da7ec",
+        "tonalRamp": [
+          "#0d366b",
+          "#184f95",
+          "#256abf",
+          "#3987e5",
+          "#6da7ec",
+          "#9ec5f4",
+          "#cde2fb",
+          "#e6f0fd"
+        ]
+      },
+      "seq-400": {
+        "role": "tertiary",
+        "displayName": "Seq 400",
+        "canonical": "#3987e5",
+        "tonalRamp": [
+          "#0d366b",
+          "#184f95",
+          "#256abf",
+          "#3987e5",
+          "#6da7ec",
+          "#9ec5f4",
+          "#cde2fb",
+          "#e6f0fd"
+        ]
+      },
+      "seq-500": {
+        "role": "tertiary",
+        "displayName": "Seq 500",
+        "canonical": "#256abf",
+        "tonalRamp": [
+          "#0d366b",
+          "#184f95",
+          "#256abf",
+          "#3987e5",
+          "#6da7ec",
+          "#9ec5f4",
+          "#cde2fb",
+          "#e6f0fd"
+        ]
+      },
+      "seq-600": {
+        "role": "tertiary",
+        "displayName": "Seq 600",
+        "canonical": "#184f95",
+        "tonalRamp": [
+          "#0d366b",
+          "#184f95",
+          "#256abf",
+          "#3987e5",
+          "#6da7ec",
+          "#9ec5f4",
+          "#cde2fb",
+          "#e6f0fd"
+        ]
+      },
+      "seq-700": {
+        "role": "tertiary",
+        "displayName": "Seq 700",
+        "canonical": "#0d366b",
+        "tonalRamp": [
+          "#0d366b",
+          "#184f95",
+          "#256abf",
+          "#3987e5",
+          "#6da7ec",
+          "#9ec5f4",
+          "#cde2fb",
+          "#e6f0fd"
+        ]
+      },
+      "measure-dark": {
+        "role": "primary",
+        "displayName": "Lifted Slate",
+        "canonical": "#8da2b2",
+        "tonalRamp": [
+          "#000d18",
+          "#152633",
+          "#304250",
+          "#4d606f",
+          "#6c8090",
+          "#8da2b2",
+          "#b2c7d8",
+          "#dcf2ff"
+        ]
+      },
+      "dark-tray": {
+        "role": "neutral",
+        "displayName": "Dark Tray",
+        "canonical": "#161c20",
+        "tonalRamp": [
+          "#070c10",
+          "#1f2529",
+          "#3a4145",
+          "#585f64",
+          "#777e84",
+          "#98a0a5",
+          "#bdc5cb",
+          "#e7f0f6"
+        ]
+      },
+      "dark-paper": {
+        "role": "neutral",
+        "displayName": "Dark Paper",
+        "canonical": "#1c2328",
+        "tonalRamp": [
+          "#060c10",
+          "#1e252a",
+          "#394146",
+          "#575f65",
+          "#767f85",
+          "#97a0a6",
+          "#bcc6cc",
+          "#e6f0f7"
+        ]
+      },
+      "dark-wash": {
+        "role": "neutral",
+        "displayName": "Dark Wash",
+        "canonical": "#222a30",
+        "tonalRamp": [
+          "#060c11",
+          "#1d252b",
+          "#384147",
+          "#565f66",
+          "#757f86",
+          "#96a0a7",
+          "#bbc6ce",
+          "#e6f0f8"
+        ]
+      },
+      "dark-ink": {
+        "role": "neutral",
+        "displayName": "Dark Ink",
+        "canonical": "#e8ecee",
+        "tonalRamp": [
+          "#090c0d",
+          "#222526",
+          "#3d4042",
+          "#5b5e60",
+          "#7a7e80",
+          "#9b9fa1",
+          "#c1c5c7",
+          "#ebeff1"
+        ]
+      },
+      "dark-ink-2": {
+        "role": "neutral",
+        "displayName": "Dark Ink 2",
+        "canonical": "#c4ccd1",
+        "tonalRamp": [
+          "#070c0f",
+          "#1f2529",
+          "#3a4145",
+          "#585f63",
+          "#777e83",
+          "#98a0a4",
+          "#bdc5ca",
+          "#e8f0f5"
+        ]
+      },
+      "dark-ink-3": {
+        "role": "neutral",
+        "displayName": "Dark Ink 3",
+        "canonical": "#9aa5ad",
+        "tonalRamp": [
+          "#050c12",
+          "#1d252c",
+          "#384148",
+          "#555f66",
+          "#747f87",
+          "#95a0a8",
+          "#bbc6ce",
+          "#e5f0f9"
+        ]
+      },
+      "dark-rule": {
+        "role": "neutral",
+        "displayName": "Dark Rule",
+        "canonical": "#2b3439",
+        "tonalRamp": [
+          "#050c10",
+          "#1d252a",
+          "#384146",
+          "#555f65",
+          "#757f85",
+          "#96a0a6",
+          "#bbc6cc",
+          "#e5f1f7"
+        ]
+      },
+      "dark-rule-strong": {
+        "role": "neutral",
+        "displayName": "Dark Rule Strong",
+        "canonical": "#3d484f",
+        "tonalRamp": [
+          "#040c12",
+          "#1b262c",
+          "#374148",
+          "#545f67",
+          "#737f87",
+          "#94a1a9",
+          "#b9c6cf",
+          "#e3f1f9"
+        ]
+      },
+      "dark-rail": {
+        "role": "primary",
+        "displayName": "Dark Rail",
+        "canonical": "#2c3a45",
+        "tonalRamp": [
+          "#020c15",
+          "#182630",
+          "#33424d",
+          "#51606c",
+          "#70808c",
+          "#91a1ae",
+          "#b6c7d4",
+          "#e0f1ff"
+        ]
+      },
+      "dark-rail-deep": {
+        "role": "primary",
+        "displayName": "Dark Rail Deep",
+        "canonical": "#24303a",
+        "tonalRamp": [
+          "#030c15",
+          "#1a252f",
+          "#35414c",
+          "#525f6b",
+          "#717f8b",
+          "#92a1ad",
+          "#b7c6d3",
+          "#e1f1fe"
+        ]
+      },
+      "dark-rail-line": {
+        "role": "primary",
+        "displayName": "Dark Rail Line",
+        "canonical": "#3a4a56",
+        "tonalRamp": [
+          "#020c16",
+          "#172631",
+          "#32424e",
+          "#4f606d",
+          "#6f808d",
+          "#8fa1af",
+          "#b4c7d5",
+          "#def2ff"
+        ]
+      },
+      "dark-rail-muted": {
+        "role": "primary",
+        "displayName": "Dark Rail Muted",
+        "canonical": "#d8dfe4",
+        "tonalRamp": [
+          "#070c0f",
+          "#202528",
+          "#3b4145",
+          "#595f63",
+          "#787e83",
+          "#999fa4",
+          "#bec5ca",
+          "#e8f0f5"
+        ]
+      },
+      "dark-holotype": {
+        "role": "secondary",
+        "displayName": "Dark Holotype",
+        "canonical": "#b8402f",
+        "tonalRamp": [
+          "#360000",
+          "#5a0000",
+          "#7f0000",
+          "#a42d1d",
+          "#ca513e",
+          "#f0735f",
+          "#ff9a84",
+          "#ffc5ad"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "wordmark": {
+        "displayName": "Wordmark",
+        "purpose": "The lowercase starchart wordmark in the rail head. Used once."
+      },
+      "display": {
+        "displayName": "Display",
+        "purpose": "Plate title: drawer name and specimen count."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "A standalone number that is the whole chart (34px stat tiles, 30px unit trays). Proportional digits."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Charts tab section headings."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Tray and figure headings, top-bar tabs."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base interface text at 88% width."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Subtitles, captions, metric labels, rail metadata."
+      },
+      "label-stock-title": {
+        "displayName": "Label Stock Title",
+        "purpose": "Specimen label titles and pins on the plate."
+      },
+      "label-stock-field": {
+        "displayName": "Label Stock Field",
+        "purpose": "Specimen label field names and values."
+      },
+      "mono": {
+        "displayName": "Mono",
+        "purpose": "Paths, counts, dates, accession numbers, hashes; tabular figures."
+      },
+      "mono-metric": {
+        "displayName": "Mono Metric",
+        "purpose": "Accession record metric values."
+      }
+    },
+    "shadows": [
+      {
+        "name": "shadow-xs",
+        "value": "none",
+        "purpose": "Neutralizes shadcn's input and button shadow; in-layout surfaces sit flat."
+      },
+      {
+        "name": "shadow-sm",
+        "value": "none",
+        "purpose": "Neutralizes shadcn's active-tab shadow."
+      },
+      {
+        "name": "shadow-md",
+        "value": "0 8px 20px -6px rgb(21 25 28 / 0.22), 0 1px 2px rgb(21 25 28 / 0.08)",
+        "purpose": "Float: menus, popovers, select lists."
+      },
+      {
+        "name": "shadow-lg",
+        "value": "0 18px 40px -12px rgb(21 25 28 / 0.32), 0 2px 6px rgb(21 25 28 / 0.08)",
+        "purpose": "Float Large: dialogs, sheets, the command palette."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ease-damped",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Camera focus, tree/import-graph morphs, chevron rotation. Damped, no overshoot."
+      },
+      {
+        "name": "duration-hover",
+        "value": "150ms",
+        "purpose": "Color and background changes on rows, drawers, tabs; label fade-in."
+      },
+      {
+        "name": "duration-state",
+        "value": "200ms",
+        "purpose": "Chevron rotation and the stale-plot dim to 50% opacity."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "0.01ms",
+        "purpose": "prefers-reduced-motion collapses every animation and transition."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "0px",
+        "purpose": "Rail becomes a sheet; record follows the work area; trays stack at 216px each."
+      },
+      {
+        "name": "medium",
+        "value": "1024px",
+        "purpose": "220px rail, 300px record."
+      },
+      {
+        "name": "wide",
+        "value": "1280px",
+        "purpose": "260px rail, 340px record."
+      },
+      {
+        "name": "charts-columns",
+        "value": "@4xl container (56rem)",
+        "purpose": "Charts sections switch from one column to the 12-column span grid."
+      },
+      {
+        "name": "narrow-plate",
+        "value": "560px plate width",
+        "purpose": "Specimen cards become one-line pins."
+      }
+    ],
+    "focus": {
+      "value": "outline: 2px solid var(--color-ring); outline-offset: 2px",
+      "purpose": "Global focus-visible; ring is series-1 in light, series-dark-1 in dark."
+    },
+    "selection": {
+      "background": "{colors.seq-200}",
+      "color": "{colors.ink}"
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Solid slate action; rare, so the rail stays the dominant slate.",
+      "html": "<button class=\"ds-btn-primary\">Open in Charts</button>",
+      "css": ".ds-btn-primary { font-family: var(--font-sans); font-stretch: 88%; display: inline-flex; align-items: center; height: 36px; padding: 8px 16px; border: none; border-radius: var(--radius-md, 3px); background: var(--color-rail, #4e6170); color: var(--color-rail-ink, #fff); font-size: 14px; font-weight: 500; transition: background-color 150ms; cursor: pointer; } .ds-btn-primary:hover { background: color-mix(in oklab, var(--color-rail, #4e6170) 90%, transparent); } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-ring, #2a78d6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Default secondary action: tray ground, hairline border, wash on hover.",
+      "html": "<button class=\"ds-btn-outline\">Show as a table</button>",
+      "css": ".ds-btn-outline { font-family: var(--font-sans); font-stretch: 88%; display: inline-flex; align-items: center; height: 36px; padding: 8px 16px; border: 1px solid var(--color-rule, #d5d9d6); border-radius: var(--radius-md, 3px); background: var(--color-tray, #f6f7f5); color: var(--color-ink, #15191c); font-size: 14px; font-weight: 500; transition: background-color 150ms; cursor: pointer; } .ds-btn-outline:hover { background: var(--color-wash, #eef0ee); } .ds-btn-outline:focus-visible { outline: 2px solid var(--color-ring, #2a78d6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Quiet control; no fill until hover.",
+      "html": "<button class=\"ds-btn-ghost\">16 more</button>",
+      "css": ".ds-btn-ghost { font-family: var(--font-sans); font-stretch: 88%; display: inline-flex; align-items: center; height: 36px; padding: 8px 16px; border: none; border-radius: var(--radius-md, 3px); background: transparent; color: var(--color-ink, #15191c); font-size: 14px; font-weight: 500; transition: background-color 150ms; cursor: pointer; } .ds-btn-ghost:hover { background: var(--color-wash, #eef0ee); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--color-ring, #2a78d6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Find Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Hairline field with a 3px radius; focus is the global blue outline.",
+      "html": "<label class=\"ds-input\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg><input placeholder=\"Find a file, symbol or author\"><kbd>⌘K</kbd></label>",
+      "css": ".ds-input { font-family: var(--font-sans); font-stretch: 88%; display: flex; align-items: center; gap: 8px; height: 36px; padding: 4px 12px; border: 1px solid var(--color-rule-strong, #b9c0c4); border-radius: var(--radius-md, 3px); background: var(--color-paper, #fff); color: var(--color-ink-3, #5d666d); width: 280px; } .ds-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--color-ink, #15191c); } .ds-input input::placeholder { color: var(--color-ink-3, #5d666d); } .ds-input kbd { font-family: var(--font-mono); font-size: 11px; padding: 1px 4px; border-radius: var(--radius-xs, 1px); background: var(--color-wash, #eef0ee); color: var(--color-ink-2, #3b4348); } .ds-input:focus-within { outline: 2px solid var(--color-ring, #2a78d6); outline-offset: 2px; }"
+    },
+    {
+      "name": "Top-bar Tabs",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Line tabs: Ink 3 semibold labels, active gets ink text and a 2px ink underline.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab is-active\" href=\"#\">Galaxy</a><a class=\"ds-tab\" href=\"#\">Charts</a><a class=\"ds-tab\" href=\"#\">Explorer</a><a class=\"ds-tab\" href=\"#\">Source</a><a class=\"ds-tab\" href=\"#\">Findings</a></nav>",
+      "css": ".ds-tabs { font-family: var(--font-sans); font-stretch: 88%; display: flex; height: 52px; background: var(--color-paper, #fff); border-bottom: 1px solid var(--color-rule, #d5d9d6); } .ds-tab { display: flex; align-items: center; padding: 0 16px; border-bottom: 2px solid transparent; color: var(--color-ink-3, #5d666d); font-size: 14px; font-weight: 600; text-decoration: none; transition: color 150ms; } .ds-tab:hover { color: var(--color-ink, #15191c); } .ds-tab.is-active { color: var(--color-ink, #15191c); border-bottom-color: var(--color-ink, #15191c); } .ds-tab:focus-visible { outline: 2px solid var(--color-ring, #2a78d6); outline-offset: -2px; }"
+    },
+    {
+      "name": "Drawer Rail",
+      "kind": "nav",
+      "refersTo": "drawer-row",
+      "description": "Solid slate rail; hairline-ruled drawers with mono counts; the active drawer inverts to tray.",
+      "html": "<ul class=\"ds-rail\"><li class=\"ds-drawer is-active\"><span>apps</span><span class=\"n\">731</span></li><li class=\"ds-drawer\"><span>packages</span><span class=\"n\">349</span></li><li class=\"ds-drawer\"><span>docs</span><span class=\"n\">108</span></li></ul>",
+      "css": ".ds-rail { font-family: var(--font-sans); font-stretch: 88%; list-style: none; margin: 0; padding: 0; width: 260px; background: var(--color-rail, #4e6170); color: var(--color-rail-ink, #fff); border-bottom: 1px solid var(--color-rail-line, #5d707e); } .ds-drawer { display: flex; align-items: center; justify-content: space-between; height: 38px; padding: 0 22px 0 34px; border-top: 1px solid var(--color-rail-line, #5d707e); font-size: 14px; font-weight: 500; cursor: pointer; transition: background-color 150ms; } .ds-drawer:hover { background: var(--color-rail-deep, #41525f); } .ds-drawer .n { font-family: var(--font-mono); font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; color: var(--color-rail-muted, #dfe6eb); } .ds-drawer.is-active { background: var(--color-tray, #f6f7f5); color: var(--color-ink, #15191c); } .ds-drawer.is-active .n { color: var(--color-ink-3, #5d666d); }"
+    },
+    {
+      "name": "Tag",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "Hairline label-stock tag for reference kinds and flags.",
+      "html": "<span class=\"ds-tag\">import</span> <span class=\"ds-tag\">re-export</span>",
+      "css": ".ds-tag { display: inline-flex; align-items: center; height: 18px; padding: 0 4px; border: 1px solid var(--color-rule-strong, #b9c0c4); border-radius: var(--radius-xs, 1px); font-family: var(--font-mono); font-size: 10.5px; line-height: 1; color: var(--color-ink-2, #3b4348); }"
+    },
+    {
+      "name": "Unit Tray",
+      "kind": "card",
+      "refersTo": "unit-tray",
+      "description": "A cell of the hairline grid: title, mono aside, proportional headline figure. No card chrome.",
+      "html": "<div class=\"ds-trays\"><section class=\"ds-tray\"><header><h3>Commit activity</h3><span>since Aug 2026</span></header><div class=\"fig\"><b>223</b><span>commits</span></div></section><section class=\"ds-tray\"><header><h3>Language composition</h3><span>21 with code</span></header><div class=\"fig\"><b>255,186</b><span>code lines</span></div></section></div>",
+      "css": ".ds-trays { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--color-rule, #d5d9d6); border-top: 1px solid var(--color-rule, #d5d9d6); border-bottom: 1px solid var(--color-rule, #d5d9d6); } .ds-tray { font-family: var(--font-sans); font-stretch: 88%; background: var(--color-tray, #f6f7f5); padding: 14px 18px 12px; color: var(--color-ink, #15191c); } .ds-tray header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 8px; } .ds-tray h3 { margin: 0; font-size: 14px; font-weight: 600; } .ds-tray header span { font-family: var(--font-mono); font-size: 12px; color: var(--color-ink-3, #5d666d); } .ds-tray .fig { display: flex; align-items: baseline; gap: 8px; } .ds-tray .fig b { font-size: 30px; line-height: 1; font-weight: 600; letter-spacing: -0.015em; font-stretch: 85%; } .ds-tray .fig span { font-size: 12px; color: var(--color-ink-2, #3b4348); }"
+    },
+    {
+      "name": "Specimen Label",
+      "kind": "custom",
+      "refersTo": "specimen-label",
+      "description": "White label stock pinned to a star: ink title rule, ruled fields, italic det. line.",
+      "html": "<div class=\"ds-plate\"><div class=\"ds-label\"><div class=\"t\">GameEngine.ts</div><dl><dt>Language</dt><dd>TypeScript</dd><dt>Category</dt><dd>Code</dd><dt>Path</dt><dd class=\"m\">apps/game/src/…/GameEngine.ts</dd><dt>Collector</dt><dd>Jon Jaques</dd><dt>Collected</dt><dd class=\"m\">2026-08-19</dd></dl><div class=\"det\">det. 64 commits, 1 author</div></div></div>",
+      "css": ".ds-plate { padding: 24px; background: var(--color-plate, #0b1016); } .ds-label { font-family: var(--font-sans); width: 196px; padding: 8px 10px 7px; background: #fff; color: #15191c; font-size: 11px; line-height: 1.35; } .ds-label .t { margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid #15191c; font-size: 13px; font-weight: 700; font-stretch: 80%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-label dl { display: grid; grid-template-columns: 62px 1fr; row-gap: 2px; margin: 0; } .ds-label dt { color: #5d666d; font-stretch: 75%; } .ds-label dd { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .ds-label dd.m { font-family: var(--font-mono); font-size: 10.5px; } .ds-label .det { margin-top: 5px; padding-top: 4px; border-top: 1px solid #d5d9d6; color: #5d666d; font-style: italic; }"
+    },
+    {
+      "name": "Holotype Label",
+      "kind": "custom",
+      "refersTo": "specimen-label-holotype",
+      "description": "The one red object: a holotype's card and pin on the plate.",
+      "html": "<div class=\"ds-plate-h\"><div class=\"ds-holo\"><div class=\"t\">Holotype · index.ts</div><dl><dt>Language</dt><dd>TypeScript</dd><dt>Path</dt><dd class=\"m\">packages/shared/src/…</dd></dl><div class=\"det\">det. 251 dependents, most in drawer</div></div><span class=\"ds-holo-pin\">Holotype · paths.ts</span></div>",
+      "css": ".ds-plate-h { display: flex; align-items: flex-start; gap: 24px; padding: 24px; background: var(--color-plate, #0b1016); } .ds-holo { font-family: var(--font-sans); width: 216px; padding: 8px 10px 7px; background: var(--color-holotype, #c23a2b); color: #fff; font-size: 11px; line-height: 1.35; } .ds-holo .t { margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid #fff; font-size: 13px; font-weight: 700; font-stretch: 80%; } .ds-holo dl { display: grid; grid-template-columns: 62px 1fr; row-gap: 2px; margin: 0; } .ds-holo dt { color: #fff3f1; font-stretch: 75%; } .ds-holo dd { margin: 0; } .ds-holo dd.m { font-family: var(--font-mono); font-size: 10.5px; } .ds-holo .det { margin-top: 5px; padding-top: 4px; border-top: 1px solid #e07a6e; color: #fff3f1; font-style: italic; } .ds-holo-pin { font-family: var(--font-sans); padding: 3px 6px; background: var(--color-holotype, #c23a2b); color: #fff; font-size: 11px; line-height: 1.15; font-weight: 700; font-stretch: 80%; white-space: nowrap; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Specimen Cabinet",
+    "overview": "starchart treats a repository as a natural-history collection: every file is a specimen, every directory a drawer, and the report is the cabinet you open to study them. The application is one dense working screen. A solid gray-blue rail of drawers runs down the left, a pale tray ground holds the work, and the 3D galaxy sits on a dark glass plate that stays dark in both themes. Information is ruled apart by one-pixel hairlines, not boxed into cards. Color is scarce and every hue means something: categorical slots identify languages and categories, a single blue ramp carries magnitude, and one red marks each region's holotype, the file the rest of it depends on most.\n\nType is set like small label stock. Archivo runs slightly condensed for every word in the interface, and JetBrains Mono carries paths, counts, dates, accession numbers and source. Figures that line up in columns are tabular; large standalone numbers stay proportional. The galaxy's signature is the specimen label: a small white card pinned to a star by a hairline leader, with ruled fields and an italic determination line. A holotype's label is the one printed in red.\n\nSurfaces sit flat. Depth appears only on layers that float over content (menus, popovers, dialogs, the command palette). Motion is damped and never overshoots, and reduced-motion preferences collapse every transition.",
+    "keyCharacteristics": [
+      "Pale tray ground, a solid archival gray-blue rail, ink text, a dark glass plate for the galaxy.",
+      "Hairline rules instead of cards; grids rule their cells with 1px gaps.",
+      "One red, reserved for holotypes.",
+      "Archivo at condensed widths for words, JetBrains Mono for paths and figures.",
+      "Barely rounded label-stock corners (1-4px).",
+      "Flat at rest; shadows only on floating layers.",
+      "Damped motion, no overshoot."
+    ],
+    "rules": [
+      {
+        "name": "The Holotype Reservation Rule",
+        "body": "Red means \"this region's most-depended-on file\" and nothing else. Critical severity is drawn as a solid ink octagon, unfavorable deltas use serious orange, and no categorical slot is red.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink Text Rule",
+        "body": "Text never wears a data color. Labels, values and legend entries stay in the ink tokens; identity is carried by a swatch dot beside them.",
+        "section": "colors"
+      },
+      {
+        "name": "The Fixed Slot Rule",
+        "body": "Categorical slot order is the color-vision-safety mechanism and is never reordered. Anything past slot 7 folds into the series-other gray.",
+        "section": "colors"
+      },
+      {
+        "name": "The Surface Steps Rule",
+        "body": "Dark surfaces get their own validated steps (series-dark, measure-dark); light colors are never inverted or dimmed to fit a dark ground. The plate always uses the dark steps.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Faces Rule",
+        "body": "Words are Archivo; paths, figures, hashes, dates and code are JetBrains Mono. No third family.",
+        "section": "typography"
+      },
+      {
+        "name": "The Condensed Stock Rule",
+        "body": "Interface text runs at 88% width; headings tighten to 80-85%. Width, not size, is how the system fits dense labels.",
+        "section": "typography"
+      },
+      {
+        "name": "The Column Figures Rule",
+        "body": "Figures that align in columns use tabular digits; large standalone numbers stay proportional.",
+        "section": "typography"
+      },
+      {
+        "name": "The Hairline Grid Rule",
+        "body": "Tray boundaries are the grid's 1px gaps showing the rule color through; no tray draws its own border. Every row is full, and a chart with nothing to draw keeps its cell and says why.",
+        "section": "layout"
+      },
+      {
+        "name": "The No-Scroll Tray Rule",
+        "body": "Nothing inside a tray scrolls. Content is sized to its cell, and overflow folds into a count (\"16 others\") rather than clipping.",
+        "section": "layout"
+      },
+      {
+        "name": "The Flat Tray Rule",
+        "body": "Anything that sits in the layout sits flat. A shadow says \"this is floating above the page\" and appears nowhere else.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do rule regions apart with 1px hairlines in the rule color, using grid gaps so every edge is one device pixel.",
+      "Do keep text in ink, Ink 2 or Ink 3 and put identity on a swatch dot beside it.",
+      "Do use the series-dark steps on the plate and in the dark theme, and measure-dark for single-series magnitude marks there.",
+      "Do ship direct labels or a table view with any chart that relies on light slots 2-5; they sit under 3:1 on the tray.",
+      "Do pair every status color with an icon and a label.",
+      "Do set paths, counts, dates and accession numbers in JetBrains Mono with tabular figures.",
+      "Do ease camera moves, chevrons and layout morphs with the damped curve (cubic-bezier(0.22, 1, 0.36, 1)) and no overshoot; hover color changes take 150ms.",
+      "Do fold overflow into a count instead of scrolling inside a tray."
+    ],
+    "donts": [
+      "Don't use holotype red for anything but a region's most-depended-on file: not for errors, critical severity, negative deltas or a chart series.",
+      "Don't give in-layout surfaces (trays, panels, buttons, inputs, tabs) a shadow; shadows belong to floating layers only.",
+      "Don't wrap trays in bordered or rounded cards.",
+      "Don't reorder the categorical slots or add a red slot.",
+      "Don't invert or dim light-surface colors to fit a dark surface.",
+      "Don't let the plate follow the theme; it is dark glass in both.",
+      "Don't round corners past 4px on structural elements; full rounding is for data dots only.",
+      "Don't introduce a third typeface."
+    ]
+  }
+}

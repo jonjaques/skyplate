@@ -67,7 +67,7 @@ export function HotspotTray() {
 
   if (!history) {
     return (
-      <TrayShell title="Most complex" label={dirPath ? `Most complex files in ${dirPath}` : "Most complex files"} aside="complexity">
+      <TrayShell title="Most complex" label={dirPath ? `Most complex files in ${dirPath}` : "Most complex files"} aside="complexity" open={{ section: "risk", label: "Open complexity against size in Charts, with every file" }}>
         <p className="mb-1.5 text-xs leading-snug text-ink-2">Hotspots need commit history; these are the files with the most decision points.</p>
         <ul>
           {ranked.map((f) => (
@@ -95,7 +95,7 @@ export function HotspotTray() {
   const facts = `${plural(top.git?.commits ?? 0, "commit")} · complexity ${formatInt(top.complexity)}`;
 
   return (
-    <TrayShell title="Hotspots" label={label} aside="commits · complexity">
+    <TrayShell title="Hotspots" label={label} aside="commits · complexity" open={{ section: "risk", label: "Open the hotspot scatter in Charts, with every file" }}>
       <button
         type="button"
         {...row(top)}

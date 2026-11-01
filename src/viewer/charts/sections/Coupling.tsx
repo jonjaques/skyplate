@@ -239,6 +239,7 @@ function Arcs() {
                       x: x(f.id)!,
                       y: BASE - 60,
                       title: f.path,
+                      path: true,
                       rows: [
                         { value: formatInt(degreeOf.get(f.id) ?? 0), label: "strong co-change partners shown" },
                         ...pairs

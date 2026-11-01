@@ -10,8 +10,15 @@
  *
  * References are paths, names and emails, never report ids: ids are positions in one report's
  * tables and shift when the project changes, so a link written against last week's report
- * would land on the wrong file. Updates use replaceState, because every click selects
- * something and a history entry per click would make Back useless.
+ * would land on the wrong file.
+ *
+ * History: most updates use replaceState, because every click on the plate selects something
+ * and an entry per click would make Back useless. But with replaceState alone Back was an exit
+ * button: after any amount of work it left the report for whatever page came before. So the
+ * deliberate moves add an entry: a tab switch (detected here), and the jumps callers mark with
+ * pushNextView() (a palette pick, a call site or definition opened from the record, ⌘-click
+ * in the reader). Back and Forward then restore the whole view of that entry, defaults
+ * included, not just the params it happens to carry.
  */
 
 import type { Report } from "../../shared/schema";
@@ -114,7 +121,43 @@ function selectionParams(sel: Target | null): [string, string] | null {
  */
 let pendingSymbol: string | null = null;
 
-function applyHash(hash: string): void {
+/**
+ * True while the store is being set from the URL. Those changes describe an entry that already
+ * exists, so they must never push a new one (Back would otherwise push, and wipe Forward).
+ */
+let applying = false;
+
+/** When pushNextView() was last called (performance.now()), or 0. */
+let pushRequested = 0;
+/**
+ * A mark older than this is stale: the move it announced changed nothing (the reader picked
+ * what was already selected), and the next unrelated plate click must not inherit the push.
+ */
+const PUSH_WINDOW_MS = 1000;
+
+/**
+ * Make the next URL update a new history entry instead of replacing the current one. Call it
+ * just before a deliberate move (see the header); ordinary selection changes do not.
+ */
+export function pushNextView(): void {
+  pushRequested = performance.now();
+}
+
+/**
+ * Apply a hash to the store. `full` is for history traversal: an entry's missing params mean
+ * their defaults (no tab param is the galaxy, no selection param is nothing selected), where a
+ * link pasted into an open tab only changes what it names.
+ */
+function applyHash(hash: string, full = false): void {
+  applying = true;
+  try {
+    applyHashParams(hash, full);
+  } finally {
+    applying = false;
+  }
+}
+
+function applyHashParams(hash: string, full: boolean): void {
   const s = useViewer.getState();
   const report = s.report;
   const model = s.model;
@@ -123,17 +166,23 @@ function applyHash(hash: string): void {
 
   const tab = p.get("tab") as Tab | undefined;
   if (tab && TABS.includes(tab)) s.setTab(tab);
+  else if (full) s.setTab("galaxy");
   const color = p.get("color") as ColorBy | undefined;
   if (color && COLOR_MODES.includes(color)) s.setColorBy(color);
+  else if (full) s.setColorBy("language");
   const size = p.get("size") as SizeBy | undefined;
   if (size && SIZE_MODES.includes(size)) s.setSizeBy(size);
+  else if (full) s.setSizeBy("lines");
   const layout = p.get("layout") as LayoutMode | undefined;
   if (layout && LAYOUTS.includes(layout)) s.setLayout(layout);
+  else if (full) s.setLayout("tree");
 
   const focus = p.get("focus");
   if (focus !== undefined) {
     const d = dirByPath(report, focus);
     s.focus(d > 0 ? d : null);
+  } else if (full && p.get("dir") === undefined) {
+    s.focus(null);
   }
 
   // The reader's file and line, when the link was taken on the Source tab.
@@ -170,18 +219,25 @@ function applyHash(hash: string): void {
       pendingSymbol = null;
       const id = resolveSymbolRef(sym);
       if (id === null) return;
-      const st = useViewer.getState();
-      // A symbol link on the Source tab means "read its declaration". On a fresh load the
-      // reader would derive that from the selection alone, but a link pasted into an open tab
-      // (hashchange) arrives with the reader already pinned to some other file.
-      if (tab === "source" && src === undefined && st.symbols) {
-        const t = st.symbols.symbols;
-        const line = t.line[id]!;
-        st.openSource({ file: t.file[id]!, line, marks: [{ line, col: t.col[id]!, len: t.name[id]!.length }] });
-        st.setTab("source");
+      applying = true;
+      try {
+        const st = useViewer.getState();
+        // A symbol link on the Source tab means "read its declaration". On a fresh load the
+        // reader would derive that from the selection alone, but a link pasted into an open
+        // tab (hashchange) arrives with the reader already pinned to some other file.
+        if (tab === "source" && src === undefined && st.symbols) {
+          const t = st.symbols.symbols;
+          const line = t.line[id]!;
+          st.openSource({ file: t.file[id]!, line, marks: [{ line, col: t.col[id]!, len: t.name[id]!.length }] });
+          st.setTab("source");
+        }
+        st.select({ kind: "symbol", id });
+      } finally {
+        applying = false;
       }
-      st.select({ kind: "symbol", id });
     });
+  } else if (full) {
+    s.select(null);
   }
   // The tab param was applied first, but openSource/select may have moved it; put it back.
   if (tab && TABS.includes(tab)) useViewer.getState().setTab(tab);
@@ -223,10 +279,14 @@ export function startUrlSync(): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let lastWritten = location.hash.replace(/^#/, "");
   const write = () => {
+    const push = pushRequested > 0 && performance.now() - pushRequested < PUSH_WINDOW_MS;
+    pushRequested = 0;
     const next = buildHash();
     if (next === lastWritten) return;
     lastWritten = next;
-    history.replaceState(history.state, "", next ? `#${next}` : location.pathname + location.search);
+    const url = next ? `#${next}` : location.pathname + location.search;
+    if (push) history.pushState(null, "", url);
+    else history.replaceState(history.state, "", url);
   };
   const unsubscribe = useViewer.subscribe((state, prev) => {
     if (
@@ -241,24 +301,40 @@ export function startUrlSync(): () => void {
     ) {
       return;
     }
-    // A user picking anything supersedes a symbol link still waiting for its tables.
-    if (state.selection !== prev.selection) pendingSymbol = null;
+    if (!applying) {
+      // A user picking anything supersedes a symbol link still waiting for its tables.
+      if (state.selection !== prev.selection) pendingSymbol = null;
+      // Switching tabs is always deliberate, whichever control did it (a tab, a number key,
+      // "Open in source reader"), so it always earns an entry.
+      if (state.tab !== prev.tab) pushNextView();
+    }
     clearTimeout(timer);
     timer = setTimeout(write, 120);
   });
 
-  // A pasted link in the same tab fires hashchange; replaceState never does.
+  // Back and Forward. The entry's hash describes the whole view (see applyHash's `full`). A
+  // write still waiting on its debounce belongs to the entry being left, so it is dropped.
+  const onPopState = () => {
+    clearTimeout(timer);
+    pushRequested = 0;
+    lastWritten = location.hash.replace(/^#/, "");
+    applyHash(location.hash, true);
+  };
+  // A link pasted into the same tab fires hashchange (after popstate, which already applied
+  // it, hence the lastWritten check); replaceState and pushState never fire it.
   const onHashChange = () => {
     const next = location.hash.replace(/^#/, "");
     if (next === lastWritten) return;
     lastWritten = next;
     applyHash(location.hash);
   };
+  window.addEventListener("popstate", onPopState);
   window.addEventListener("hashchange", onHashChange);
 
   return () => {
     clearTimeout(timer);
     unsubscribe();
+    window.removeEventListener("popstate", onPopState);
     window.removeEventListener("hashchange", onHashChange);
   };
 }

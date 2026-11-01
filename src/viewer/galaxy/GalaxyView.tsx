@@ -11,13 +11,14 @@
  */
 
 import { Canvas } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
 import * as THREE from "three";
 import { PLATE } from "../lib/colors";
+import { formatInt } from "../lib/format";
 import { filesUnder, neighbors, type Model } from "../model/indices";
 import { ensureSymbols } from "../state/loaders";
 import { sameTarget, useHover, useViewer, type Target } from "../state/store";
-import { PlateControls, PlateLegend, PlateStatus, PlateTitle } from "./Chrome";
+import { PlateControls, PlateFilterChip, PlateLegend, PlateStatus, PlateTitle, type LegendPreview } from "./Chrome";
 import { encodeColors, encodeEmphasis, encodeSizes } from "./encode";
 import { GalaxyEngine } from "./engine";
 import { SpecimenLabels } from "./Labels";
@@ -25,7 +26,7 @@ import { RegionLabels } from "./RegionLabels";
 import { Scene } from "./Scene";
 import { HistoryScrubber } from "./Scrubber";
 import { ARC_CAP, ARC_LIFT, laneApex } from "./lanes";
-import { buildSymbolScene, type SymbolScene } from "./symbolScene";
+import { buildSymbolScene, describeRelation, type SymbolScene } from "./symbolScene";
 
 export function GalaxyView({ compact = false }: { compact?: boolean }) {
   const model = useViewer((s) => s.model);
@@ -64,6 +65,7 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   const time = useViewer((s) => s.time);
   const symbols = useViewer((s) => s.symbols);
   const symbolModel = useViewer((s) => s.symbolModel);
+  const sourceFile = useViewer((s) => (compact ? (s.source?.file ?? -1) : -1));
   const select = useViewer((s) => s.select);
   const focus = useViewer((s) => s.focus);
   const hover = useHover((s) => s.hover);
@@ -157,12 +159,18 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
     }
   }, [engine, scene]);
 
-  // ── Emphasis: filters, the open drawer, the selection ──
+  // ── Emphasis: filters, the open drawer, the selection, a previewed legend key ──
+  // The state holds a predicate, so it is always set through an updater: handed to the setter
+  // directly, React would call the predicate as one.
+  const [preview, setPreview] = useState<LegendPreview>(null);
   useEffect(() => {
-    encodeEmphasis(model, { focusDir, filters, selection, symbolLight: scene?.light ?? null }, engine.emph);
+    encodeEmphasis(model, { focusDir, filters, selection, symbolLight: scene?.light ?? null, preview }, engine.emph);
     engine.touch("aEmph");
-    engine.uniform("uSelected", selection?.kind === "file" ? selection.id : -1);
-  }, [engine, model, focusDir, filters, selection, scene]);
+    // Beside the source reader, a symbol's scene lights every file that uses it, and none of
+    // them said which one the reader has open; that file keeps the still selection ring.
+    const here = selection?.kind === "symbol" && sourceFile >= 0 ? sourceFile : -1;
+    engine.uniform("uSelected", selection?.kind === "file" ? selection.id : here);
+  }, [engine, model, focusDir, filters, selection, scene, preview, sourceFile]);
 
   // ── Hover from anywhere (the explorer, the record, the plate itself) ──
   useEffect(() => {
@@ -181,14 +189,14 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
     if (!target) return engine.home(animate);
     const R = engine.radius;
     if (target.kind === "file") {
-      // The file with its imports and importers, unless they span most of the galaxy (a hub
-      // imported from everywhere), in which case the file itself with a little surroundings.
+      // The file with every import and importer, however far they reach. Zooming in on a hub
+      // alone sent its lanes off the plate on every side and through the legend; framed with
+      // its neighbors, each lane starts and ends on screen, inside the free area.
       const near = [target.id, ...neighbors(model.imports, target.id), ...neighbors(model.importedBy, target.id)];
-      if (engine.sphereOf(near).radius > R * 0.45) engine.fly([target.id], R * 0.14, [], animate);
-      else engine.fly(near, R * 0.1, [], animate);
+      engine.fly(near, R * 0.1, [], animate, near.length > 1 ? engine.outlinePad * 0.5 : 0);
     } else if (target.kind === "dir") {
       if (target.id === 0) engine.home(animate);
-      else engine.fly(filesUnder(model, target.id), undefined, [], animate);
+      else engine.fly(filesUnder(model, target.id), undefined, [], animate, engine.outlinePad);
     } else if (target.kind === "author") engine.fly(model.authorFiles[target.id] ?? [], undefined, [], animate);
     else if (target.kind === "symbol" && scene && scene.symbol === target.id) flyToScene(scene, animate);
     else engine.home(animate);
@@ -197,7 +205,7 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   function frameSubject(animate: boolean) {
     const s = useViewer.getState();
     if (s.selection) frameSelection(s.selection, animate);
-    else if (s.focusDir !== null && s.focusDir !== 0) engine.fly(filesUnder(model, s.focusDir), undefined, [], animate);
+    else if (s.focusDir !== null && s.focusDir !== 0) engine.fly(filesUnder(model, s.focusDir), undefined, [], animate, engine.outlinePad);
     else if (engine.atHome || !engine.controls) engine.home(animate);
     else engine.fly(model.fileOrder, undefined, [], animate);
   }
@@ -229,26 +237,69 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   }, [scene]);
   const lastFocus = useRef<number | null>(focusDir);
   useEffect(() => {
-    if (focusDir !== null && focusDir !== 0) engine.fly(filesUnder(model, focusDir));
+    if (focusDir !== null && focusDir !== 0) engine.fly(filesUnder(model, focusDir), undefined, [], true, engine.outlinePad);
     else if (lastFocus.current !== null) engine.home(true);
     lastFocus.current = focusDir;
   }, [engine, model, focusDir]);
 
+  // ── Resting labels the reader waved away (a click on empty plate) stay down until the next pick ──
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => setDismissed(false), [selection, focusDir]);
+
   // ── Keyboard: Esc clears the selection, F frames it ──
+  // Escape belongs to the Galaxy tab's plate only. The Source tab's side plate is visible too,
+  // and its handler cleared the selection under the reader: the record jumped to the project
+  // overview while the reader still showed the file, and the URL dropped it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
-      if (document.querySelector("[role=dialog][data-state=open]")) return;
+      if (document.querySelector("[role=dialog][data-state=open], [role=menu][data-state=open]")) return;
       if (!container.current || container.current.offsetParent === null) return; // hidden tab
-      if (e.key === "Escape" && useViewer.getState().selection) select(null);
+      if (e.key === "Escape" && !compact && useViewer.getState().selection) select(null);
       else if (e.key === "f" || e.key === "F") frameSelection(useViewer.getState().selection);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, scene]);
+  }, [engine, scene, compact]);
+
+  // ── Keyboard on the plate itself: arrows step between stars, Enter selects ──
+  // The step lands on the hover store, so the stepped-to star gets the same card a pointer
+  // would give it, and a live region reads that card's facts aloud.
+  const cursor = useRef(-1);
+  const [spoken, setSpoken] = useState("");
+  const speak = (i: number) => {
+    const f = model.report.files[i];
+    if (!f) return setSpoken("");
+    const why = scene && symbols ? describeRelation(scene, symbols, i) : null;
+    const lang = model.languages.get(f.language)?.name ?? f.language;
+    setSpoken(`${f.path}. ${lang}, ${formatInt(f.lines)} lines. ${why ?? engine.facts.det(i)}`);
+  };
+  const ARROWS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  const onPlateKey = (e: ReactKeyboardEvent) => {
+    if (e.target !== container.current || e.metaKey || e.ctrlKey || e.altKey) return;
+    const dir = ARROWS[e.key];
+    if (dir) {
+      e.preventDefault();
+      const s = useViewer.getState().selection;
+      const from = cursor.current >= 0 ? cursor.current : s?.kind === "file" ? s.id : -1;
+      const next = engine.step(from, dir[0], dir[1]);
+      if (next < 0) return;
+      cursor.current = next;
+      setHover({ kind: "file", id: next });
+      speak(next);
+    } else if (e.key === "Enter" && cursor.current >= 0) {
+      e.preventDefault();
+      plateSelection.current = { kind: "file", id: cursor.current };
+      select({ kind: "file", id: cursor.current });
+    }
+  };
+  const onPlateBlur = () => {
+    if (cursor.current >= 0 && useHover.getState().hover?.kind === "file") setHover(null);
+    cursor.current = -1;
+  };
 
   // ── Pointer: hover, click, double-click ──
   const down = useRef<{ x: number; y: number; t: number } | null>(null);
@@ -311,6 +362,8 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
     }
     const i = engine.pick(p.x, p.y);
     const target: Target | null = i >= 0 ? { kind: "file", id: i } : null;
+    // Empty plate with nothing selected: the reader wants the resting labels out of the way.
+    if (!target && !useViewer.getState().selection) setDismissed(true);
     plateSelection.current = target;
     select(target);
   };
@@ -328,14 +381,18 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   return (
     <div
       ref={container}
-      className="@container relative h-full w-full touch-none overflow-hidden bg-plate select-none"
+      className="@container relative h-full w-full touch-none overflow-hidden bg-plate outline-none select-none focus-visible:ring-2 focus-visible:ring-plate-ink/60 focus-visible:ring-inset"
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
       onPointerDown={onPointerDown}
       onPointerUp={onPointerUp}
       onDoubleClick={onDoubleClick}
+      onKeyDown={onPlateKey}
+      onBlur={onPlateBlur}
+      tabIndex={0}
       role="application"
-      aria-label={`Galaxy map of ${model.report.project.name}: ${model.fileCount} files. Drag to orbit, scroll to zoom, click a star to select it, Escape to clear, F to frame the selection.`}
+      aria-roledescription="galaxy map"
+      aria-label={`Galaxy map of ${model.report.project.name}: ${formatInt(model.fileCount)} files. Drag to orbit, scroll to zoom, click a star to select it. With the map focused, arrow keys step between stars and Enter selects one${compact ? "" : "; Escape clears the selection"}; F frames it. Command K finds any file by name.`}
     >
       <Canvas
         className="absolute inset-0"
@@ -349,13 +406,17 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
         <Scene engine={engine} symbolScene={scene} />
       </Canvas>
       {!compact && <RegionLabels engine={engine} />}
-      <SpecimenLabels engine={engine} compact={compact} />
+      <SpecimenLabels engine={engine} compact={compact} scene={scene} dismissed={dismissed} />
       <MoonLabel engine={engine} index={moonHover} />
       <PlateTitle engine={engine} compact={compact} />
+      <PlateFilterChip engine={engine} compact={compact} />
       {!compact && <PlateStatus />}
-      <PlateLegend engine={engine} compact={compact} raised={hasHistory} scene={scene} />
+      <PlateLegend engine={engine} compact={compact} raised={hasHistory} scene={scene} onPreview={(p) => setPreview(() => p)} />
       <PlateControls engine={engine} compact={compact} />
       {hasHistory && <HistoryScrubber engine={engine} />}
+      <p className="sr-only" aria-live="polite">
+        {spoken}
+      </p>
     </div>
   );
 }

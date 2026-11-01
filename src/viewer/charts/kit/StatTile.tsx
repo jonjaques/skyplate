@@ -4,22 +4,31 @@
  * an optional sparkline in the measure color.
  *
  * Status, when present, always arrives as icon + label: the color alone never says "risk".
+ *
+ * Critical is drawn with the shell's own mark (SeverityIcon: a solid ink octagon), not the
+ * status red. Red is reserved for the holotype, and the truck-factor tile beside the findings
+ * should rank "critical" exactly as the Findings tab and the record do. The other levels read
+ * the theme tokens rather than a copy of their values in JS.
  */
 
-import { ArrowDownRight, ArrowUpRight, CircleAlert, OctagonAlert, TriangleAlert } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, CircleAlert, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
-import { STATUS } from "../../lib/colors";
 import { cn } from "../../lib/utils";
+import { SeverityIcon } from "../../shell/parts";
 
 export type StatusLevel = "warning" | "serious" | "critical";
 
-const STATUS_ICON = { warning: TriangleAlert, serious: CircleAlert, critical: OctagonAlert } as const;
+const STATUS_ICON = { warning: TriangleAlert, serious: CircleAlert } as const;
 
 export function StatusMark({ level, label }: { level: StatusLevel; label: string }) {
-  const Icon = STATUS_ICON[level];
+  const Icon = level === "critical" ? null : STATUS_ICON[level];
   return (
     <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold whitespace-nowrap text-ink">
-      <Icon aria-hidden className="size-4 shrink-0" style={{ color: STATUS[level] }} strokeWidth={2.25} />
+      {Icon ? (
+        <Icon aria-hidden className="size-4 shrink-0" style={{ color: `var(--color-${level})` }} strokeWidth={2.25} />
+      ) : (
+        <SeverityIcon severity="critical" />
+      )}
       {label}
     </span>
   );
@@ -27,8 +36,9 @@ export function StatusMark({ level, label }: { level: StatusLevel; label: string
 
 /**
  * A signed change against a named period ("+12% vs the previous 90 days"). The arrow carries
- * the direction and, through a status color, whether that direction is good; the figures stay
- * in ink, because text never wears a data color.
+ * the direction and, through a status color, whether that direction is good (orange, not red,
+ * when it is not: red is the holotype's); the figures stay in ink, because text never wears a
+ * data color.
  */
 export interface Delta {
   text: string;
@@ -65,7 +75,7 @@ export function StatTile({
         {unit && <span className="text-sm text-ink-2">{unit}</span>}
         {delta && (
           <span className="inline-flex items-center gap-0.5 text-xs text-ink-2">
-            <DeltaIcon aria-hidden className="size-3.5" style={{ color: delta.good ? STATUS.good : STATUS.critical }} />
+            <DeltaIcon aria-hidden className="size-3.5" style={{ color: delta.good ? "var(--color-good)" : "var(--color-serious)" }} />
             <span className="figures font-mono">{delta.text}</span>
           </span>
         )}

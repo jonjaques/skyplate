@@ -3,7 +3,8 @@
  * the stars themselves and a selected file's moons.
  *
  * Draw calls, back to front: region outlines (one per region and layout), every-edge lanes
- * (one), selection lanes (one), symbol arcs (one), stars (one), moons (one). Geometry is built
+ * (one), selection lanes (one), symbol arcs (one), the definition knockout (one), stars (one),
+ * moons (one). Geometry is built
  * when the thing it draws changes (a new selection, a new symbol), never per frame; per-frame
  * work is uniforms and the handful of moon positions.
  */
@@ -12,12 +13,12 @@ import { CameraControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
-import { neighbors } from "../model/indices";
+import { PLATE } from "../lib/colors";
 import { useViewer } from "../state/store";
 import { traceContour } from "./contour";
-import type { GalaxyEngine } from "./engine";
-import { ARC_CAP, ARC_LIFT, LANE_STYLE, buildLaneGeometry, makeLaneMaterial, type Lane } from "./lanes";
-import { MOON_FRAGMENT, MOON_VERTEX } from "./shaders";
+import { regionOfDir, type GalaxyEngine } from "./engine";
+import { ARC_CAP, ARC_LIFT, LANE_STYLE, buildLaneGeometry, makeLaneMaterial, selectionLanes, type Lane } from "./lanes";
+import { KNOCKOUT_FRAGMENT, KNOCKOUT_VERTEX, MOON_FRAGMENT, MOON_VERTEX } from "./shaders";
 import type { SymbolScene } from "./symbolScene";
 
 export function Scene({ engine, symbolScene }: { engine: GalaxyEngine; symbolScene: SymbolScene | null }) {
@@ -29,6 +30,7 @@ export function Scene({ engine, symbolScene }: { engine: GalaxyEngine; symbolSce
       <AllLanes engine={engine} />
       <SelectionLanes engine={engine} />
       <SymbolArcs engine={engine} scene={symbolScene} />
+      <DefinitionKnockout engine={engine} scene={symbolScene} />
       <points geometry={engine.geometry} material={engine.material} frustumCulled={false} renderOrder={5} />
       <Moons engine={engine} />
     </>
@@ -151,12 +153,6 @@ function RegionOutlines({ engine }: { engine: GalaxyEngine }) {
   return <primitive object={group} />;
 }
 
-export function regionOfDir(engine: GalaxyEngine, dir: number): number {
-  const dirs = engine.model.report.dirs;
-  let d = dir;
-  while (d > 0 && dirs[d]!.parent > 0) d = dirs[d]!.parent;
-  return engine.regionByDir.get(d) ?? -1;
-}
 
 // ─── Lanes ───────────────────────────────────────────────────────────────────────────────────
 
@@ -208,11 +204,15 @@ function SelectionLanes({ engine }: { engine: GalaxyEngine }) {
   const geometry = useMemo(() => {
     if (mode === "none" || fileId < 0) return null;
     const lanes: Lane[] = [];
+    const set = selectionLanes(engine.model, fileId);
     // t runs importer → dependency, so direction reads the same for both kinds of neighbor.
-    for (const t of neighbors(engine.model.imports, fileId)) lanes.push({ from: fileId, to: t, style: LANE_STYLE.import, weight: 1, lift: 0 });
-    for (const s of neighbors(engine.model.importedBy, fileId)) lanes.push({ from: s, to: fileId, style: LANE_STYLE.import, weight: 1, lift: 0 });
+    for (const t of set.imports) lanes.push({ from: fileId, to: t, style: LANE_STYLE.import, weight: 1, lift: 0 });
+    for (const s of set.importers) lanes.push({ from: s, to: fileId, style: LANE_STYLE.import, weight: 1, lift: 0 });
+    // Lanes add up where they meet (the blend is additive), so many lanes into one hub burned
+    // a white knot over the selected star. The same square-root falloff the every-edge view uses.
+    material.uniforms.uOpacity!.value = Math.min(1, Math.sqrt(40 / Math.max(1, lanes.length)));
     return lanes.length > 0 ? buildLaneGeometry(engine.tree, engine.graph, lanes) : null;
-  }, [engine, mode, fileId]);
+  }, [engine, mode, fileId, material]);
   useEffect(() => {
     if (geometry) engine.animating.add("lanes");
     else engine.animating.delete("lanes");
@@ -224,7 +224,7 @@ function SelectionLanes({ engine }: { engine: GalaxyEngine }) {
   return <LaneObject geometry={geometry} material={material} order={3} />;
 }
 
-/** A selected symbol's arcs: references in (calls pulse, other uses dashed), callees out. */
+/** A selected symbol's arcs: references in (calls pulse, implementations solid, other uses dashed), callees out. */
 function SymbolArcs({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene | null }) {
   const material = useMemo(() => makeLaneMaterial(1), []);
   useLaneSync(engine, material);
@@ -232,10 +232,13 @@ function SymbolArcs({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScen
     if (!scene) return null;
     const lanes: Lane[] = [];
     let max = 1;
-    for (const a of scene.arcs) max = Math.max(max, a.calls + a.other);
+    for (const a of scene.arcs) max = Math.max(max, a.calls + a.impl + a.other);
     for (const a of scene.arcs.slice(0, ARC_CAP)) {
-      const weight = Math.log1p(a.calls + a.other) / Math.log1p(max);
-      lanes.push({ from: a.file, to: scene.defFile, style: a.calls > 0 ? LANE_STYLE.call : LANE_STYLE.other, weight, lift: ARC_LIFT });
+      const weight = Math.log1p(a.calls + a.impl + a.other) / Math.log1p(max);
+      // An implementer that also calls it is drawn as an implementation: that is the rarer
+      // and more structural fact, and the hover card lists the calls beside it.
+      const style = a.implementation ? LANE_STYLE.implementation : a.calls > 0 ? LANE_STYLE.call : LANE_STYLE.other;
+      lanes.push({ from: a.file, to: scene.defFile, style, weight, lift: ARC_LIFT });
     }
     for (const c of scene.callees.slice(0, 120)) lanes.push({ from: scene.defFile, to: c.file, style: LANE_STYLE.callee, weight: 0.3, lift: -0.22 });
     return lanes.length > 0 ? buildLaneGeometry(engine.tree, engine.graph, lanes) : null;
@@ -249,6 +252,54 @@ function SymbolArcs({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScen
     };
   }, [engine, scene]);
   return <LaneObject geometry={geometry} material={material} order={4} />;
+}
+
+// ─── Definition knockout ─────────────────────────────────────────────────────────────────────
+
+/** Knockout diameter in CSS px: wide enough to clear the arcs' last tenth around the ring. */
+const KNOCKOUT_PX = 30;
+
+/**
+ * A plate-colored disc under the selected symbol's definition, drawn between the arcs and the
+ * stars with normal blending. Everything else on the plate blends additively, which can only
+ * brighten; without this, 155 arcs ending on one star summed to a white blob and the
+ * definition ring the legend promises could not be seen at any zoom.
+ */
+function DefinitionKnockout({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene | null }) {
+  const { points, geometry, material } = useMemo(() => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(new Float32Array(3), 3).setUsage(THREE.DynamicDrawUsage));
+    const m = new THREE.ShaderMaterial({
+      vertexShader: KNOCKOUT_VERTEX,
+      fragmentShader: KNOCKOUT_FRAGMENT,
+      transparent: true,
+      depthWrite: false,
+      depthTest: false,
+      blending: THREE.NormalBlending,
+      uniforms: { uPx: { value: KNOCKOUT_PX }, uPlate: { value: new THREE.Color(PLATE) } },
+    });
+    const p = new THREE.Points(g, m);
+    p.frustumCulled = false;
+    p.renderOrder = 4.5;
+    return { points: p, geometry: g, material: m };
+  }, []);
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
+  const v = useMemo(() => new THREE.Vector3(), []);
+  useFrame((state) => {
+    points.visible = !!scene;
+    if (!scene) return;
+    engine.filePos(scene.defFile, v);
+    (geometry.getAttribute("position") as THREE.BufferAttribute).setXYZ(0, v.x, v.y, v.z);
+    geometry.getAttribute("position").needsUpdate = true;
+    material.uniforms.uPx!.value = KNOCKOUT_PX * state.viewport.dpr;
+  });
+  return <primitive object={points} />;
 }
 
 // ─── Moons ───────────────────────────────────────────────────────────────────────────────────

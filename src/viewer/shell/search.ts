@@ -8,24 +8,40 @@
  * Scoring favors what a reader types for a path: the file name over the directories, a run of
  * consecutive characters over scattered ones, and matches that start a word (after "/", ".",
  * "_", "-", or a camelCase hump). Every space-separated term must match.
+ *
+ * Two tiers, and the gap between them is the point. A literal substring always outranks a
+ * scattered subsequence: subsequence scores grow with every matched letter, so before the tiers
+ * a long typed path ("apps/game/src/eng") ranked files whose letters merely appeared in order
+ * (".../render/entryTrace.gpu.test.ts") above the path the reader was literally typing, and
+ * "jon" put fta.json above the author named Jon. Scores are comparable across lists (files,
+ * symbols, authors, actions all go through the same function), which is what lets the palette
+ * order its groups by their best hit.
  */
 
 const BOUNDARY = new Set(["/", ".", "_", "-", " ", "@", ":"]);
+
+/** Every substring hit scores at least this per term. */
+export const SUBSTRING_FLOOR = 1000;
+/** Every subsequence hit scores at most this per term, so it can never pass a substring hit. */
+const SUBSEQUENCE_CAP = SUBSTRING_FLOOR - 100;
 
 /**
  * Score one term against one target, or -1 when the term is not a subsequence of it.
  * `lower` is the target lowercased (precomputed by the caller); `original` keeps its case
  * for camelCase boundaries. `nameStart` is where the final path segment begins.
  */
-function scoreTerm(term: string, lower: string, original: string, nameStart: number): number {
+export function scoreTerm(term: string, lower: string, original: string, nameStart: number): number {
   // Substring hits first: they are what people mean most of the time and cost one indexOf.
   const at = lower.lastIndexOf(term);
   if (at >= 0) {
-    let s = 100 + term.length * 12;
+    let s = SUBSTRING_FLOOR + term.length * 12;
     if (at >= nameStart) s += 60; //                                     in the file name
     if (at === nameStart) s += 40; //                                    at its start
     if (at === 0 || BOUNDARY.has(lower[at - 1]!)) s += 25;
     if (at === nameStart && term.length === lower.length - nameStart) s += 80; // the whole name
+    // A path typed from its root ("packages/vite/src/node/server/ind") names the file it
+    // continues into; lastIndexOf can land on a later repeat, so the prefix is tested apart.
+    else if (nameStart > 0 && lower.startsWith(term)) s += 50;
     return s;
   }
 
@@ -43,7 +59,7 @@ function scoreTerm(term: string, lower: string, original: string, nameStart: num
     prev = i;
     ti--;
   }
-  return ti < 0 ? s : -1;
+  return ti < 0 ? Math.min(s, SUBSEQUENCE_CAP) : -1;
 }
 
 export interface Searchable {
@@ -61,20 +77,30 @@ export function searchable(items: string[]): Searchable {
   return { lower: items.map((s) => s.toLowerCase()), original: items, nameStart };
 }
 
+export interface Hit {
+  i: number;
+  /** Comparable across lists scored with the same query (see the header). */
+  s: number;
+}
+
+export function queryTerms(query: string): string[] {
+  return query.toLowerCase().split(/\s+/).filter(Boolean);
+}
+
 /**
- * Top `limit` indexes for a query, best first. `include` filters candidates (e.g. skip the
+ * Top `limit` hits for a query, best first. `include` filters candidates (e.g. skip the
  * synthetic module symbols); `tieBreak` orders equal scores (higher wins, e.g. reference count).
  */
-export function rank(
+export function rankScored(
   index: Searchable,
   query: string,
   limit: number,
   include?: (i: number) => boolean,
   tieBreak?: (i: number) => number,
-): number[] {
-  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+): Hit[] {
+  const terms = queryTerms(query);
   if (terms.length === 0) return [];
-  const hits: { i: number; s: number }[] = [];
+  const hits: Hit[] = [];
   const n = index.lower.length;
   for (let i = 0; i < n; i++) {
     if (include && !include(i)) continue;
@@ -92,5 +118,16 @@ export function rank(
     if (total >= 0) hits.push({ i, s: total - lower.length * 0.15 });
   }
   hits.sort((a, b) => b.s - a.s || (tieBreak ? tieBreak(b.i) - tieBreak(a.i) : 0));
-  return hits.slice(0, limit).map((h) => h.i);
+  return hits.slice(0, limit);
+}
+
+/** Top `limit` indexes for a query, best first (rankScored without the scores). */
+export function rank(
+  index: Searchable,
+  query: string,
+  limit: number,
+  include?: (i: number) => boolean,
+  tieBreak?: (i: number) => number,
+): number[] {
+  return rankScored(index, query, limit, include, tieBreak).map((h) => h.i);
 }

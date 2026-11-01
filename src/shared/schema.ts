@@ -97,9 +97,12 @@ export interface LanguageSummary {
   comment: number;
   blank: number;
   /**
-   * Categorical palette slot (0-7) or -1 for the folded "Other" bucket. Assigned once, by
-   * descending `code + comment` lines at report time, so color follows the language through
-   * every filter instead of being re-ranked when a filter changes the visible set.
+   * Categorical palette slot (0-6) or -1 for the folded "Other" bucket. Assigned once, at
+   * report time, to the seven languages with the most `code` lines over every file but
+   * vendored ones (what the viewer shows by default), whatever their linguist type, so the
+   * largest languages in an unfiltered view are the colored ones, and color follows the
+   * language through every filter instead of being re-ranked when a filter changes the
+   * visible set.
    */
   slot: number;
 }
@@ -580,7 +583,11 @@ export interface SymbolTable {
    * stored in RefTable; stats.truncated says how many were dropped.
    */
   refs: number[];
-  /** Distinct enclosing symbols that reference it, not counting import/export specifiers. */
+  /**
+   * Distinct enclosing symbols that use it: not counting import/export specifiers, extends /
+   * implements rows (the type hierarchy, not use), or the symbol itself (recursion). The same
+   * rule the viewer's call hierarchy lists incoming edges by, so the two always agree.
+   */
   callers: number[];
   files: number[]; //      distinct files that reference it
 }
@@ -620,6 +627,15 @@ export interface CodeSymbols {
   fileRefStart: number[];
   /** The synthetic "module" symbol id for each file id, or -1 for files not analyzed. */
   moduleSymbol: number[];
+  /**
+   * Imports of analyzed exports from files the compiler does not read: the <script> blocks of
+   * Vue, Svelte, Astro and HTML files, VitePress Markdown pages and MDX. Matched by exported
+   * name (src/core/ts/hosts.ts), one row per (symbol, importing file), sorted by symbol then
+   * file; `line` is the 0-based line of the import statement. A matched symbol is never
+   * flagged unusedExport. These rows are not references: refs, callers and files above count
+   * only what the checker resolved. Omitted when there are none.
+   */
+  hostUses?: { symbol: number[]; file: number[]; line: number[] };
   stats: {
     files: number;
     symbols: number;
@@ -629,6 +645,21 @@ export interface CodeSymbols {
     /** References dropped by the size cap; 0 when nothing was dropped. */
     truncated: number;
     ms: number;
+    /**
+     * Files outside the compiler's reach whose script imports were read for `hostUses`,
+     * whether or not each import resolved. When present, "nothing uses it" can only be said of
+     * the analyzed TypeScript / JavaScript: an import through an alias the file resolver does
+     * not know still goes unseen. Omitted when 0.
+     */
+    hostFiles?: number;
+    /**
+     * package.json files that declare dependencies with no node_modules beside or above them
+     * (and no Yarn Plug'n'Play manifest): the dependencies were never installed, so the checker
+     * had no declarations for them and every name taken from one is in `unresolved`. In a
+     * monorepo that can include its own workspace packages imported by package name, so refs,
+     * callers and files are lower bounds and an unusedExport flag can be wrong. Omitted when 0.
+     */
+    uninstalledManifests?: number;
   };
 }
 

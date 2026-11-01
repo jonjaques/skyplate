@@ -30,6 +30,14 @@ function stillHere(report: Report): string {
   return list.charAt(0).toUpperCase() + list.slice(1);
 }
 
+/** A report written with --no-source, said once for the reader's empty state and per file. */
+export function describeNoSource(report: Report): { title: string; body: string } {
+  return {
+    title: "This report was written without source",
+    body: `It was generated with --no-source, so file contents were left out for sharing. ${stillHere(report)} are all still here.`,
+  };
+}
+
 export function describeUnavailable(
   report: Report,
   file: FileRecord,
@@ -49,10 +57,7 @@ export function describeUnavailable(
           : `${formatBytes(file.bytes)} of binary data.`,
       };
     case "disabled":
-      return {
-        title: "This report was written without source",
-        body: `It was generated with --no-source, so file contents were left out for sharing. ${stillHere(report)} are all still here.`,
-      };
+      return describeNoSource(report);
     case "too-large":
       // getSource folds both caps into one reason; the file's size against the per-file cap
       // tells which one it was, so the reader gets the actual cause rather than two maybes.

@@ -10,7 +10,7 @@ import type { Report } from "../../shared/schema";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { formatBytes, formatInt, plural } from "../lib/format";
 import { useViewer } from "../state/store";
-import { useShell } from "./shell-state";
+import { takeAboutOpener, useShell } from "./shell-state";
 
 export function About() {
   const open = useShell((s) => s.aboutOpen);
@@ -19,7 +19,15 @@ export function About() {
   if (!report) return null;
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-h-[86vh] gap-0 overflow-y-auto p-0 sm:max-w-[640px]">
+      <DialogContent
+        className="max-h-[86vh] gap-0 overflow-y-auto p-0 sm:max-w-[640px]"
+        onCloseAutoFocus={(e) => {
+          const opener = takeAboutOpener();
+          if (!opener) return;
+          e.preventDefault();
+          opener.focus();
+        }}
+      >
         <DialogHeader className="border-b border-rule px-6 pt-5 pb-4">
           <DialogTitle className="text-[20px] font-bold [font-stretch:82%]">About this report</DialogTitle>
           <DialogDescription>

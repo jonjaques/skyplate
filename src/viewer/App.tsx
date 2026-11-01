@@ -34,6 +34,7 @@ import { Rail } from "./shell/Rail";
 import { Record } from "./shell/record/Record";
 import { useShell } from "./shell/shell-state";
 import { useThemeSync } from "./shell/theme";
+import { startSymbolTrail } from "./shell/trail";
 import { TopBar } from "./shell/TopBar";
 import { SourceTab } from "./source/SourceTab";
 
@@ -78,6 +79,8 @@ export function App() {
 
   // Restore the view from the URL, then keep the URL in step.
   useEffect(() => (ready ? startUrlSync() : undefined), [ready]);
+  // Remember the symbols the record describes, for its Back and Forward (shell/trail.ts).
+  useEffect(() => (ready ? startSymbolTrail() : undefined), [ready]);
 
   // The symbol tables are the biggest data file; fetch them once the first view has painted
   // and the main thread is idle, so a first look never waits on them.
@@ -199,6 +202,9 @@ function RecordScroll({ children }: { children: ReactNode }) {
 /** One tab's content. Below 1024px each gets a height of its own, since the page scrolls. */
 function WorkArea({ bp }: { bp: Breakpoint }) {
   const stacked = bp === "narrow" || bp === "compact";
+  // The charts fill the screen under the sticky bar: 52px, or 92px below 768px, where the tabs
+  // take a second row (TopBar).
+  const screen = bp === "compact" ? "h-[calc(100dvh-92px)]" : "h-[calc(100dvh-52px)]";
   const pane = (value: Tab, className: string, tall: string, children: ReactNode) => (
     <TabsContent value={value} className={cn("min-h-0", stacked ? tall : "h-full", className)}>
       {children}
@@ -210,7 +216,7 @@ function WorkArea({ bp }: { bp: Breakpoint }) {
       {pane(
         "charts",
         "overflow-hidden",
-        "h-[calc(100dvh-52px)]",
+        screen,
         <Boundary what="The charts">
           <ChartsView />
         </Boundary>,

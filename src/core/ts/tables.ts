@@ -75,13 +75,21 @@ export function buildTables(store: SymbolStore, refs: RefStore, fileCount: numbe
     const k = key % 16;
     const pair = (key - k) / 16;
     const to = pair % S;
-    calls.from.push((pair - to) / S);
+    const caller = (pair - to) / S;
+    calls.from.push(caller);
     calls.to.push(to);
     calls.kind.push(k);
     calls.count.push(edges.get(key)!);
-    // Distinct callers, again leaving out the import/export bookkeeping (the importing module
-    // is not a caller just because it names the symbol at the top of the file).
-    if (k !== REF.import && k !== REF.export && pair !== lastPair) {
+    // Distinct callers, counted by the same rule the record's call hierarchy lists them
+    // (callEdges in src/viewer/shell/derived.ts), because the record prints the two together:
+    // - import/export rows are bookkeeping (the importing module is not a caller just because
+    //   it names the symbol at the top of the file);
+    // - extends/implements rows are the type hierarchy, which the record shows on its own. vite's
+    //   BaseEnvironment read "Callers 4" above "Nothing in the project calls or uses it" when
+    //   these counted: the four were subclasses;
+    // - a symbol using itself (recursion) is not its own caller: vite's recursive `flatten`,
+    //   called from one place, read "Callers 2" over a hierarchy listing one.
+    if (k !== REF.import && k !== REF.export && k !== REF.extends && k !== REF.implements && caller !== to && pair !== lastPair) {
       callers[to]!++;
       lastPair = pair;
     }

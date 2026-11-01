@@ -42,12 +42,37 @@ export interface FrameInfo {
 
 export type FrameListener = (info: FrameInfo) => void;
 
+/** A rectangle on the plate, CSS px from its top-left corner. */
+export interface PlateRect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+/**
+ * Frame listener order. The overlays share the plate and must agree within one frame (with
+ * frameloop "demand" a label that waits for the next frame may never get one):
+ *   REGIONS   region labels work out where they would sit and publish it
+ *   LABELS    specimen labels place themselves around those, then publish their own rects
+ *   YIELD     region labels still under a specimen label step aside
+ */
+export const FRAME_ORDER = { REGIONS: 0, LABELS: 1, YIELD: 2 } as const;
+
 /** Plate edges covered by chrome (title, legend, scrubber), in CSS px. Framing keeps clear of them. */
 export interface Insets {
   top: number;
   right: number;
   bottom: number;
   left: number;
+}
+
+/** The region (index into engine.regions) a directory belongs to, or -1. */
+export function regionOfDir(engine: GalaxyEngine, dir: number): number {
+  const dirs = engine.model.report.dirs;
+  let d = dir;
+  while (d > 0 && dirs[d]!.parent > 0) d = dirs[d]!.parent;
+  return engine.regionByDir.get(d) ?? -1;
 }
 
 /** The default three-quarter view: from below the disc's south edge, ~40° above its plane. */
@@ -110,13 +135,20 @@ export class GalaxyEngine {
    */
   atHome = false;
 
+  /** Region labels that would show this frame (published at FRAME_ORDER.REGIONS). */
+  regionLabelRects: PlateRect[] = [];
+  /** Specimen labels placed this frame (published at FRAME_ORDER.LABELS). */
+  labelRects: PlateRect[] = [];
+  /** The symbol definition under the knockout disc, or -1. */
+  definitionFile = -1;
+
   /** A selected file's moons: symbol ids, their screen positions (CSS px, stride 2), the file. */
   moonSymbols: number[] = [];
   moonScreen = new Float32Array(0);
   moonFile = -1;
   hoverMoon = -1;
 
-  private listeners = new Set<FrameListener>();
+  private listeners: { fn: FrameListener; order: number }[] = [];
   private holotypeMarks: Float32Array;
 
   // Picking cache: screen positions at the last projection, bucketed into a grid.
@@ -233,7 +265,7 @@ export class GalaxyEngine {
   dispose(): void {
     this.geometry.dispose();
     this.material.dispose();
-    this.listeners.clear();
+    this.listeners = [];
   }
 
   // ─── Attribute updates (in place; flagged for upload) ──────────────────────────────────────
@@ -247,6 +279,7 @@ export class GalaxyEngine {
   setDefinitionMarker(file: number | null): void {
     this.mark.set(this.holotypeMarks);
     if (file !== null) this.mark[file] = 2;
+    this.definitionFile = file ?? -1;
     this.touch("aMark");
   }
 
@@ -328,7 +361,7 @@ export class GalaxyEngine {
    * projection is perspective, so near and far files scale differently), with the target moved
    * to the middle of what is visible so orbiting pivots around the picture, not beside it.
    */
-  framePose(files: ArrayLike<number> | null, direction: THREE.Vector3, minRadius: number, extra: readonly number[] = []) {
+  framePose(files: ArrayLike<number> | null, direction: THREE.Vector3, minRadius: number, extra: readonly number[] = [], pad = 0) {
     const camera = this.camera;
     const W = Math.max(1, this.width);
     const H = Math.max(1, this.height);
@@ -386,10 +419,15 @@ export class GalaxyEngine {
         if (w <= D * 0.02) return null; // behind or at the lens: too close
         const sx = (dx * right.x + dy * right.y + dz * right.z) / (w * tanH);
         const sy = (dx * up.x + dy * up.y + dz * up.z) / (w * tanV);
-        if (sx < ax) ax = sx;
-        if (sx > bx) bx = sx;
-        if (sy < ay) ay = sy;
-        if (sy > by) by = sy;
+        // Each point is a disc of radius `pad`: the region outlines run about four contour
+        // cells outside the stars, and fitting the stars alone clipped them at both edges of a
+        // phone-width plate.
+        const px = pad / (w * tanH);
+        const py = pad / (w * tanV);
+        if (sx - px < ax) ax = sx - px;
+        if (sx + px > bx) bx = sx + px;
+        if (sy - py < ay) ay = sy - py;
+        if (sy + py > by) by = sy + py;
       }
       return { ax, bx, ay, by };
     };
@@ -435,15 +473,20 @@ export class GalaxyEngine {
     this.invalidate();
   }
 
+  /** World margin around stars that keeps their region outlines in frame (contour.ts pads ~4 cells of R/75). */
+  get outlinePad(): number {
+    return this.radius * 0.055;
+  }
+
   /** Frame the whole collection from the default three-quarter view. */
   home(animate: boolean): void {
     if (!this.controls) return;
-    this.applyPose(this.framePose(null, HOME_DIRECTION, this.radius * 0.1), HOME_DIRECTION, animate);
+    this.applyPose(this.framePose(null, HOME_DIRECTION, this.radius * 0.1, [], this.outlinePad), HOME_DIRECTION, animate);
     this.atHome = true;
   }
 
   /** Fly to a set of files, keeping the current viewing direction. */
-  fly(files: ArrayLike<number>, minRadius = this.radius * 0.06, extra: readonly number[] = [], animate = true): void {
+  fly(files: ArrayLike<number>, minRadius = this.radius * 0.06, extra: readonly number[] = [], animate = true, pad = 0): void {
     const c = this.controls;
     if (!c || files.length === 0) return;
     const dir = new THREE.Vector3();
@@ -453,16 +496,23 @@ export class GalaxyEngine {
     dir.sub(t);
     if (dir.lengthSq() < 1e-9) dir.copy(HOME_DIRECTION);
     dir.normalize();
-    this.applyPose(this.framePose(files, dir, minRadius, extra), dir, animate);
+    this.applyPose(this.framePose(files, dir, minRadius, extra, pad), dir, animate);
     this.atHome = false;
   }
 
   // ─── Frame bus ─────────────────────────────────────────────────────────────────────────────
 
-  onFrame(listener: FrameListener): () => void {
-    this.listeners.add(listener);
+  /** Run `listener` on every rendered frame, after every listener of a lower `order`. */
+  onFrame(listener: FrameListener, order = 0): () => void {
+    const entry = { fn: listener, order };
+    // Stable by order: listeners of one order keep their registration order.
+    const at = this.listeners.findIndex((l) => l.order > order);
+    if (at < 0) this.listeners.push(entry);
+    else this.listeners.splice(at, 0, entry);
     this.invalidate();
-    return () => this.listeners.delete(listener);
+    return () => {
+      this.listeners = this.listeners.filter((l) => l !== entry);
+    };
   }
 
   /** Called once per rendered frame from inside the Canvas, before the scene renders. */
@@ -494,7 +544,7 @@ export class GalaxyEngine {
 
     camera.updateMatrixWorld();
     const info: FrameInfo = { camera, width, height, clock: this.clock, morph: this.morph };
-    for (const l of this.listeners) l(info);
+    for (const l of this.listeners) l.fn(info);
 
     if (this.morph !== this.morphTarget || this.animating.size > 0) this.invalidate();
   }
@@ -627,6 +677,57 @@ export class GalaxyEngine {
             best = i;
           }
         }
+      }
+    }
+    return best;
+  }
+
+  /**
+   * Keyboard stepping: the star the arrow keys reach from `from` in screen direction (dx, dy),
+   * or -1 when nothing lies that way. Candidates sit within 60° of the direction; the nearest
+   * wins, with sideways distance counting double so a press goes where it points. Dimmed and
+   * not-yet-created stars are skipped, so the keys walk what the plate is showing. From no star
+   * (-1), it starts at the lit star nearest the plate's middle.
+   */
+  step(from: number, dx: number, dy: number): number {
+    this.project();
+    const W = this.width;
+    const H = this.height;
+    const timeOn = (this.material.uniforms.uTimeOn!.value as number) > 0.5;
+    const tNow = this.material.uniforms.uTime!.value as number;
+    const onPlate = (i: number) =>
+      this.sw[i]! > 0 && this.sx[i]! >= 0 && this.sy[i]! >= 0 && this.sx[i]! <= W && this.sy[i]! <= H && !(timeOn && this.born[i]! > tNow);
+    const lit = (i: number) => this.emph[i]! >= 0.3;
+    let best = -1;
+    let bestScore = Infinity;
+    if (from < 0 || !onPlate(from)) {
+      for (let i = 0; i < this.n; i++) {
+        if (!onPlate(i) || !lit(i)) continue;
+        const d = Math.hypot(this.sx[i]! - W / 2, this.sy[i]! - H / 2);
+        if (d < bestScore) {
+          bestScore = d;
+          best = i;
+        }
+      }
+      return best;
+    }
+    const ox = this.sx[from]!;
+    const oy = this.sy[from]!;
+    const len = Math.hypot(dx, dy) || 1;
+    const ux = dx / len;
+    const uy = dy / len;
+    for (let i = 0; i < this.n; i++) {
+      if (i === from || !onPlate(i) || !lit(i)) continue;
+      const vx = this.sx[i]! - ox;
+      const vy = this.sy[i]! - oy;
+      const along = vx * ux + vy * uy;
+      if (along <= 2) continue;
+      const side = Math.abs(vx * uy - vy * ux);
+      if (side > along * 1.73) continue; // outside the 60° cone
+      const score = along + side * 2;
+      if (score < bestScore) {
+        bestScore = score;
+        best = i;
       }
     }
     return best;

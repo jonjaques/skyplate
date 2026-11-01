@@ -1283,7 +1283,9 @@ function snake(s: string): string {
 
 // ─── Dispatch ────────────────────────────────────────────────────────────────────────────────
 
-const JS_LANGS = new Set(["javascript", "typescript", "tsx", "glimmer-js", "glimmer-ts", "mdx", "vue", "svelte", "astro", "html", "ejs", "handlebars"]);
+// Markdown is here for its <script setup> imports (VitePress pages); its links never get this
+// far, since every `link` edge resolves as a link above.
+const JS_LANGS = new Set(["javascript", "typescript", "tsx", "glimmer-js", "glimmer-ts", "mdx", "markdown", "vue", "svelte", "astro", "html", "ejs", "handlebars"]);
 const CSS_LANGS = new Set(["css", "scss", "sass", "less", "stylus", "postcss"]);
 const PY_LANGS = new Set(["python", "cython", "starlark"]);
 const JVM_LANGS = new Set(["java", "kotlin", "scala", "groovy", "gradle-kotlin-dsl"]);

@@ -108,7 +108,11 @@ export function timeTicks(
     ticks = scale.ticks(d3.utcMonth.every(step)!);
     fmt = (d) => (d.getUTCMonth() === 0 || d === ticks[0] ? fmtMonthYear(d) : fmtMonth(d));
   } else {
-    ticks = scale.ticks(Math.max(2, Math.min(6, Math.floor(width / 72))));
+    // Weeks start on Monday everywhere in the report (data.ts weekStart, the analyzer's
+    // derive.ts), but a bare count makes d3 snap to utcWeek, which is Sunday: the crosshair
+    // on "Week of Sep 7" stood a day right of the "Sep 6" tick. Monday ticks land on samples.
+    const step = [1, 2, 4, 8].find((s) => perDay * 7 * s >= 56) ?? 13;
+    ticks = scale.ticks(d3.utcMonday.every(step)!);
     fmt = fmtDay;
   }
   // d3 treats the count as a hint and snaps to calendar boundaries, so a 150px tray over three

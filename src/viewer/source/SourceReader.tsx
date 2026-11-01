@@ -24,12 +24,15 @@ import { cn } from "../lib/utils";
 import type { SymbolModel } from "../model/symbols";
 import type { SourceUnavailable } from "../state/loaders";
 import { useHover, useViewer, type SourceTarget } from "../state/store";
+import { degree, edgeSplit } from "../shell/derived";
+import { InlineDoc } from "../shell/inline-doc";
 import { SYMBOL_KIND_LABEL } from "../shell/labels";
 import { openSymbolDefinition } from "../shell/navigate";
 import { LanguageSwatch, PathText, RowButton } from "../shell/parts";
-import { useShell } from "../shell/shell-state";
+import { takeReaderFocus, useShell } from "../shell/shell-state";
+import { MOD_KEY } from "../shell/TopBar";
 import { CodeView, type CodeMark, type CodeRange } from "./CodeView";
-import { describeUnavailable } from "./availability";
+import { describeNoSource, describeUnavailable } from "./availability";
 import { grammarFor, htmlToLines, loadHighlighter, plainLines, type Tok } from "./highlight";
 import { useSourceText } from "./useSource";
 
@@ -172,7 +175,16 @@ function FileReader({ report, file, target }: { report: Report; file: FileRecord
   );
   const refCount = symbols && analyzed ? symbols.fileRefStart[file.id + 1]! - symbols.fileRefStart[file.id]! : 0;
   const selectedSymbol = selection?.kind === "symbol" ? selection.id : null;
-  const marks = target.file === file.id && target.marks ? target.marks : NO_MARKS;
+
+  // A mark says "you were sent here", and belongs to the selection that sent the reader. When
+  // the selection later moves to another symbol without a new jump (a crosshair in the record,
+  // a name clicked in the text), the old mark stayed lit beside the new subject. Derived state:
+  // the owner is re-taken whenever the target changes, during render, as React recommends.
+  const selKey = selection ? `${selection.kind}:${selection.id}` : "";
+  const [markOwner, setMarkOwner] = useState({ target, sel: selKey });
+  if (markOwner.target !== target) setMarkOwner({ target, sel: selKey });
+  const marksLive = markOwner.target !== target || markOwner.sel === selKey;
+  const marks = target.file === file.id && target.marks && marksLive ? target.marks : NO_MARKS;
 
   useEffect(
     () => () => {
@@ -205,9 +217,13 @@ function FileReader({ report, file, target }: { report: Report; file: FileRecord
       return;
     }
     // Pin this file first: when the reader is showing it only because it is selected,
-    // selecting a symbol would otherwise send the reader to that symbol's declaration.
+    // selecting a symbol would otherwise send the reader to that symbol's declaration. A pin
+    // that still carries an earlier jump's line and marks is replaced too, so neither the
+    // text nor a link copied now points at the previous subject's place. No line, so no scroll.
     const s = useViewer.getState();
-    if (!s.source || s.source.file !== file.id) s.openSource({ file: file.id });
+    if (!s.source || s.source.file !== file.id || s.source.marks?.length || s.source.line !== undefined) {
+      s.openSource({ file: file.id });
+    }
     select({ kind: "symbol", id: sym });
   };
 
@@ -303,7 +319,7 @@ function IntelStatus({
         </span>
       </TooltipTrigger>
       <TooltipContent side="bottom" className="flex items-center gap-1.5">
-        Click a name to select it; <Kbd>⌘</Kbd>-click goes to its definition
+        Click a name to select it; <Kbd>{MOD_KEY}</Kbd>-click goes to its definition
       </TooltipContent>
     </Tooltip>
   );
@@ -328,9 +344,15 @@ function SymbolCard({ symbols, report, sym, rect }: { symbols: CodeSymbols; repo
           <span className="opacity-75">{SYMBOL_KIND_LABEL[t.kind[sym]!]}</span>
         </div>
         {t.signature[sym] && (
-          <p className="mt-1 font-mono text-[11.5px] leading-snug break-words whitespace-pre-wrap opacity-90">{t.signature[sym]}</p>
+          <p className="mt-1 font-mono text-[11.5px] leading-snug break-words whitespace-pre-wrap opacity-90 [font-variant-ligatures:none]">
+            {t.signature[sym]}
+          </p>
         )}
-        {t.doc[sym] && <p className="mt-1 opacity-90">{t.doc[sym]}</p>}
+        {t.doc[sym] && (
+          <p className="mt-1 opacity-90">
+            <InlineDoc text={t.doc[sym]} />
+          </p>
+        )}
         <p className="figures mt-1.5 font-mono text-[11px] opacity-75">
           {plural(t.refs[sym]!, "reference")} · {plural(t.files[sym]!, "file")}
           {file ? ` · ${file.path}:${t.line[sym]! + 1}` : ""}
@@ -362,8 +384,12 @@ function AssetStrip({ file }: { file: FileRecord }) {
 function NoSource({ report, file, reason }: { report: Report; file: FileRecord; reason: SourceUnavailable }) {
   const { title, body } = describeUnavailable(report, file, reason);
   const Icon = reason === "secret" ? Lock : file.asset ? ImageIcon : FileX;
+  const host = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (takeReaderFocus()) host.current?.focus({ preventScroll: true });
+  }, []);
   return (
-    <div className="h-full overflow-auto">
+    <div ref={host} tabIndex={-1} aria-label={title} className="h-full overflow-auto outline-none">
       {file.asset && (
         <div className="flex min-h-[50%] items-center justify-center border-b border-rule bg-tray p-6">
           <img src={file.asset} alt={file.name} className="max-h-[60vh] max-w-full object-contain" />
@@ -380,7 +406,10 @@ function NoSource({ report, file, reason }: { report: Report; file: FileRecord; 
             ["Size", formatBytes(file.bytes)],
             ["Lines", file.lines ? formatInt(file.lines) : "None counted"],
             ["Commits", file.git ? formatInt(file.git.commits) : "No history"],
-            ["Imported by", formatInt(file.fanIn)],
+            // A document has links where code has importers; the record counts them apart too.
+            file.fanIn === 0 && degree(edgeSplit(report).linkedFrom, file.id) > 0
+              ? ["Linked from", formatInt(degree(edgeSplit(report).linkedFrom, file.id))]
+              : ["Imported by", formatInt(file.fanIn)],
           ].map(([k, v]) => (
             <div key={k} className="border-b border-rule py-2 odd:border-r odd:pr-3 even:pl-3">
               <dt className="text-xs text-ink-3">{k}</dt>
@@ -394,37 +423,60 @@ function NoSource({ report, file, reason }: { report: Report; file: FileRecord; 
   );
 }
 
-/** No file chosen yet: say how to choose one, and offer the files most worth reading. */
+/**
+ * No file chosen yet: say how to choose one, and offer the files most worth reading. A report
+ * written without source has nothing to read at all, so it says that instead of offering a
+ * list where every pick leads to the same "written without source" page.
+ */
 function NothingOpen({ report }: { report: Report }) {
   const model = useViewer((s) => s.model);
   const openSource = useViewer((s) => s.openSource);
-  const picks = useMemo(() => {
-    if (!model) return [];
-    const holo = [...model.holotypes];
-    const rest = report.files
-      .filter((f) => f.src >= 0 && !model.holotypes.has(f.id))
-      .sort((a, b) => b.rank - a.rank)
-      .slice(0, Math.max(0, 8 - holo.length))
-      .map((f) => f.id);
-    return [...holo, ...rest].slice(0, 8);
-  }, [model, report]);
+  // Ordered by importers, the figure each row shows, so the heading's claim is the sort key.
+  // (It used to lead with the holotypes in Set order: 50, 1, 251, 4, then 256.)
+  const picks = useMemo(
+    () =>
+      report.files
+        .filter((f) => f.src >= 0 && f.fanIn > 0)
+        .sort((a, b) => b.fanIn - a.fanIn || b.rank - a.rank)
+        .slice(0, 8)
+        .map((f) => f.id),
+    [report],
+  );
+  if (!report.source) {
+    const { title, body } = describeNoSource(report);
+    return (
+      <div className="h-full overflow-auto bg-paper px-6 py-6">
+        <h2 className="flex items-center gap-2 text-[17px] font-semibold text-ink [font-stretch:85%]">
+          <FileX aria-hidden className="size-4 shrink-0 text-ink-3" />
+          {title}
+        </h2>
+        <p className="mt-1.5 max-w-[62ch] text-ink-2">{body}</p>
+        <p className="mt-3 max-w-[62ch] text-ink-2">
+          Pick a star on the plate or a row in the explorer: the accession record shows what was measured, and the galaxy shows
+          what it imports and what imports it.
+        </p>
+      </div>
+    );
+  }
   return (
     <div className="h-full overflow-auto bg-paper px-6 py-6">
       <h2 className="text-[17px] font-semibold text-ink [font-stretch:85%]">Choose a file to read</h2>
       <p className="mt-1.5 max-w-[60ch] text-ink-2">
-        Pick a star on the plate, a row in the explorer, or press <Kbd>⌘K</Kbd> and type part of a file name.
+        Pick a star on the plate, a row in the explorer, or press <Kbd>{MOD_KEY === "⌘" ? "⌘K" : "Ctrl K"}</Kbd> and type part
+        of a file name.
       </p>
       {picks.length > 0 && (
         <div className="mt-5 max-w-xl">
-          <h3 className="mb-1 text-[13px] font-semibold text-ink">Most depended on</h3>
+          <h3 className="mb-1 text-[13px] font-semibold text-ink">Most imported</h3>
           <div className="border-t border-rule">
             {picks.map((id) => {
               const f = report.files[id]!;
+              const holotype = model?.holotypes.has(id) ?? false;
               return (
                 <RowButton key={id} onClick={() => openSource({ file: id })} aside={plural(f.fanIn, "importer")}>
                   <span
-                    className={cn("size-2 shrink-0 rounded-full", model?.holotypes.has(id) ? "bg-holotype" : "bg-rule-strong")}
-                    title={model?.holotypes.has(id) ? "Holotype: the most depended-on file in its region" : undefined}
+                    className={cn("size-2 shrink-0 rounded-full", holotype ? "bg-holotype" : "bg-rule-strong")}
+                    title={holotype ? "Holotype: the most central file in its region" : undefined}
                   />
                   <span className="truncate font-mono text-xs">{f.path}</span>
                 </RowButton>

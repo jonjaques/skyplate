@@ -15,7 +15,8 @@ import { cn } from "../lib/utils";
 
 export function Section({ id, title, note, children }: { id: string; title: string; note?: ReactNode; children: ReactNode }) {
   return (
-    <section aria-labelledby={`charts-${id}`} className="pt-8 first-of-type:pt-5">
+    // scroll-mt clears the sticky filter row when a tray opens the tab at this section.
+    <section aria-labelledby={`charts-${id}`} className="scroll-mt-14 pt-8 first-of-type:pt-5">
       <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 px-5 pb-3">
         <h2 id={`charts-${id}`} className="text-xl font-semibold tracking-[-0.01em] text-ink [font-stretch:82%]">
           {title}

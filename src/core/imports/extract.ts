@@ -28,6 +28,15 @@ import { getLexRules, type LexRules } from "../languages/syntax";
  */
 export interface ExtractedImport extends RawImport {
   typeOnly?: true;
+  /**
+   * What the statement takes from the module, as the module exports it (see importedNames),
+   * recorded only for scripts the TypeScript analysis never reads: the <script> blocks of
+   * Vue, Svelte, Astro and HTML files, VitePress Markdown and MDX. The compiler sees every
+   * use made from .ts/.js itself; these are the uses it cannot, so the pipeline matches them
+   * to symbols (src/core/ts/hosts.ts) instead of calling an export that a component imports
+   * "unused". [] for a side-effect import.
+   */
+  names?: string[];
 }
 
 interface Ctx {
@@ -36,6 +45,8 @@ interface Ctx {
   out: ExtractedImport[];
   seen: Map<string, ExtractedImport>;
   lineStarts: number[];
+  /** Record ExtractedImport.names: this text is a script the compiler does not analyze. */
+  names: boolean;
 }
 
 function lineStartsOf(text: string): number[] {
@@ -64,9 +75,9 @@ function lineOf(ctx: Ctx, pos: number): number {
   return lo;
 }
 
-function add(ctx: Ctx, spec: string, kind: EdgeKind, pos: number, typeOnly = false): void {
+function add(ctx: Ctx, spec: string, kind: EdgeKind, pos: number, typeOnly = false): ExtractedImport | undefined {
   const s = spec.trim();
-  if (!s || s.length > 1000) return;
+  if (!s || s.length > 1000) return undefined;
   const line = lineOf(ctx, pos);
   // The same specifier twice on one line (`@import url("x")` seen by two patterns) is one edge,
   // and a runtime import of it outweighs a type-only one beside it.
@@ -74,11 +85,53 @@ function add(ctx: Ctx, spec: string, kind: EdgeKind, pos: number, typeOnly = fal
   const prior = ctx.seen.get(key);
   if (prior) {
     if (!typeOnly) delete prior.typeOnly;
-    return;
+    return prior;
   }
   const imp: ExtractedImport = typeOnly ? { spec: s, kind, line, typeOnly: true } : { spec: s, kind, line };
   ctx.seen.set(key, imp);
   ctx.out.push(imp);
+  return imp;
+}
+
+/** Add `names` to an import's, keeping each once (two statements of one spec on one line). */
+function addNames(imp: ExtractedImport | undefined, names: string[]): void {
+  if (!imp) return;
+  imp.names = imp.names ? [...new Set([...imp.names, ...names])] : names;
+}
+
+/**
+ * The names an import or re-export clause takes from its module, as the module exports them:
+ * "default" for a default binding, "*" for a namespace (`* as ns`, `export *`), and each listed
+ * specifier's exported name, the one before `as`. `type` modifiers are dropped: a type-only
+ * import is still a use of the export. [] for a side-effect import (no clause).
+ *
+ *   X                    → ["default"]
+ *   X, { a, b as c }     → ["default", "a", "b"]
+ *   * as ns              → ["*"]
+ *   { default as Y, "x-y" as z }  → ["default", "x-y"]
+ */
+export function importedNames(clause: string): string[] {
+  let s = clause.trim();
+  const out: string[] = [];
+  if (!s) return out;
+  if (s[0] !== "{" && s[0] !== "*") {
+    const def = /^[\p{ID_Start}$_][\p{ID_Continue}$]*/u.exec(s);
+    if (!def) return out;
+    out.push("default");
+    s = s.slice(def[0].length).replace(/^\s*,\s*/, "");
+  }
+  if (s[0] === "*") out.push("*");
+  else if (s[0] === "{") {
+    const close = s.indexOf("}");
+    for (const part of s.slice(1, close < 0 ? undefined : close).split(",")) {
+      let p = part.trim();
+      // `{ type A }` names A; `{ type }` and `{ type as t }` name an export called `type`.
+      if (/^type\s+(?!as\s+[\p{ID_Continue}$]+$)\S/u.test(p)) p = p.replace(/^type\s+/, "");
+      const name = /^(?:"([^"]*)"|'([^']*)'|([\p{ID_Start}$_][\p{ID_Continue}$]*))/u.exec(p);
+      if (name) out.push(name[1] ?? name[2] ?? name[3]!);
+    }
+  }
+  return out;
 }
 
 /**
@@ -136,11 +189,14 @@ function extractJs(ctx: Ctx, start: number, end: number): void {
     const bindings = m[2] ?? "";
     // `import type from "./x"` is a default import named `type`: the keyword needs bindings after it.
     const typeOnly = (!!m[1] && bindings.trim() !== "") || allTypeSpecifiers(bindings);
-    add(ctx, spec, "import", m.index, typeOnly);
+    const imp = add(ctx, spec, "import", m.index, typeOnly);
+    if (ctx.names) addNames(imp, importedNames(m[1] && !bindings.trim() ? "type" : bindings));
   });
   each(ctx, JS_EXPORT_FROM, start, end, (m) => {
     const spec = stringAt(ctx, lastPos(m));
-    if (spec !== undefined) add(ctx, spec, "import", m.index, !!m[1] || allTypeSpecifiers(m[2]!));
+    if (spec === undefined) return;
+    const imp = add(ctx, spec, "import", m.index, !!m[1] || allTypeSpecifiers(m[2]!));
+    if (ctx.names) addNames(imp, importedNames(m[2]!));
   });
   each(ctx, JS_DYNAMIC, start, end, (m) => {
     const spec = stringAt(ctx, lastPos(m));
@@ -251,21 +307,32 @@ function cleanLink(raw: string): string {
   return s;
 }
 
+/** A Markdown HTML block opening a script (CommonMark: at most three spaces of indent). */
+const MD_SCRIPT = /^ {0,3}<script\b([^>]*)>/gim;
+// The clause is bindings only (names, braces, commas, `*`), as in JS_IMPORT, so it can span
+// lines without running on through prose to some later `from "…"` in the text.
+const MDX_ESM = /^(?:import|export)\s+(type\s+)?([\p{ID_Continue}$*{}\s,]{0,2000}?)\s*\bfrom\s*(["'])([^"'\n]+)\3|^import\s*(["'])([^"'\n]+)\5/gmu;
+
 function extractMarkdown(ctx: Ctx, withJs: boolean): void {
   const text = ctx.text;
   let fence = "";
   const starts = ctx.lineStarts;
+  // Fenced lines, so the script and ESM passes below never read a code sample as code: a docs
+  // page showing `<script setup>` or `import x from` in a fence is describing it, not doing it.
+  const fenced: [number, number][] = [];
   for (let li = 0; li < starts.length; li++) {
     const s = starts[li]!;
     const e = li + 1 < starts.length ? starts[li + 1]! : text.length;
     const line = text.slice(s, e).replace(/[\r\n]+$/, "");
     if (fence) {
+      fenced.at(-1)![1] = e;
       if (line.trimStart().startsWith(fence)) fence = "";
       continue;
     }
     const f = MD_FENCE.exec(line);
     if (f) {
       fence = f[1]!;
+      fenced.push([s, e]);
       continue;
     }
     if (line.startsWith("    ") || line.startsWith("\t")) continue; // indented code block
@@ -287,10 +354,45 @@ function extractMarkdown(ctx: Ctx, withJs: boolean): void {
       for (let m = MD_HTML.exec(body); m; m = MD_HTML.exec(body)) push(m[1]!);
     }
   }
+  // Fence contents blanked, offsets kept, for the two passes that look for code.
+  let prose = text;
+  if (fenced.length) {
+    const parts: string[] = [];
+    let at = 0;
+    for (const [s, e] of fenced) {
+      parts.push(text.slice(at, s), text.slice(s, e).replace(/[^\r\n]/g, " "));
+      at = e;
+    }
+    parts.push(text.slice(at));
+    prose = parts.join("");
+  }
   if (withJs) {
-    // MDX: ESM statements sit at the top level, outside fences, one statement per block.
-    const re = /^(?:import|export)\s[^\n]*?\bfrom\s*(["'])([^"'\n]+)\1|^import\s*(["'])([^"'\n]+)\3/gm;
-    for (let m = re.exec(text); m; m = re.exec(text)) ctx.out.push({ spec: m[2] ?? m[4]!, kind: "import", line: lineOf(ctx, m.index) });
+    // MDX: ESM statements sit at the top level, outside fences, and the clause may span lines
+    // (`import {\n  a,\n  b,\n} from "./x"`).
+    MDX_ESM.lastIndex = 0;
+    for (let m = MDX_ESM.exec(prose); m; m = MDX_ESM.exec(prose)) {
+      const imp: ExtractedImport = { spec: m[4] ?? m[6]!, kind: "import", line: lineOf(ctx, m.index) };
+      if (ctx.names) imp.names = m[4] === undefined ? [] : importedNames(m[1] && !m[2]!.trim() ? "type" : m[2]!);
+      ctx.out.push(imp);
+    }
+  }
+  // VitePress (and any Markdown that compiles to a component) runs a page's <script setup>
+  // block, so its imports are the page's dependencies. Before this they were not read at all,
+  // and a composable used only from docs pages was reported as an unused export.
+  if (!prose.includes("<script") && !prose.includes("<SCRIPT")) return;
+  const tsRules = getLexRules("typescript")!;
+  MD_SCRIPT.lastIndex = 0;
+  for (let m = MD_SCRIPT.exec(prose); m; m = MD_SCRIPT.exec(prose)) {
+    if (/\bsrc\s*=/i.test(m[1]!) || m[1]!.trimEnd().endsWith("/")) continue;
+    const bodyStart = m.index + m[0].length;
+    const close = /<\/script\s*>/gi;
+    close.lastIndex = bodyStart;
+    const bodyEnd = close.exec(text)?.index ?? text.length;
+    // The body lexed as TypeScript (a superset of what these blocks hold), so comments and
+    // strings inside it are masked the way extractJs expects, at the page's own offsets.
+    const body = scanWithRules(text.slice(bodyStart, bodyEnd), tsRules).mask;
+    extractJs({ ...ctx, mask: text.slice(0, bodyStart) + body + text.slice(bodyEnd) }, bodyStart, bodyEnd);
+    MD_SCRIPT.lastIndex = bodyEnd;
   }
 }
 
@@ -703,7 +805,7 @@ export const extractImports = ((_path: string, text: string, languageId: string)
   if (!extractor && !markdown && !host) return [];
   const rules = markdown ? undefined : getLexRules(languageId);
   const scan: Scan | undefined = rules ? scanWithRules(text, rules) : undefined;
-  const ctx: Ctx = { text, mask: scan?.mask ?? text, out: [], seen: new Map(), lineStarts: lineStartsOf(text) };
+  const ctx: Ctx = { text, mask: scan?.mask ?? text, out: [], seen: new Map(), lineStarts: lineStartsOf(text), names: host || markdown };
   if (markdown) extractMarkdown(ctx, languageId === "mdx");
   else if (scan && scan.segments.length > 1) {
     // HTML-like files: scripts, styles and markup each get their own extractor.

@@ -8,8 +8,9 @@
  * per click is what makes a big report feel slow.
  */
 
-import { REF_KINDS, type CodeSymbols, type Report } from "../../shared/schema";
+import { REF_KINDS, type CodeSymbols, type FileRecord, type Report } from "../../shared/schema";
 import type { Adjacency, Model } from "../model/indices";
+import type { Filters } from "../state/store";
 import { filesUnder } from "../model/indices";
 
 function csr(n: number, keys: ArrayLike<number>, values: ArrayLike<number>): Adjacency {
@@ -74,6 +75,54 @@ export function collectorsOf(report: Report, file: number): { author: number; co
   return [...counts].map(([author, commits]) => ({ author, commits })).sort((a, b) => b.commits - a.commits);
 }
 
+// ─── File edges ──────────────────────────────────────────────────────────────────────────────
+
+export interface EdgeSplit {
+  /** Code dependencies (import, include, require, reference), the edges fanIn/fanOut count. */
+  imports: Adjacency;
+  importedBy: Adjacency;
+  /** Document links (a Markdown file linking another file in the repo). */
+  linksTo: Adjacency;
+  linkedFrom: Adjacency;
+}
+
+const edgeSplitCache = new WeakMap<Report, EdgeSplit>();
+
+/**
+ * The report's file edges, split the way the analyzer splits them. Its fan-in, fan-out and
+ * PageRank use code edges only (docs linking each other would top PageRank and form "cycles"
+ * that say nothing about the code), but report.edges carries the links too. The record read its
+ * figures from one and its lists from the other, so README.md said "Imports 0" above a list of
+ * 27 imports. Splitting here lets every count and list name one edge set.
+ */
+export function edgeSplit(report: Report): EdgeSplit {
+  let cached = edgeSplitCache.get(report);
+  if (!cached) {
+    const n = report.files.length;
+    const { from, to, kind } = report.edges;
+    const code: [number[], number[]] = [[], []];
+    const link: [number[], number[]] = [[], []];
+    for (let i = 0; i < from.length; i++) {
+      const bucket = kind[i] === "link" ? link : code;
+      bucket[0].push(from[i]!);
+      bucket[1].push(to[i]!);
+    }
+    cached = {
+      imports: csr(n, code[0], code[1]),
+      importedBy: csr(n, code[1], code[0]),
+      linksTo: csr(n, link[0], link[1]),
+      linkedFrom: csr(n, link[1], link[0]),
+    };
+    edgeSplitCache.set(report, cached);
+  }
+  return cached;
+}
+
+/** Number of neighbors a file has in one adjacency. */
+export function degree(adj: Adjacency, node: number): number {
+  return adj.offsets[node + 1]! - adj.offsets[node]!;
+}
+
 // ─── Directories ─────────────────────────────────────────────────────────────────────────────
 
 export interface DirSummary {
@@ -82,23 +131,37 @@ export interface DirSummary {
   hottest: number[];
   owners: { author: number; files: number }[];
   codeLines: number;
+  /** Files with code lines that the filters hide, so the language mix leaves them out. */
+  filteredOut: number;
+}
+
+/** The shared filters' test, as the charts and trays apply it (charts/data.ts scopeFiles). */
+function passes(f: FileRecord, filters: Filters): boolean {
+  if (filters.languages && !filters.languages.has(f.language)) return false;
+  if (filters.categories && !filters.categories.has(f.category)) return false;
+  if (filters.hideGenerated && f.generated) return false;
+  if (filters.hideVendored && f.vendored) return false;
+  return true;
 }
 
 /** Language mix, largest and hottest files, and owners beneath one directory. */
-export function summarizeDir(model: Model, dir: number): DirSummary {
+export function summarizeDir(model: Model, dir: number, filters?: Filters): DirSummary {
   const report = model.report;
   const ids = filesUnder(model, dir);
   const langs = new Map<string, number>();
   const owners = new Map<number, number>();
   const bots = report.git?.authors.map((a) => a.bot) ?? [];
   let codeLines = 0;
+  let filteredOut = 0;
   for (const id of ids) {
     const f = report.files[id]!;
-    // Code lines only, the measure the Language composition tray uses: the record sits beside
-    // that tray for the same drawer, and weighting comments in here gave it different shares
-    // for the same languages.
+    // Code lines only, and only files the filters let through: the measure the Language
+    // composition tray uses. The record sits beside that tray for the same drawer; weighting
+    // comments gave it different shares, and counting the vendored files the tray hides by
+    // default gave it a different number of languages ("15 languages" over "Language mix 16").
     const weight = f.code;
-    if (weight > 0) {
+    if (weight > 0 && filters && !passes(f, filters)) filteredOut++;
+    else if (weight > 0) {
       langs.set(f.language, (langs.get(f.language) ?? 0) + weight);
       codeLines += weight;
     }
@@ -119,6 +182,7 @@ export function summarizeDir(model: Model, dir: number): DirSummary {
     hottest,
     owners: [...owners].map(([author, files]) => ({ author, files })).sort((a, b) => b.files - a.files),
     codeLines,
+    filteredOut,
   };
 }
 
@@ -211,20 +275,58 @@ export function heritage(
 
 /**
  * Where `from` refers to `to`: the first reference row, used to open the reader at a call site
- * from a hierarchy row. Scans `to`'s references, which are already grouped per symbol.
+ * from a hierarchy row. Scans `to`'s references, which are already grouped per symbol. With
+ * `prefer`, a row of one of those kinds wins over an earlier row of another kind (an
+ * anonymous class's `extends` clause rather than a type annotation above it).
  */
 export function callSite(
   symbols: CodeSymbols,
   refsOf: Adjacency,
   from: number,
   to: number,
+  prefer?: ReadonlySet<number>,
 ): { file: number; line: number; col: number; len: number } | null {
   const r = symbols.refs;
+  let fallback: number | null = null;
   for (let i = refsOf.offsets[to]!; i < refsOf.offsets[to + 1]!; i++) {
     const row = refsOf.targets[i]!;
-    if (r.from[row] === from && !NOT_A_USE.has(r.kind[row]!)) {
-      return { file: r.file[row]!, line: r.line[row]!, col: r.col[row]!, len: r.len[row]! };
-    }
+    if (r.from[row] !== from || NOT_A_USE.has(r.kind[row]!)) continue;
+    if (!prefer || prefer.has(r.kind[row]!)) return { file: r.file[row]!, line: r.line[row]!, col: r.col[row]!, len: r.len[row]! };
+    fallback ??= row;
   }
-  return null;
+  return fallback === null ? null : { file: r.file[fallback]!, line: r.line[fallback]!, col: r.col[fallback]!, len: r.len[fallback]! };
+}
+
+export const HERITAGE_KINDS: ReadonlySet<number> = HERITAGE;
+
+/**
+ * How often a symbol refers to itself (direct recursion). callEdges leaves the self-edge out,
+ * because a row naming the symbol inside its own hierarchy would expand forever, so this is
+ * the one place recursion is counted; mutual recursion shows as a cycle when rows expand.
+ */
+export function selfCalls(symbols: CodeSymbols, symbol: number): number {
+  const idx = callIndex(symbols);
+  let n = 0;
+  for (let i = idx.byFrom.offsets[symbol]!; i < idx.byFrom.offsets[symbol + 1]!; i++) {
+    const row = idx.byFrom.targets[i]!;
+    const kind = symbols.calls.kind[row]!;
+    if (symbols.calls.to[row] === symbol && !NOT_A_USE.has(kind) && !HERITAGE.has(kind)) n += symbols.calls.count[row]!;
+  }
+  return n;
+}
+
+/**
+ * Callers that reach a symbol through what it implements or overrides. A method behind an
+ * interface is called as `this.saves.read(slot)`, and the checker resolves that to
+ * SaveStore.read, so IndexedDbSaveStore.read had no callers of its own and its record said
+ * "Nothing in the project calls or uses it" about code that runs on every load. One level of
+ * bases is followed: the interface member, or the overridden base method.
+ */
+export function callsThroughBases(symbols: CodeSymbols, symbol: number): { base: number; edges: CallEdge[] }[] {
+  return heritage(symbols, symbol)
+    .bases.map(({ symbol: base }) => ({
+      base,
+      edges: callEdges(symbols, base, "incoming").filter((e) => e.symbol !== symbol),
+    }))
+    .filter((g) => g.edges.length > 0);
 }

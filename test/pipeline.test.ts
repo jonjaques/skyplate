@@ -20,7 +20,7 @@ import { join } from "node:path";
 import { analyzeProject, type AnalysisResult, type ProgressEvent } from "../src/core/pipeline";
 import { isReplaceable, outputPlacement, writeSite } from "../src/core/site";
 import { validateReport } from "../src/core/validate";
-import { REF_KINDS, type Report } from "../src/shared/schema";
+import { REF_KINDS, SymbolFlag, type Report } from "../src/shared/schema";
 
 const TMP = realpathSync(mkdtempSync(join(tmpdir(), "starchart-pipeline-test-")));
 const REPO = join(TMP, "demo");
@@ -292,6 +292,71 @@ describe("code intelligence", () => {
     expect(has("twice", "add")).toBe(true); //  within math.ts
     expect(has("twice", "log")).toBe(true); //  math.ts → app.ts
   });
+
+  test("the demo has installed nothing to miss and no component files: no caveats", () => {
+    expect(result.symbols!.stats.uninstalledManifests).toBeUndefined();
+    expect(result.symbols!.stats.hostFiles).toBeUndefined();
+    expect(result.symbols!.hostUses).toBeUndefined();
+  });
+
+  test("exports used only from Vue components and VitePress pages are not reported unused", async () => {
+    // vite's useSponsor was "Exported, but nothing outside sponsor.ts uses it" while two Vue
+    // components and a docs page import it: the compiler reads none of those files.
+    const dir = join(TMP, "hosts");
+    const put = (path: string, text: string) => {
+      mkdirSync(join(dir, path, ".."), { recursive: true });
+      writeFileSync(join(dir, path), text);
+    };
+    put("tsconfig.json", JSON.stringify({ compilerOptions: { strict: true, module: "ESNext", moduleResolution: "bundler" }, include: ["src"] }));
+    put("package.json", JSON.stringify({ name: "hosts", dependencies: { "some-ui-kit": "^1.0.0" } }));
+    put("src/composables/sponsor.ts", "export function useSponsor() {\n  return 1;\n}\n\nexport function onlyInASample() {\n  return 2;\n}\n");
+    put("src/helper.ts", "export function helper() {\n  return 3;\n}\n");
+    put("src/barrel.ts", 'export { helper } from "./helper";\n');
+    put("src/everything.ts", "export const one = 1;\nexport const two = 2;\n");
+    // Many names from an uninstalled package: what a fresh clone looks like to the checker.
+    put("src/kit.ts", `import kit from "some-ui-kit";\n\n${Array.from({ length: 30 }, (_, i) => `export const k${i} = kit.make${i}(kit.opt${i});`).join("\n")}\n`);
+    put(
+      "components/Aside.vue",
+      '<template><p>{{ data }}</p></template>\n<script setup lang="ts">\nimport { useSponsor } from "../src/composables/sponsor"\nimport { helper } from "../src/barrel"\nimport * as all from "../src/everything"\nconst data = useSponsor() + helper() + all.one\n</script>\n',
+    );
+    put(
+      "docs/thanks.md",
+      '# Thanks\n\n<script setup>\nimport { useSponsor } from "../src/composables/sponsor"\n</script>\n\n```vue\n<script setup>\nimport { onlyInASample } from "../src/composables/sponsor"\n</script>\n```\n',
+    );
+    const r = await analyzeProject(dir, { workers: 1, git: false, source: false });
+    const s = r.symbols!;
+    const t = s.symbols;
+    const sym = (name: string) => t.name.indexOf(name);
+    const unused = (name: string) => (t.flags[sym(name)]! & SymbolFlag.unusedExport) !== 0;
+    expect(unused("useSponsor")).toBe(false);
+    expect(unused("helper")).toBe(false); //   through the barrel's re-export
+    expect(unused("one")).toBe(false); //      a namespace import takes every export
+    expect(unused("two")).toBe(false);
+    expect(unused("onlyInASample")).toBe(true); // imported only inside a fenced sample
+    expect(s.stats.unusedExports).toBe(t.flags.filter((f) => f & SymbolFlag.unusedExport).length);
+    expect(s.stats.hostFiles).toBe(2);
+    const path = (f: number) => r.report.files[f]!.path;
+    const rows = s.hostUses!.symbol.map((x, i) => `${t.name[x]} ← ${path(s.hostUses!.file[i]!)}:${s.hostUses!.line[i]}`);
+    // By symbol (declaration order: sponsor.ts, everything.ts, helper.ts), then importing file.
+    expect(rows).toEqual(["useSponsor ← components/Aside.vue:2", "useSponsor ← docs/thanks.md:3", "one ← components/Aside.vue:4", "two ← components/Aside.vue:4", "helper ← components/Aside.vue:3"]);
+    // Not references: the checker's counts stay what the checker resolved.
+    expect(t.refs[sym("useSponsor")]).toBe(0);
+    // The page's import is a real dependency of the page, so it is an edge.
+    const thanks = r.report.files.findIndex((f) => f.path === "docs/thanks.md");
+    const sponsor = r.report.files.findIndex((f) => f.path === "src/composables/sponsor.ts");
+    expect(r.report.edges.from.some((f, i) => f === thanks && r.report.edges.to[i] === sponsor && r.report.edges.kind[i] === "import")).toBe(true);
+
+    // Nothing installed for package.json, and it shows: the counts say so, in a warning.
+    expect(s.stats.uninstalledManifests).toBe(1);
+    expect(r.report.warnings.some((w) => w.startsWith("Dependencies are not installed (1 package.json without node_modules)"))).toBe(true);
+    expect(validateReport(r.report, s)).toEqual([]);
+
+    // Installed (an empty node_modules is enough to say someone ran the installer): no caveat.
+    mkdirSync(join(dir, "node_modules"));
+    const installed = await analyzeProject(dir, { workers: 1, git: false, source: false });
+    expect(installed.symbols!.stats.uninstalledManifests).toBeUndefined();
+    expect(installed.report.warnings.some((w) => w.startsWith("Dependencies are not installed"))).toBe(false);
+  }, 60_000);
 });
 
 describe("site", () => {
@@ -301,6 +366,17 @@ describe("site", () => {
     }
     expect(existsSync(join(OUT, "index.html"))).toBe(true);
     expect(existsSync(join(OUT, "data/report.json"))).toBe(false);
+  });
+
+  test("the viewer is copied without its source maps, and nothing points at one", () => {
+    // dist/viewer keeps app.js.map for development; a report folder must not carry it (7.5 MB
+    // of viewer sources in every report) or a trailer naming a file it does not have.
+    const assets = walkFiles(join(OUT, "assets"));
+    expect(assets.some((p) => p.endsWith("app.js"))).toBe(true);
+    expect(assets.filter((p) => p.endsWith(".map"))).toEqual([]);
+    for (const p of assets.filter((p) => p.endsWith(".js") || p.endsWith(".css"))) {
+      expect(readFileSync(p, "utf8")).not.toMatch(/sourceMappingURL=\S*\.map/);
+    }
   });
 
   test("source is embedded by chunk and the reader can find it", () => {
@@ -437,6 +513,44 @@ describe("options", () => {
     expect(finding.title).toStartWith("206 sets of identical files (412 copies, ");
     expect(finding.metric?.value).toBe(5 * 48_001 + 10 + 201 * 300);
     expect(finding.files?.map((f) => r.files[f]!.path).sort()).toEqual(["big-4-0.txt", "big-4-1.txt"]);
+    expect(validateReport(r)).toEqual([]);
+  }, 60_000);
+
+  test("palette slots go to the seven largest languages by code lines, whatever their type", async () => {
+    // The shape of the bug: a TypeScript app whose second-largest language is its Markdown
+    // docs, then JSON. Slots used to go to programming and markup first, so a 2-line HTML page
+    // and a 1-line script were named in the key while the docs and data folded into Other.
+    // Ranked over what the viewer shows by default, which counts lockfiles but hides vendored
+    // code, so the tray's largest languages are always the colored ones.
+    const dir = join(TMP, "slots");
+    const lines = (n: number, line: string) => Array.from({ length: n }, (_, i) => line.replace("#", String(i))).join("\n") + "\n";
+    const files: Record<string, string> = {
+      "src/app.ts": lines(120, "export const v# = #;"),
+      "docs/guide.md": lines(90, "Paragraph # of the guide."),
+      "data/rows.json": "[\n" + lines(70, '  { "id": # },').replace(/,\n$/, "\n") + "]\n",
+      // A lockfile: the tray counts its lines, so YAML is what this project shows 60 of.
+      "pnpm-lock.yaml": lines(60, "key#: value"),
+      "cmd/main.go": "package main\n\n" + lines(8, "var V# = #"),
+      "tools/run.py": lines(6, "x# = #"),
+      "web/site.css": lines(5, ".c# { color: blue; }"),
+      "web/index.html": "<!doctype html>\n<p>hi</p>\n",
+      "bin/go.sh": "#!/bin/sh\necho hi\n",
+      // Vendored: the largest language here, but hidden until asked for, so no color.
+      "vendor/legacy/big.rb": lines(500, "V# = #"),
+    };
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(join(dir, path, ".."), { recursive: true });
+      writeFileSync(join(dir, path), text);
+    }
+    const r = (await analyzeProject(dir, { workers: 1, git: false, symbols: false, source: false })).report;
+    const slot = (id: string) => r.languages.find((l) => l.id === id)?.slot;
+    const named = r.languages.filter((l) => l.slot >= 0).sort((a, b) => a.slot - b.slot).map((l) => l.id);
+    expect(named).toEqual(["typescript", "markdown", "json", "yaml", "go", "python", "css"]);
+    expect(slot("html")).toBe(-1);
+    expect(slot("shell")).toBe(-1);
+    expect(r.files.find((f) => f.path === "vendor/legacy/big.rb")?.vendored).toBe(true);
+    expect(slot("ruby")).toBe(-1);
+    expect(r.files.find((f) => f.path === "pnpm-lock.yaml")?.category).toBe("lockfile");
     expect(validateReport(r)).toEqual([]);
   }, 60_000);
 

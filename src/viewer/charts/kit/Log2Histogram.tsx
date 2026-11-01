@@ -3,6 +3,12 @@
  * (the analyzer's Distribution.log2Bins shape). Code metrics are heavy-tailed; on linear bins
  * every file would sit in the first column. Median and p90 are marked as hairlines with their
  * values, because "where is the middle, where is the tail" is the question this chart answers.
+ *
+ * Ticks sit on bin boundaries (0, 2, 4, 8…), the same positions the markers use: bin i spans
+ * [i, i + 1) bands, so a value v sits at log2(v) bands, and the first bin, which holds 0 and
+ * 1, runs linearly from 0 to 2. Ticks used to be centered in their bins, half a band right of
+ * where a marker of the same value drew, so "median 2" stood beside the "2" tick, not on it.
+ * Bin ranges stay in the tooltip and the table.
  */
 
 import * as d3 from "d3";
@@ -12,7 +18,18 @@ import { useActiveIndex } from "./interaction";
 import { columnPath, GAP, tickNumber } from "./marks";
 import { ChartTooltip } from "./Tooltip";
 
-const M = { right: 8, bottom: 22, left: 36 };
+const M = { right: 14, bottom: 22, left: 36 };
+
+/** Position of a value in bands from the plot's left edge (see the header). */
+export function binPosition(v: number): number {
+  if (!(v > 0)) return 0;
+  return v < 2 ? v / 2 : Math.log2(v);
+}
+
+/** Label for the boundary at band i: 0, 2, 4, 8, … 1K. */
+export function boundaryLabel(i: number): string {
+  return i === 0 ? "0" : formatCompact(2 ** i);
+}
 
 export function binRange(i: number): string {
   if (i === 0) return "0–1";
@@ -44,7 +61,7 @@ export function Log2Histogram({
   const x0 = M.left;
   const x1 = width - M.right;
   const band = (x1 - x0) / n;
-  const posOf = (v: number) => x0 + Math.min(n, Math.max(0, Math.log2(Math.max(1, v)))) * band;
+  const posOf = (v: number) => x0 + Math.min(n, binPosition(v)) * band;
 
   // Marker labels sit in one line above the plot. With two markers (median, p90) the first
   // reads leftward from its line and the second rightward, so close markers never stack
@@ -63,11 +80,9 @@ export function Log2Histogram({
   const y = d3.scaleLinear().domain([0, max]).nice(4).range([y0, y1]);
   const colW = Math.min(24, Math.max(2, band - GAP));
 
-  // Every label when they fit (~34px each), otherwise every other one.
+  // Every boundary when the labels fit (~34px each), otherwise every second or fourth.
   const every = band >= 34 ? 1 : band >= 17 ? 2 : 4;
-  const xTicks = bins
-    .map((_, i) => ({ pos: x0 + i * band + band / 2, label: i === 0 ? "0–1" : formatCompact(2 ** i) }))
-    .filter((_, i) => i % every === 0);
+  const xTicks = Array.from({ length: n + 1 }, (_, i) => ({ pos: x0 + i * band, label: boundaryLabel(i) })).filter((_, i) => i % every === 0);
 
   const tip =
     active !== null && bins[active] !== undefined

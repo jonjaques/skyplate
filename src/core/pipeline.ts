@@ -22,10 +22,12 @@
  * Verify:    bun test test/pipeline.test.ts && bun check src/core/pipeline.ts
  */
 
-import { readFileSync, realpathSync } from "node:fs";
-import { basename, resolve } from "node:path";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { basename, dirname, join, resolve } from "node:path";
 import pkg from "../../package.json" with { type: "json" };
 import type { Detection, ImportResolution, RawImport } from "./contracts";
+import type { ExtractedImport } from "./imports/extract";
+import { applyHostImports, type HostImport } from "./ts/hosts";
 import {
   SCHEMA_VERSION,
   type Category,
@@ -37,6 +39,7 @@ import {
   type GitSummary,
   type LanguageSummary,
   type Layouts,
+  type Manifest,
   type Report,
   type SourceIndex,
 } from "../shared/schema";
@@ -183,6 +186,32 @@ const parentOf = (p: string) => {
   const i = p.lastIndexOf("/");
   return i < 0 ? "" : p.slice(0, i);
 };
+
+/**
+ * package.json manifests that declare dependencies with nothing installed for them: no
+ * node_modules in the manifest's folder or any folder above it, and no Yarn Plug'n'Play
+ * manifest (.pnp.cjs) either. Node's resolution climbs past the project root, so the search
+ * does too: a package analyzed on its own inside an installed monorepo is installed. A fresh
+ * clone is the usual case, and it is invisible in the report otherwise: the checker resolves
+ * nothing imported from a package, and the counts quietly drop.
+ */
+function uninstalledManifests(root: string, manifests: Manifest[]): number {
+  const installed = new Map<string, boolean>();
+  const look = (dir: string): boolean => {
+    let hit = installed.get(dir);
+    if (hit === undefined) {
+      hit = existsSync(join(dir, "node_modules")) || existsSync(join(dir, ".pnp.cjs")) || existsSync(join(dir, ".pnp.js"));
+      if (!hit && dirname(dir) !== dir) hit = look(dirname(dir));
+      installed.set(dir, hit);
+    }
+    return hit;
+  };
+  let n = 0;
+  for (const m of manifests) {
+    if (m.kind === "package.json" && m.dependencies > 0 && !look(dirname(join(root, m.path)))) n++;
+  }
+  return n;
+}
 
 const CONFIG_FILE = /^(?:tsconfig|jsconfig)[\w.-]*\.json$/i;
 const IN_NODE_MODULES = /(?:^|\/)node_modules\//;
@@ -355,11 +384,24 @@ function rollUpDirs(dirs: DirRecord[], files: FileRecord[]): void {
 // ─── Languages ───────────────────────────────────────────────────────────────────────────────
 
 /**
- * Seven categorical slots (0-6), "Other" (-1) for the rest. Ranked by code + comment lines over
- * the project's own files: a vendored jQuery or a generated parser must not take a color from
- * a language the team actually writes. Programming and markup languages claim slots first;
- * data and prose only fill slots that would otherwise stay empty. The "text" and "binary"
- * fallbacks never get one: they mean "unrecognized", which is what Other already says.
+ * Seven categorical slots (0-6), "Other" (-1) for the rest: the seven languages with the most
+ * code lines, whatever their type, counted over the files the viewer shows by default
+ * (everything but vendored code; see `filters` in src/viewer/state/store.ts). The "text" and
+ * "binary" fallbacks never get a slot: they mean "unrecognized", which is what Other already
+ * says.
+ *
+ * The measure is the viewer's own on purpose. The language tray, the galaxy key and the
+ * composition chart name the largest languages by code lines in view and color each by its
+ * slot, so ranked by anything else a named language would be drawn gray beside smaller ones
+ * in color. That is why this no longer weighs code + comment, and no longer leaves out
+ * generated files and lockfiles: vite's pnpm-lock.yaml makes YAML 12,447 lines of its tray,
+ * and with lockfiles left out YAML sat gray in Other while Vue, at 1,679, had a color.
+ * Vendored code stays out because the viewer hides it until asked.
+ *
+ * Programming and markup languages used to claim the slots first, with data and prose only
+ * filling what was left. On a TypeScript app with a docs folder that named HTML at 0.1% and
+ * Shell under 0.1% while Markdown, the second-largest language at 44,071 lines, and JSON at
+ * 15,216 were gray inside "14 others": the key stopped saying what the project is made of.
  */
 function summarizeLanguages(files: FileRecord[]): LanguageSummary[] {
   const byId = new Map<string, LanguageSummary>();
@@ -388,16 +430,13 @@ function summarizeLanguages(files: FileRecord[]): LanguageSummary[] {
     l.code += f.code;
     l.comment += f.comment;
     l.blank += f.blank;
-    if (!f.generated && !f.vendored && f.category !== "lockfile") {
-      weight.set(f.language, (weight.get(f.language) ?? 0) + f.code + f.comment);
-    }
+    if (!f.vendored) weight.set(f.language, (weight.get(f.language) ?? 0) + f.code);
   }
-  const ranked = [...byId.values()]
+  [...byId.values()]
     .filter((l) => (weight.get(l.id) ?? 0) > 0 && l.id !== "text" && l.id !== "binary")
-    .sort((a, b) => weight.get(b.id)! - weight.get(a.id)! || (a.id < b.id ? -1 : 1));
-  const primary = ranked.filter((l) => l.type === "programming" || l.type === "markup");
-  const secondary = ranked.filter((l) => l.type === "data" || l.type === "prose");
-  [...primary, ...(primary.length < 7 ? secondary : [])].slice(0, 7).forEach((l, i) => (l.slot = i));
+    .sort((a, b) => weight.get(b.id)! - weight.get(a.id)! || (a.id < b.id ? -1 : 1))
+    .slice(0, 7)
+    .forEach((l, i) => (l.slot = i));
   return [...byId.values()].sort(
     (a, b) => b.code + b.comment - (a.code + a.comment) || b.files - a.files || (a.id < b.id ? -1 : 1),
   );
@@ -625,6 +664,9 @@ export async function analyzeProject(
     let resolved = 0;
     let external = 0;
     let unresolved = 0;
+    // Script imports in files the compiler never reads (Vue, Markdown, …), for hosts.ts.
+    const hostImports: HostImport[] = [];
+    let hostFiles = 0;
     const addEdge = (from: number, to: number, kind: EdgeKind) => {
       if (from === to || to < 0 || to >= n) return;
       const key = from * n + to;
@@ -636,6 +678,7 @@ export async function analyzeProject(
       const list = rawImports[id]!;
       if (!list.length) continue;
       const lang = files[id]!.language;
+      let host = false;
       for (const imp of list) {
         let r: ImportResolution;
         try {
@@ -643,11 +686,14 @@ export async function analyzeProject(
         } catch {
           r = { unresolved: true };
         }
+        const names = (imp as ExtractedImport).names;
+        if (names) host = true;
         // Doc links are edges, not import statements: they stay out of the counts, as they
         // stay out of the code graph.
         const counted = imp.kind !== LINK;
         if ("file" in r) {
           if (counted) resolved++;
+          if (names?.length) hostImports.push({ from: id, to: r.file, line: imp.line, names });
           addEdge(id, r.file, imp.kind);
           for (const sib of r.also ?? []) addEdge(id, sib, imp.kind);
         } else if ("external" in r) {
@@ -662,6 +708,7 @@ export async function analyzeProject(
           set.add(id);
         } else if (counted) unresolved++;
       }
+      if (host) hostFiles++;
     }
     for (const [key, set] of importers) externals.get(key)!.importers = set.size;
     const edgeKeys = [...pairKind.keys()].sort((a, b) => a - b);
@@ -729,6 +776,24 @@ export async function analyzeProject(
 
     // ── Wait for git and TypeScript ──
     const [gitResult, symbols] = await Promise.all([gitP, tsP]);
+
+    if (symbols) {
+      applyHostImports(symbols, hostImports, hostFiles);
+      const uninstalled = uninstalledManifests(root, manifests);
+      if (uninstalled > 0) {
+        symbols.stats.uninstalledManifests = uninstalled;
+        const { references, unresolved: missed } = symbols.stats;
+        // Only when it shows: a few unresolved names are normal in plain JavaScript (property
+        // reads on untyped objects) and say nothing about installation. vite, cloned without
+        // installing, left 29,129 unresolved beside 25,857 resolved; installed projects run
+        // around 3%.
+        if (missed > 0 && missed >= 0.1 * (references + missed)) {
+          warnings.push(
+            `Dependencies are not installed (${plural(uninstalled, "package.json", "package.json files")} without node_modules), so TypeScript could not resolve ${nf.format(missed)} names, against ${nf.format(references)} it did. Reference and caller counts are lower bounds and some exports flagged unused may be used; install the dependencies and re-run for complete code intelligence.`,
+          );
+        }
+      }
+    }
 
     let git: GitSummary | undefined;
     if (gitResult) {

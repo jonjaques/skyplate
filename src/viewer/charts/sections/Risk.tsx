@@ -15,6 +15,7 @@ import { BarList, type BarItem } from "../kit/BarList";
 import { DataTable, type Column } from "../kit/DataTable";
 import { Figure } from "../kit/Figure";
 import { useActiveIndex } from "../kit/interaction";
+import { placeLabels } from "../kit/labels";
 import { Legend } from "../kit/Legend";
 import { Log2Histogram } from "../kit/Log2Histogram";
 import { tickNumber, formatShare } from "../kit/marks";
@@ -178,7 +179,7 @@ function Scatter({
   const y0 = SCATTER_H - M.bottom;
   const y1 = M.top;
 
-  const { x, y, pts, delaunay, byScore } = useMemo(() => {
+  const { x, y, pts, delaunay, byScore, leaders, emphasized } = useMemo(() => {
     const maxC = Math.max(10, d3.max(files, mode.xOf) ?? 10);
     const maxX = Math.max(10, d3.max(files, (f) => f.complexity) ?? 10);
     const x = d3.scaleLog().domain([1, maxC]).nice().range([x0, x1]).clamp(true);
@@ -189,7 +190,7 @@ function Scatter({
     pts.sort((a, b) => Number(a.top) - Number(b.top) || b.r - a.r);
     const delaunay = d3.Delaunay.from(pts, (p) => p.x, (p) => p.y);
     const byScore = [...pts].sort((a, b) => mode.score(b.f) - mode.score(a.f));
-    return { x, y, pts, delaunay, byScore };
+    return { x, y, pts, delaunay, byScore, leaders: byScore.slice(0, 5), emphasized: pts.filter((p) => p.top) };
   }, [files, topIds, x0, x1, y0, y1, mode]);
 
   const { active, setActive, focusProps } = useActiveIndex(byScore.length, (i) => {
@@ -244,7 +245,7 @@ function Scatter({
           Complexity (log)
         </AxisTitle>
         <Points pts={pts} surface={surface} />
-        <Labels pts={byScore.slice(0, 5)} width={width} />
+        <Labels pts={leaders} avoid={emphasized} bounds={{ x0, y0: y1, x1, y1: y0 }} />
         {[hovered, selected, current].map(
           (p, i) =>
             p && (
@@ -254,7 +255,7 @@ function Scatter({
       </svg>
       <ChartTooltip
         width={width}
-        tip={current ? { x: current.x, y: Math.max(0, current.y - 24), title: current.f.path, rows: mode.tip(current.f) } : null}
+        tip={current ? { x: current.x, y: Math.max(0, current.y - 24), title: current.f.path, path: true, rows: mode.tip(current.f) } : null}
       />
     </div>
   );
@@ -294,25 +295,31 @@ const Points = memo(function Points({ pts, surface }: { pts: Pt[]; surface: "lig
   );
 });
 
-/** Direct labels for the leading hotspots only; one is skipped rather than drawn over another. */
-function Labels({ pts, width }: { pts: Pt[]; width: number }) {
-  const boxes: { x: number; y: number; w: number }[] = [];
+/**
+ * Direct labels for the five leading dots, placed clear of every emphasized dot and of each
+ * other (kit/labels.ts); a label set away from its dot gets a hairline leader back to it.
+ */
+function Labels({ pts, avoid, bounds }: { pts: Pt[]; avoid: Pt[]; bounds: { x0: number; y0: number; x1: number; y1: number } }) {
+  const placed = useMemo(
+    () =>
+      placeLabels(
+        // 11px JetBrains Mono advances 0.6em per character.
+        pts.map((p) => ({ key: p, x: p.x, y: p.y, r: p.r, w: baseName(p.f.path).length * 6.6 + 2, h: 13 })),
+        avoid.map((p) => ({ x: p.x, y: p.y, r: p.r + 1 })),
+        bounds,
+      ),
+    [pts, avoid, bounds.x0, bounds.y0, bounds.x1, bounds.y1],
+  );
   return (
     <g aria-hidden pointerEvents="none">
-      {pts.map((p) => {
-        const text = baseName(p.f.path);
-        const w = text.length * 6.2;
-        const left = p.x + p.r + 6 + w > width - 4;
-        const bx = left ? p.x - p.r - 6 - w : p.x + p.r + 6;
-        const by = p.y;
-        if (boxes.some((b) => Math.abs(b.y - by) < 13 && bx < b.x + b.w && bx + w > b.x)) return null;
-        boxes.push({ x: bx, y: by, w });
-        return (
-          <text key={p.f.id} x={bx} y={by} dy="0.32em" className="fill-ink font-mono text-[11px]" style={{ paintOrder: "stroke", stroke: "var(--color-tray)", strokeWidth: 3 }}>
-            {text}
+      {placed.map(({ key: p, x, y, leader }) => (
+        <g key={p.f.id}>
+          {leader && <line x1={leader.x1} y1={leader.y1} x2={leader.x2} y2={leader.y2} className="stroke-ink-3" strokeWidth={1} />}
+          <text x={x + 1} y={y} dy="0.32em" className="fill-ink font-mono text-[11px]" style={{ paintOrder: "stroke", stroke: "var(--color-tray)", strokeWidth: 3 }}>
+            {baseName(p.f.path)}
           </text>
-        );
-      })}
+        </g>
+      ))}
     </g>
   );
 }

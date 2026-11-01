@@ -81,7 +81,11 @@ export function ActivityTray() {
   const band = cols.length ? width / cols.length : 0;
   const colW = Math.min(24, Math.max(1, band - 2));
   const max = Math.max(1, ...cols.map((c) => c.commits));
-  const y = d3.scaleLinear().domain([0, max]).range([plotH, 4]);
+  // The busiest column carries its value on its cap ("label the extreme"), so the one
+  // magnitude a reader asks of this tray is readable without hovering. The plot keeps 14px
+  // of headroom for it.
+  const peak = cols.findIndex((c) => c.commits === max);
+  const y = d3.scaleLinear().domain([0, max]).range([plotH, 14]);
   const t0 = cols[0]?.start ?? git.first;
   const t1 = cols[cols.length - 1]?.end ?? git.last;
   const x = d3.scaleUtc().domain([toDate(t0), toDate(t1)]).range([0, width]);
@@ -103,6 +107,7 @@ export function ActivityTray() {
     <TrayShell
       title="Commit activity"
       label={label}
+      open={{ section: "history", label: "Open Commits per week in Charts, with a table of every week" }}
       aside={
         time !== null ? (
           <Button variant="ghost" size="xs" className="-my-1 font-sans text-ink-2" onClick={() => setTime(null)}>
@@ -154,6 +159,17 @@ export function ActivityTray() {
                 />
               );
             })}
+            {peak >= 0 && cols[peak]!.commits > 0 && (
+              <text
+                aria-hidden
+                x={Math.min(width - 2, Math.max(2, (peak + 0.5) * band))}
+                y={y(max) - 4}
+                textAnchor={(peak + 0.5) * band < 12 ? "start" : (peak + 0.5) * band > width - 12 ? "end" : "middle"}
+                className="figures pointer-events-none fill-ink-2 font-mono text-[10px]"
+              >
+                {formatInt(max)}
+              </text>
+            )}
             {cursor !== null && (
               <line aria-hidden x1={cursor} x2={cursor} y1={0} y2={plotH} className="stroke-ink" strokeWidth={1.5} />
             )}

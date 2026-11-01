@@ -1,7 +1,8 @@
 /**
  * The report folder: viewer shell, data scripts, embedded source and copied image assets.
  *
- *   <out>/index.html, <out>/assets/*      the built viewer (dist/viewer, built on demand)
+ *   <out>/index.html, <out>/assets/*      the built viewer (dist/viewer, built on demand),
+ *                                         without its source maps
  *   <out>/data/report.js                  window.__starchart.resolve("report", {...})
  *   <out>/data/symbols.js                 when the TypeScript analysis ran
  *   <out>/data/source/0000.js …           source chunks, ~1.5 MB each
@@ -371,6 +372,30 @@ function writeError(e: unknown, out: string): Error {
   return e instanceof Error ? e : new Error(String(e));
 }
 
+/** `//# sourceMappingURL=app.js.map` (JS) or the CSS comment form, as the bundler's last line. */
+const MAP_TRAILER = /\r?\n?(?:\/\/# sourceMappingURL=[^\n]*\.map|\/\*# sourceMappingURL=[^\n]*\.map \*\/)\s*$/;
+
+/**
+ * Strip the source-map trailer from the copied scripts and sheets whose map was left behind.
+ * Kept, it points at a file the folder does not have, and every reader who opens devtools on a
+ * report gets a failed request and a "could not load source map" warning for it.
+ */
+async function dropMapTrailers(dir: string): Promise<void> {
+  let names: string[];
+  try {
+    names = await readdir(dir);
+  } catch {
+    return; // a viewer without an assets folder has nothing to strip
+  }
+  for (const name of names) {
+    if (!name.endsWith(".js") && !name.endsWith(".css")) continue;
+    const file = join(dir, name);
+    const text = await Bun.file(file).text();
+    const stripped = text.replace(MAP_TRAILER, "\n");
+    if (stripped !== text) await writeFile(file, stripped);
+  }
+}
+
 async function dirBytes(dir: string): Promise<number> {
   let total = 0;
   for (const e of await readdir(dir, { withFileTypes: true, recursive: true })) {
@@ -399,7 +424,12 @@ export async function writeSite(input: SiteInput, outDir: string, opts: { json?:
   let assetBytes = 0;
 
   try {
-    await cp(viewer, tmp, { recursive: true });
+    // Source maps stay in dist/viewer for whoever debugs the viewer, and out of reports: the
+    // map (sourcesContent for every viewer file) was 7.5 MB beside a 1.8 MB app.js, so a
+    // `--no-source` report meant for sharing was about 70% map of a viewer nobody reading the
+    // report will step through. The trailer that names the map goes too (dropMapTrailers).
+    await cp(viewer, tmp, { recursive: true, filter: (src) => !src.endsWith(".map") });
+    await dropMapTrailers(join(tmp, "assets"));
     await mkdir(join(tmp, "data", "source"), { recursive: true });
 
     for (let i = 0; i < input.chunks.length; i++) {

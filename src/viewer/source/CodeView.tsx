@@ -15,6 +15,7 @@
 
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import { cn } from "../lib/utils";
+import { takeReaderFocus } from "../shell/shell-state";
 import type { Tok } from "./highlight";
 import { syntaxClass } from "./syntax";
 
@@ -87,6 +88,11 @@ export function CodeView({
 }: Props) {
   const scroller = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState({ top: 0, height: 600, width: 800 });
+
+  // A keyboard open (Enter in the explorer) hands focus to the text; see requestReaderFocus.
+  useEffect(() => {
+    if (takeReaderFocus()) scroller.current?.focus({ preventScroll: true });
+  }, []);
   const charWidth = useCharWidth(scroller);
   const digits = String(lines.length).length;
   const gutter = Math.ceil(digits * charWidth + 28);
@@ -194,7 +200,10 @@ export function CodeView({
         const hit = symbolAt(e);
         if (hit) onSymbolClick(hit.sym, e.metaKey || e.ctrlKey);
       }}
-      className="relative h-full overflow-auto bg-paper font-mono text-[12.5px] leading-5 [tab-size:4]"
+      // No ligatures: JetBrains Mono's contextual alternates draw "=>" as an arrow, ">=" as
+      // a single glyph and "==" as one long bar. A code inspection tool must show the
+      // characters that are in the file.
+      className="relative h-full overflow-auto bg-paper font-mono text-[12.5px] leading-5 outline-none [font-variant-ligatures:none] [tab-size:4] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid"
       role="region"
       aria-label="Source text"
       tabIndex={0}

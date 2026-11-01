@@ -1,11 +1,13 @@
 /**
- * Language composition tray: total code lines, one stacked bar of the palette slots (2px
- * surface gaps, the data end rounded), and a keyed list with each slot's share.
+ * Language composition tray: total code lines, one stacked bar of the languages in view (2px
+ * surface gaps, the data end rounded), and a keyed list with each one's share.
  *
- * The bar shows slots in slot order, not by size in the current scope: the slot order is the
- * color-safety order, and a drawer that happens to have more CSS than JavaScript should not
- * shuffle the bar. Every language without a slot folds into "N others" in gray, as it does
- * in the galaxy.
+ * The tray names the seven largest languages in scope, whatever their palette slot, and folds
+ * only the tail into "N others" (data.ts composition() says why folding by slot was wrong).
+ * Slotted languages come first, in slot order: that is the color-safety order, and a drawer
+ * that happens to have more CSS than JavaScript should not shuffle the bar. A named language
+ * without a slot wears the Other gray, because that is the color its stars have on the plate
+ * directly above; it still gets its own segment, separated by the 2px gap, and its own key.
  */
 
 import { useMemo, useRef, useState } from "react";
@@ -51,10 +53,12 @@ export function LanguageTray() {
     const box = barRef.current?.getBoundingClientRect();
     if (!part || !box) return;
     const r = el.getBoundingClientRect();
-    const rows =
-      part.slot === -1
-        ? part.languages.slice(0, 4).map((l) => ({ value: formatInt(l.code), label: l.name }))
-        : [{ value: formatInt(part.code), label: "code lines" }];
+    const rows = part.rest
+      ? [
+          ...part.languages.slice(0, 5).map((l) => ({ value: formatInt(l.code), label: l.name })),
+          ...(part.languages.length > 5 ? [{ value: formatInt(part.languages.length - 5), label: "more languages" }] : []),
+        ]
+      : [{ value: formatInt(part.code), label: "code lines" }];
     setTip({
       x: r.left - box.left + r.width / 2,
       y: r.bottom - box.top + 4,
@@ -67,6 +71,7 @@ export function LanguageTray() {
     <TrayShell
       title="Language composition"
       label={label}
+      open={{ section: "composition", label: "Open Code lines by language in Charts, with every language" }}
       // The bar counts languages with code lines; the rail and record count every language
       // in view, including images and other files with no code lines. Saying which keeps
       // "33" beside "34" from reading as a mistake.
@@ -81,7 +86,7 @@ export function LanguageTray() {
         <div className="flex h-4 gap-[2px]" role="img" aria-label={drawn.map((p) => `${p.label} ${formatShare(p.code / comp.total)}`).join(", ")}>
           {drawn.map((p, i) => (
             <div
-              key={p.slot}
+              key={p.key}
               className="h-full min-w-px first:rounded-l-none last:rounded-r-[4px] hover:brightness-110"
               style={{ flex: `${p.code} 0 0`, background: slotColor(p.slot, surface) }}
               onPointerEnter={(e) => showPart(i, e.currentTarget)}
@@ -96,11 +101,11 @@ export function LanguageTray() {
       <ul className="mt-3 grid grid-cols-1 gap-x-3 gap-y-1 text-xs @min-[250px]:grid-cols-2">
         {comp.parts.map((p, i) => (
           <li
-            key={p.slot}
+            key={p.key}
             className={cn("flex min-w-0 items-center gap-1.5", comp.parts.length > 4 && i >= 3 && "@max-[249px]:hidden")}
           >
             <Swatch color={slotColor(p.slot, surface)} />
-            <span className="min-w-0 truncate text-ink">{p.label}</span>
+            <span className={cn("min-w-0 truncate", p.rest ? "text-ink-2" : "text-ink")}>{p.label}</span>
             <span className="figures ml-auto shrink-0 font-mono text-[11px] text-ink-3">{formatShare(p.code / comp.total)}</span>
           </li>
         ))}

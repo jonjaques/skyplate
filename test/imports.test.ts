@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { extractImports, expandUseTree } from "../src/core/imports/extract";
+import { expandUseTree, extractImports, importedNames } from "../src/core/imports/extract";
 import { createResolver } from "../src/core/imports/resolve";
 import type { RawImport } from "../src/core/contracts";
 
@@ -82,6 +82,70 @@ describe("extractImports", () => {
     expect(specs(vue, "vue")).toEqual(["1:link:./logo.png", "4:import:./Child.vue", "7:import:./vars", "8:link:./bg.png"]);
     const html = '<link rel="stylesheet" href="/style.css"><script type="module" src="/src/main.ts"></script><a href="https://x">x</a>';
     expect(specs(html, "html")).toEqual(["0:link:/style.css", "0:link:/src/main.ts"]);
+  });
+
+  test("scripts the compiler never reads carry the names they import; TypeScript files do not", () => {
+    const vue = [
+      "<script setup lang=\"ts\">",
+      "import Child from './Child.vue'",
+      "import { useSponsor, type Plan as P } from '../composables/sponsor'",
+      "import * as all from './all'",
+      "import Def, { a } from './mixed'",
+      "import './side.css'",
+      "</script>",
+    ].join("\n");
+    const names = (text: string, lang: string) => extractImports("x", text, lang).map((i) => `${i.spec} ${JSON.stringify(i.names)}`);
+    expect(names(vue, "vue")).toEqual([
+      './Child.vue ["default"]',
+      '../composables/sponsor ["useSponsor","Plan"]',
+      './all ["*"]',
+      './mixed ["default","a"]',
+      "./side.css []",
+    ]);
+    // The checker sees every use made from TypeScript itself; nothing to carry.
+    expect(extractImports("x.ts", "import { a } from './a';\n", "typescript")[0]!.names).toBeUndefined();
+  });
+
+  test("importedNames reads every clause shape, as the module exports the names", () => {
+    expect(importedNames("")).toEqual([]);
+    expect(importedNames("X")).toEqual(["default"]);
+    expect(importedNames("X, * as ns")).toEqual(["default", "*"]);
+    expect(importedNames("{ a, b as c, default as D }")).toEqual(["a", "b", "default"]);
+    expect(importedNames("{ type T, type, type as t }")).toEqual(["T", "type", "type"]);
+    expect(importedNames("* as ns ")).toEqual(["*"]);
+  });
+
+  test("VitePress Markdown: <script setup> imports are read; fenced and inline samples are not", () => {
+    const md = [
+      "---",
+      "title: Acknowledgements",
+      "---",
+      "",
+      "<script setup>",
+      "import { computed } from 'vue'",
+      "import { useSponsor } from './.vitepress/theme/composables/sponsor'",
+      "// import { commented } from './nope'",
+      "const label = \"import { inString } from './nope'\"",
+      "</script>",
+      "",
+      "Use a `<script type=\"module\">` tag, as in:",
+      "",
+      "```vue",
+      "<script setup>",
+      "import { fromSample } from './sample'",
+      "</script>",
+      "```",
+      "",
+      "[guide](./guide.md)",
+    ].join("\n");
+    const out = extractImports("docs/acknowledgements.md", md, "markdown").map((i) => `${i.line}:${i.kind}:${i.spec} ${JSON.stringify(i.names ?? null)}`);
+    expect(out).toEqual(['5:import:vue ["computed"]', '6:import:./.vitepress/theme/composables/sponsor ["useSponsor"]', "19:link:./guide.md null"]);
+  });
+
+  test("MDX: multi-line imports carry their names, and imports inside fences are samples", () => {
+    const mdx = ["import {", "  Chart,", "  Legend as L,", "} from './chart'", "import Note from './Note'", "", "```js", "import { notReal } from './x'", "```", "", "<Chart />"].join("\n");
+    const out = extractImports("p.mdx", mdx, "mdx").map((i) => `${i.line}:${i.spec} ${JSON.stringify(i.names)}`);
+    expect(out).toEqual(['0:./chart ["Chart","Legend"]', '4:./Note ["default"]']);
   });
 
   test("CSS @import lists, url() assets and remote URLs", () => {

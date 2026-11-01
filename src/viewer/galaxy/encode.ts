@@ -10,7 +10,7 @@
  */
 
 import { CATEGORY_GROUP, type Category } from "../../shared/schema";
-import { categoryGroupColor, sequentialColor, seriesColor } from "../lib/colors";
+import { CATEGORY_GROUPS, categoryGroupColor, sequentialColor, seriesColor } from "../lib/colors";
 import { colorMetric, isFileUnder, percentileRanks, sizeMetric, type Model } from "../model/indices";
 import type { ColorBy, Filters, SizeBy, Target } from "../state/store";
 
@@ -21,6 +21,14 @@ function hexRgb(hex: string): [number, number, number] {
 }
 
 const rgbCache = new Map<string, [number, number, number]>();
+/**
+ * The folded "Other" gray, scaled down on the plate only. Stars blend additively, and a
+ * low-chroma gray adds to all three channels at once, so where Other files crowd (docs, config,
+ * dotfolders) their halos summed to near-white: the brightest marks on the plate, louder than
+ * any named language and easy to mistake for the white selection and definition rings. At this
+ * scale a lone Other star still reads as the legend swatch's gray, and a crowd as a gray haze.
+ */
+const OTHER_ON_PLATE = 0.5;
 function rgb(hex: string): [number, number, number] {
   let c = rgbCache.get(hex);
   if (!c) rgbCache.set(hex, (c = hexRgb(hex)));
@@ -42,14 +50,12 @@ export function encodeColors(model: Model, mode: ColorBy, out: Float32Array): vo
   if (mode === "language" || mode === "category") {
     for (let i = 0; i < files.length; i++) {
       const f = files[i]!;
-      const hex =
-        mode === "language"
-          ? seriesColor(model.languageSlot.get(f.language) ?? -1, "dark")
-          : categoryGroupColor(CATEGORY_GROUP[f.category as Category], "dark");
-      const [r, g, b] = rgb(hex);
-      out[i * 3] = r;
-      out[i * 3 + 1] = g;
-      out[i * 3 + 2] = b;
+      const slot = mode === "language" ? (model.languageSlot.get(f.language) ?? -1) : CATEGORY_GROUPS.indexOf(CATEGORY_GROUP[f.category as Category]);
+      const [r, g, b] = rgb(mode === "language" ? seriesColor(slot, "dark") : categoryGroupColor(CATEGORY_GROUP[f.category as Category], "dark"));
+      const k = slot < 0 || slot > 6 ? OTHER_ON_PLATE : 1;
+      out[i * 3] = r * k;
+      out[i * 3 + 1] = g * k;
+      out[i * 3 + 2] = b * k;
     }
     return;
   }
@@ -79,6 +85,14 @@ export function encodeSizes(model: Model, mode: SizeBy, out: Float32Array): void
   for (let i = 0; i < files.length; i++) out[i] = Math.min(1, roots[i]! / (cap || 1));
 }
 
+/**
+ * Filters that narrow what the reader sees. Hiding vendored files is the default, so it is not
+ * a narrowing a reader chose and gets no chip; the other three are.
+ */
+export function isNarrowed(filters: Filters): boolean {
+  return filters.languages !== null || filters.categories !== null || filters.hideGenerated;
+}
+
 /** Does a file pass the filters? Hidden files dim; they are never removed (scale principle). */
 export function passesFilters(model: Model, file: number, filters: Filters): boolean {
   const f = model.report.files[file]!;
@@ -100,6 +114,11 @@ export interface EmphasisInput {
   selection: Target | null;
   /** Per-file emphasis for a selected symbol's neighborhood, or null. */
   symbolLight: Float32Array | null;
+  /**
+   * A legend key under the pointer or keyboard focus: only its files stay lit, a preview of
+   * what clicking it would filter to. Null when no key is being previewed.
+   */
+  preview?: ((file: number) => boolean) | null;
 }
 
 /**
@@ -109,26 +128,37 @@ export interface EmphasisInput {
  */
 export function encodeEmphasis(model: Model, input: EmphasisInput, out: Float32Array): void {
   const n = model.fileCount;
-  const { focusDir, filters, selection, symbolLight } = input;
+  const { focusDir, filters, selection, symbolLight, preview } = input;
   const filtering = filters.languages !== null || filters.categories !== null || filters.hideGenerated || filters.hideVendored;
+  // Filters are a ceiling every later step respects. The selection branches below lift files
+  // with Math.max, and before this they lifted filtered-out files too: with the EJS filter on,
+  // opening the lib drawer lit lib's JavaScript stars at full strength while the trays beside
+  // the plate said there was nothing in view.
+  const pass = new Uint8Array(n);
   for (let i = 0; i < n; i++) {
+    pass[i] = !filtering || passesFilters(model, i, filters) ? 1 : 0;
     let e = 1;
-    if (filtering && !passesFilters(model, i, filters)) e = DIM;
+    if (!pass[i]) e = DIM;
     else if (focusDir !== null && focusDir !== 0 && !isFileUnder(model, i, focusDir)) e = DIM;
     out[i] = e;
   }
+  const finish = () => {
+    // The selected file itself stays as lit as the selection made it: the reader asked for it.
+    const keep = selection?.kind === "file" ? selection.id : -1;
+    for (let i = 0; i < n; i++) {
+      if (!pass[i] && i !== keep) out[i] = Math.min(out[i]!, DIM);
+      if (preview && !preview(i)) out[i] = Math.min(out[i]!, DIM);
+    }
+  };
 
   if (symbolLight) {
     // A symbol's neighborhood lights across the whole project, open drawer or not: the point
     // is to see every place that uses it, and a caller in another drawer is exactly the
     // surprise worth seeing. Filters still dim what they exclude.
-    for (let i = 0; i < n; i++) {
-      const filtered = filtering && !passesFilters(model, i, filters);
-      out[i] = (filtered ? DIM : 1) * symbolLight[i]!;
-    }
-    return;
+    for (let i = 0; i < n; i++) out[i] = (pass[i] ? 1 : DIM) * symbolLight[i]!;
+    return finish();
   }
-  if (!selection) return;
+  if (!selection) return finish();
   switch (selection.kind) {
     case "file": {
       for (let i = 0; i < n; i++) out[i] = out[i]! * 0.62;
@@ -160,4 +190,5 @@ export function encodeEmphasis(model: Model, input: EmphasisInput, out: Float32A
       for (let i = 0; i < n; i++) out[i] = out[i]! * 0.55;
       break;
   }
+  finish();
 }

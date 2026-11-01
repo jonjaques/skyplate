@@ -15,6 +15,7 @@
 
 import { useLayoutEffect, useRef } from "react";
 import { cn } from "../../lib/utils";
+import { PathText } from "./PathText";
 
 export interface TipRow {
   value: string;
@@ -27,6 +28,12 @@ export interface Tip {
   x: number;
   y: number;
   title?: string;
+  /**
+   * The title is a repository path. It is set in mono and shortened in the directories, so
+   * the file name survives: a plain truncate cut ".claude/skills/…/custom-material.js" to
+   * "…custom-mat…" in the 280px box.
+   */
+  path?: boolean;
   rows: TipRow[];
 }
 
@@ -63,7 +70,12 @@ export function ChartTooltip({ tip, width, height }: { tip: Tip | null; width: n
         "pointer-events-none absolute z-30 max-w-[280px] min-w-[120px] rounded-md border border-rule bg-paper px-2.5 py-2 text-xs shadow-md",
       )}
     >
-      {tip.title && <div className="mb-1 truncate text-ink-2">{tip.title}</div>}
+      {tip.title &&
+        (tip.path ? (
+          <PathText path={tip.title} className="mb-1 text-[11px] text-ink-2" />
+        ) : (
+          <div className="mb-1 truncate text-ink-2">{tip.title}</div>
+        ))}
       <div className="flex flex-col gap-0.5">
         {tip.rows.map((row, i) => (
           <div key={i} className="flex items-center gap-2 whitespace-nowrap">

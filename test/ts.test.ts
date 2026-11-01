@@ -16,6 +16,8 @@ import { REF_KINDS, SymbolFlag, type CodeSymbols } from "../src/shared/schema";
 import type { TsInput } from "../src/core/contracts";
 import { analyzeTypeScript } from "../src/core/ts";
 import { limits } from "../src/core/ts/projects";
+import { REF, RefStore, SymbolStore } from "../src/core/ts/store";
+import { buildTables } from "../src/core/ts/tables";
 
 const FIXTURE = join(import.meta.dir, "fixtures/ts");
 
@@ -487,6 +489,46 @@ describe("aggregates", () => {
     expect(r.symbols.files[add]).toBe(3);
     // times, checkAdd, double, legacyAdd, sum; the importing modules are not callers.
     expect(r.symbols.callers[add]).toBe(5);
+  });
+
+  test("callers leave out the type hierarchy, so they agree with the record's incoming edges", () => {
+    // Night extends Worker and Worker.run implements Runner.run: both rows are in the call table
+    // (the record's type hierarchy reads them), but neither is a use.
+    const R = REF_KINDS.indexOf("extends");
+    const night = sym("Night");
+    const worker = sym("Worker");
+    expect(r.calls.from.some((f, i) => f === night && r.calls.to[i] === worker && r.calls.kind[i] === R)).toBe(true);
+    expect(r.symbols.callers[worker]).toBe(1); // exercise()
+    // exercise() calls it, and Worker's JSDoc links to it ({@link Runner.run}); the implementing
+    // Worker.run is not a third caller.
+    expect(r.symbols.callers[member("Runner", "run")]).toBe(2);
+
+    // And for every symbol: callers is the distinct peers the hierarchy lists as incoming.
+    const notUse = new Set(["import", "export", "extends", "implements"].map((k) => REF_KINDS.indexOf(k as (typeof REF_KINDS)[number])));
+    const incoming = r.symbols.name.map(() => new Set<number>());
+    for (let i = 0; i < r.calls.from.length; i++) {
+      const from = r.calls.from[i]!;
+      const to = r.calls.to[i]!;
+      if (!notUse.has(r.calls.kind[i]!) && from !== to) incoming[to]!.add(from);
+    }
+    expect(r.symbols.callers).toEqual(incoming.map((s) => s.size));
+  });
+
+  test("a recursive function is not its own caller (buildTables)", () => {
+    // vite's flatten calls itself and is called from one place: "Callers 2" over one incoming row.
+    const store = new SymbolStore();
+    const base = { file: 0, line: 0, col: 0, endLine: 0, parent: -1, flags: 0, signature: "", doc: "", params: 0 };
+    const mod = store.add({ ...base, name: "a.ts", kind: "module" });
+    const flatten = store.add({ ...base, name: "flatten", kind: "function", line: 1 });
+    const main = store.add({ ...base, name: "main", kind: "function", line: 5 });
+    const refs = new RefStore();
+    refs.push(flatten, 0, 30, 2, 4, 7, REF.call, flatten); // the recursive call
+    refs.push(flatten, 0, 60, 6, 4, 7, REF.call, main);
+    refs.push(main, 0, 90, 8, 0, 4, REF.call, mod);
+    const t = buildTables(store, refs, 1, [{ fileId: 0, moduleSymbol: mod, scopes: new Map(), aliases: new Map(), names: new Set(), exportNodes: [] }], Infinity);
+    expect(t.symbols.callers[flatten]).toBe(1);
+    expect(t.symbols.refs[flatten]).toBe(2); // the self-call is still a reference
+    expect(t.calls.from.some((f, i) => f === flatten && t.calls.to[i] === flatten)).toBe(true);
   });
 
   test("call table rows aggregate by (from, to, kind)", () => {

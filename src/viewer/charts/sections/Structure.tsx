@@ -8,7 +8,6 @@
 
 import { useMemo } from "react";
 import type { Cycle, ExternalDependency } from "../../../shared/schema";
-import { sequentialColor } from "../../lib/colors";
 import { baseName, formatInt, plural, shortenPath } from "../../lib/format";
 import { useHover, useViewer } from "../../state/store";
 import { BarList, type BarItem } from "../kit/BarList";
@@ -16,7 +15,7 @@ import { DataTable, type Column } from "../kit/DataTable";
 import { Figure } from "../kit/Figure";
 import { useActiveIndex } from "../kit/interaction";
 import { Legend } from "../kit/Legend";
-import { ScaleLegend } from "../kit/ScaleLegend";
+import { rampColor, rampT, ScaleLegend } from "../kit/ScaleLegend";
 import { measureColor } from "../kit/theme";
 import { ChartTooltip } from "../kit/Tooltip";
 import { useScope } from "../scope";
@@ -55,7 +54,14 @@ function ModuleMatrix() {
   const matrix = report.graph.moduleMatrix;
   const names = modules.map((m) => moduleName(report.dirs[m.dir]?.path ?? "", report.project.name));
   const n = modules.length;
-  const max = Math.max(1, ...matrix.flat());
+  // The color domain is the cross-module cells only. The diagonal (a module importing itself)
+  // dwarfs them: inertialref's apps/game/src → itself is 1,798 while its largest real
+  // dependency is 101, so with the diagonal in the domain every cross-module cell sat in the
+  // palest quarter of the ramp. The diagonal is drawn in a neutral instead, with its count in
+  // the tooltip and the table.
+  const cross = matrix.flatMap((row, i) => row.filter((v, j) => i !== j && v > 0));
+  const lo = cross.length ? Math.min(...cross) : 1;
+  const max = cross.length ? Math.max(...cross) : 1;
   const { active, setActive, focusProps } = useActiveIndex(n * n, (i) => select({ kind: "dir", id: modules[Math.floor(i / n)]!.dir }));
   const total = matrix.flat().reduce((s, v) => s + v, 0);
 
@@ -63,13 +69,18 @@ function ModuleMatrix() {
     <Figure
       className={span(7)}
       title="Module dependencies"
-      subtitle="Rows import columns; darker cells carry more import edges. Modules are directories chosen by the analyzer."
+      subtitle="Rows import columns; a stronger blue carries more import edges between the two modules. Modules are directories chosen by the analyzer."
       height={Math.min(560, 140 + n * 26)}
-      empty={n < 2 ? "Fewer than two modules, so there are no dependencies between them to show." : total === 0 ? "No imports cross module boundaries." : null}
-      legend={<ScaleLegend low="0" high={formatInt(max)} label="Imports" surface={surface} />}
+      empty={n < 2 ? "Fewer than two modules, so there are no dependencies between them to show." : total === 0 || cross.length === 0 ? "No imports cross module boundaries." : null}
+      legend={
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+          <ScaleLegend low={formatInt(lo)} high={formatInt(max)} label="Imports" surface={surface} note="square-root scale" />
+          <Legend items={[{ label: "Within one module, not on the scale", color: "var(--color-rule-strong)" }]} />
+        </div>
+      }
       table={() => ({
         columns: [{ label: "From", mono: true }, { label: "To", mono: true }, { label: "Imports", align: "right", mono: true }],
-        rows: matrix.flatMap((row, i) => row.map((v, j) => ({ v, i, j }))).filter((c) => c.v > 0).map((c) => [names[c.i]!, names[c.j]!, c.v]),
+        rows: matrix.flatMap((row, i) => row.map((v, j) => ({ v, i, j }))).filter((c) => c.v > 0).map((c) => [names[c.i]!, c.i === c.j ? `${names[c.j]!} (within)` : names[c.j]!, c.v]),
       })}
     >
       {(width) => {
@@ -140,8 +151,8 @@ function ModuleMatrix() {
                     width={cell - 2}
                     height={cell - 2}
                     rx={2}
-                    fill={v > 0 ? sequentialColor(Math.sqrt(v / max), surface) : undefined}
-                    className={v > 0 ? undefined : i === j ? "fill-rule/60" : "fill-wash"}
+                    fill={i !== j && v > 0 ? rampColor(rampT(v, lo, max, "sqrt"), surface) : undefined}
+                    className={i === j ? "fill-rule-strong" : v > 0 ? undefined : "fill-wash"}
                     style={i === ai && j === aj ? { stroke: "var(--color-ink)", strokeWidth: 1.5 } : undefined}
                   />
                 )),
@@ -154,8 +165,13 @@ function ModuleMatrix() {
                   ? {
                       x: LABEL + aj * cell + cell / 2,
                       y: TOP + ai * cell - 6,
-                      title: `${names[ai]} → ${names[aj]}`,
-                      rows: [{ value: formatInt(matrix[ai]![aj]!), label: matrix[ai]![aj] === 1 ? "import" : "imports" }],
+                      title: ai === aj ? `${names[ai]}, within itself` : `${names[ai]} → ${names[aj]}`,
+                      rows: [
+                        {
+                          value: formatInt(matrix[ai]![aj]!),
+                          label: `${matrix[ai]![aj] === 1 ? "import" : "imports"}${ai === aj ? " between its own files" : ""}`,
+                        },
+                      ],
                     }
                   : null
               }

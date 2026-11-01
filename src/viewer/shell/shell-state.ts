@@ -38,6 +38,44 @@ interface ShellState {
   setWrapLines(wrap: boolean): void;
 }
 
+/**
+ * The element that opened About. Radix returns focus to its DialogTrigger on close, but About
+ * opens through this store (the rail's button and a palette action both call setAboutOpen),
+ * so there is no trigger and focus fell to <body>: a keyboard reader started over at the top.
+ * Kept outside the store because a DOM node is not state anything should render from.
+ */
+let aboutOpener: HTMLElement | null = null;
+
+/** Hand back (once) the element to refocus when About closes, if it is still on the page. */
+export function takeAboutOpener(): HTMLElement | null {
+  const el = aboutOpener;
+  aboutOpener = null;
+  return el?.isConnected ? el : null;
+}
+
+/** When a keyboard open asked the reader to take focus (performance.now()), or 0. */
+let readerFocusAsked = 0;
+
+/**
+ * Ask the source reader to take keyboard focus when it next shows a file. Enter on an explorer
+ * row switches to the Source tab, which unmounts the explorer and with it the focused table;
+ * focus fell to <body> and a keyboard reader started over from the top of the page.
+ */
+export function requestReaderFocus(): void {
+  readerFocusAsked = performance.now();
+}
+
+/**
+ * Called by the reader's text (or its no-source page) when it mounts: true once if a request
+ * is pending. A request older than a few seconds is dropped (the source never loaded, or the
+ * reader moved on), so a later, unrelated mount does not steal focus.
+ */
+export function takeReaderFocus(): boolean {
+  const asked = readerFocusAsked;
+  readerFocusAsked = 0;
+  return asked > 0 && performance.now() - asked < 4000;
+}
+
 export const useShell = create<ShellState>((set) => ({
   aboutOpen: false,
   railSheetOpen: false,
@@ -49,7 +87,12 @@ export const useShell = create<ShellState>((set) => ({
   symbolKind: "all",
   wrapLines: false,
 
-  setAboutOpen: (aboutOpen) => set({ aboutOpen }),
+  setAboutOpen: (aboutOpen) => {
+    if (aboutOpen && document.activeElement instanceof HTMLElement && document.activeElement !== document.body) {
+      aboutOpener = document.activeElement;
+    }
+    set({ aboutOpen });
+  },
   setRailSheetOpen: (railSheetOpen) => set({ railSheetOpen }),
   setExplorerMode: (explorerMode) => set({ explorerMode }),
   setFileSort: (fileSort) => set({ fileSort }),

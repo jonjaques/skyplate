@@ -7,9 +7,37 @@
  */
 
 import * as THREE from "three";
+import { neighbors, type Model } from "../model/indices";
 import { LANE_FRAGMENT, LANE_VERTEX } from "./shaders";
 
-export const LANE_STYLE = { import: 0, call: 1, other: 2, callee: 3, all: 4 } as const;
+export const LANE_STYLE = { import: 0, call: 1, other: 2, callee: 3, all: 4, implementation: 5 } as const;
+
+/**
+ * Importer lanes drawn for one selected file. A hub imported from 251 files drew 251 additive
+ * lanes: a white starburst that ran off the plate and through the legend, with no single lane
+ * readable. Past this many, the most depended-on importers keep their lanes, every importer's
+ * star stays lit, and the legend says how many lanes were left out.
+ */
+export const IMPORTER_LANE_CAP = 60;
+
+export interface SelectionLaneSet {
+  imports: number[];
+  /** Importers that get a lane, most depended-on first. */
+  importers: number[];
+  /** Importers whose lane was left out (their stars stay lit). */
+  hiddenImporters: number;
+  totalImporters: number;
+}
+
+/** Which lanes a selected file draws; shared by the scene and the label placement. */
+export function selectionLanes(model: Model, file: number): SelectionLaneSet {
+  const imports = [...neighbors(model.imports, file)];
+  const all = [...neighbors(model.importedBy, file)];
+  const files = model.report.files;
+  const importers =
+    all.length <= IMPORTER_LANE_CAP ? all : all.sort((a, b) => files[b]!.rank - files[a]!.rank || a - b).slice(0, IMPORTER_LANE_CAP);
+  return { imports, importers, hiddenImporters: all.length - importers.length, totalImporters: all.length };
+}
 
 /** How far a symbol's reference arcs bow off the disc, per unit of span (see Lane.lift). */
 export const ARC_LIFT = 0.32;
@@ -117,6 +145,9 @@ export function buildLaneGeometry(tree: Float32Array, graph: Float32Array, lanes
   return g;
 }
 
+export const LANE_INK = "#dfe8ee";
+export const LANE_INK_2 = "#f2dfb4";
+
 export function makeLaneMaterial(opacity: number): THREE.ShaderMaterial {
   return new THREE.ShaderMaterial({
     vertexShader: LANE_VERTEX,
@@ -131,7 +162,10 @@ export function makeLaneMaterial(opacity: number): THREE.ShaderMaterial {
       uMotion: { value: 1 },
       uOpacity: { value: opacity },
       // Plate ink: lanes are hairlines in the label stock's color, never a data color.
-      uInk: { value: new THREE.Color("#dfe8ee") },
+      uInk: { value: new THREE.Color(LANE_INK) },
+      // Implementations get a second, warmer ink (bone, not a series hue and nowhere near
+      // holotype red), so "implements it" reads apart from "calls it" even where they cross.
+      uInk2: { value: new THREE.Color(LANE_INK_2) },
     },
   });
 }

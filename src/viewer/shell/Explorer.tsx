@@ -8,7 +8,7 @@
  */
 
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
-import { useEffect, useMemo, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import { SymbolFlag, type SymbolKind } from "../../shared/schema";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -23,7 +23,7 @@ import { useViewer } from "../state/store";
 import { SYMBOL_KIND_LABEL } from "./labels";
 import { focusDrawer, openFile, openSymbolDefinition, show } from "./navigate";
 import { LanguageSwatch, PathText, Quiet } from "./parts";
-import { useShell, type FileSortKey, type SortDir, type SymbolSortKey } from "./shell-state";
+import { requestReaderFocus, useShell, type FileSortKey, type SortDir, type SymbolSortKey } from "./shell-state";
 import { useVirtualRows } from "./virtual";
 
 const ROW = 32;
@@ -181,12 +181,12 @@ function FileView({ toggle }: { toggle: ReactNode }) {
 }
 
 function SymbolView({ toggle }: { toggle: ReactNode }) {
-  const rows = useSymbolRows();
+  const { rows, kinds } = useSymbolRows();
   return (
     <>
       <Toolbar>
         {toggle}
-        <SymbolToolbar rows={rows} />
+        <SymbolToolbar rows={rows} kinds={kinds} />
       </Toolbar>
       <div className="min-h-0 flex-1">
         <SymbolTable rows={rows} />
@@ -254,26 +254,42 @@ function SortHead<K extends string>({
   );
 }
 
+/**
+ * The scroll container is the table's one tab stop. It had no role (so its aria-label was
+ * never read) and no visible focus, so a keyboard reader tabbed into it blind, and Enter then
+ * opened the reader with focus dropped to <body>. Now: a labeled region with a focus ring, a
+ * cursor row outlined while it has keyboard focus (the selection, or the first row when
+ * nothing is selected, which is what Enter opens), the selected row announced politely, and
+ * Enter hands focus to the reader's text (requestReaderFocus).
+ */
 function VirtualTable({
+  label,
   count,
   colgroup,
   head,
   row,
+  describe,
   selectedIndex,
   onMove,
   onOpen,
   empty,
 }: {
+  label: string;
   count: number;
   colgroup: ReactNode;
   head: ReactNode;
-  row(i: number): ReactNode;
+  row(i: number, cursor: boolean): ReactNode;
+  /** The row as a screen reader should hear it when it becomes selected. */
+  describe(i: number): string;
   selectedIndex: number;
   onMove(i: number): void;
   onOpen(i: number): void;
   empty: ReactNode;
 }) {
   const v = useVirtualRows(count, ROW, HEADER);
+  const hint = useId();
+  const [keyboard, setKeyboard] = useState(false);
+  const cursor = selectedIndex >= 0 ? selectedIndex : count > 0 ? 0 : -1;
 
   // Keep the selected row on screen when the selection comes from elsewhere (the plate, ⌘K).
   useEffect(() => {
@@ -281,23 +297,46 @@ function VirtualTable({
   }, [selectedIndex, v.reveal]);
 
   const onKeyDown = (e: KeyboardEvent) => {
-    if (count === 0) return;
+    if (count === 0 || e.target !== e.currentTarget) return;
     const step = e.key === "ArrowDown" ? 1 : e.key === "ArrowUp" ? -1 : e.key === "PageDown" ? 20 : e.key === "PageUp" ? -20 : 0;
     if (step) {
       e.preventDefault();
-      const next = Math.min(count - 1, Math.max(0, (selectedIndex < 0 ? -1 : selectedIndex) + step));
-      onMove(next);
-    } else if (e.key === "Enter" && selectedIndex >= 0) {
+      // With nothing selected, the first arrow selects the row the cursor already outlines.
+      onMove(selectedIndex < 0 ? 0 : Math.min(count - 1, Math.max(0, selectedIndex + step)));
+    } else if (e.key === "Home" || e.key === "End") {
       e.preventDefault();
-      onOpen(selectedIndex);
+      onMove(e.key === "Home" ? 0 : count - 1);
+    } else if (e.key === "Enter" && cursor >= 0) {
+      e.preventDefault();
+      requestReaderFocus();
+      onOpen(cursor);
     }
   };
 
   const rows = [];
-  for (let i = v.start; i < v.end; i++) rows.push(row(i));
+  for (let i = v.start; i < v.end; i++) rows.push(row(i, keyboard && i === cursor));
 
   return (
-    <div ref={v.ref} onScroll={v.onScroll} onKeyDown={onKeyDown} tabIndex={0} className="h-full overflow-auto outline-none focus-visible:outline-none" aria-label="Table, use the arrow keys to move the selection">
+    <div
+      ref={v.ref}
+      onScroll={v.onScroll}
+      onKeyDown={onKeyDown}
+      // Only keyboard focus shows the cursor: a mouse click focuses this container too, and
+      // the clicked row is already marked as selected.
+      onFocus={(e) => e.target === e.currentTarget && setKeyboard(e.currentTarget.matches(":focus-visible"))}
+      onBlur={() => setKeyboard(false)}
+      tabIndex={0}
+      role="region"
+      aria-label={label}
+      aria-describedby={hint}
+      className="h-full overflow-auto outline-none focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid"
+    >
+      <p id={hint} className="sr-only">
+        Arrow keys, Home and End move the selection; Enter opens it in the source reader.
+      </p>
+      <p aria-live="polite" className="sr-only">
+        {keyboard && selectedIndex >= 0 ? `${describe(selectedIndex)}, row ${formatInt(selectedIndex + 1)} of ${formatInt(count)}` : ""}
+      </p>
       {/* Separate borders on the cells, not the rows: a collapsed table's header rule scrolls
           away with the body even when the header itself is sticky. */}
       <table className="w-full min-w-[760px] table-fixed border-separate border-spacing-0 caption-bottom text-[13px] [&_td]:border-b [&_td]:border-rule [&_th]:border-b [&_th]:border-rule">
@@ -316,6 +355,9 @@ function VirtualTable({
   );
 }
 
+/** The keyboard cursor's outline, drawn inside the row so the next row's rule never covers it. */
+const CURSOR = "outline-2 -outline-offset-2 outline-ring";
+
 function FileTable({ rows }: { rows: number[] }) {
   const report = useViewer((s) => s.report);
   const model = useViewer((s) => s.model);
@@ -330,10 +372,12 @@ function FileTable({ rows }: { rows: number[] }) {
 
   return (
     <VirtualTable
+      label="Files"
       count={rows.length}
       selectedIndex={selectedIndex}
       onMove={(i) => show({ kind: "file", id: rows[i]! })}
       onOpen={(i) => openFile(rows[i]!)}
+      describe={(i) => report.files[rows[i]!]!.path}
       empty={<Quiet>No file path matches the filter.</Quiet>}
       colgroup={
         <colgroup>
@@ -359,7 +403,7 @@ function FileTable({ rows }: { rows: number[] }) {
           {git && <SortHead label="Hotspot" sortKey="hotspot" sort={sort} onSort={setSort} align="right" />}
         </>
       }
-      row={(i) => {
+      row={(i, cursor) => {
         const id = rows[i]!;
         const f = report.files[id]!;
         const holotype = model.holotypes.has(id);
@@ -369,13 +413,13 @@ function FileTable({ rows }: { rows: number[] }) {
             data-state={id === selectedId ? "selected" : undefined}
             onClick={() => show({ kind: "file", id })}
             onDoubleClick={() => openFile(id)}
-            className="cursor-default border-rule"
+            className={cn("cursor-default border-rule", cursor && CURSOR)}
             style={{ height: ROW }}
           >
             <TableCell className="px-2 py-0 text-xs">
               <span className="flex min-w-0 items-center gap-1.5">
                 {holotype && (
-                  <span className="size-1.5 shrink-0 rounded-full bg-holotype" title="Holotype: most depended on in its region" />
+                  <span className="size-1.5 shrink-0 rounded-full bg-holotype" title="Holotype: the most central file in its region (highest PageRank)" />
                 )}
                 <PathText path={f.path} className="text-ink" dirClass="text-ink-3" />
               </span>
@@ -409,7 +453,17 @@ function Num({ v }: { v: number | undefined }) {
 
 const KINDS = Object.keys(SYMBOL_KIND_LABEL).filter((k) => k !== "module") as SymbolKind[];
 
-function useSymbolRows(): number[] {
+interface SymbolRows {
+  rows: number[];
+  /**
+   * Symbols per kind in the current scope (drawer and name filter, not the kind filter
+   * itself), so the kind menu offers what is there with counts for here. It listed every kind
+   * the schema knows: "Class" in a JavaScript project with no classes led to "0 symbols".
+   */
+  kinds: Map<SymbolKind, number>;
+}
+
+function useSymbolRows(): SymbolRows {
   const report = useViewer((s) => s.report);
   const symbols = useViewer((s) => s.symbols);
   const sm = useViewer((s) => s.symbolModel);
@@ -419,7 +473,8 @@ function useSymbolRows(): number[] {
   const focusDir = useViewer((s) => s.focusDir);
   const model = useViewer((s) => s.model);
   return useMemo(() => {
-    if (!report || !symbols || !sm || !model) return [];
+    const kinds = new Map<SymbolKind, number>();
+    if (!report || !symbols || !sm || !model) return { rows: [], kinds };
     const t = symbols.symbols;
     const q = filter.trim().toLowerCase();
     let inFocus: Set<number> | null = null;
@@ -427,9 +482,11 @@ function useSymbolRows(): number[] {
     const ids: number[] = [];
     for (let i = 0; i < t.name.length; i++) {
       const k = t.kind[i]!;
-      if (k === "module" || (kind !== "all" && k !== kind)) continue;
+      if (k === "module") continue;
       if (q && !sm.lowerNames[i]!.includes(q)) continue;
       if (inFocus && !inFocus.has(t.file[i]!)) continue;
+      kinds.set(k, (kinds.get(k) ?? 0) + 1);
+      if (kind !== "all" && k !== kind) continue;
       ids.push(i);
     }
     const key: Record<SymbolSortKey, (i: number) => number | string> = {
@@ -440,11 +497,11 @@ function useSymbolRows(): number[] {
       callers: (i) => t.callers[i]!,
       complexity: (i) => t.complexity[i]!,
     };
-    return sortIds(ids, key[sort.key], sort.dir, (i) => t.name[i]!);
+    return { rows: sortIds(ids, key[sort.key], sort.dir, (i) => t.name[i]!), kinds };
   }, [report, symbols, sm, model, filter, kind, sort, focusDir]);
 }
 
-function SymbolToolbar({ rows }: { rows: number[] }) {
+function SymbolToolbar({ rows, kinds }: { rows: number[]; kinds: Map<SymbolKind, number> }) {
   const filter = useShell((s) => s.symbolFilter);
   const setFilter = useShell((s) => s.setSymbolFilter);
   const kind = useShell((s) => s.symbolKind);
@@ -457,13 +514,18 @@ function SymbolToolbar({ rows }: { rows: number[] }) {
       <FilterInput value={filter} onChange={setFilter} placeholder="Filter by name" />
       <Select value={kind} onValueChange={(v) => setKind(v as SymbolKind | "all")}>
         <SelectTrigger size="sm" className="h-8 w-[170px] bg-paper" aria-label="Filter by kind">
-          <SelectValue />
+          {/* Explicit children: the items carry a count the trigger must not repeat. */}
+          <SelectValue>{kind === "all" ? "Every kind" : SYMBOL_KIND_LABEL[kind]}</SelectValue>
         </SelectTrigger>
-        <SelectContent position="popper">
-          <SelectItem value="all">Every kind</SelectItem>
-          {KINDS.map((k) => (
-            <SelectItem key={k} value={k}>
-              {SYMBOL_KIND_LABEL[k]}
+        <SelectContent position="popper" className="min-w-[210px]">
+          <SelectItem value="all" textValue="Every kind" className="*:[span]:last:flex-1">
+            <KindOption label="Every kind" count={[...kinds.values()].reduce((a, b) => a + b, 0)} />
+          </SelectItem>
+          {/* The chosen kind stays listed even when the scope has none of it, so the menu
+              can still show (and undo) the current choice. */}
+          {KINDS.filter((k) => kinds.has(k) || k === kind).map((k) => (
+            <SelectItem key={k} value={k} textValue={SYMBOL_KIND_LABEL[k]} className="*:[span]:last:flex-1">
+              <KindOption label={SYMBOL_KIND_LABEL[k]} count={kinds.get(k) ?? 0} />
             </SelectItem>
           ))}
         </SelectContent>
@@ -476,6 +538,15 @@ function SymbolToolbar({ rows }: { rows: number[] }) {
       )}
       <span className="figures ml-auto font-mono text-xs text-ink-3">{status === "ready" ? plural(rows.length, "symbol") : ""}</span>
     </>
+  );
+}
+
+function KindOption({ label, count }: { label: string; count: number }) {
+  return (
+    <span className="flex w-full items-baseline justify-between gap-4">
+      <span>{label}</span>
+      <span className="figures font-mono text-xs text-ink-3">{formatInt(count)}</span>
+    </span>
   );
 }
 
@@ -496,10 +567,12 @@ function SymbolTable({ rows }: { rows: number[] }) {
 
   return (
     <VirtualTable
+      label="Symbols"
       count={rows.length}
       selectedIndex={selectedIndex}
       onMove={(i) => show({ kind: "symbol", id: rows[i]! })}
       onOpen={(i) => openSymbolDefinition(symbols, rows[i]!)}
+      describe={(i) => `${t.name[rows[i]!]}, ${SYMBOL_KIND_LABEL[t.kind[rows[i]!]!].toLowerCase()}`}
       empty={<Quiet>No symbol matches the filter.</Quiet>}
       colgroup={
         <colgroup>
@@ -523,7 +596,7 @@ function SymbolTable({ rows }: { rows: number[] }) {
           <TableHead className="h-9 bg-paper px-2 text-xs font-semibold text-ink-2">Flags</TableHead>
         </>
       }
-      row={(i) => {
+      row={(i, cursor) => {
         const id = rows[i]!;
         const file = report.files[t.file[id]!];
         const flags = t.flags[id]!;
@@ -533,7 +606,7 @@ function SymbolTable({ rows }: { rows: number[] }) {
             data-state={id === selectedId ? "selected" : undefined}
             onClick={() => show({ kind: "symbol", id })}
             onDoubleClick={() => openSymbolDefinition(symbols, id)}
-            className="cursor-default border-rule"
+            className={cn("cursor-default border-rule", cursor && CURSOR)}
             style={{ height: ROW }}
           >
             <TableCell className="truncate px-2 py-0 font-mono text-xs text-ink" title={t.signature[id] || t.name[id]}>

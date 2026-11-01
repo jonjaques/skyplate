@@ -4,45 +4,85 @@
  * The signature of the Specimen Cabinet direction. Which files get a label is React's job and
  * changes rarely (hover, selection, focus); where each label sits is the frame bus's job and
  * changes every frame the camera moves. Placement is greedy in priority order (selected, then
- * hovered, then holotypes): each card tries a ring of positions around its star, keeps last
- * frame's position while it is still clear (so cards do not hop as the camera turns), and
- * avoids the other cards, the other pinned stars and the plate's own chrome.
+ * hovered, then holotypes): each label tries a ring of positions around its star, keeps last
+ * frame's position while it is still clear (so labels do not hop as the camera turns), and
+ * avoids the other labels, the other pinned stars, the plate's chrome, the region names, its
+ * own star and the lanes or arcs it is describing.
+ *
+ * Three forms of label stock:
+ *   card  the full specimen label (Language, Category, Path, Collector, Collected, det. line)
+ *   pin   one line, the file's name: secondary holotypes, and every label on a narrow plate,
+ *         where a card covered 40% of a phone-width galaxy (the record below has the rest)
+ *   tag   a selected symbol's one-line tag under its definition, clear of the arcs above it
  */
 
-import { memo, useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { CATEGORY_GROUP } from "../../shared/schema";
 import { CATEGORY_GROUP_LABEL } from "../lib/colors";
-import { baseName, formatInt, formatIsoDate, shortenPath } from "../lib/format";
+import { baseName, formatDate, formatInt, formatIsoDate, shortenPath } from "../lib/format";
 import { cn } from "../lib/utils";
 import { useHover, useViewer } from "../state/store";
-import type { GalaxyEngine } from "./engine";
-import { regionOfDir } from "./Scene";
+import { passesFilters } from "./encode";
+import { FRAME_ORDER, regionOfDir, type GalaxyEngine, type PlateRect } from "./engine";
+import { ARC_LIFT, laneApex, selectionLanes } from "./lanes";
+import { describeRelation, type SymbolScene } from "./symbolScene";
 
-type LabelKind = "selected" | "hover" | "holotype";
+type LabelKind = "selected" | "hover" | "holotype" | "symbol";
+type LabelForm = "card" | "pin" | "tag";
 
 interface LabelSpec {
   key: string;
   file: number;
   kind: LabelKind;
-  /** Overrides the det. line (a selected symbol speaks about itself). */
+  form: LabelForm;
+  /** Overrides the card's det. line (a ripple's reason, a file not yet collected). */
   det?: string;
 }
 
-interface Rect {
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-}
+/** Plates narrower than this get pins instead of cards (phones, the Source tab's side plate). */
+export const NARROW_PLATE = 560;
+/**
+ * Below this, even the resting lead holotype is a pin. A card is 216 × 150 px; on the 680 px
+ * plate a 1280 px window leaves, the only room for it was over the galaxy's core, where it hid
+ * four region names. A reader who picks or hovers a star still gets that star's card.
+ */
+const REST_CARD_PLATE = 760;
+/** Holotype pins shown at rest beside the main holotype card (the sketch pins three in all). */
+const REST_PINS = 2;
+/** Arcs considered when keeping labels off a symbol's arcs; enough to find the fan's shape. */
+const ARC_OBSTACLES = 160;
 
 const GAP_NEAR = 34;
 const GAP_FAR = 88;
 const GAP_OUT = 150;
+const PIN_NEAR = 18;
+const PIN_FAR = 52;
 const MARGIN = 8;
 
-function overlaps(a: Rect, b: Rect, pad = 6): boolean {
+function overlaps(a: PlateRect, b: PlateRect, pad = 6): boolean {
   return a.x < b.x + b.w + pad && b.x < a.x + a.w + pad && a.y < b.y + b.h + pad && b.y < a.y + a.h + pad;
+}
+
+/** Does the segment (x1, y1)–(x2, y2) pass through the rectangle? Liang-Barsky clipping. */
+export function segmentHitsRect(x1: number, y1: number, x2: number, y2: number, r: PlateRect): boolean {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  let t0 = 0;
+  let t1 = 1;
+  const clip = (p: number, q: number) => {
+    if (p === 0) return q >= 0;
+    const t = q / p;
+    if (p < 0) {
+      if (t > t1) return false;
+      if (t > t0) t0 = t;
+    } else {
+      if (t < t0) return false;
+      if (t < t1) t1 = t;
+    }
+    return true;
+  };
+  return clip(-dx, x1 - r.x) && clip(dx, r.x + r.w - x1) && clip(-dy, y1 - r.y) && clip(dy, r.y + r.h - y1) && t0 <= t1;
 }
 
 /**
@@ -50,10 +90,10 @@ function overlaps(a: Rect, b: Rect, pad = 6): boolean {
  * scrubber. Read from the DOM (elements carry data-plate-chrome) so the overlay never has to
  * know their sizes.
  */
-function chromeRects(container: HTMLElement | null): Rect[] {
+function chromeRects(container: HTMLElement | null): PlateRect[] {
   if (!container) return [];
   const base = container.getBoundingClientRect();
-  const out: Rect[] = [];
+  const out: PlateRect[] = [];
   container.querySelectorAll<HTMLElement>("[data-plate-chrome]").forEach((el) => {
     const r = el.getBoundingClientRect();
     if (r.width > 0) out.push({ x: r.left - base.left, y: r.top - base.top, w: r.width, h: r.height });
@@ -61,58 +101,103 @@ function chromeRects(container: HTMLElement | null): Rect[] {
   return out;
 }
 
-export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; compact: boolean }) {
+export function SpecimenLabels({
+  engine,
+  compact,
+  scene,
+  dismissed,
+}: {
+  engine: GalaxyEngine;
+  compact: boolean;
+  /** The selected symbol's neighborhood: the definition gets a tag, and hover cards say why a star is lit. */
+  scene: SymbolScene | null;
+  /** The reader clicked empty plate: the resting holotype labels stay down until the next selection. */
+  dismissed: boolean;
+}) {
   const model = engine.model;
   const selection = useViewer((s) => s.selection);
   const focusDir = useViewer((s) => s.focusDir);
   const symbols = useViewer((s) => s.symbols);
+  const edges = useViewer((s) => s.edges);
+  const time = useViewer((s) => s.time);
+  const filters = useViewer((s) => s.filters);
   const hover = useHover((s) => s.hover);
+
+  const container = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(0);
+  useLayoutEffect(() => {
+    const el = container.current;
+    if (!el) return;
+    const measure = () => setWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const narrow = compact || (width > 0 && width < NARROW_PLATE);
 
   const specs = useMemo<LabelSpec[]>(() => {
     const out: LabelSpec[] = [];
     const seen = new Set<number>();
-    const add = (file: number, kind: LabelKind, det?: string) => {
+    const add = (file: number, kind: LabelKind, form: LabelForm, det?: string) => {
       if (file < 0 || file >= model.fileCount || seen.has(file)) return;
+      // A holotype the reader filtered out keeps no label: its star is dimmed with the rest,
+      // and a red card over it said the opposite.
+      if (kind === "holotype" && !passesFilters(model, file, filters)) return;
       seen.add(file);
-      out.push({ key: `${kind}:${file}`, file, kind, det });
+      out.push({ key: `${kind}:${form}:${file}`, file, kind, form, det });
     };
-    if (selection?.kind === "file") add(selection.id, "selected");
-    if (selection?.kind === "symbol" && symbols) {
-      const t = symbols.symbols;
-      const s = selection.id;
-      add(t.file[s]!, "selected", `det. ${t.name[s]}, ${formatInt(t.refs[s]!)} references in ${formatInt(t.files[s]!)} files`);
-    }
-    if (hover?.kind === "file" && !compact) add(hover.id, "hover");
-    // A symbol's neighborhood is the subject while one is selected; holotype cards would only
+    const card: LabelForm = narrow ? "pin" : "card";
+    // A file the scrubber has not reached yet: say so on its label (the plate draws a ghost ring).
+    const notYet = (file: number) => {
+      const born = model.created[file]!;
+      return time !== null && !Number.isNaN(born) && born > time ? `Not yet collected on ${formatDate(time)}; collected ${formatIsoDate(born)}` : undefined;
+    };
+    if (selection?.kind === "file") add(selection.id, "selected", card, notYet(selection.id));
+    // A selected symbol speaks through a slim tag under its definition. On the Source tab's side
+    // plate there is no room for even that; the legend's one-line key carries it there.
+    if (selection?.kind === "symbol" && symbols && !compact) add(symbols.symbols.file[selection.id]!, "symbol", "tag");
+    if (hover?.kind === "file" && !compact) add(hover.id, "hover", card, (scene && symbols && describeRelation(scene, symbols, hover.id)) || notYet(hover.id));
+    // A symbol's neighborhood is the subject while one is selected; holotype labels would only
     // compete with its arcs.
     if (!compact && selection?.kind !== "symbol") {
       if (selection?.kind === "file") {
-        // With a file pinned, the holotype worth a card is the one in its own drawer: the file
-        // its neighbors most depend on, for comparison. A distant region's card is noise here.
+        // With a file pinned, the holotype worth a label is the one in its own drawer: the file
+        // its neighbors most depend on, for comparison. A pin, so the selection's card leads.
         const holo = model.holotypeOfDir.get(model.topDir[selection.id]!);
-        if (holo !== undefined) add(holo, "holotype");
+        if (holo !== undefined) add(holo, "holotype", "pin");
+      } else if (dismissed) {
+        // The reader cleared the plate; nothing comes back until they pick something.
       } else if (focusDir !== null && focusDir !== 0) {
         const region = regionOfDir(engine, focusDir);
         const dir = engine.regions[region]?.dir;
         const holo = dir === undefined ? undefined : model.holotypeOfDir.get(dir);
-        if (holo !== undefined) add(holo, "holotype");
+        if (holo !== undefined) add(holo, "holotype", card);
       } else {
-        // Zoomed out: one card, for the holotype everything else leans on most. Three cards
-        // covered a third of the plate at 1440 px and two still sat on the arms; the other
-        // holotypes keep their red rings, and hovering one shows its card.
-        let best = -1;
-        for (const r of engine.regions) {
-          const holo = model.holotypeOfDir.get(r.dir);
-          if (holo === undefined || r.dir === 0) continue;
-          if (best < 0 || model.report.files[holo]!.fanIn > model.report.files[best]!.fanIn) best = holo;
-        }
-        if (best >= 0 && model.report.files[best]!.fanIn >= 3) add(best, "holotype");
+        // At rest: the holotype everything leans on most gets the card, and the next ones get
+        // pins. Three full cards covered a third of the plate at 1440 px; pins carry the name
+        // and the red, which is what "follow the holotypes" needs from the first viewport.
+        const ranked = engine.regions
+          .filter((r) => r.dir !== 0)
+          .map((r) => model.holotypeOfDir.get(r.dir))
+          .filter((f): f is number => f !== undefined && model.report.files[f]!.fanIn >= 3)
+          .sort((a, b) => model.report.files[b]!.fanIn - model.report.files[a]!.fanIn || a - b);
+        // While a star is hovered (or stepped to from the keyboard) its card leads, and the
+        // holotype card it displaced went looking for room and covered four region names.
+        const lead: LabelForm = hover?.kind === "file" || width < REST_CARD_PLATE ? "pin" : card;
+        ranked.slice(0, 1 + (narrow ? 1 : REST_PINS)).forEach((f, i) => add(f, "holotype", i === 0 ? lead : "pin"));
       }
     }
     return out;
-  }, [model, engine, selection, symbols, hover, focusDir, compact]);
+  }, [model, engine, selection, symbols, hover, focusDir, compact, narrow, width, dismissed, scene, time, filters]);
 
-  const container = useRef<HTMLDivElement>(null);
+  // The lanes a selected file draws, so its label can stay off them.
+  const laneEnds = useMemo(() => {
+    if (selection?.kind !== "file" || edges === "none") return null;
+    const set = selectionLanes(model, selection.id);
+    return { from: selection.id, ends: [...set.imports, ...set.importers] };
+  }, [model, selection, edges]);
+
   const cards = useRef(new Map<string, HTMLDivElement>());
   const lines = useRef(new Map<string, SVGLineElement>());
   const dots = useRef(new Map<string, SVGCircleElement>());
@@ -130,9 +215,19 @@ export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; comp
   useEffect(() => {
     const pt = { x: 0, y: 0 };
     const scratch = new THREE.Vector3();
-    let chrome: Rect[] = [];
+    const a3 = new THREE.Vector3();
+    const b3 = new THREE.Vector3();
+    const apex = new THREE.Vector3();
+    let chrome: PlateRect[] = [];
     let chromeAge = 0;
-    return engine.onFrame(({ width: W, height: H }) => {
+    /** World point → plate px, or null behind the camera. */
+    const project = (v: THREE.Vector3, camera: THREE.Camera, W: number, H: number): { x: number; y: number } | null => {
+      scratch.copy(v).applyMatrix4(camera.matrixWorldInverse);
+      if (scratch.z >= 0) return null;
+      scratch.applyMatrix4((camera as THREE.PerspectiveCamera).projectionMatrix);
+      return { x: (scratch.x + 1) * 0.5 * W, y: (1 - scratch.y) * 0.5 * H };
+    };
+    return engine.onFrame(({ camera, width: W, height: H }) => {
       // Chrome rarely moves; re-read it every 30 frames instead of every frame.
       if (chromeAge-- <= 0) {
         chrome = chromeRects(container.current?.parentElement ?? null);
@@ -140,37 +235,87 @@ export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; comp
       }
       engine.refreshDensity();
       const anchors: ({ x: number; y: number } | null)[] = specs.map((s) => (engine.screenOf(s.file, pt, scratch) ? { x: pt.x, y: pt.y } : null));
-      const placed: Rect[] = [];
+
+      // The focal bundle: the selected file's lanes, or the selected symbol's arcs (each as two
+      // straight pieces through its apex, which bound the curve). Labels count how many of
+      // these they would cover and prefer the spots that cover fewest.
+      const segs: number[] = [];
+      if (laneEnds) {
+        const o = engine.screenOf(laneEnds.from, pt, scratch) ? { x: pt.x, y: pt.y } : null;
+        if (o) for (const f of laneEnds.ends) if (engine.screenOf(f, pt, scratch)) segs.push(o.x, o.y, pt.x, pt.y);
+      }
+      if (scene) {
+        engine.filePos(scene.defFile, b3);
+        const d = project(b3, camera, W, H);
+        if (d) {
+          for (const arc of scene.arcs.slice(0, ARC_OBSTACLES)) {
+            engine.filePos(arc.file, a3);
+            laneApex(a3, b3, ARC_LIFT, apex);
+            const s0 = project(a3, camera, W, H);
+            const s1 = project(apex, camera, W, H);
+            if (!s0 || !s1) continue;
+            segs.push(s0.x, s0.y, s1.x, s1.y, s1.x, s1.y, d.x, d.y);
+          }
+        }
+      }
+      const crossings = (r: PlateRect) => {
+        let c = 0;
+        for (let k = 0; k < segs.length; k += 4) if (segmentHitsRect(segs[k]!, segs[k + 1]!, segs[k + 2]!, segs[k + 3]!, r)) c++;
+        return c;
+      };
+      const regions = engine.regionLabelRects;
+
+      const placed: PlateRect[] = [];
       specs.forEach((spec, idx) => {
         const card = cards.current.get(spec.key);
         const line = lines.current.get(spec.key);
         const dot = dots.current.get(spec.key);
         if (!card || !line || !dot) return;
         const a = anchors[idx];
-        const size = sizes.current.get(spec.key) ?? { w: 196, h: 110 };
+        const fallback = spec.form === "card" ? { w: 196, h: 110 } : { w: 120, h: 18 };
+        const size = sizes.current.get(spec.key) ?? fallback;
         const hide = () => {
           card.style.opacity = "0";
           line.setAttribute("visibility", "hidden");
           dot.setAttribute("visibility", "hidden");
         };
         if (!a || a.x < -10 || a.y < -10 || a.x > W + 10 || a.y > H + 10) return hide();
+        // A holotype whose star a label placed before it already covers has nothing to point at.
+        if (spec.kind === "holotype" && placed.some((p) => a.x > p.x - 4 && a.x < p.x + p.w + 4 && a.y > p.y - 4 && a.y < p.y + p.h + 4)) return hide();
         const { w, h } = size;
-        const candidates: [number, number][] = [];
-        // Holotype cards may run a longer leader out of the dense middle; a pinned or hovered
-        // card stays close to the star the reader is looking at.
-        for (const d of spec.kind === "holotype" ? [GAP_NEAR, GAP_FAR, GAP_OUT] : [GAP_NEAR, GAP_FAR]) {
+        const candidates: [number, number, number][] = []; // x, y, preference cost
+        if (spec.form === "tag") {
+          // Arcs rise off the disc (+z), which is up on the plate from every default view, so
+          // the definition's tag hangs below its star, clear of the fan it describes.
           candidates.push(
-            [a.x + d, a.y - d - h],
-            [a.x - d - w, a.y - d - h],
-            [a.x + d, a.y + d],
-            [a.x - d - w, a.y + d],
-            [a.x + d + 10, a.y - h / 2],
-            [a.x - d - 10 - w, a.y - h / 2],
+            [a.x - w / 2, a.y + 22, 0],
+            [a.x + 16, a.y + 16, 0.5],
+            [a.x - 16 - w, a.y + 16, 0.5],
+            [a.x - w / 2, a.y + 60, 1],
+            [a.x + 26, a.y - h / 2, 4],
+            [a.x - 26 - w, a.y - h / 2, 4],
+            [a.x - w / 2, a.y - 22 - h, 10],
           );
+        } else {
+          const gaps = spec.form === "pin" ? [PIN_NEAR, PIN_FAR] : spec.kind === "holotype" ? [GAP_NEAR, GAP_FAR, GAP_OUT] : [GAP_NEAR, GAP_FAR];
+          // Holotype cards may run a longer leader out of the dense middle; a pinned or hovered
+          // card stays close to the star the reader is looking at.
+          gaps.forEach((d, ring) => {
+            const p = ring * 0.01;
+            candidates.push(
+              [a.x + d, a.y - d - h, p],
+              [a.x - d - w, a.y - d - h, p + 0.5],
+              [a.x + d, a.y + d, p + 0.5],
+              [a.x - d - w, a.y + d, p + 0.5],
+              [a.x + d + 10, a.y - h / 2, p + 0.5],
+              [a.x - d - 10 - w, a.y - h / 2, p + 0.5],
+            );
+          });
         }
-        // Hard costs (off the plate, over another card, over the chrome, over another pinned
-        // star) dominate; covering stars is a soft cost, so a card prefers the dark lanes
-        // between arms but still lands somewhere when the whole plate is busy.
+        // Hard costs (off the plate, over another label, over the chrome, over another pinned
+        // star, over its own star) dominate. Region names, covered stars and crossed lanes are
+        // soft, so a label prefers the dark lanes between arms but still lands somewhere when
+        // the whole plate is busy; a region name it cannot avoid steps aside instead.
         const hard = (ci: number): number => {
           const [x, y] = candidates[ci]!;
           const r = { x, y, w, h };
@@ -178,14 +323,32 @@ export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; comp
           if (x < MARGIN || y < MARGIN || x + w > W - MARGIN || y + h > H - MARGIN) s += 100;
           for (const p of placed) if (overlaps(r, p)) s += 50;
           for (const c of chrome) if (overlaps(r, c, 4)) s += 30;
+          // Stars whose labels were placed first are hard to cover. Those still to come are a
+          // soft cost (see soft): at 1280 px the resting holotype card found every spot
+          // blocked by the stars of the two pins after it, and hid, leaving only the pins.
           anchors.forEach((o, j) => {
-            if (o && j !== idx && o.x > x - 6 && o.x < x + w + 6 && o.y > y - 6 && o.y < y + h + 6) s += 20;
+            if (o && j < idx && o.x > x - 6 && o.x < x + w + 6 && o.y > y - 6 && o.y < y + h + 6) s += 20;
           });
+          if (a.x > x - 8 && a.x < x + w + 8 && a.y > y - 8 && a.y < y + h + 8) s += 60;
           return s;
         };
-        const covered = (ci: number) => engine.starsIn(candidates[ci]![0], candidates[ci]![1], w, h);
-        const score = (ci: number) => hard(ci) + Math.min(18, covered(ci) * 0.25) + (ci % 6 === 0 ? 0 : 0.5);
-        // Keep last frame's spot unless another is clearly better, so cards do not hop while
+        const soft = (ci: number): number => {
+          const [x, y, pref] = candidates[ci]!;
+          const r = { x, y, w, h };
+          // The leader runs from the star to the label's nearest point; one drawn through a
+          // region name strikes it out as surely as a label on top of it.
+          const ex = Math.min(Math.max(a.x, x), x + w);
+          const ey = Math.min(Math.max(a.y, y), y + h);
+          let names = 0;
+          for (const g of regions) if (overlaps(r, g, 3) || segmentHitsRect(a.x, a.y, ex, ey, g)) names++;
+          let later = 0;
+          anchors.forEach((o, j) => {
+            if (o && j > idx && o.x > x - 6 && o.x < x + w + 6 && o.y > y - 6 && o.y < y + h + 6) later++;
+          });
+          return Math.min(24, names * 8) + later * 6 + Math.min(18, engine.starsIn(x, y, w, h) * 0.25) + Math.min(24, crossings(r) * 0.7) + pref;
+        };
+        const score = (ci: number) => hard(ci) + soft(ci);
+        // Keep last frame's spot unless another is clearly better, so labels do not hop while
         // the camera turns.
         let best = previous.current.get(spec.key) ?? 0;
         let bestScore = best < candidates.length ? score(best) - 2 : Infinity;
@@ -199,13 +362,13 @@ export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; comp
         // Holotype labels are a courtesy: they step aside rather than crowd the plate.
         if (spec.kind === "holotype" && hard(best) >= 20) return hide();
         previous.current.set(spec.key, best);
-        // On a narrow plate (the Source tab's) no candidate may fit; keep the card on the
-        // plate anyway and let the leader find it, rather than hang it off the edge.
+        // On a narrow plate no candidate may fit; keep the label on the plate anyway and let the
+        // leader find it, rather than hang it off the edge.
         const x = Math.max(MARGIN, Math.min(candidates[best]![0], W - w - MARGIN));
         let y = Math.max(MARGIN, Math.min(candidates[best]![1], H - h - MARGIN));
-        // Clamping can land the card on the legend or the title (on a phone, the Source tab's
-        // plate is narrower than two cards), and a card over the legend hides the key to every
-        // color on the plate. Slide it vertically off any chrome it still covers.
+        // Clamping can land the label on the legend or the title, and a label over the legend
+        // hides the key to every color on the plate. Slide it vertically off any chrome it still
+        // covers.
         for (const c of chrome) {
           if (!overlaps({ x, y, w, h }, c, 4)) continue;
           const up = c.y - h - 6;
@@ -217,23 +380,32 @@ export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; comp
         placed.push(rect);
         card.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;
         card.style.opacity = "1";
-        // Leader: from just outside the star to the nearest point of the card.
+        // Leader: from just outside the star to the nearest point of the label.
         const ex = Math.min(Math.max(a.x, x), x + w);
         const ey = Math.min(Math.max(a.y, y), y + h);
         const len = Math.hypot(ex - a.x, ey - a.y) || 1;
-        const sx = a.x + ((ex - a.x) / len) * 7;
-        const sy = a.y + ((ey - a.y) / len) * 7;
+        const gap = spec.form === "tag" ? 12 : 7;
+        const sx = a.x + ((ex - a.x) / len) * Math.min(gap, len);
+        const sy = a.y + ((ey - a.y) / len) * Math.min(gap, len);
         line.setAttribute("x1", sx.toFixed(1));
         line.setAttribute("y1", sy.toFixed(1));
         line.setAttribute("x2", ex.toFixed(1));
         line.setAttribute("y2", ey.toFixed(1));
-        line.setAttribute("visibility", "visible");
+        line.setAttribute("visibility", len > gap ? "visible" : "hidden");
         dot.setAttribute("cx", ex.toFixed(1));
         dot.setAttribute("cy", ey.toFixed(1));
-        dot.setAttribute("visibility", "visible");
+        dot.setAttribute("visibility", len > gap ? "visible" : "hidden");
       });
-    });
-  }, [engine, specs]);
+      engine.labelRects = placed;
+    }, FRAME_ORDER.LABELS);
+  }, [engine, specs, laneEnds, scene]);
+
+  useEffect(
+    () => () => {
+      engine.labelRects = [];
+    },
+    [engine],
+  );
 
   return (
     <div ref={container} className="pointer-events-none absolute inset-0 z-10 overflow-hidden" aria-hidden="true">
@@ -251,14 +423,12 @@ export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; comp
           </g>
         ))}
       </svg>
-      {specs.map((s) => (
-        <SpecimenCard
-          key={s.key}
-          engine={engine}
-          spec={s}
-          cardRef={(el) => void (el ? cards.current.set(s.key, el) : cards.current.delete(s.key))}
-        />
-      ))}
+      {specs.map((s) => {
+        const ref = (el: HTMLDivElement | null) => void (el ? cards.current.set(s.key, el) : cards.current.delete(s.key));
+        if (s.form === "tag") return <SymbolTag key={s.key} cardRef={ref} />;
+        if (s.form === "pin") return <PinLabel key={s.key} engine={engine} spec={s} cardRef={ref} />;
+        return <SpecimenCard key={s.key} engine={engine} spec={s} cardRef={ref} />;
+      })}
     </div>
   );
 }
@@ -313,3 +483,54 @@ const SpecimenCard = memo(function SpecimenCard({
     </div>
   );
 });
+
+/** One line of label stock: the file's name, red for a holotype. */
+const PinLabel = memo(function PinLabel({
+  engine,
+  spec,
+  cardRef,
+}: {
+  engine: GalaxyEngine;
+  spec: LabelSpec;
+  cardRef: (el: HTMLDivElement | null) => void;
+}) {
+  const f = engine.model.report.files[spec.file]!;
+  const holo = engine.model.holotypes.has(spec.file);
+  return (
+    <div
+      ref={cardRef}
+      className={cn(
+        "absolute top-0 left-0 max-w-[200px] truncate px-1.5 py-[3px] text-[11px] leading-[1.15] font-bold whitespace-nowrap [font-stretch:80%] transition-opacity duration-150 will-change-transform",
+        holo ? "bg-holotype text-white" : "bg-white text-[#15191c]",
+      )}
+      style={{ opacity: 0 }}
+      title={f.path}
+    >
+      {holo ? `Holotype · ${baseName(f.path)}` : baseName(f.path)}
+      {spec.det && spec.kind !== "holotype" && <span className="ml-1.5 font-normal italic opacity-75">{spec.det}</span>}
+    </div>
+  );
+});
+
+/** A selected symbol's tag: name, kind, references and files, on one line of label stock. */
+function SymbolTag({ cardRef }: { cardRef: (el: HTMLDivElement | null) => void }) {
+  const selection = useViewer((s) => s.selection);
+  const symbols = useViewer((s) => s.symbols);
+  if (selection?.kind !== "symbol" || !symbols) return null;
+  const t = symbols.symbols;
+  const s = selection.id;
+  return (
+    <div
+      ref={cardRef}
+      className="absolute top-0 left-0 bg-white px-2 py-1 text-[11px] leading-[1.2] whitespace-nowrap text-[#15191c] transition-opacity duration-150 will-change-transform"
+      style={{ opacity: 0 }}
+    >
+      <span className="font-mono font-semibold">{t.name[s]}</span>
+      <span className="text-[#5d666d]">
+        {" "}
+        · <span className="italic">{t.kind[s]}</span> · <span className="figures font-mono">{formatInt(t.refs[s]!)}</span> refs ·{" "}
+        <span className="figures font-mono">{formatInt(t.files[s]!)}</span> files
+      </span>
+    </div>
+  );
+}

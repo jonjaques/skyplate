@@ -3,7 +3,7 @@
  * severity marks. Everything here sits on tray or paper, so it is ruled, never boxed.
  */
 
-import { CircleAlert, Info, OctagonAlert, TriangleAlert, type LucideIcon } from "lucide-react";
+import { CircleAlert, Info, TriangleAlert, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import type { Severity } from "../../shared/schema";
 import { Badge } from "../components/ui/badge";
@@ -145,27 +145,52 @@ export function MoreButton({ hidden, onClick, noun = "more" }: { hidden: number;
   );
 }
 
-const SEVERITY_ICON: Record<Severity, LucideIcon> = {
-  critical: OctagonAlert,
+const SEVERITY_ICON: Record<Exclude<Severity, "critical">, LucideIcon> = {
   warning: TriangleAlert,
   notice: CircleAlert,
   info: Info,
 };
 
 /**
- * Status colors climb red > orange > amber > gray. The report's "warning" severity takes the
- * orange "serious" step so "notice" can keep amber and the ladder still reads in order.
+ * The ladder climbs by weight at the top and hue below it: a solid ink octagon, then orange,
+ * amber and gray outlines. The report's "warning" severity takes the orange "serious" step so
+ * "notice" can keep amber and the ladder still reads in order.
+ *
+ * Critical is deliberately not red. The world reserves red for holotypes and nothing else, and
+ * the status red (#d03b3b) sat beside holotype red (#c23a2b) on the Findings badge, the
+ * "Critical" heading and the record's "Worth a look first" list, so a reader learning "red
+ * means most depended on" met it on a truck-factor warning. A filled mark is the heaviest thing
+ * in a ruled, hairline world, which is the rank critical needs, and it keeps its shape for
+ * readers who do not see hue at all.
  */
-const SEVERITY_COLOR: Record<Severity, string> = {
-  critical: "text-critical",
+const SEVERITY_COLOR: Record<Exclude<Severity, "critical">, string> = {
   warning: "text-serious",
   notice: "text-warning",
   info: "text-ink-3",
 };
 
 export function SeverityIcon({ severity, className }: { severity: Severity; className?: string }) {
+  if (severity === "critical") return <CriticalIcon className={cn("size-4 shrink-0", className)} />;
   const Icon = SEVERITY_ICON[severity];
   return <Icon aria-hidden className={cn("size-4 shrink-0", SEVERITY_COLOR[severity], className)} />;
+}
+
+/**
+ * lucide's octagon-alert geometry, filled with ink and the mark knocked out in paper, so it
+ * matches the stroke icons beside it in size and corner and inverts cleanly in the dark theme.
+ */
+function CriticalIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className={cn("text-ink", className)} strokeLinecap="round" strokeLinejoin="round">
+      <path
+        d="M15.312 2a2 2 0 0 1 1.414.586l4.688 4.688A2 2 0 0 1 22 8.688v6.624a2 2 0 0 1-.586 1.414l-4.688 4.688a2 2 0 0 1-1.414.586H8.688a2 2 0 0 1-1.414-.586l-4.688-4.688A2 2 0 0 1 2 15.312V8.688a2 2 0 0 1 .586-1.414l4.688-4.688A2 2 0 0 1 8.688 2z"
+        fill="currentColor"
+        stroke="currentColor"
+        strokeWidth={2}
+      />
+      <path d="M12 8v4M12 16h.01" fill="none" stroke="var(--color-paper)" strokeWidth={2.25} />
+    </svg>
+  );
 }
 
 /** Icon plus label: status color is never the only carrier of meaning. */

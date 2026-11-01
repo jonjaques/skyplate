@@ -135,31 +135,56 @@ export function languageShares(report: Report, model: Model, ids: number[]): Lan
   return [...by.values()].sort((a, b) => b.code - a.code || b.files - a.files);
 }
 
+/** How many languages a composition names before folding the rest. Fills the tray's 2 × 4 key. */
+export const NAMED_LANGUAGES = 7;
+
+export const hasSlot = (slot: number) => slot >= 0 && slot < 7;
+
+export interface CompositionPart {
+  /** Language id, or "rest" for the folded remainder. */
+  key: string;
+  /** Palette slot; -1 for a language the plate draws in the Other gray, and for the remainder. */
+  slot: number;
+  label: string;
+  code: number;
+  languages: LanguageShare[];
+  /** The folded remainder: every language smaller than the named ones. */
+  rest: boolean;
+}
+
 export interface Composition {
   total: number;
-  /** One part per palette slot present (slot order), then Other. */
-  parts: { slot: number; label: string; code: number; languages: LanguageShare[] }[];
+  /** Named languages with a slot (slot order), named languages without one (by size), the rest. */
+  parts: CompositionPart[];
   languageCount: number;
 }
 
 /**
- * Fold code lines into the seven palette slots plus Other. Slots come from the report (the
- * analyzer ranks languages once), so a filter never repaints a language.
+ * Name the largest languages in the scope and fold only the true tail.
+ *
+ * Which languages are named is decided by share, not by palette slot. Folding by slot let
+ * the gray "14 others" swallow Markdown and JSON (a quarter of inertialref's lines, because
+ * the analyzer hands slots to programming languages first) while 154 lines of Shell kept a
+ * named entry. A named language keeps its own color from the report, so a filter never
+ * repaints it: its slot hue when it has one, else the gray the plate draws it in.
+ *
+ * Order: slotted parts in slot order (the order the palette was validated in, which also
+ * keeps a drawer from shuffling the bar), then the unslotted ones by size, then the rest.
  */
-export function composition(shares: LanguageShare[]): Composition {
-  const withCode = shares.filter((s) => s.code > 0);
-  const bySlot = new Map<number, LanguageShare[]>();
-  for (const s of withCode) {
-    const slot = s.slot >= 0 && s.slot < 7 ? s.slot : -1;
-    bySlot.set(slot, [...(bySlot.get(slot) ?? []), s]);
+export function composition(shares: LanguageShare[], named = NAMED_LANGUAGES): Composition {
+  const withCode = shares.filter((s) => s.code > 0).sort((a, b) => b.code - a.code || b.files - a.files);
+  // Folding a single language into "1 other" would hide its name to save no room.
+  const cut = withCode.length <= named + 1 ? withCode.length : named;
+  const head = withCode.slice(0, cut);
+  const tail = withCode.slice(cut);
+  const part = (s: LanguageShare, slot: number): CompositionPart => ({ key: s.id, slot, label: s.name, code: s.code, languages: [s], rest: false });
+  const parts = [
+    ...head.filter((s) => hasSlot(s.slot)).sort((a, b) => a.slot - b.slot).map((s) => part(s, s.slot)),
+    ...head.filter((s) => !hasSlot(s.slot)).map((s) => part(s, -1)),
+  ];
+  if (tail.length) {
+    parts.push({ key: "rest", slot: -1, label: `${tail.length} others`, code: sum(tail.map((s) => s.code)), languages: tail, rest: true });
   }
-  const parts: Composition["parts"] = [];
-  for (let slot = 0; slot < 7; slot++) {
-    const langs = bySlot.get(slot);
-    if (langs) parts.push({ slot, label: langs[0]!.name, code: sum(langs.map((l) => l.code)), languages: langs });
-  }
-  const other = bySlot.get(-1);
-  if (other) parts.push({ slot: -1, label: `${other.length} other${other.length === 1 ? "" : "s"}`, code: sum(other.map((l) => l.code)), languages: other });
   return { total: sum(withCode.map((s) => s.code)), parts, languageCount: withCode.length };
 }
 
@@ -256,6 +281,47 @@ export function columns(weeks: WeekBucket[], width: number, minWidth = 3): { col
   return { cols, weeksPer: step };
 }
 
+export interface MonthBucket {
+  /** Start of the first month in the bucket (unix seconds, UTC). */
+  start: number;
+  /** Index range [from, to) into the monthly series. */
+  from: number;
+  to: number;
+}
+
+/** Calendar-aligned spans in months: a column always means a month, quarter, half or year. */
+export const MONTH_STEPS = [1, 3, 6, 12, 24, 60] as const;
+
+/**
+ * Group monthly samples (month starts, ascending) into the smallest calendar span that keeps
+ * the series at or under `maxColumns` columns. Quarters start in January, April, July and
+ * October; halves in January and July; years in January.
+ */
+export function monthBuckets(times: number[], maxColumns: number): { step: number; buckets: MonthBucket[] } {
+  const index = (t: number) => {
+    const d = new Date(t * 1000);
+    return d.getUTCFullYear() * 12 + d.getUTCMonth();
+  };
+  const group = (step: number) => {
+    const buckets: MonthBucket[] = [];
+    let key = Number.NaN;
+    times.forEach((t, i) => {
+      const k = Math.floor(index(t) / step);
+      if (k !== key) {
+        key = k;
+        const first = k * step;
+        buckets.push({ start: Date.UTC(Math.floor(first / 12), first % 12, 1) / 1000, from: i, to: i + 1 });
+      } else buckets[buckets.length - 1]!.to = i + 1;
+    });
+    return buckets;
+  };
+  for (const step of MONTH_STEPS) {
+    const buckets = group(step);
+    if (buckets.length <= maxColumns || step === MONTH_STEPS[MONTH_STEPS.length - 1]) return { step, buckets };
+  }
+  return { step: 1, buckets: group(1) };
+}
+
 export function weeksLabel(n: number): string {
   if (n === 1) return "week";
   if (n === 4) return "4 weeks";
@@ -294,6 +360,21 @@ export function gini(values: number[]): number {
   for (let i = 0; i < n; i++) weighted += (i + 1) * v[i]!;
   return (2 * weighted) / (n * total) - (n + 1) / n;
 }
+
+/**
+ * Gini rescaled by n / (n − 1), so "one person made every commit" reads 1 at any group size.
+ *
+ * The population Gini above (and the analyzer's) tops out at (n − 1) / n: 0.5 for two
+ * authors. inertialref's 220 and 3 commits came out as 0.49 under a "1 is one author"
+ * caption, which reads as moderate when it is as concentrated as two people can be.
+ */
+export function giniAdjusted(g: number, n: number): number {
+  if (n < 2) return 0;
+  return Math.min(1, Math.max(0, (g * n) / (n - 1)));
+}
+
+/** Below this many authors a Lorenz curve is a three-vertex polyline; say the share instead. */
+export const LORENZ_MIN_AUTHORS = 10;
 
 /** Lorenz curve points (share of authors, share of commits), ascending. */
 export function lorenz(values: number[]): { x: number; y: number }[] {

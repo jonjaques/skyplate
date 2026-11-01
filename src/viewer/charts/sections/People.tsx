@@ -8,11 +8,12 @@
 
 import { Bot } from "lucide-react";
 import * as d3 from "d3";
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Author, FileRecord } from "../../../shared/schema";
 import { formatDate, formatInt, plural } from "../../lib/format";
+import { cn } from "../../lib/utils";
 import { useHover, useViewer } from "../../state/store";
-import { authorSlots, commitsByAuthor, gini, inactiveAuthors, isOwnCode, lorenz, sum } from "../data";
+import { authorSlots, commitsByAuthor, gini, giniAdjusted, inactiveAuthors, isOwnCode, lorenz, LORENZ_MIN_AUTHORS, sum } from "../data";
 import { XAxis, YGrid } from "../kit/Axis";
 import { BarList, type BarItem } from "../kit/BarList";
 import { DataTable, type Column } from "../kit/DataTable";
@@ -258,29 +259,15 @@ function Ownership() {
               >
                 {r.name}
               </button>
-              <div className="flex h-3.5 gap-[2px]">
-                {r.parts.map((p) => (
-                  <button
-                    key={p.slot}
-                    type="button"
-                    aria-label={`${r.name}: ${p.slot >= 0 ? authorName(git.authors[p.authors[0]!]) : `${p.authors.length} other people`}, ${plural(p.files, "file")}`}
-                    className="h-full min-w-px last:rounded-r-[4px] hover:brightness-110 focus-visible:outline-offset-1"
-                    style={{ flex: `${p.files} 0 0`, background: slotColor(p.slot, surface) }}
-                    onClick={() => p.slot >= 0 && select({ kind: "author", id: p.authors[0]! })}
-                    onPointerEnter={(e) => {
-                      if (p.slot >= 0) setHover({ kind: "author", id: p.authors[0]! });
-                      const box = ref.current!.getBoundingClientRect();
-                      const rr = e.currentTarget.getBoundingClientRect();
-                      setTip({
-                        x: rr.left - box.left + rr.width / 2,
-                        y: rr.bottom - box.top + 4,
-                        title: `${r.name}: ${p.slot >= 0 ? authorName(git.authors[p.authors[0]!]) : `${formatInt(p.authors.length)} other ${p.authors.length === 1 ? "person" : "people"}`}`,
-                        rows: [{ value: formatInt(p.files), label: p.files === 1 ? "file owned" : "files owned" }, { value: formatShare(p.files / r.total), label: "of the directory" }],
-                      });
-                    }}
-                  />
-                ))}
-              </div>
+              <OwnershipBar
+                row={r}
+                surface={surface}
+                partName={(p) => (p.slot >= 0 ? authorName(git.authors[p.authors[0]!]) : `${formatInt(p.authors.length)} other ${p.authors.length === 1 ? "person" : "people"}`)}
+                container={ref}
+                onTip={setTip}
+                onHover={(p) => setHover(p && p.slot >= 0 ? { kind: "author", id: p.authors[0]! } : null)}
+                onPick={(p) => p.slot >= 0 && select({ kind: "author", id: p.authors[0]! })}
+              />
               <span className="figures text-right font-mono text-[11px] text-ink-2">{formatInt(r.total)}</span>
             </div>
           ))}
@@ -291,36 +278,160 @@ function Ownership() {
   );
 }
 
+/**
+ * One directory's ownership bar. The bar is one tab stop and the arrow keys walk its
+ * segments, as every other plot here does: a button per segment put twenty-odd tab stops in
+ * this one figure, and keyboard focus landed on a segment without the tooltip a pointer gets.
+ * Pointer and keyboard drive the same active segment, so both readers see the same tooltip.
+ */
+function OwnershipBar({
+  row,
+  surface,
+  partName,
+  container,
+  onTip,
+  onHover,
+  onPick,
+}: {
+  row: OwnRow;
+  surface: "light" | "dark";
+  partName: (p: OwnRow["parts"][number]) => string;
+  container: React.RefObject<HTMLDivElement | null>;
+  onTip: (tip: Tip | null) => void;
+  onHover: (p: OwnRow["parts"][number] | null) => void;
+  onPick: (p: OwnRow["parts"][number]) => void;
+}) {
+  const segs = useRef<(HTMLSpanElement | null)[]>([]);
+  const { active, setActive, focusProps } = useActiveIndex(row.parts.length, (i) => row.parts[i] && onPick(row.parts[i]!));
+  const owned = useRef(false);
+
+  // The tooltip follows the active segment, wherever it came from. Only the row that showed a
+  // tip clears it, so moving from one row to the next never blanks the new row's tooltip.
+  useLayoutEffect(() => {
+    const part = active !== null ? row.parts[active] : undefined;
+    const el = active !== null ? segs.current[active] : null;
+    const box = container.current?.getBoundingClientRect();
+    if (!part || !el || !box) {
+      if (owned.current) {
+        owned.current = false;
+        onTip(null);
+        onHover(null);
+      }
+      return;
+    }
+    const r = el.getBoundingClientRect();
+    owned.current = true;
+    onHover(part);
+    onTip({
+      x: r.left - box.left + r.width / 2,
+      y: r.bottom - box.top + 4,
+      title: `${row.name}: ${partName(part)}`,
+      rows: [
+        { value: formatInt(part.files), label: part.files === 1 ? "file owned" : "files owned" },
+        { value: formatShare(part.files / row.total), label: "of the directory" },
+      ],
+    });
+    // Callbacks are recreated every render; the tip only depends on which segment is active.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, row]);
+
+  return (
+    <div
+      role="img"
+      aria-label={`${row.name}: ${row.parts.map((p) => `${partName(p)} ${plural(p.files, "file")}`).join(", ")}. Arrow keys step through owners; Enter selects one.`}
+      className="flex h-3.5 cursor-pointer gap-[2px] rounded-[2px] outline-offset-2"
+      {...focusProps}
+      onPointerLeave={() => setActive(null)}
+      onClick={() => active !== null && row.parts[active] && onPick(row.parts[active]!)}
+    >
+      {row.parts.map((p, i) => (
+        <span
+          key={p.slot}
+          ref={(el) => {
+            segs.current[i] = el;
+          }}
+          className={cn("h-full min-w-px last:rounded-r-[4px]", active === i && "brightness-110")}
+          style={{
+            flex: `${p.files} 0 0`,
+            background: slotColor(p.slot, surface),
+            outline: active === i ? "1.5px solid var(--color-ink)" : undefined,
+            outlineOffset: 1,
+          }}
+          onPointerEnter={() => setActive(i)}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ─── Commit concentration ────────────────────────────────────────────────────────────────────
 
+/**
+ * How concentrated the work is. Automation accounts are left out, as the analyzer leaves them
+ * out of its own Gini: a dependabot with thousands of lockfile bumps would make any team look
+ * like one person.
+ *
+ * The Gini is the small-sample one (data.ts giniAdjusted), so its "1 is one author" caption is
+ * true at any team size. Under LORENZ_MIN_AUTHORS people the curve is a polyline through two
+ * or three vertices and the Gini a coarse summary of a handful of numbers, so the figure says
+ * the share outright instead.
+ */
 function Concentration() {
   const { report, commits, surface, rangePhrase, files, from } = useScope();
   const git = report.git!;
-  const values = useMemo(() => [...commitsByAuthor(git, commits!).values()], [git, commits]);
+  const people = useMemo(
+    () => [...commitsByAuthor(git, commits!).entries()].filter(([id, c]) => c > 0 && !git.authors[id]?.bot).sort((a, b) => b[1] - a[1]),
+    [git, commits],
+  );
+  const values = useMemo(() => people.map(([, c]) => c), [people]);
   const curve = useMemo(() => lorenz(values), [values]);
-  // The analyzer's Gini covers every commit; a narrowed slice needs its own.
-  const g = !files.selective && from === null && report.stats.commitsPerAuthor ? report.stats.commitsPerAuthor.gini : gini(values);
-  const n = values.filter((v) => v > 0).length;
-  const desc = [...values].sort((a, b) => b - a);
-  const total = sum(desc);
+  const n = values.length;
+  // The analyzer's Gini covers every commit; a narrowed slice needs its own. Both are
+  // rescaled for the group size they were measured over.
+  const analyzer = !files.selective && from === null ? report.stats.commitsPerAuthor : undefined;
+  const g = analyzer ? giniAdjusted(analyzer.gini, analyzer.count) : giniAdjusted(gini(values), n);
+  const total = sum(values);
   const k = n >= 20 ? Math.max(1, Math.round(n * 0.1)) : 1;
-  const topShare = total ? sum(desc.slice(0, k)) / total : 0;
-  const headline = n >= 20 ? `The top 10% of authors (${formatInt(k)}) made ${formatShare(topShare)} of commits` : `The most active author made ${formatShare(topShare)} of commits`;
-  const { active, setActive, focusProps } = useActiveIndex(curve.length);
+  const topShare = total ? sum(values.slice(0, k)) / total : 0;
+  const lead = people[0] ? authorName(git.authors[people[0][0]]) : "";
+  const headline = n >= 20 ? `The top 10% of people (${formatInt(k)}) made ${formatShare(topShare)} of commits` : `${lead} made ${formatShare(topShare)} of commits`;
+  const curveForm = n >= LORENZ_MIN_AUTHORS;
+  const { active, setActive, focusProps } = useActiveIndex(curveForm ? curve.length : 0);
 
   return (
     <Figure
       className={span(4)}
       title="Commit concentration"
-      subtitle={`${headline}${rangePhrase ? ` ${rangePhrase}` : ""}. The diagonal is perfectly even.`}
-      height={260}
-      empty={n < 2 ? "Fewer than two authors, so there is no concentration to measure." : null}
-      table={() => ({
-        columns: [{ label: "Share of authors (fewest commits first)", mono: true }, { label: "Share of commits", align: "right", mono: true }],
-        rows: curve.filter((_, i) => i % Math.max(1, Math.floor(curve.length / 20)) === 0 || i === curve.length - 1).map((p) => [{ text: formatShare(p.x), sort: p.x }, { text: formatShare(p.y), sort: p.y }]),
-      })}
+      subtitle={`${headline}${rangePhrase ? ` ${rangePhrase}` : ""}${curveForm ? ". The diagonal is perfectly even." : "."}`}
+      height={curveForm ? 260 : 150}
+      empty={n < 2 ? "Fewer than two people with commits here, so there is no concentration to measure." : null}
+      table={() =>
+        curveForm
+          ? {
+              columns: [{ label: "Share of people (fewest commits first)", mono: true }, { label: "Share of commits", align: "right", mono: true }],
+              rows: curve.filter((_, i) => i % Math.max(1, Math.floor(curve.length / 20)) === 0 || i === curve.length - 1).map((p) => [{ text: formatShare(p.x), sort: p.x }, { text: formatShare(p.y), sort: p.y }]),
+            }
+          : {
+              columns: [{ label: "Person" }, { label: "Commits", align: "right", mono: true }, { label: "Share", align: "right", mono: true }],
+              rows: people.map(([id, c]) => [authorName(git.authors[id]), c, { text: formatShare(c / total), sort: c }]),
+            }
+      }
     >
       {(width) => {
+        if (!curveForm) {
+          return (
+            <StatTile
+              label="Most active person's share of commits"
+              value={formatShare(topShare)}
+              detail={
+                <span>
+                  {lead} made {formatInt(values[0] ?? 0)} of {formatInt(total)} commits among {plural(n, "person", "people")}. Gini{" "}
+                  <span className="figures font-mono text-ink">{g.toFixed(2)}</span>, adjusted for a group this small: 0 is even, 1 is one person.
+                </span>
+              }
+            />
+          );
+        }
         const H = 260;
         const ML = 38;
         const MB = 22;
@@ -338,7 +449,7 @@ function Concentration() {
               width={width}
               height={H}
               role="img"
-              aria-label={`Lorenz curve of commits per author, Gini ${g.toFixed(2)}`}
+              aria-label={`Lorenz curve of commits per person, Gini ${g.toFixed(2)}`}
               className="block outline-offset-4"
               {...focusProps}
               onPointerMove={(e) => {
@@ -357,7 +468,7 @@ function Concentration() {
                 Gini {g.toFixed(2)}
               </text>
               <text x={x(0) + 8} y={y(1) + 34} className="fill-ink-3 text-[11px]">
-                0 is even, 1 is one author
+                0 is even, 1 is one person
               </text>
               {p && (
                 <g pointerEvents="none">
@@ -373,7 +484,7 @@ function Concentration() {
                   ? {
                       x: x(p.x),
                       y: Math.max(0, y(p.y) - 30),
-                      title: `The top ${formatShare(1 - p.x)} of authors`,
+                      title: `The top ${formatShare(1 - p.x)} of people`,
                       rows: [{ value: formatShare(1 - p.y), label: "of commits" }],
                     }
                   : null

@@ -10,14 +10,13 @@
 
 import { useMemo } from "react";
 import { formatDate, formatInt, formatMonth, plural } from "../../lib/format";
-import { sequentialColor } from "../../lib/colors";
-import { commitTypes, sum, weekly } from "../data";
+import { commitTypes, monthBuckets, sum, weekly } from "../data";
 import { BarList, type BarItem } from "../kit/BarList";
 import { Figure } from "../kit/Figure";
 import { useActiveIndex } from "../kit/interaction";
 import { Legend } from "../kit/Legend";
-import { ScaleLegend } from "../kit/ScaleLegend";
-import { StackedArea, type StackSeries } from "../kit/StackedArea";
+import { rampColor, rampT, ScaleLegend } from "../kit/ScaleLegend";
+import { COLUMNS_UP_TO, spanWord, StackedColumns, type StackSeries } from "../kit/StackedColumns";
 import { measureColor, slotColor, surfaceColor } from "../kit/theme";
 import { TimeSeries } from "../kit/TimeSeries";
 import { ChartTooltip } from "../kit/Tooltip";
@@ -172,11 +171,22 @@ function LanguageChurn() {
     return { times, series: slots };
   }, [churn, from, filters.languages, model, surface]);
 
+  // Columns over calendar spans: months up to two years, then quarters, halves or years.
+  // The table view keeps the monthly figures.
+  const columns = useMemo(() => {
+    const { step, buckets } = monthBuckets(times, COLUMNS_UP_TO);
+    return {
+      step,
+      starts: buckets.map((b) => b.start),
+      series: series.map((s) => ({ ...s, values: buckets.map((b) => sum(s.values.slice(b.from, b.to))) })),
+    };
+  }, [times, series]);
+
   return (
     <Figure
       className={span(8)}
       title="Lines added by language"
-      subtitle={`Per month, stacked; the seven palette languages and the rest as Other${filters.languages ? ", only the chosen languages" : ""}`}
+      subtitle={`Per ${spanWord(columns.step)}, stacked; the seven palette languages and the rest as Other${filters.languages ? ", only the chosen languages" : ""}`}
       height={240}
       empty={times.length < 2 || series.length === 0 ? "Fewer than two months of history in this range, so there is no trend to stack. Widen the range." : null}
       legend={<Legend items={series.map((s) => ({ label: s.label, color: s.color }))} />}
@@ -185,7 +195,9 @@ function LanguageChurn() {
         rows: times.map((t, i) => [{ text: formatMonth(t), sort: t }, ...series.map((s) => s.values[i] ?? 0)]),
       })}
     >
-      {(width) => <StackedArea times={times} series={series} width={width} height={240} label="Lines added per month by language" titleFor={(i) => formatMonth(times[i]!)} unit="lines added" />}
+      {(width) => (
+        <StackedColumns starts={columns.starts} months={columns.step} series={columns.series} width={width} height={240} label="Lines added by language" unit="lines added" />
+      )}
     </Figure>
   );
 }
@@ -197,6 +209,7 @@ function Punchcard() {
   const grid = report.git!.punchcard;
   const cells = useMemo(() => grid.flatMap((row, d) => row.map((n, h) => ({ d, h, n }))), [grid]);
   const max = Math.max(1, ...cells.map((c) => c.n));
+  const lo = Math.min(max, ...cells.filter((c) => c.n > 0).map((c) => c.n));
   const total = sum(cells.map((c) => c.n));
   const peak = cells.reduce((a, b) => (b.n > a.n ? b : a), cells[0]!);
   const narrowedNote = files.selective || from !== null ? "; covers all history and files" : "";
@@ -209,7 +222,7 @@ function Punchcard() {
       subtitle={`Weekday and hour in each author's own time zone${narrowedNote}; busiest: ${WEEKDAYS[peak.d]}s at ${String(peak.h).padStart(2, "0")}:00`}
       height={220}
       empty={total === 0 ? "No commit times recorded." : null}
-      legend={<ScaleLegend low="0" high={formatInt(max)} label="Commits" surface={surface} />}
+      legend={<ScaleLegend low={formatInt(lo)} high={formatInt(max)} label="Commits" surface={surface} />}
       // Transposed from the chart: hours down, weekdays across. Twenty-four hour columns would
       // leave every cell a truncated "2…" in a half-width tray; seven weekday columns fit.
       table={() => ({
@@ -257,7 +270,7 @@ function Punchcard() {
                   width={cw - 2}
                   height={ch - 2}
                   rx={2}
-                  fill={c.n > 0 ? sequentialColor(c.n / max, surface) : undefined}
+                  fill={c.n > 0 ? rampColor(rampT(c.n, lo, max), surface) : undefined}
                   className={c.n > 0 ? undefined : "fill-wash"}
                   style={active === i ? { stroke: "var(--color-ink)", strokeWidth: 1.5 } : undefined}
                 />

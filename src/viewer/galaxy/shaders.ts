@@ -1,11 +1,13 @@
 /**
- * GLSL for the plate. Three programs, each one draw call:
+ * GLSL for the plate. Four programs, each one draw call:
  *
  *   stars  every file as a point sprite: soft core + faint halo, holotype and selection rings,
  *          morph between tree and graph positions, history fade and flash, region hover
  *   lanes  import edges and symbol arcs as hairlines whose brightness travels toward the
  *          dependency (or the definition), so direction reads without arrowheads
  *   moons  a selected file's declared symbols, orbiting it
+ *   knockout  a plate-colored disc under a symbol's definition star, the one normally blended
+ *          draw: it clears the arcs where they converge so the definition ring stays visible
  *
  * Everything blends additively onto the dark glass. Additive is order-independent, so 50k
  * sprites need no depth sort, and overlapping stars brighten the way a dense star field does:
@@ -48,6 +50,7 @@ varying float vMark;
 varying float vRingPulse;
 varying float vAlpha;
 varying float vHalo;        // halo strength: full for small stars, fading for big ones
+varying float vGhost;       // 1 for a selected file not yet created at the scrubber's date
 
 void main() {
   vec3 p = mix(position, aGraph, uMorph);
@@ -86,7 +89,13 @@ void main() {
   if (isSel > 0.5 && mark < 1.5) mark = max(mark, 3.0);
   float sprite = px * HALO_SPAN;
   if (mark > 0.5) sprite = max(px * 2.8, uMinPx * 7.0);
-  gl_PointSize = sprite * visible;
+  // The definition ring sits inside the knockout disc (see KNOCKOUT_*), so it is drawn larger
+  // than a holotype ring: at the old size a heavily used symbol's arcs buried it.
+  if (mark > 1.5 && mark < 2.5) sprite = max(sprite, uMinPx * 11.0);
+  // A selected file the scrubber has not reached yet keeps a dashed ghost ring where it will
+  // be, so a selection made at a past date does not fly to an unexplained empty spot.
+  vGhost = isSel * step(visible, 0.999);
+  gl_PointSize = max(sprite * visible, vGhost * uMinPx * 15.0);
   vCore = px / sprite;
   // The halo is what makes a 2 px star findable and a dense arm glow. A star seen up close is
   // already a disc; at full strength its halo blew out everything near the camera into a
@@ -110,11 +119,19 @@ varying float vMark;
 varying float vRingPulse;
 varying float vAlpha;
 varying float vHalo;
+varying float vGhost;
 
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
   float r = length(c);
   if (r > 1.0) discard;
+  if (vGhost > 0.5) {
+    // Eight dashes on a thin ring, no core: "it will be here".
+    float ring = smoothstep(0.07, 0.0, abs(r - 0.8));
+    float dash = step(0.0, sin(atan(c.y, c.x) * 8.0));
+    gl_FragColor = vec4(vec3(0.92, 0.95, 0.97) * ring * dash * 1.2, 1.0);
+    return;
+  }
   float rr = r / max(vCore, 1e-3);
   // A soft round core with a faint exponential halo: reads as a star at 3 px and as a disc at
   // 30 px, and halos add up (the blend is additive) where files crowd, so a dense directory
@@ -146,9 +163,13 @@ void main() {
  * from 0 at the importer / referencing file to 1 at the dependency / definition, and a style:
  *   0 import lane      brightness grows toward the importer end; dashes drift toward the dependency
  *   1 call arc         solid, pulses of light travel toward the definition
- *   2 other-use arc    dashed (types, reads, imports, implementations), dimmer, no pulses
+ *   2 other-use arc    dashed (types, reads, imports), dimmer, no pulses
  *   3 callee link      faint dotted, outward from the definition
  *   4 every edge       faint and static
+ *   5 implementation   solid, in the second ink, a slow pulse running out from the definition
+ *
+ * Symbol arcs (1, 2, 5) fade over their last tenth into the definition. A function with 155
+ * referencing files otherwise converged in a white blob that swallowed the definition ring.
  */
 export const LANE_VERTEX = /* glsl */ `
 uniform float uMorph;
@@ -176,6 +197,7 @@ uniform float uClock;
 uniform float uMotion;
 uniform float uOpacity;
 uniform vec3 uInk;
+uniform vec3 uInk2;
 varying float vT;
 varying float vStyle;
 varying float vWeight;
@@ -201,11 +223,20 @@ void main() {
     // Callee link: faint dots.
     float dot = step(0.7, fract(vT * max(vLen / 10.0, 4.0)));
     a = 0.2 * dot;
-  } else {
+  } else if (vStyle < 4.5) {
     a = 0.07;
+  } else {
+    // Implementation: solid and steady, with one slow pulse leaving the definition (t falls).
+    float k = max(vLen / 180.0, 1.0);
+    float pulse = pow(max(0.0, 1.0 - abs(fract(vT * k + clock * 0.3) - 0.5) * 2.0), 8.0);
+    if (uMotion < 0.5) pulse = 0.0;
+    a = (0.36 + 0.4 * vWeight) + pulse * 0.6;
   }
+  bool arc = (vStyle > 0.5 && vStyle < 2.5) || vStyle > 4.5;
+  if (arc) a *= 1.0 - 0.9 * smoothstep(0.88, 1.0, vT);
   if (a <= 0.001) discard;
-  gl_FragColor = vec4(uInk * a * uOpacity, 1.0);
+  vec3 ink = vStyle > 4.5 ? uInk2 : uInk;
+  gl_FragColor = vec4(ink * a * uOpacity, 1.0);
 }
 `;
 
@@ -236,5 +267,28 @@ void main() {
   float ring = smoothstep(0.16, 0.0, abs(r - 0.62));
   float a = mix(ring, solid, vTone);
   gl_FragColor = vec4(vec3(0.92, 0.95, 0.97) * a * (0.75 + 0.5 * vHover), 1.0);
+}
+`;
+
+/**
+ * The knockout under a symbol's definition: one point, plate-colored, normally blended between
+ * the lanes and the stars. The definition star and its ring then draw over a clean patch of
+ * glass however many arcs end there.
+ */
+export const KNOCKOUT_VERTEX = /* glsl */ `
+uniform float uPx;
+void main() {
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  gl_PointSize = uPx;
+}
+`;
+
+export const KNOCKOUT_FRAGMENT = /* glsl */ `
+uniform vec3 uPlate;
+void main() {
+  vec2 c = gl_PointCoord * 2.0 - 1.0;
+  float r = length(c);
+  if (r > 1.0) discard;
+  gl_FragColor = vec4(uPlate, 0.94 * smoothstep(1.0, 0.72, r));
 }
 `;

@@ -52,52 +52,65 @@ export function TopBar({ bp, ready = true }: { bp: Breakpoint; ready?: boolean }
   const tab = useViewer((s) => s.tab);
   const tabs = useRef<HTMLDivElement>(null);
 
-  // On a phone the tab list scrolls sideways, and a tab picked by number key, a link or a
-  // "Open in source reader" button could be the one scrolled out of sight, leaving the bar
-  // with no visible active tab. Bring it into view whenever it changes.
+  // Wherever the tab list can scroll sideways, a tab picked by number key, a link or an "Open
+  // in source reader" button could be the one scrolled out of sight, leaving the bar with no
+  // visible active tab. Bring it into view whenever it changes.
   useEffect(() => {
     tabs.current
       ?.querySelector<HTMLElement>("[data-state=active]")
       ?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
   }, [tab]);
 
+  const drawers = sheetRail && (
+    <Button variant="ghost" size="icon-sm" aria-label="Open drawers" disabled={!ready} onClick={() => setRailSheetOpen(true)}>
+      <Menu />
+    </Button>
+  );
+
+  // Below 768px the five tabs get a full-width row of their own. Sharing one row with the
+  // drawers, find, encoding and theme buttons left a phone room for three of them: Source and
+  // Findings sat in a sideways scroller with no visible scrollbar, unreachable unless the
+  // reader guessed to swipe the tab labels. Icon-only tabs were the other option, but five
+  // glyphs for galaxy/charts/explorer/source/findings are guesswork without their words.
+  if (compact) {
+    return (
+      <header className="min-w-0 border-b border-rule bg-paper">
+        <div className="flex h-[52px] min-w-0 items-center gap-2 px-3">
+          {drawers}
+          <ProjectName />
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            <FindButton compact iconOnly disabled={!ready} />
+            <EncodingPopover disabled={!ready} />
+            <ThemeMenu />
+          </div>
+        </div>
+        <TabsList ref={tabs} variant="line" className="flex h-10 w-full justify-stretch gap-0 rounded-none border-t border-rule p-0">
+          {TAB_ORDER.map((t, i) => (
+            <TabTrigger key={t.id} id={t.id} label={t.label} index={i} ready={ready} className="flex-auto px-1.5 text-[13px]" />
+          ))}
+        </TabsList>
+      </header>
+    );
+  }
+
   return (
     <header className="@container flex h-[52px] min-w-0 items-center gap-3 border-b border-rule bg-paper px-3 xl:gap-4 xl:px-5">
-      {sheetRail && (
-        <Button variant="ghost" size="icon-sm" aria-label="Open drawers" disabled={!ready} onClick={() => setRailSheetOpen(true)}>
-          <Menu />
-        </Button>
-      )}
+      {drawers}
       {/* justify-start overrides shadcn's justify-center: centered flex content that overflows
-          spills past the left edge too, where no scroll position can reach it, so on a phone
-          the first tab (Galaxy) was unreachable. */}
+          spills past the left edge too, where no scroll position can reach it, so the first
+          tab (Galaxy) was unreachable in a narrow bar. */}
       <TabsList
         ref={tabs}
         variant="line"
         className="h-full min-w-0 shrink justify-start gap-0 overflow-x-auto overflow-y-hidden rounded-none p-0 [scrollbar-width:none]"
       >
-        {/* No Tooltip wrapper here: its trigger stamps its own data-state on the child, which
-            overwrites the tab's data-state="active" and with it the active rule. */}
         {TAB_ORDER.map((t, i) => (
-          <TabsTrigger
-            key={t.id}
-            value={t.id}
-            disabled={!ready}
-            title={`${t.label} (press ${i + 1})`}
-            aria-keyshortcuts={String(i + 1)}
-            className={cn(
-              "h-full flex-none rounded-none border-0 border-b-2 border-transparent px-2.5 text-sm font-semibold text-ink-3 after:hidden xl:px-4",
-              "hover:text-ink data-[state=active]:border-ink data-[state=active]:text-ink dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-ink",
-            )}
-          >
-            {t.label}
-            {t.id === "findings" && <FindingsCount />}
-          </TabsTrigger>
+          <TabTrigger key={t.id} id={t.id} label={t.label} index={i} ready={ready} className="flex-none px-2.5 text-sm xl:px-4" />
         ))}
       </TabsList>
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
-        <FindButton compact={bp !== "wide"} iconOnly={compact} disabled={!ready} />
+        <FindButton compact={bp !== "wide"} iconOnly={false} disabled={!ready} />
         {bp === "wide" || bp === "medium" ? (
           <>
             <ColorBySelect compact={bp === "medium"} disabled={!ready} />
@@ -109,6 +122,39 @@ export function TopBar({ bp, ready = true }: { bp: Breakpoint; ready?: boolean }
         <ThemeMenu />
       </div>
     </header>
+  );
+}
+
+/**
+ * One work-area tab. No Tooltip wrapper: its trigger stamps its own data-state on the child,
+ * which overwrites the tab's data-state="active" and with it the active rule.
+ */
+function TabTrigger({ id, label, index, ready, className }: { id: Tab; label: string; index: number; ready: boolean; className?: string }) {
+  return (
+    <TabsTrigger
+      value={id}
+      disabled={!ready}
+      title={`${label} (press ${index + 1})`}
+      aria-keyshortcuts={String(index + 1)}
+      className={cn(
+        "h-full rounded-none border-0 border-b-2 border-transparent font-semibold text-ink-3 after:hidden",
+        "hover:text-ink data-[state=active]:border-ink data-[state=active]:text-ink dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-ink",
+        className,
+      )}
+    >
+      {label}
+      {id === "findings" && <FindingsCount />}
+    </TabsTrigger>
+  );
+}
+
+/** On a phone the rail (and with it the project's name) lives in a sheet; the bar names it. */
+function ProjectName() {
+  const name = useViewer((s) => s.report?.project.name);
+  return (
+    <span className="min-w-0 truncate text-[15px] leading-none font-bold [font-stretch:80%]" title={name}>
+      {name ?? "starchart"}
+    </span>
   );
 }
 
