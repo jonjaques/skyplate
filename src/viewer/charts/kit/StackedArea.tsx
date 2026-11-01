@@ -1,19 +1,28 @@
 /**
- * Stacked areas over time for part-of-a-flow series (lines added by language). Each band is a
- * pale wash of its series hue with its upper edge drawn as the 2px line, so identity rides the
- * edge rather than a saturated block. The crosshair readout lists every series at the snapped
- * x, top of the stack first, so the pointer never has to land inside a thin band.
+ * Stacked series over time for part-of-a-flow data (lines added by language per month).
+ *
+ * Two forms, chosen by how many samples there are:
+ * - Many samples: stacked areas. Each band is a pale wash of its series hue with its upper
+ *   edge drawn as the 2px line, so identity rides the edge rather than a saturated block.
+ * - Few samples (COLUMNS_UP_TO or fewer): stacked columns. Each sample is a monthly total, and
+ *   an area drawn through three or four totals interpolates a smooth trend between them that
+ *   the data does not have (a project's first big import month turned into a long glide).
+ *
+ * Either way the readout lists every series at the snapped sample, top of the stack first,
+ * so the pointer never has to land inside a thin band.
  */
 
 import * as d3 from "d3";
 import { useMemo } from "react";
 import { formatInt } from "../../lib/format";
-import { XAxis, YGrid } from "./Axis";
+import { XAxis, YGrid, type Tick } from "./Axis";
 import { timeTicks, toDate, useActiveIndex } from "./interaction";
-import { tickNumber } from "./marks";
+import { BAR_MAX, columnPath, GAP, tickNumber } from "./marks";
 import { ChartTooltip } from "./Tooltip";
 
 const M = { top: 10, right: 12, bottom: 22, left: 44 };
+/** Up to two years of months reads better as columns than as a curve through them. */
+const COLUMNS_UP_TO = 24;
 
 export interface StackSeries {
   key: string;
@@ -21,6 +30,9 @@ export interface StackSeries {
   color: string;
   values: number[];
 }
+
+const fmtMonth = d3.utcFormat("%b");
+const fmtMonthYear = d3.utcFormat("%b %Y");
 
 export function StackedArea({
   times,
@@ -44,6 +56,7 @@ export function StackedArea({
   const x1 = width - M.right;
   const y0 = height - M.bottom;
   const y1 = M.top;
+  const asColumns = times.length <= COLUMNS_UP_TO;
 
   const { x, y, layers, totals } = useMemo(() => {
     const rows = times.map((_, i) => Object.fromEntries(series.map((s) => [s.key, s.values[i] ?? 0])));
@@ -66,6 +79,25 @@ export function StackedArea({
     return { x, y, layers, totals };
   }, [times, series, x0, x1, y0, y1]);
 
+  // Column geometry: one band per sample, the column capped at 24px with the rest as air.
+  const band = times.length ? (x1 - x0) / times.length : 0;
+  const colW = Math.min(BAR_MAX, Math.max(2, band - GAP * 4));
+  const centerOf = (i: number) => (asColumns ? x0 + band * (i + 0.5) : x(toDate(times[i]!)));
+
+  const columnTicks = useMemo((): Tick[] => {
+    if (!asColumns || band <= 0) return [];
+    // A label every k columns so labels keep ~64px apart; months, with the year on the
+    // first label and on every January.
+    const every = Math.max(1, Math.ceil(64 / band));
+    return times
+      .map((t, i) => ({ t, i }))
+      .filter(({ i }) => i % every === 0)
+      .map(({ t, i }) => {
+        const d = toDate(t);
+        return { pos: x0 + band * (i + 0.5), label: i === 0 || d.getUTCMonth() === 0 ? fmtMonthYear(d) : fmtMonth(d) };
+      });
+  }, [asColumns, band, times, x0]);
+
   const area = d3
     .area<d3.SeriesPoint<Record<string, number>>>()
     .x((_, i) => x(toDate(times[i]!)))
@@ -79,7 +111,7 @@ export function StackedArea({
     .curve(d3.curveMonotoneX);
 
   const bisect = d3.bisector((t: number) => t).center;
-  const px = active !== null ? x(toDate(times[active]!)) : 0;
+  const px = active !== null ? centerOf(active) : 0;
 
   return (
     <div className="relative">
@@ -92,31 +124,74 @@ export function StackedArea({
         {...focusProps}
         onPointerMove={(e) => {
           const mx = e.clientX - e.currentTarget.getBoundingClientRect().left;
-          setActive(times.length ? bisect(times, x.invert(mx).getTime() / 1000) : null);
+          if (!times.length) return setActive(null);
+          if (asColumns) {
+            const i = Math.floor((mx - x0) / band);
+            setActive(i >= 0 && i < times.length ? i : null);
+          } else {
+            setActive(bisect(times, x.invert(mx).getTime() / 1000));
+          }
         }}
         onPointerLeave={() => setActive(null)}
       >
         <YGrid ticks={y.ticks(4).map((t) => ({ pos: y(t), label: tickNumber(t) }))} x0={x0} x1={x1} />
-        {layers.map((layer, i) => (
-          <path key={layer.key} d={area(layer) ?? ""} fill={series[i]!.color} fillOpacity={0.16} />
-        ))}
-        {layers.map((layer, i) => (
-          <path
-            key={layer.key}
-            d={edge(layer) ?? ""}
-            fill="none"
-            stroke={series[i]!.color}
-            strokeWidth={2}
-            strokeLinejoin="round"
-          />
-        ))}
-        <XAxis ticks={timeTicks(x, x1 - x0, "month")} y={y0} x0={x0} x1={x1} />
-        {active !== null && (
+        {asColumns ? (
+          <g>
+            {times.map((_, i) => {
+              const cx = x0 + band * (i + 0.5) - colW / 2;
+              // The topmost non-empty segment carries the rounded data end; the 2px surface
+              // gap separates each segment from the one below it.
+              let top = -1;
+              for (let s = layers.length - 1; s >= 0; s--) {
+                const d = layers[s]![i]!;
+                if (d[1] > d[0]) {
+                  top = s;
+                  break;
+                }
+              }
+              return (
+                <g key={i} opacity={active === null || active === i ? 1 : 0.55}>
+                  {layers.map((layer, s) => {
+                    const d = layer[i]!;
+                    if (d[1] <= d[0]) return null;
+                    const yTop = y(d[1]);
+                    const yBottom = y(d[0]) - (d[0] > 0 ? GAP : 0);
+                    if (yBottom - yTop < 0.5) return null;
+                    return s === top ? (
+                      <path key={layer.key} d={columnPath(cx, colW, yBottom, yTop)} fill={series[s]!.color} />
+                    ) : (
+                      <rect key={layer.key} x={cx} y={yTop} width={colW} height={yBottom - yTop} fill={series[s]!.color} />
+                    );
+                  })}
+                </g>
+              );
+            })}
+          </g>
+        ) : (
+          <>
+            {layers.map((layer, i) => (
+              <path key={layer.key} d={area(layer) ?? ""} fill={series[i]!.color} fillOpacity={0.1} />
+            ))}
+            {layers.map((layer, i) => (
+              <path
+                key={layer.key}
+                d={edge(layer) ?? ""}
+                fill="none"
+                stroke={series[i]!.color}
+                strokeWidth={2}
+                strokeLinejoin="round"
+              />
+            ))}
+          </>
+        )}
+        <XAxis ticks={asColumns ? columnTicks : timeTicks(x, x1 - x0, "month")} y={y0} x0={x0} x1={x1} anchorEnds={!asColumns} />
+        {active !== null && !asColumns && (
           <line aria-hidden x1={px} x2={px} y1={y1} y2={y0} className="stroke-ink-3" strokeWidth={1} pointerEvents="none" />
         )}
       </svg>
       <ChartTooltip
         width={width}
+        height={height}
         tip={
           active !== null
             ? {

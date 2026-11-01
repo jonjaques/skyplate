@@ -53,9 +53,16 @@ export function PlateTitle({ engine, compact }: { engine: GalaxyEngine; compact:
   return (
     <h2
       data-plate-chrome
+      data-plate-inset="top"
       className={cn(
-        "pointer-events-none absolute z-20 max-w-[60%] truncate font-semibold text-plate-ink [font-stretch:85%]",
-        compact ? "top-2.5 left-3 text-[15px]" : "top-[18px] left-6 text-2xl",
+        "pointer-events-none absolute z-20 truncate font-semibold text-plate-ink [font-stretch:85%]",
+        // The width left beside the controls in the top-right corner (about 240px on the full
+        // plate, one 28px button on the compact one). A percentage cap ran the title under the
+        // Tree/Imports toggle on plates narrower than about 700px. On a phone-width plate
+        // there is no room beside them at all, so the title drops below them instead.
+        compact
+          ? "top-2.5 left-3 max-w-[calc(100%-4rem)] text-[15px]"
+          : "top-[18px] left-6 max-w-[calc(100%-288px)] text-2xl @max-[560px]:top-[58px] @max-[560px]:max-w-[calc(100%-3rem)] @max-[560px]:text-xl",
       )}
     >
       {name} <span className="text-plate-muted">·</span> <span className="figures">{formatInt(count)}</span>{" "}
@@ -87,7 +94,18 @@ function Swatch({ color }: { color: string }) {
   return <i className="inline-block size-2 shrink-0 rounded-full" style={{ background: color }} />;
 }
 
-export function PlateLegend({ engine, compact, raised }: { engine: GalaxyEngine; compact: boolean; raised: boolean }) {
+export function PlateLegend({
+  engine,
+  compact,
+  raised,
+  scene,
+}: {
+  engine: GalaxyEngine;
+  compact: boolean;
+  raised: boolean;
+  /** A selected symbol's neighborhood: its key joins the legend, above the color key. */
+  scene: SymbolScene | null;
+}) {
   const colorBy = useViewer((s) => s.colorBy);
   const sizeBy = useViewer((s) => s.sizeBy);
   const report = engine.model.report;
@@ -109,12 +127,14 @@ export function PlateLegend({ engine, compact, raised }: { engine: GalaxyEngine;
   return (
     <div
       data-plate-chrome
+      data-plate-inset="bottom"
       className={cn(
         "pointer-events-none absolute left-6 z-20 flex max-w-[calc(100%-3rem)] flex-col gap-1.5 text-xs text-plate-muted",
         raised ? "bottom-[64px]" : "bottom-4",
         compact && "left-3 bottom-2.5",
       )}
     >
+      {scene && !compact && <SymbolKey engine={engine} scene={scene} />}
       {items ? (
         <div className="flex flex-wrap gap-x-4 gap-y-1">
           {items.slice(0, compact ? 5 : 8).map((it) => (
@@ -166,17 +186,19 @@ function LineSample({ kind }: { kind: "call" | "other" | "callee" }) {
   );
 }
 
-export function SymbolLegend({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene }) {
+/**
+ * The key for a selected symbol's neighborhood. It lives in the legend slot at the plate's foot
+ * rather than under the title: up there it sat on top of the arcs, which rise off the disc
+ * toward the top of the plate, and the framing keeps the foot clear anyway.
+ */
+function SymbolKey({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene }) {
   const symbols = useViewer((s) => s.symbols);
   if (!symbols) return null;
   const t = symbols.symbols;
   const name = t.name[scene.symbol]!;
   const { totals } = scene;
   return (
-    <div
-      data-plate-chrome
-      className="pointer-events-none absolute top-[58px] left-6 z-20 flex max-w-[300px] flex-col gap-1 text-xs text-plate-muted"
-    >
+    <div className="mb-1 flex max-w-[340px] flex-col gap-1">
       <p className="mb-0.5 text-plate-ink">
         <span className="font-mono">{name}</span> <span className="text-plate-muted">({t.kind[scene.symbol]})</span> reaches{" "}
         {plural(totals.files, "file")}
@@ -269,13 +291,16 @@ export function PlateControls({ engine, compact }: { engine: GalaxyEngine; compa
 
   if (compact)
     return (
-      <div data-plate-chrome className="absolute top-2 right-2 z-20">
+      <div data-plate-chrome data-plate-inset="top" className="absolute top-2 right-2 z-20 rounded-sm bg-plate">
         {reset}
       </div>
     );
 
   return (
-    <div data-plate-chrome className="absolute top-4 right-4 z-20 flex items-center gap-2">
+    // bg-plate: zoomed in on a hub, stars pass behind the corner and the unfilled buttons
+    // read as "Tree" written over a star field. The plate's own color occludes them without
+    // drawing a panel, since it is the color already there.
+    <div data-plate-chrome data-plate-inset="top" className="absolute top-4 right-4 z-20 flex items-center gap-2 rounded-sm bg-plate">
       <ToggleGroup
         type="single"
         value={layout}

@@ -178,6 +178,40 @@ describe("computeLayout", () => {
     expect(foreign / Math.ceil(input.fileCount / 7)).toBeLessThan(0.05);
   });
 
+  test("small regions and root files form the core, inside every arm", () => {
+    // Top-level directories too small to be arms are packed around the root files at the
+    // center (the bright core), so each of their files sits nearer the center than the
+    // typical file of any arm, and each small region stays one contiguous clump.
+    const input = synthetic({ files: 2500, dirs: 300, seed: 17, rootShare: 0.02 });
+    // Add a few tiny top-level directories, the .github / scripts kind.
+    for (let k = 0; k < 4; k++) {
+      const d = input.dirParent.length;
+      input.dirParent.push(0);
+      input.dirDepth.push(1);
+      input.dirDirs.push([]);
+      input.dirFiles.push([]);
+      input.dirDirs[0]!.push(d);
+      for (let j = 0; j < 3 + k; j++) {
+        const f = input.fileCount++;
+        input.fileDir.push(d);
+        input.lines.push(40 + j);
+        input.dirFiles[d]!.push(f);
+      }
+    }
+    const layout = computeLayout(input);
+    expectFinite(layout.tree, "tree");
+    const radial = (f: number) => Math.hypot(layout.tree[f * 3]!, layout.tree[f * 3 + 1]!);
+    const total = (d: number): number => input.dirFiles[d]!.length + input.dirDirs[d]!.reduce((s, c) => s + total(c), 0);
+    const tiny = input.dirDirs[0]!.filter((d) => total(d) > 0 && total(d) < 0.025 * input.fileCount);
+    const big = input.dirDirs[0]!.filter((d) => total(d) >= 0.025 * input.fileCount);
+    expect(tiny.length).toBeGreaterThan(0);
+    const filesOf = (d: number): number[] => [...input.dirFiles[d]!, ...input.dirDirs[d]!.flatMap(filesOf)];
+    const median = (xs: number[]) => xs.sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
+    const armMedian = Math.min(...big.map((d) => median(filesOf(d).map(radial))));
+    for (const d of tiny) for (const f of filesOf(d)) expect(radial(f)).toBeLessThan(armMedian);
+    for (const f of input.dirFiles[0]!) expect(radial(f)).toBeLessThan(armMedian);
+  });
+
   test("handles empty, single-file, root-only and edgeless projects", () => {
     const empty = computeLayout({ fileCount: 0, fileDir: [], lines: [], dirParent: [-1], dirDepth: [0], dirDirs: [[]], dirFiles: [[]], from: [], to: [] });
     expect(empty.tree).toEqual([]);

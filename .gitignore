@@ -40,3 +40,6 @@ dist/
 
 # impeccable design-detector cache (local state)
 .impeccable/hook.cache.json
+
+# impeccable review captures: regenerated every review round, too heavy to version
+.impeccable/review/

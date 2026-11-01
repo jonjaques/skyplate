@@ -7,6 +7,7 @@
  */
 
 import { Menu, Monitor, Moon, Palette, Ruler, Search, SlidersHorizontal, Sun } from "lucide-react";
+import { useEffect, useRef } from "react";
 import type { Severity } from "../../shared/schema";
 import { Button } from "../components/ui/button";
 import {
@@ -39,21 +40,41 @@ export const TAB_ORDER: { id: Tab; label: string }[] = [
 const isMac = typeof navigator !== "undefined" && /Mac|iP(hone|ad|od)/.test(navigator.platform);
 export const MOD_KEY = isMac ? "⌘" : "Ctrl";
 
-export function TopBar({ bp }: { bp: Breakpoint }) {
+/**
+ * `ready` is false until a report is indexed (and stays false when it is missing or broken):
+ * the tabs, find and encodings have nothing to act on then, so they render disabled instead of
+ * opening an empty palette. The theme menu works either way.
+ */
+export function TopBar({ bp, ready = true }: { bp: Breakpoint; ready?: boolean }) {
   const setRailSheetOpen = useShell((s) => s.setRailSheetOpen);
   const sheetRail = bp === "narrow" || bp === "compact";
   const compact = bp === "compact";
+  const tab = useViewer((s) => s.tab);
+  const tabs = useRef<HTMLDivElement>(null);
+
+  // On a phone the tab list scrolls sideways, and a tab picked by number key, a link or a
+  // "Open in source reader" button could be the one scrolled out of sight, leaving the bar
+  // with no visible active tab. Bring it into view whenever it changes.
+  useEffect(() => {
+    tabs.current
+      ?.querySelector<HTMLElement>("[data-state=active]")
+      ?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "instant" });
+  }, [tab]);
 
   return (
-    <header className="flex h-[52px] min-w-0 items-center gap-3 border-b border-rule bg-paper px-3 xl:gap-4 xl:px-5">
+    <header className="@container flex h-[52px] min-w-0 items-center gap-3 border-b border-rule bg-paper px-3 xl:gap-4 xl:px-5">
       {sheetRail && (
-        <Button variant="ghost" size="icon-sm" aria-label="Open drawers" onClick={() => setRailSheetOpen(true)}>
+        <Button variant="ghost" size="icon-sm" aria-label="Open drawers" disabled={!ready} onClick={() => setRailSheetOpen(true)}>
           <Menu />
         </Button>
       )}
+      {/* justify-start overrides shadcn's justify-center: centered flex content that overflows
+          spills past the left edge too, where no scroll position can reach it, so on a phone
+          the first tab (Galaxy) was unreachable. */}
       <TabsList
+        ref={tabs}
         variant="line"
-        className="h-full min-w-0 shrink gap-0 overflow-x-auto overflow-y-hidden rounded-none p-0 [scrollbar-width:none]"
+        className="h-full min-w-0 shrink justify-start gap-0 overflow-x-auto overflow-y-hidden rounded-none p-0 [scrollbar-width:none]"
       >
         {/* No Tooltip wrapper here: its trigger stamps its own data-state on the child, which
             overwrites the tab's data-state="active" and with it the active rule. */}
@@ -61,11 +82,12 @@ export function TopBar({ bp }: { bp: Breakpoint }) {
           <TabsTrigger
             key={t.id}
             value={t.id}
+            disabled={!ready}
             title={`${t.label} (press ${i + 1})`}
             aria-keyshortcuts={String(i + 1)}
             className={cn(
               "h-full flex-none rounded-none border-0 border-b-2 border-transparent px-2.5 text-sm font-semibold text-ink-3 after:hidden xl:px-4",
-              "hover:text-ink data-[state=active]:border-ink data-[state=active]:text-ink dark:data-[state=active]:border-ink",
+              "hover:text-ink data-[state=active]:border-ink data-[state=active]:text-ink dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-ink",
             )}
           >
             {t.label}
@@ -75,14 +97,14 @@ export function TopBar({ bp }: { bp: Breakpoint }) {
       </TabsList>
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
-        <FindButton compact={bp !== "wide"} iconOnly={compact} />
+        <FindButton compact={bp !== "wide"} iconOnly={compact} disabled={!ready} />
         {bp === "wide" || bp === "medium" ? (
           <>
-            <ColorBySelect compact={bp === "medium"} />
-            <SizeBySelect compact={bp === "medium"} />
+            <ColorBySelect compact={bp === "medium"} disabled={!ready} />
+            <SizeBySelect compact={bp === "medium"} disabled={!ready} />
           </>
         ) : (
-          <EncodingPopover />
+          <EncodingPopover disabled={!ready} />
         )}
         <ThemeMenu />
       </div>
@@ -103,11 +125,11 @@ function FindingsCount() {
   );
 }
 
-function FindButton({ compact, iconOnly }: { compact: boolean; iconOnly: boolean }) {
+function FindButton({ compact, iconOnly, disabled }: { compact: boolean; iconOnly: boolean; disabled?: boolean }) {
   const setPaletteOpen = useViewer((s) => s.setPaletteOpen);
   if (iconOnly) {
     return (
-      <Button variant="ghost" size="icon-sm" aria-label="Find a file, symbol or author" onClick={() => setPaletteOpen(true)}>
+      <Button variant="ghost" size="icon-sm" aria-label="Find a file, symbol or author" disabled={disabled} onClick={() => setPaletteOpen(true)}>
         <Search />
       </Button>
     );
@@ -115,14 +137,26 @@ function FindButton({ compact, iconOnly }: { compact: boolean; iconOnly: boolean
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={() => setPaletteOpen(true)}
+      aria-label="Find a file, symbol or author"
       className={cn(
-        "flex h-8 items-center gap-2 rounded-md border border-input bg-paper px-2.5 text-left text-[13px] text-ink-3 transition-colors duration-150 hover:border-ink-3 hover:text-ink-2",
-        compact ? "w-[124px]" : "w-[280px]",
+        "flex h-8 items-center gap-2 rounded-md border border-input bg-paper px-2.5 text-left text-[13px] text-ink-3 transition-colors duration-150 hover:border-ink-3 hover:text-ink-2 disabled:pointer-events-none disabled:opacity-50",
+        // The wide layout starts at a 1280px window, where the bar is only 1020px: the full
+        // field plus both labeled selects pushed the Findings tab out of the scrolling tab
+        // list, out of sight. So the long form waits until the bar itself has room for it.
+        compact ? "w-[124px]" : "w-[124px] @min-[1140px]:w-[280px]",
       )}
     >
       <Search aria-hidden className="size-3.5 shrink-0" />
-      <span className="min-w-0 flex-1 truncate">{compact ? "Find" : "Find a file, symbol or author"}</span>
+      {compact ? (
+        <span className="min-w-0 flex-1 truncate">Find</span>
+      ) : (
+        <>
+          <span className="min-w-0 flex-1 truncate @min-[1140px]:hidden">Find</span>
+          <span className="hidden min-w-0 flex-1 truncate @min-[1140px]:inline">Find a file, symbol or author</span>
+        </>
+      )}
       <Kbd className="shrink-0">{MOD_KEY === "⌘" ? "⌘K" : "Ctrl K"}</Kbd>
     </button>
   );
@@ -131,12 +165,12 @@ function FindButton({ compact, iconOnly }: { compact: boolean; iconOnly: boolean
 const COLOR_MODES: ColorBy[] = ["language", "category", "hotspot", "churn", "age", "complexity", "ownership", "rank"];
 const SIZE_MODES: SizeBy[] = ["lines", "bytes", "complexity", "commits", "rank"];
 
-export function ColorBySelect({ compact, className }: { compact?: boolean; className?: string }) {
+export function ColorBySelect({ compact, className, disabled }: { compact?: boolean; className?: string; disabled?: boolean }) {
   const colorBy = useViewer((s) => s.colorBy);
   const setColorBy = useViewer((s) => s.setColorBy);
   const hasGit = useViewer((s) => !!s.report?.git);
   return (
-    <Select value={colorBy} onValueChange={(v) => setColorBy(v as ColorBy)}>
+    <Select value={colorBy} onValueChange={(v) => setColorBy(v as ColorBy)} disabled={disabled}>
       <SelectTrigger size="sm" aria-label="Color stars by" className={cn("gap-1.5 bg-paper", compact ? "w-[124px]" : "w-[172px]", className)}>
         <Palette aria-hidden className="size-3.5 text-ink-3" />
         {!compact && <span className="text-ink-3">Color</span>}
@@ -160,12 +194,12 @@ export function ColorBySelect({ compact, className }: { compact?: boolean; class
   );
 }
 
-export function SizeBySelect({ compact, className }: { compact?: boolean; className?: string }) {
+export function SizeBySelect({ compact, className, disabled }: { compact?: boolean; className?: string; disabled?: boolean }) {
   const sizeBy = useViewer((s) => s.sizeBy);
   const setSizeBy = useViewer((s) => s.setSizeBy);
   const hasGit = useViewer((s) => !!s.report?.git);
   return (
-    <Select value={sizeBy} onValueChange={(v) => setSizeBy(v as SizeBy)}>
+    <Select value={sizeBy} onValueChange={(v) => setSizeBy(v as SizeBy)} disabled={disabled}>
       <SelectTrigger size="sm" aria-label="Size stars by" className={cn("gap-1.5 bg-paper", compact ? "w-[108px]" : "w-[148px]", className)}>
         <Ruler aria-hidden className="size-3.5 text-ink-3" />
         {!compact && <span className="text-ink-3">Size</span>}
@@ -183,11 +217,11 @@ export function SizeBySelect({ compact, className }: { compact?: boolean; classN
 }
 
 /** Below 1024px the two encodings fold into one popover so the tabs keep their room. */
-function EncodingPopover() {
+function EncodingPopover({ disabled }: { disabled?: boolean }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon-sm" aria-label="Color and size">
+        <Button variant="ghost" size="icon-sm" aria-label="Color and size" disabled={disabled}>
           <SlidersHorizontal />
         </Button>
       </PopoverTrigger>

@@ -89,6 +89,7 @@ export function HistoryScrubber({ engine }: { engine: GalaxyEngine }) {
   return (
     <div
       data-plate-chrome
+      data-plate-inset="bottom"
       className="absolute inset-x-0 bottom-0 z-20 flex h-[52px] items-center gap-3 border-t border-plate-rule px-4 text-xs text-plate-muted"
     >
       <Tooltip>

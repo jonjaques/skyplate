@@ -7,7 +7,7 @@ import { useMemo } from "react";
 import type { DirRecord as DirRec, Report } from "../../../shared/schema";
 import { Button } from "../../components/ui/button";
 import { seriesColor } from "../../lib/colors";
-import { formatBytes, formatInt, formatPercent, plural, shortenPath } from "../../lib/format";
+import { formatBytes, formatInt, formatPercent, plural } from "../../lib/format";
 import type { Model } from "../../model/indices";
 import { useViewer } from "../../state/store";
 import { summarizeDir } from "../derived";
@@ -84,7 +84,7 @@ export function DirRecordView({ report, model, dir }: { report: Report; model: M
               </div>
             )}
           </div>
-          <Quiet className="text-xs">Share of code and comment lines.</Quiet>
+          <Quiet className="text-xs">Share of code lines, comments and blanks excluded.</Quiet>
         </Section>
       )}
 

@@ -16,6 +16,7 @@
  */
 
 export const STAR_VERTEX = /* glsl */ `
+#define HALO_SPAN 2.6
 uniform float uMorph;
 uniform float uSizeScale;   // device px per world unit at distance 1
 uniform float uBaseSize;    // world size of the smallest star
@@ -46,6 +47,7 @@ varying float vCore;        // core radius as a fraction of the sprite
 varying float vMark;
 varying float vRingPulse;
 varying float vAlpha;
+varying float vHalo;        // halo strength: full for small stars, fading for big ones
 
 void main() {
   vec3 p = mix(position, aGraph, uMorph);
@@ -77,13 +79,19 @@ void main() {
   px *= 1.0 + 0.7 * isHover + 0.35 * isSel + 0.8 * aFlash + 0.5 * wave;
   px = clamp(px, uMinPx, uMaxPx);
 
-  // Rings need room: the sprite grows and the star keeps its size inside it.
+  // The sprite is larger than the star so its halo has room to spread: a halo clipped at the
+  // core's edge never overlaps a neighbor's, and dense arms then read as scattered dots
+  // instead of glowing where files crowd. Rings need more room still.
   float mark = aMark;
   if (isSel > 0.5 && mark < 1.5) mark = max(mark, 3.0);
-  float sprite = px;
-  if (mark > 0.5) sprite = max(px * 2.3, uMinPx * 7.0);
+  float sprite = px * HALO_SPAN;
+  if (mark > 0.5) sprite = max(px * 2.8, uMinPx * 7.0);
   gl_PointSize = sprite * visible;
   vCore = px / sprite;
+  // The halo is what makes a 2 px star findable and a dense arm glow. A star seen up close is
+  // already a disc; at full strength its halo blew out everything near the camera into a
+  // white fog, so it fades as the star grows (uMinPx / 1.6 is the device pixel ratio).
+  vHalo = clamp(14.0 * (uMinPx / 1.6) / max(px, 1.0), 0.15, 1.0);
   vMark = mark;
   // Only the symbol definition breathes (mark 2); a selected file's ring (mark 3) holds still.
   vRingPulse = mark > 1.5 && mark < 2.5 ? 0.5 + 0.5 * sin(uClock * 2.4 * uMotion) : 0.0;
@@ -101,15 +109,19 @@ varying float vCore;
 varying float vMark;
 varying float vRingPulse;
 varying float vAlpha;
+varying float vHalo;
 
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
   float r = length(c);
   if (r > 1.0) discard;
   float rr = r / max(vCore, 1e-3);
-  // A soft round core with a faint halo: reads as a star at 3 px and as a disc at 30 px.
-  float core = smoothstep(0.62, 0.18, rr);
-  float halo = exp(-rr * rr * 3.2) * 0.35;
+  // A soft round core with a faint exponential halo: reads as a star at 3 px and as a disc at
+  // 30 px, and halos add up (the blend is additive) where files crowd, so a dense directory
+  // glows because it is dense. The halo fades out before the sprite's edge so no square or
+  // circle outline ever shows.
+  float core = smoothstep(0.62, 0.2, rr);
+  float halo = 0.42 * vHalo * exp(-1.6 * rr) * (1.0 - smoothstep(0.65, 1.0, r));
   vec3 col = vColor * (core + halo);
 
   if (vMark > 0.5) {

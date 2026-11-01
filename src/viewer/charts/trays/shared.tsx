@@ -30,22 +30,36 @@ export function TrayShell({
   className?: string;
 }) {
   return (
-    <section aria-label={label ?? title} className={cn("flex h-full min-h-0 min-w-0 flex-col px-[18px] pt-3.5 pb-3", className)}>
+    // A container, so the tray adapts to its own width rather than the window's: between
+    // 1024 and 1280px the shell narrows the rail and the record, and each tray drops to about
+    // 200px, where the header aside and a two-column key would only show ellipses.
+    <section aria-label={label ?? title} className={cn("@container flex h-full min-h-0 min-w-0 flex-col px-[18px] pt-3.5 pb-3", className)}>
       <div className="mb-2 flex min-w-0 items-baseline justify-between gap-3">
-        <h3 className="shrink-0 text-sm font-semibold text-ink">{title}</h3>
-        {aside && <div className="figures min-w-0 truncate font-mono text-xs text-ink-3">{aside}</div>}
+        <h3 className="shrink-0 text-sm font-semibold whitespace-nowrap text-ink">{title}</h3>
+        {aside && <div className="figures hidden min-w-0 truncate font-mono text-xs text-ink-3 @min-[250px]:block">{aside}</div>}
       </div>
       {children}
     </section>
   );
 }
 
-/** A tray's big figure: proportional digits in the label face, a short caption beside it. */
-export function Headline({ value, caption }: { value: string; caption?: ReactNode }) {
+/**
+ * A tray's big figure: proportional digits in the label face, a short caption beside it.
+ * `scope` ("in packages/core") is appended only when the tray is wide enough; the plate title
+ * above already names the open drawer, so a narrow tray can drop it without losing the fact.
+ * The caption wraps under the figure rather than truncating, so the period never turns into
+ * an ellipsis.
+ */
+export function Headline({ value, caption, scope }: { value: string; caption?: ReactNode; scope?: string }) {
   return (
-    <div className="flex min-w-0 items-baseline gap-2">
+    <div className="flex min-w-0 flex-wrap items-baseline gap-x-2">
       <span className="shrink-0 text-[30px] leading-none font-semibold tracking-[-0.015em] text-ink [font-stretch:85%]">{value}</span>
-      {caption && <span className="min-w-0 truncate text-xs text-ink-2">{caption}</span>}
+      {caption && (
+        <span className="min-w-0 text-xs text-ink-2">
+          {caption}
+          {scope && <span className="hidden @min-[300px]:inline"> {scope}</span>}
+        </span>
+      )}
     </div>
   );
 }

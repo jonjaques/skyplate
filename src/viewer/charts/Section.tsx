@@ -40,3 +40,16 @@ export const SPAN = {
 export function span(n: keyof typeof SPAN, extra?: string) {
   return cn(SPAN[n], extra);
 }
+
+/**
+ * The one sentence a section shows when its input is missing (no git, a single commit, no
+ * symbol tables). It still fills the whole row, so the hairline grid stays unbroken, but the
+ * text keeps a reading measure instead of running the full width of a wide window.
+ */
+export function SectionNote({ children, role }: { children: ReactNode; role?: "status" }) {
+  return (
+    <div className="col-span-12 bg-tray px-5 py-5" role={role}>
+      <p className="max-w-[72ch] text-sm leading-relaxed text-ink-2">{children}</p>
+    </div>
+  );
+}

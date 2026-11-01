@@ -97,7 +97,11 @@ function ModuleMatrix() {
                 const r = e.currentTarget.getBoundingClientRect();
                 const j = Math.floor((e.clientX - r.left - LABEL) / cell);
                 const i = Math.floor((e.clientY - r.top - TOP) / cell);
-                setActive(i >= 0 && i < n && j >= 0 && j < n ? i * n + j : null);
+                const inside = i >= 0 && i < n && j >= 0 && j < n;
+                setActive(inside ? i * n + j : null);
+                // A cell is a row's imports, so it lights the importing module in the galaxy,
+                // the same module a click selects.
+                setHover(inside ? { kind: "dir", id: modules[i]!.dir } : null);
               }}
               onPointerLeave={() => {
                 setActive(null);

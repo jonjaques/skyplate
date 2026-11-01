@@ -38,6 +38,7 @@ interface Rect {
 
 const GAP_NEAR = 34;
 const GAP_FAR = 88;
+const GAP_OUT = 150;
 const MARGIN = 8;
 
 function overlaps(a: Rect, b: Rect, pad = 6): boolean {
@@ -82,21 +83,30 @@ export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; comp
       add(t.file[s]!, "selected", `det. ${t.name[s]}, ${formatInt(t.refs[s]!)} references in ${formatInt(t.files[s]!)} files`);
     }
     if (hover?.kind === "file" && !compact) add(hover.id, "hover");
-    if (!compact) {
-      if (focusDir !== null) {
+    // A symbol's neighborhood is the subject while one is selected; holotype cards would only
+    // compete with its arcs.
+    if (!compact && selection?.kind !== "symbol") {
+      if (selection?.kind === "file") {
+        // With a file pinned, the holotype worth a card is the one in its own drawer: the file
+        // its neighbors most depend on, for comparison. A distant region's card is noise here.
+        const holo = model.holotypeOfDir.get(model.topDir[selection.id]!);
+        if (holo !== undefined) add(holo, "holotype");
+      } else if (focusDir !== null && focusDir !== 0) {
         const region = regionOfDir(engine, focusDir);
         const dir = engine.regions[region]?.dir;
         const holo = dir === undefined ? undefined : model.holotypeOfDir.get(dir);
         if (holo !== undefined) add(holo, "holotype");
       } else {
-        // Zoomed out: the holotypes of the largest regions, as many as fit without clutter.
-        let shown = 0;
+        // Zoomed out: one card, for the holotype everything else leans on most. Three cards
+        // covered a third of the plate at 1440 px and two still sat on the arms; the other
+        // holotypes keep their red rings, and hovering one shows its card.
+        let best = -1;
         for (const r of engine.regions) {
           const holo = model.holotypeOfDir.get(r.dir);
           if (holo === undefined || r.dir === 0) continue;
-          add(holo, "holotype");
-          if (++shown >= 3) break;
+          if (best < 0 || model.report.files[holo]!.fanIn > model.report.files[best]!.fanIn) best = holo;
         }
+        if (best >= 0 && model.report.files[best]!.fanIn >= 3) add(best, "holotype");
       }
     }
     return out;
@@ -128,6 +138,7 @@ export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; comp
         chrome = chromeRects(container.current?.parentElement ?? null);
         chromeAge = 30;
       }
+      engine.refreshDensity();
       const anchors: ({ x: number; y: number } | null)[] = specs.map((s) => (engine.screenOf(s.file, pt, scratch) ? { x: pt.x, y: pt.y } : null));
       const placed: Rect[] = [];
       specs.forEach((spec, idx) => {
@@ -145,7 +156,9 @@ export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; comp
         if (!a || a.x < -10 || a.y < -10 || a.x > W + 10 || a.y > H + 10) return hide();
         const { w, h } = size;
         const candidates: [number, number][] = [];
-        for (const d of [GAP_NEAR, GAP_FAR]) {
+        // Holotype cards may run a longer leader out of the dense middle; a pinned or hovered
+        // card stays close to the star the reader is looking at.
+        for (const d of spec.kind === "holotype" ? [GAP_NEAR, GAP_FAR, GAP_OUT] : [GAP_NEAR, GAP_FAR]) {
           candidates.push(
             [a.x + d, a.y - d - h],
             [a.x - d - w, a.y - d - h],
@@ -155,7 +168,10 @@ export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; comp
             [a.x - d - 10 - w, a.y - h / 2],
           );
         }
-        const score = (ci: number): number => {
+        // Hard costs (off the plate, over another card, over the chrome, over another pinned
+        // star) dominate; covering stars is a soft cost, so a card prefers the dark lanes
+        // between arms but still lands somewhere when the whole plate is busy.
+        const hard = (ci: number): number => {
           const [x, y] = candidates[ci]!;
           const r = { x, y, w, h };
           let s = 0;
@@ -167,21 +183,36 @@ export function SpecimenLabels({ engine, compact }: { engine: GalaxyEngine; comp
           });
           return s;
         };
+        const covered = (ci: number) => engine.starsIn(candidates[ci]![0], candidates[ci]![1], w, h);
+        const score = (ci: number) => hard(ci) + Math.min(18, covered(ci) * 0.25) + (ci % 6 === 0 ? 0 : 0.5);
+        // Keep last frame's spot unless another is clearly better, so cards do not hop while
+        // the camera turns.
         let best = previous.current.get(spec.key) ?? 0;
-        let bestScore = best < candidates.length ? score(best) : Infinity;
-        if (bestScore > 0) {
-          for (let ci = 0; ci < candidates.length; ci++) {
-            const sc = score(ci) + ci * 0.01; // nearer, upper-right positions win ties
-            if (sc < bestScore) {
-              bestScore = sc;
-              best = ci;
-            }
+        let bestScore = best < candidates.length ? score(best) - 2 : Infinity;
+        for (let ci = 0; ci < candidates.length; ci++) {
+          const sc = score(ci) + ci * 0.01; // nearer positions win ties
+          if (sc < bestScore) {
+            bestScore = sc;
+            best = ci;
           }
         }
         // Holotype labels are a courtesy: they step aside rather than crowd the plate.
-        if (spec.kind === "holotype" && bestScore >= 20) return hide();
+        if (spec.kind === "holotype" && hard(best) >= 20) return hide();
         previous.current.set(spec.key, best);
-        const [x, y] = candidates[best]!;
+        // On a narrow plate (the Source tab's) no candidate may fit; keep the card on the
+        // plate anyway and let the leader find it, rather than hang it off the edge.
+        const x = Math.max(MARGIN, Math.min(candidates[best]![0], W - w - MARGIN));
+        let y = Math.max(MARGIN, Math.min(candidates[best]![1], H - h - MARGIN));
+        // Clamping can land the card on the legend or the title (on a phone, the Source tab's
+        // plate is narrower than two cards), and a card over the legend hides the key to every
+        // color on the plate. Slide it vertically off any chrome it still covers.
+        for (const c of chrome) {
+          if (!overlaps({ x, y, w, h }, c, 4)) continue;
+          const up = c.y - h - 6;
+          const down = c.y + c.h + 6;
+          y = y + h / 2 < c.y + c.h / 2 && up >= MARGIN ? up : down + h <= H - MARGIN ? down : up;
+          y = Math.max(MARGIN, Math.min(y, H - h - MARGIN));
+        }
         const rect = { x, y, w, h };
         placed.push(rect);
         card.style.transform = `translate3d(${Math.round(x)}px, ${Math.round(y)}px, 0)`;

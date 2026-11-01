@@ -7,11 +7,12 @@
  * file, set the history time); Escape lets go.
  */
 
-import { useCallback, useState, type KeyboardEvent } from "react";
+import { useCallback, useRef, useState, type FocusEvent, type KeyboardEvent } from "react";
 import * as d3 from "d3";
 
 export function useActiveIndex(count: number, onActivate?: (index: number) => void) {
   const [active, setActive] = useState<number | null>(null);
+  const pressed = useRef(false);
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -56,11 +57,22 @@ export function useActiveIndex(count: number, onActivate?: (index: number) => vo
     tabIndex: 0,
     onKeyDown,
     // Only keyboard focus lands on the first mark. A click also focuses the plot, and
-    // treating that as "the reader tabbed here" would pin a tooltip under the pointer.
-    onFocus: (e: FocusEvent) => {
-      if (e.currentTarget.matches(":focus-visible")) setActive((a) => (a === null ? 0 : a));
+    // treating that as "the reader tabbed here" would pin a tooltip on the first mark while
+    // the pointer is somewhere else. :focus-visible alone is not a reliable signal (some
+    // engines report it after a click that follows keyboard use), so a pointer press that
+    // precedes the focus rules it out explicitly.
+    onPointerDown: () => {
+      pressed.current = true;
     },
-    onBlur: () => setActive(null),
+    onFocus: (e: FocusEvent<Element>) => {
+      const fromPointer = pressed.current;
+      pressed.current = false;
+      if (!fromPointer && e.currentTarget.matches(":focus-visible")) setActive((a) => (a === null ? 0 : a));
+    },
+    onBlur: () => {
+      pressed.current = false;
+      setActive(null);
+    },
   };
   return { active, setActive, focusProps };
 }
@@ -99,7 +111,15 @@ export function timeTicks(
     ticks = scale.ticks(Math.max(2, Math.min(6, Math.floor(width / 72))));
     fmt = fmtDay;
   }
-  return ticks.map((d) => ({ pos: scale(d), label: fmt(d) }));
+  // d3 treats the count as a hint and snaps to calendar boundaries, so a 150px tray over three
+  // months still got three month starts 50px apart, and the last two labels ran together
+  // ("Oct 1Nov 1"). Keep a tick only when it clears the previous kept one.
+  const out: { pos: number; label: string }[] = [];
+  for (const d of ticks) {
+    const pos = scale(d);
+    if (out.length === 0 || pos - out[out.length - 1]!.pos >= 52) out.push({ pos, label: fmt(d) });
+  }
+  return out;
 }
 
 export const toDate = (unix: number) => new Date(unix * 1000);

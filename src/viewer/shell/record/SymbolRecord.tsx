@@ -17,7 +17,7 @@ import { Button } from "../../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
-import { formatInt, plural, shortenPath } from "../../lib/format";
+import { formatInt, plural } from "../../lib/format";
 import { cn } from "../../lib/utils";
 import type { SymbolModel } from "../../model/symbols";
 import { useViewer } from "../../state/store";
@@ -132,7 +132,7 @@ function CallHierarchy({ id, ...ctx }: Ctx & { id: number }) {
             <TabsTrigger
               key={value}
               value={value}
-              className="h-full flex-none rounded-none border-0 border-b-2 border-transparent px-2.5 text-[13px] font-medium text-ink-3 after:hidden data-[state=active]:border-ink data-[state=active]:text-ink dark:data-[state=active]:border-ink"
+              className="h-full flex-none rounded-none border-0 border-b-2 border-transparent px-2.5 text-[13px] font-medium text-ink-3 after:hidden data-[state=active]:border-ink data-[state=active]:text-ink dark:group-data-[variant=line]/tabs-list:data-[state=active]:border-ink"
             >
               {label}
               <span className="figures font-mono text-xs font-normal text-ink-3">{formatInt(n)}</span>
@@ -151,7 +151,12 @@ function CallHierarchy({ id, ...ctx }: Ctx & { id: number }) {
 }
 
 type Direction = "incoming" | "outgoing";
-const EDGE_CAP = 25;
+/**
+ * Rows shown before "Show more". It was 25: for a hub like a vector constructor that is a
+ * thousand pixels of callers in a 340px column, and the References section under it (the
+ * actual call sites, with code) started two screens down. Ten matches References' own cap.
+ */
+const EDGE_CAP = 10;
 
 function EdgeList({
   root,
@@ -372,11 +377,11 @@ function References({ id, ...ctx }: Ctx & { id: number }) {
               className="mb-2 flex-wrap"
               aria-label="Filter references by kind"
             >
-              <ToggleGroupItem value="all" className="h-7 px-2 text-xs data-[state=on]:bg-wash">
+              <ToggleGroupItem value="all" className="h-7 px-2 text-xs text-ink-3 data-[state=on]:bg-wash data-[state=on]:font-semibold data-[state=on]:text-ink">
                 All
               </ToggleGroupItem>
               {kindCounts.map(([k, n]) => (
-                <ToggleGroupItem key={k} value={String(k)} className="h-7 gap-1 px-2 text-xs data-[state=on]:bg-wash">
+                <ToggleGroupItem key={k} value={String(k)} className="h-7 gap-1 px-2 text-xs text-ink-3 data-[state=on]:bg-wash data-[state=on]:font-semibold data-[state=on]:text-ink">
                   {REF_KINDS[k]}
                   <span className="figures font-mono text-[11px] text-ink-3">{formatInt(n)}</span>
                 </ToggleGroupItem>
@@ -480,7 +485,7 @@ function Snippet({ text, col, len, loading }: { text: string | null; col: number
     <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] whitespace-pre text-ink-2">
       {start > indent && <span className="text-ink-3">…</span>}
       {clean.slice(start, col)}
-      <mark className="rounded-[2px] bg-[#e3eefb] font-semibold text-ink dark:bg-[#1f3550]">{clean.slice(col, col + len)}</mark>
+      <mark className="rounded-[2px] bg-[#d6e6fa] font-semibold text-ink dark:bg-[#1f3550]">{clean.slice(col, col + len)}</mark>
       {clean.slice(col + len, end)}
       {end < clean.length && <span className="text-ink-3">…</span>}
     </span>

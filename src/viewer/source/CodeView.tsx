@@ -269,7 +269,7 @@ function segment(toks: Tok[], ranges: CodeRange[] | undefined, marks: CodeMark[]
 
 const MARK_CLASS = {
   target: "rounded-[2px] bg-[#b7d3f6] dark:bg-[#184f95]",
-  occurrence: "rounded-[2px] bg-[#e3eefb] dark:bg-[#1f3550]",
+  occurrence: "rounded-[2px] bg-[#d6e6fa] dark:bg-[#1f3550]",
 };
 
 const Line = memo(function Line({
@@ -330,7 +330,7 @@ const Line = memo(function Line({
   }
 
   return (
-    <div className={cn("flex", target ? "bg-wash" : "bg-paper")} data-line={index}>
+    <div className={cn("flex", target ? "bg-[#edf3fb] dark:bg-[#1f2b38]" : "bg-paper")} data-line={index}>
       <span
         aria-hidden
         className="figures sticky left-0 z-[1] shrink-0 bg-inherit pr-4 text-right text-ink-3 select-none"

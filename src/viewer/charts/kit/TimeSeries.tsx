@@ -2,6 +2,9 @@
  * One series over time: a 2px line over a 10% area wash, with a crosshair that snaps to the
  * nearest sample. Readers aim at a date, never at a 2px line, so the whole plot is the hit
  * target and the tooltip follows the snapped point.
+ *
+ * Samples are joined by straight segments. A smoothing curve through five weekly totals (a
+ * "last 30 days" range) draws a confident wave between them that no week actually had.
  */
 
 import * as d3 from "d3";
@@ -69,13 +72,13 @@ export function TimeSeries({
       .line<TimePoint>()
       .x((p) => x(toDate(p.t)))
       .y((p) => y(p.v))
-      .curve(d3.curveMonotoneX);
+      .curve(d3.curveLinear);
     const areaGen = d3
       .area<TimePoint>()
       .x((p) => x(toDate(p.t)))
       .y0(y0)
       .y1((p) => y(p.v))
-      .curve(d3.curveMonotoneX);
+      .curve(d3.curveLinear);
     return { x, y, line: gen(points) ?? "", areaPath: areaGen(points) ?? "" };
   }, [points, x0, x1, y0, y1, zeroBased]);
 

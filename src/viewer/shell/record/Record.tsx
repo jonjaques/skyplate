@@ -5,7 +5,7 @@
  */
 
 import { Kbd } from "../../components/ui/kbd";
-import { formatInt, plural, shortenPath } from "../../lib/format";
+import { formatInt, plural } from "../../lib/format";
 import { useViewer } from "../../state/store";
 import { show } from "../navigate";
 import { Quiet, RowButton, Section, SeverityMark, PathText } from "../parts";
@@ -78,7 +78,10 @@ function Guide() {
         <h2 className="text-[22px] leading-[1.15] font-bold [font-stretch:80%]">{report.project.name}</h2>
         {report.project.description && <p className="mt-2 text-[13px] text-ink-2">{report.project.description}</p>}
         <p className="figures mt-2 font-mono text-xs text-ink-3">
-          {plural(report.totals.files, "file")} · {formatInt(report.totals.lines)} lines · {plural(report.totals.languages, "language")}
+          {/* Each figure keeps its unit: a break may fall between them, never inside one. */}
+          <span className="whitespace-nowrap">{plural(report.totals.files, "file")}</span> ·{" "}
+          <span className="whitespace-nowrap">{formatInt(report.totals.lines)} lines</span> ·{" "}
+          <span className="whitespace-nowrap">{plural(report.totals.languages, "language")}</span>
         </p>
       </header>
 

@@ -20,13 +20,23 @@ import { Legend } from "../kit/Legend";
 import { emphasisColor, measureColor, surfaceColor } from "../kit/theme";
 import { ChartTooltip } from "../kit/Tooltip";
 import { useScope } from "../scope";
-import { Section, span } from "../Section";
+import { Section, SectionNote, span } from "../Section";
 import { PathText } from "../kit/PathText";
 import { formatShare } from "../kit/marks";
 
 export function CouplingSection() {
   const { report, history } = useScope();
-  if (!report.git || !history) return null;
+  if (!report.git || !history) {
+    return (
+      <Section id="coupling" title="Coupling">
+        <SectionNote>
+          {!report.git
+            ? "No co-change coupling: it is read from commits that touch several files at once, and this report was generated without git."
+            : "One commit is not enough history to see which files change together. Re-run on a full clone to see coupling."}
+        </SectionNote>
+      </Section>
+    );
+  }
   return (
     <Section id="coupling" title="Coupling" note="Files that keep changing in the same commits, whether or not they import each other">
       <PairsTable />
@@ -114,6 +124,10 @@ function Arcs() {
       subtitle={`The ${plural(pairs.length, "strongest pair")}, files in directory order; long arcs couple distant regions`}
       height={ARC_H}
       empty={pairs.length < 2 ? "Too few co-change pairs in view to draw." : null}
+      table={() => ({
+        columns: [{ label: "File", mono: true, width: "38%" }, { label: "Changes with", mono: true, width: "38%" }, { label: "Shared commits", align: "right", mono: true }, { label: "Degree", align: "right", mono: true }],
+        rows: pairs.map((p) => [report.files[p.a]!.path, report.files[p.b]!.path, p.shared, { text: formatShare(p.degree), sort: p.degree }]),
+      })}
       legend={
         <Legend
           items={[

@@ -219,7 +219,9 @@ export function PathText({
   const tail = `${path.slice(slash + 1)}${line !== undefined ? `:${line}` : ""}`;
   return (
     <span className={cn("flex min-w-0 font-mono", className)} title={line !== undefined ? `${path}:${line}` : path}>
-      {slash >= 0 && <span className={cn("min-w-0 truncate", dirClass)}>{path.slice(0, slash + 1)}</span>}
+      {/* min-w-[2ch]: squeezed below the width of its ellipsis, the directory part showed a
+          bare clipped letter glued to the file name ("pharness.ts" in a 180px tray). */}
+      {slash >= 0 && <span className={cn("min-w-[2ch] truncate", dirClass)}>{path.slice(0, slash + 1)}</span>}
       <span className="max-w-full shrink-0 truncate">{tail}</span>
     </span>
   );

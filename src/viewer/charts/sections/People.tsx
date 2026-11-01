@@ -24,7 +24,7 @@ import { measureColor, slotColor, surfaceColor } from "../kit/theme";
 import { PathText } from "../kit/PathText";
 import { ChartTooltip, type Tip } from "../kit/Tooltip";
 import { useScope } from "../scope";
-import { Section, span } from "../Section";
+import { Section, SectionNote, span } from "../Section";
 import { formatShare } from "../kit/marks";
 
 export function PeopleSection() {
@@ -32,11 +32,11 @@ export function PeopleSection() {
   if (!report.git || !history) {
     return (
       <Section id="people" title="People">
-        <p className="col-span-12 bg-tray px-5 py-5 text-sm text-ink-2">
+        <SectionNote>
           {!report.git
             ? "No authorship: this report was generated without git, so there is no record of who wrote what."
             : "One commit is not enough history to say who knows which parts. Re-run on a full clone to see contributors and ownership."}
-        </p>
+        </SectionNote>
       </Section>
     );
   }
@@ -215,7 +215,12 @@ function Ownership() {
     <Figure
       className={span(8)}
       title="Ownership by top-level directory"
-      subtitle="Share of each directory's files whose largest author is each person (most lines added); seven people own the most files overall"
+      subtitle={`Share of each directory's files whose largest author is each person (most lines added)${
+        // The palette has seven author slots; "seven people" was wrong for a two-person repo.
+        legendAuthors.length > 1 && anyOther
+          ? `; colored are the ${legendAuthors.length} people who own the most files overall`
+          : ""
+      }`}
       height={rows.length * 30}
       empty={git.shallow ? "Left out of shallow clones: the boundary commit appears to write every file." : rows.length === 0 ? "No files in view have authorship." : null}
       legend={
@@ -226,9 +231,18 @@ function Ownership() {
           ]}
         />
       }
+      // One row per directory and owner. A column per person put ten narrow columns under
+      // truncated names; this shape reads at any width and sorts by person or by share.
       table={() => ({
-        columns: [{ label: "Directory", mono: true }, { label: "Files", align: "right", mono: true }, ...legendAuthors.map(([id]) => ({ label: authorName(git.authors[id]), align: "right" as const, mono: true })), { label: "Everyone else", align: "right", mono: true }],
-        rows: rows.map((r) => [r.name, r.total, ...legendAuthors.map(([, slot]) => r.parts.find((p) => p.slot === slot)?.files ?? 0), r.parts.find((p) => p.slot === -1)?.files ?? 0]),
+        columns: [{ label: "Directory", mono: true, width: "30%" }, { label: "Owner", width: "34%" }, { label: "Files owned", align: "right", mono: true }, { label: "Share of directory", align: "right", mono: true }],
+        rows: rows.flatMap((r) =>
+          r.parts.map((p) => [
+            r.name,
+            p.slot >= 0 ? authorName(git.authors[p.authors[0]!]) : `${formatInt(p.authors.length)} other ${p.authors.length === 1 ? "person" : "people"}`,
+            p.files,
+            { text: formatShare(p.files / r.total), sort: p.files / r.total },
+          ]),
+        ),
       })}
     >
       {(width) => (

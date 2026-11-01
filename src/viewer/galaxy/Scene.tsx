@@ -16,7 +16,7 @@ import { neighbors } from "../model/indices";
 import { useViewer } from "../state/store";
 import { traceContour } from "./contour";
 import type { GalaxyEngine } from "./engine";
-import { LANE_STYLE, buildLaneGeometry, makeLaneMaterial, type Lane } from "./lanes";
+import { ARC_CAP, ARC_LIFT, LANE_STYLE, buildLaneGeometry, makeLaneMaterial, type Lane } from "./lanes";
 import { MOON_FRAGMENT, MOON_VERTEX } from "./shaders";
 import type { SymbolScene } from "./symbolScene";
 
@@ -55,14 +55,21 @@ function FrameBridge({ engine }: { engine: GalaxyEngine }) {
 
 function CameraRig({ engine }: { engine: GalaxyEngine }) {
   const ref = useRef<CameraControls>(null);
+  const get = useThree((s) => s.get);
   const R = engine.radius;
   useEffect(() => {
     engine.controls = ref.current;
-    engine.home(false);
+    // The first frame has not run yet, so the engine does not know the plate's size; framing
+    // against a 1×1 plate would fit nothing.
+    const { size, camera } = get();
+    engine.width = size.width;
+    engine.height = size.height;
+    engine.camera = camera as THREE.PerspectiveCamera;
+    engine.frameInitial();
     return () => {
       engine.controls = null;
     };
-  }, [engine]);
+  }, [engine, get]);
   return (
     <CameraControls
       ref={ref}
@@ -73,6 +80,10 @@ function CameraRig({ engine }: { engine: GalaxyEngine }) {
       minDistance={R * 0.01}
       maxDistance={R * 6}
       dollyToCursor
+      // The reader took the camera: stop re-framing on resize or layout switches.
+      onControlStart={() => {
+        engine.atHome = false;
+      }}
     />
   );
 }
@@ -128,7 +139,9 @@ function RegionOutlines({ engine }: { engine: GalaxyEngine }) {
     const hover = engine.material.uniforms.uHoverRegion!.value as number;
     const m = engine.morph;
     for (const l of lines.current) {
-      const lit = l.region === hover ? 0.75 : l.region === focusRegion ? 0.5 : hover >= 0 ? 0.1 : 0.22;
+      // Outlines are a whisper at rest (eleven of them at once is already a lot of line) and
+      // speak up for the region under the pointer or the open drawer.
+      const lit = l.region === hover ? 0.7 : l.region === focusRegion ? 0.45 : hover >= 0 || focusRegion >= 0 ? 0.06 : 0.13;
       (l.tree.material as THREE.LineBasicMaterial).opacity = lit * (1 - m);
       (l.graph.material as THREE.LineBasicMaterial).opacity = lit * m;
       l.tree.visible = m < 0.999;
@@ -175,8 +188,12 @@ function AllLanes({ engine }: { engine: GalaxyEngine }) {
       if (e.kind[k] === "link") continue;
       lanes.push({ from: e.from[k]!, to: e.to[k]!, style: LANE_STYLE.all, weight: 0, lift: 0 });
     }
+    // Lanes add up (the blend is additive), so a fixed opacity that reads as a whisper at a few
+    // hundred edges became a white web over the stars at a few thousand. Opacity falls with
+    // the square root of the count; hubs, where many lanes meet, still come up brighter.
+    material.uniforms.uOpacity!.value = Math.min(1, Math.sqrt(500 / Math.max(1, lanes.length)));
     return buildLaneGeometry(engine.tree, engine.graph, lanes);
-  }, [engine, mode]);
+  }, [engine, mode, material]);
   useEffect(() => engine.invalidate(), [engine, geometry]);
   return <LaneObject geometry={geometry} material={material} order={2} />;
 }
@@ -216,10 +233,9 @@ function SymbolArcs({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScen
     const lanes: Lane[] = [];
     let max = 1;
     for (const a of scene.arcs) max = Math.max(max, a.calls + a.other);
-    // A few hundred arcs read; past that they become a fog that hides the stars they connect.
-    for (const a of scene.arcs.slice(0, 600)) {
+    for (const a of scene.arcs.slice(0, ARC_CAP)) {
       const weight = Math.log1p(a.calls + a.other) / Math.log1p(max);
-      lanes.push({ from: a.file, to: scene.defFile, style: a.calls > 0 ? LANE_STYLE.call : LANE_STYLE.other, weight, lift: 0.32 });
+      lanes.push({ from: a.file, to: scene.defFile, style: a.calls > 0 ? LANE_STYLE.call : LANE_STYLE.other, weight, lift: ARC_LIFT });
     }
     for (const c of scene.callees.slice(0, 120)) lanes.push({ from: scene.defFile, to: c.file, style: LANE_STYLE.callee, weight: 0.3, lift: -0.22 });
     return lanes.length > 0 ? buildLaneGeometry(engine.tree, engine.graph, lanes) : null;
@@ -309,7 +325,8 @@ function Moons({ engine }: { engine: GalaxyEngine }) {
   const right = useMemo(() => new THREE.Vector3(), []);
   const up = useMemo(() => new THREE.Vector3(), []);
   const p = useMemo(() => new THREE.Vector3(), []);
-  useFrame((state) => {
+  const spin = useRef(0);
+  useFrame((state, delta) => {
     const k = moonList.length;
     if (k === 0 || fileId < 0) return;
     const camera = state.camera as THREE.PerspectiveCamera;
@@ -322,9 +339,12 @@ function Moons({ engine }: { engine: GalaxyEngine }) {
     right.setFromMatrixColumn(camera.matrixWorld, 0);
     up.setFromMatrixColumn(camera.matrixWorld, 1);
     const pos = geometry.getAttribute("position") as THREE.BufferAttribute;
-    const spin = engine.reducedMotion ? 0 : engine.clock * 0.12;
+    // The ring turns slowly so moons do not sit on the same lanes forever, and holds still
+    // while one is under the pointer: a moving target drifted a neighbor under the cursor
+    // between hover and click.
+    if (!engine.reducedMotion && engine.hoverMoon < 0) spin.current += Math.min(delta, 0.1) * 0.12;
     for (let i = 0; i < k; i++) {
-      const a = (i / k) * Math.PI * 2 + spin;
+      const a = (i / k) * Math.PI * 2 + spin.current;
       // Two radii alternate so neighbors on a crowded ring do not touch.
       const r = ringPx * (i % 2 === 0 ? 1 : 1.22) * worldPerPx;
       p.copy(center).addScaledVector(right, Math.cos(a) * r).addScaledVector(up, Math.sin(a) * r);

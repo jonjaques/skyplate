@@ -119,7 +119,13 @@ export function encodeEmphasis(model: Model, input: EmphasisInput, out: Float32A
   }
 
   if (symbolLight) {
-    for (let i = 0; i < n; i++) out[i] = Math.min(out[i]!, 1) * symbolLight[i]!;
+    // A symbol's neighborhood lights across the whole project, open drawer or not: the point
+    // is to see every place that uses it, and a caller in another drawer is exactly the
+    // surprise worth seeing. Filters still dim what they exclude.
+    for (let i = 0; i < n; i++) {
+      const filtered = filtering && !passesFilters(model, i, filters);
+      out[i] = (filtered ? DIM : 1) * symbolLight[i]!;
+    }
     return;
   }
   if (!selection) return;

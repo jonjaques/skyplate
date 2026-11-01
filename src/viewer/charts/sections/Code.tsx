@@ -17,7 +17,7 @@ import { Figure } from "../kit/Figure";
 import { Log2Histogram } from "../kit/Log2Histogram";
 import { measureColor, slotColor } from "../kit/theme";
 import { useScope } from "../scope";
-import { Section, span } from "../Section";
+import { Section, SectionNote, span } from "../Section";
 import { formatShare } from "../kit/marks";
 
 const KIND_LABEL: Record<SymbolKind, string> = {
@@ -49,7 +49,19 @@ export function CodeSection() {
     if (report.symbols) void ensureSymbols();
   }, [report]);
 
-  if (!report.symbols) return null;
+  if (!report.symbols) {
+    // A sentence, not a missing section: a reader who has seen another report's symbol charts
+    // should learn why this one has none, and what would produce them.
+    return (
+      <Section id="code" title="Code intelligence">
+        <SectionNote>
+          No symbol tables in this report. Code intelligence (symbols, references, unused exports, function complexity)
+          comes from the TypeScript compiler, so it covers TypeScript and JavaScript files, and is left out when there are
+          none or when the report is written with <code className="font-mono text-[12px] whitespace-nowrap">--no-symbols</code>.
+        </SectionNote>
+      </Section>
+    );
+  }
   const st = report.symbols.stats;
   const note = `${plural(st.symbols, "symbol")} and ${plural(st.references, "reference")} in ${plural(st.files, "file")}, from the TypeScript compiler ${report.symbols.engine.version}`;
   return (
@@ -57,11 +69,11 @@ export function CodeSection() {
       {status === "ready" && symbols ? (
         <CodeCharts symbols={symbols} />
       ) : (
-        <p className="col-span-12 bg-tray px-5 py-5 text-sm text-ink-2" role="status">
+        <SectionNote role="status">
           {status === "error"
             ? `The symbol tables could not be loaded (${report.symbols.url}). The rest of the report is unaffected; reload to try again.`
             : "Loading the symbol tables…"}
-        </p>
+        </SectionNote>
       )}
     </Section>
   );

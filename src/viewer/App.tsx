@@ -12,7 +12,7 @@
  * and its frame loop alive behind the explorer; remounting it on return is the cheaper cost.
  */
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { SCHEMA_VERSION } from "../shared/schema";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "./components/ui/sheet";
 import { ScrollArea } from "./components/ui/scroll-area";
@@ -103,7 +103,10 @@ function Shell({ state }: { state: LoadState }) {
   useGlobalShortcuts();
 
   const sheetRail = bp === "narrow" || bp === "compact";
-  const showRecord = ready && tab !== "charts";
+  // While the report loads the record keeps its column (a skeleton holds the page's shape).
+  // A missing or broken report has nothing to describe, so the message gets the full width
+  // instead of sitting beside a skeleton that would never fill.
+  const showRecord = ready ? tab !== "charts" : state.status === "loading";
 
   const work = ready ? (
     <WorkArea bp={bp} />
@@ -122,11 +125,17 @@ function Shell({ state }: { state: LoadState }) {
   );
 
   return (
-    <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="h-full gap-0">
+    <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className={cn("gap-0", sheetRail ? "min-h-full" : "h-full")}>
       {sheetRail ? (
-        <div className="flex h-full min-h-0 flex-col">
-          <TopBar bp={bp} />
-          <div className="min-h-0 flex-1 overflow-y-auto">
+        // Below 1024px the document itself scrolls, under a sticky top bar. An inner scroller
+        // kept phone browsers from collapsing their toolbars on scroll, so the plate and trays
+        // only ever had the smaller viewport, and printing or capturing the page cut off
+        // everything below the first screen.
+        <div className="flex min-h-full flex-col">
+          <div className="sticky top-0 z-30">
+            <TopBar bp={bp} ready={ready} />
+          </div>
+          <div className="flex-1">
             <main className="min-w-0">{work}</main>
             {showRecord && (
               <aside aria-label="Accession record" className="border-t border-ink bg-paper">
@@ -142,15 +151,15 @@ function Shell({ state }: { state: LoadState }) {
             <Rail />
           </nav>
           <div className="grid min-h-0 min-w-0 grid-rows-[52px_minmax(0,1fr)]">
-            <TopBar bp={bp} />
+            <TopBar bp={bp} ready={ready} />
             <div className="flex min-h-0 min-w-0">
               <main className="relative min-h-0 min-w-0 flex-1">{work}</main>
-              {(showRecord || !ready) && (
+              {showRecord && (
                 <aside
                   aria-label="Accession record"
                   className={cn("min-h-0 shrink-0 border-l border-rule bg-paper", bp === "wide" ? "w-[340px]" : "w-[300px]")}
                 >
-                  <ScrollArea className="h-full [&_[data-slot=scroll-area-viewport]>div]:!block">{record}</ScrollArea>
+                  <RecordScroll>{record}</RecordScroll>
                 </aside>
               )}
             </div>
@@ -164,6 +173,26 @@ function Shell({ state }: { state: LoadState }) {
         </>
       )}
     </Tabs>
+  );
+}
+
+/**
+ * The record column's scroller. A new subject starts at its heading: without this, picking a
+ * file while scrolled to the bottom of a long symbol record opened the file's record at its
+ * bottom too. Keyed on kind and id, not object identity, because a reference click puts the
+ * same symbol back as a fresh object and must not jump the record the reader is working in.
+ */
+function RecordScroll({ children }: { children: ReactNode }) {
+  const host = useRef<HTMLDivElement>(null);
+  const subject = useViewer((s) => (s.selection ? `${s.selection.kind}:${s.selection.id}` : ""));
+  useEffect(() => {
+    const viewport = host.current?.querySelector<HTMLElement>("[data-slot=scroll-area-viewport]");
+    if (viewport) viewport.scrollTop = 0;
+  }, [subject]);
+  return (
+    <ScrollArea ref={host} className="h-full [&_[data-slot=scroll-area-viewport]>div]:!block">
+      {children}
+    </ScrollArea>
   );
 }
 
@@ -261,8 +290,9 @@ function MissingReport() {
         <h1 className="text-2xl font-semibold [font-stretch:85%]">No report in this folder</h1>
         <p className="mt-3 text-plate-muted">
           The viewer looks for <code className="font-mono text-plate-ink">data/report.js</code> next to this page and did not
-          find it. Run <code className="font-mono text-plate-ink">starchart &lt;path&gt;</code> on a project, then open the
-          folder it writes; starchart serves it for you.
+          find it. Run <code className="font-mono text-plate-ink">starchart &lt;path&gt; --open</code> on a project: it writes
+          the report folder and opens it here. For a folder you already have,{" "}
+          <code className="font-mono text-plate-ink">starchart serve &lt;dir&gt;</code> does the same.
         </p>
       </div>
     </div>

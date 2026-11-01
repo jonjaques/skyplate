@@ -7,13 +7,14 @@ import { BookOpen } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { FileRecord as FileRec, Report } from "../../../shared/schema";
 import { Button } from "../../components/ui/button";
-import { formatAgo, formatBytes, formatInt, formatIsoDate, formatPercent, plural, shortenPath } from "../../lib/format";
+import { formatAgo, formatBytes, formatInt, formatIsoDate, formatPercent, plural } from "../../lib/format";
 import { neighbors, type Model } from "../../model/indices";
 import { useViewer } from "../../state/store";
 import { collectorsOf } from "../derived";
 import { SYMBOL_KIND_LABEL } from "../labels";
 import { accession, openFile, show } from "../navigate";
 import { CategorySwatch, LanguageSwatch, MetricGrid, MoreButton, Quiet, RowButton, Section, Tag, type Metric, PathText } from "../parts";
+import { describeUnavailable, sourceUnavailable } from "../../source/availability";
 import { RecordHeading } from "./common";
 
 const CATEGORY_LABEL: Record<FileRec["category"], string> = {
@@ -122,11 +123,26 @@ export function FileRecordView({ report, model, file }: { report: Report; model:
       <FileList title="Imported by" ids={neighbors(model.importedBy, file.id)} report={report} empty="Nothing in this project imports it." />
       <DeclaredSymbols file={file} />
 
-      <Button onClick={() => openFile(file.id)} className="w-full">
-        <BookOpen />
-        Open in source reader
-      </Button>
+      <OpenInReader report={report} file={file} />
     </div>
+  );
+}
+
+/**
+ * Hidden while the reader beside the record already shows this file (it would do nothing), and
+ * replaced by the reason when the report holds no text for it: a button that only leads to
+ * "nothing to read here" is a wasted trip. Images keep the button; the reader previews them.
+ */
+function OpenInReader({ report, file }: { report: Report; file: FileRec }) {
+  const reading = useViewer((s) => s.tab === "source" && s.source?.file === file.id);
+  if (reading) return null;
+  const reason = file.asset ? null : sourceUnavailable(report, file);
+  if (reason) return <Quiet className="border-t border-rule pt-2 text-xs">{describeUnavailable(report, file, reason).title}.</Quiet>;
+  return (
+    <Button onClick={() => openFile(file.id)} className="w-full">
+      <BookOpen />
+      Open in source reader
+    </Button>
   );
 }
 

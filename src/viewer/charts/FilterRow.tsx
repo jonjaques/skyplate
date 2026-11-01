@@ -85,7 +85,9 @@ export function FilterRow({ scope, range, onRange }: { scope: ChartScope; range:
           ))}
         </ToggleGroup>
       ) : (
-        <span className="text-xs text-ink-3">No commit history in this report</span>
+        <span className="text-xs text-ink-3">
+          {report.git ? "One commit, so there is no time range to narrow" : "No commit history in this report"}
+        </span>
       )}
 
       <MultiSelect

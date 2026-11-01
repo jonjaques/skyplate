@@ -94,7 +94,10 @@ export function summarizeDir(model: Model, dir: number): DirSummary {
   let codeLines = 0;
   for (const id of ids) {
     const f = report.files[id]!;
-    const weight = f.code + f.comment;
+    // Code lines only, the measure the Language composition tray uses: the record sits beside
+    // that tray for the same drawer, and weighting comments in here gave it different shares
+    // for the same languages.
+    const weight = f.code;
     if (weight > 0) {
       langs.set(f.language, (langs.get(f.language) ?? 0) + weight);
       codeLines += weight;

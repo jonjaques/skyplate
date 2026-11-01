@@ -207,7 +207,9 @@ function Results({ query, close, setActive }: { query: string; close(): void; se
           })}
         </CommandGroup>
       )}
-      {report.symbols && (
+      {/* The group shows while the tables load (so a symbol search is not mistaken for "no
+          match"), and after that only when something matched. */}
+      {report.symbols && (symbolsStatus !== "ready" || hits.symbols.length > 0) && (
         <CommandGroup heading="Symbols">
           {symbolsStatus === "loading" || symbolsStatus === "idle" ? (
             <CommandItem disabled value="symbols-loading">
@@ -295,6 +297,11 @@ function ActionGroup({ actions }: { actions: Action[] }) {
   );
 }
 
+/** A label inside a sentence: lowercased, except a name like PageRank, which keeps its case. */
+function phrase(label: string): string {
+  return /[a-z][A-Z]/.test(label) ? label : label.toLowerCase();
+}
+
 function useActions(close: () => void): Action[] {
   const hasGit = useViewer((s) => !!s.report?.git);
   const colorBy = useViewer((s) => s.colorBy);
@@ -311,7 +318,7 @@ function useActions(close: () => void): Action[] {
       .filter((m) => m !== colorBy)
       .map<Action>((m) => ({
         id: `color-${m}`,
-        label: `Color by ${COLOR_BY_LABEL[m].toLowerCase()}`,
+        label: `Color by ${phrase(COLOR_BY_LABEL[m])}`,
         icon: <Palette />,
         run: done(() => s().setColorBy(m)),
         disabled: !hasGit && NEEDS_GIT.has(m),
@@ -320,7 +327,7 @@ function useActions(close: () => void): Action[] {
       .filter((m) => m !== sizeBy)
       .map<Action>((m) => ({
         id: `size-${m}`,
-        label: `Size by ${SIZE_BY_LABEL[m].toLowerCase()}`,
+        label: `Size by ${phrase(SIZE_BY_LABEL[m])}`,
         icon: <Ruler />,
         run: done(() => s().setSizeBy(m)),
         disabled: !hasGit && NEEDS_GIT.has(m),

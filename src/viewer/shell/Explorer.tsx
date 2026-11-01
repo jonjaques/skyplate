@@ -38,30 +38,34 @@ export function Explorer() {
     if (mode === "symbols") void ensureSymbols();
   }, [mode]);
 
+  const toggle = hasSymbols ? (
+    <ToggleGroup
+      type="single"
+      value={mode}
+      onValueChange={(v) => v && setMode(v as "files" | "symbols")}
+      variant="outline"
+      size="sm"
+      aria-label="Show files or symbols"
+    >
+      <ToggleGroupItem value="files" className="h-8 px-3 text-ink-3 data-[state=on]:bg-wash data-[state=on]:font-semibold data-[state=on]:text-ink">
+        Files
+      </ToggleGroupItem>
+      <ToggleGroupItem value="symbols" className="h-8 px-3 text-ink-3 data-[state=on]:bg-wash data-[state=on]:font-semibold data-[state=on]:text-ink">
+        Symbols
+      </ToggleGroupItem>
+    </ToggleGroup>
+  ) : null;
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-paper">
-      <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-rule px-4 py-2">
-        {hasSymbols && (
-          <ToggleGroup
-            type="single"
-            value={mode}
-            onValueChange={(v) => v && setMode(v as "files" | "symbols")}
-            variant="outline"
-            size="sm"
-            aria-label="Show files or symbols"
-          >
-            <ToggleGroupItem value="files" className="h-8 px-3 data-[state=on]:bg-wash">
-              Files
-            </ToggleGroupItem>
-            <ToggleGroupItem value="symbols" className="h-8 px-3 data-[state=on]:bg-wash">
-              Symbols
-            </ToggleGroupItem>
-          </ToggleGroup>
-        )}
-        {mode === "symbols" && hasSymbols ? <SymbolToolbar /> : <FileToolbar />}
-      </div>
-      <div className="min-h-0 flex-1">{mode === "symbols" && hasSymbols ? <SymbolTable /> : <FileTable />}</div>
+      {mode === "symbols" && hasSymbols ? <SymbolView toggle={toggle} /> : <FileView toggle={toggle} />}
     </div>
+  );
+}
+
+function Toolbar({ children }: { children: ReactNode }) {
+  return (
+    <div className="flex min-h-12 shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b border-rule px-4 py-2">{children}</div>
   );
 }
 
@@ -93,12 +97,27 @@ function FilterInput({ value, onChange, placeholder }: { value: string; onChange
 
 // ─── Files ───────────────────────────────────────────────────────────────────────────────────
 
+/** Columns that only exist with git history. */
+const GIT_SORT_KEYS = new Set<FileSortKey>(["commits", "owner", "hotspot"]);
+const NO_GIT_SORT = { key: "lines", dir: "desc" } as const satisfies { key: FileSortKey; dir: SortDir };
+
+/**
+ * The sort actually applied. The default is hotspot, which a report without git does not have
+ * (every score is 0, and the column is not even drawn), so the table would come out in an order
+ * no visible header explains; largest first is the next most useful reading order.
+ */
+function useFileSort(): { key: FileSortKey; dir: SortDir } {
+  const sort = useShell((s) => s.fileSort);
+  const git = useViewer((s) => !!s.report?.git);
+  return !git && GIT_SORT_KEYS.has(sort.key) ? NO_GIT_SORT : sort;
+}
+
 function useFileRows(): number[] {
   const report = useViewer((s) => s.report);
   const model = useViewer((s) => s.model);
   const focusDir = useViewer((s) => s.focusDir);
   const filter = useShell((s) => s.fileFilter);
-  const sort = useShell((s) => s.fileSort);
+  const sort = useFileSort();
   return useMemo(() => {
     if (!report || !model) return [];
     const terms = filter.toLowerCase().split(/\s+/).filter(Boolean);
@@ -141,12 +160,46 @@ function sortIds(ids: number[], key: (id: number) => number | string, dir: SortD
   });
 }
 
-function FileToolbar() {
+/**
+ * The toolbar's count and the table read the same filtered, sorted rows. Each call of the row
+ * hook owns its own memo, so calling it in both would sort a 50k-file list twice per keystroke;
+ * it runs once here and both parts receive the result.
+ */
+function FileView({ toggle }: { toggle: ReactNode }) {
+  const rows = useFileRows();
+  return (
+    <>
+      <Toolbar>
+        {toggle}
+        <FileToolbar rows={rows} />
+      </Toolbar>
+      <div className="min-h-0 flex-1">
+        <FileTable rows={rows} />
+      </div>
+    </>
+  );
+}
+
+function SymbolView({ toggle }: { toggle: ReactNode }) {
+  const rows = useSymbolRows();
+  return (
+    <>
+      <Toolbar>
+        {toggle}
+        <SymbolToolbar rows={rows} />
+      </Toolbar>
+      <div className="min-h-0 flex-1">
+        <SymbolTable rows={rows} />
+      </div>
+    </>
+  );
+}
+
+function FileToolbar({ rows }: { rows: number[] }) {
   const filter = useShell((s) => s.fileFilter);
   const setFilter = useShell((s) => s.setFileFilter);
   const focusDir = useViewer((s) => s.focusDir);
   const report = useViewer((s) => s.report);
-  const rows = useFileRows();
   return (
     <>
       <FilterInput value={filter} onChange={setFilter} placeholder="Filter by path" />
@@ -263,13 +316,12 @@ function VirtualTable({
   );
 }
 
-function FileTable() {
+function FileTable({ rows }: { rows: number[] }) {
   const report = useViewer((s) => s.report);
   const model = useViewer((s) => s.model);
   const selection = useViewer((s) => s.selection);
-  const sort = useShell((s) => s.fileSort);
+  const sort = useFileSort();
   const setSort = useShell((s) => s.setFileSort);
-  const rows = useFileRows();
   const selectedId = selection?.kind === "file" ? selection.id : -1;
   const selectedIndex = useMemo(() => rows.indexOf(selectedId), [rows, selectedId]);
   if (!report || !model) return null;
@@ -392,14 +444,13 @@ function useSymbolRows(): number[] {
   }, [report, symbols, sm, model, filter, kind, sort, focusDir]);
 }
 
-function SymbolToolbar() {
+function SymbolToolbar({ rows }: { rows: number[] }) {
   const filter = useShell((s) => s.symbolFilter);
   const setFilter = useShell((s) => s.setSymbolFilter);
   const kind = useShell((s) => s.symbolKind);
   const setKind = useShell((s) => s.setSymbolKind);
   const focusDir = useViewer((s) => s.focusDir);
   const report = useViewer((s) => s.report);
-  const rows = useSymbolRows();
   const status = useViewer((s) => s.symbolsStatus);
   return (
     <>
@@ -428,14 +479,13 @@ function SymbolToolbar() {
   );
 }
 
-function SymbolTable() {
+function SymbolTable({ rows }: { rows: number[] }) {
   const report = useViewer((s) => s.report);
   const symbols = useViewer((s) => s.symbols);
   const status = useViewer((s) => s.symbolsStatus);
   const selection = useViewer((s) => s.selection);
   const sort = useShell((s) => s.symbolSort);
   const setSort = useShell((s) => s.setSymbolSort);
-  const rows = useSymbolRows();
   const selectedId = selection?.kind === "symbol" ? selection.id : -1;
   const selectedIndex = useMemo(() => rows.indexOf(selectedId), [rows, selectedId]);
 

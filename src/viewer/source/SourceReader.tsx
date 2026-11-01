@@ -29,6 +29,7 @@ import { openSymbolDefinition } from "../shell/navigate";
 import { LanguageSwatch, PathText, RowButton } from "../shell/parts";
 import { useShell } from "../shell/shell-state";
 import { CodeView, type CodeMark, type CodeRange } from "./CodeView";
+import { describeUnavailable } from "./availability";
 import { grammarFor, htmlToLines, loadHighlighter, plainLines, type Tok } from "./highlight";
 import { useSourceText } from "./useSource";
 
@@ -38,7 +39,10 @@ const HIGHLIGHT_MAX_LINE = 4_000;
 
 const highlighted = new Map<number, Tok[][]>();
 
-function useLines(file: FileRecord, text: string | null): { lines: Tok[][]; highlighting: boolean } {
+function useLines(file: FileRecord, raw: string | null): { lines: Tok[][]; highlighting: boolean } {
+  // A file's final newline ends its last line; it does not start another. Splitting the raw
+  // text would draw a phantom numbered line past the end ("82" under an 81-line file).
+  const text = raw !== null && raw.endsWith("\n") ? raw.slice(0, raw.endsWith("\r\n") ? -2 : -1) : raw;
   const plain = useMemo(() => (text === null ? [] : plainLines(text)), [text]);
   // lines: null records "settled as plain text" (no grammar, or the highlighter did not load),
   // so the progress mark stops instead of spinning for languages highlight.js does not know.
@@ -207,17 +211,23 @@ function FileReader({ report, file, target }: { report: Report; file: FileRecord
     select({ kind: "symbol", id: sym });
   };
 
+  const languageName = report.languages.find((l) => l.id === file.language)?.name ?? file.language;
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-paper">
-      <div className="flex h-11 shrink-0 items-center gap-3 border-b border-rule px-4">
+      {/* The reader shares its row with the plate, so its width is the split's, not the
+          viewport's: the header sheds facts by container width (language name, then line
+          count, then reference count) so the path, the one thing it is for, keeps its room. */}
+      <div className="@container flex h-11 shrink-0 items-center gap-3 border-b border-rule px-4">
         <h2 className="flex min-w-0 text-[12.5px] text-ink">
           <PathText path={file.path} />
         </h2>
-        <span className="flex shrink-0 items-center gap-1.5 text-xs text-ink-2">
+        <span className="flex shrink-0 items-center gap-1.5 text-xs text-ink-2" title={languageName}>
           <LanguageSwatch languageId={file.language} />
-          {report.languages.find((l) => l.id === file.language)?.name ?? file.language}
+          <span className="hidden @3xl:inline">{languageName}</span>
+          <span className="sr-only @3xl:hidden">{languageName}</span>
         </span>
-        {file.lines > 0 && <span className="figures shrink-0 font-mono text-xs text-ink-3">{plural(file.lines, "line")}</span>}
+        {file.lines > 0 && <span className="figures hidden shrink-0 font-mono text-xs text-ink-3 @xl:inline">{plural(file.lines, "line")}</span>}
         <span className="ml-auto flex shrink-0 items-center gap-3">
           <IntelStatus status={symbolsStatus} analyzed={analyzed} refCount={refCount} hasSymbols={!!report.symbols} file={file} />
           {highlighting && <LoaderCircle aria-label="Highlighting" className="size-3.5 animate-spin text-ink-3" />}
@@ -288,7 +298,7 @@ function IntelStatus({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="figures hidden cursor-default items-center gap-1.5 font-mono text-xs text-ink-3 xl:flex">
+        <span className="figures hidden cursor-default items-center gap-1.5 font-mono text-xs text-ink-3 @2xl:flex">
           {plural(refCount, "reference")}
         </span>
       </TooltipTrigger>
@@ -349,33 +359,8 @@ function AssetStrip({ file }: { file: FileRecord }) {
   );
 }
 
-const REASON: Record<SourceUnavailable, (report: Report, file: FileRecord) => { title: string; body: string }> = {
-  secret: () => ({
-    title: "Contents withheld: this file looks like it holds credentials",
-    body: "starchart never embeds files that look like keys, tokens or .env secrets, whatever the report options say. Its size and history are still measured.",
-  }),
-  binary: (_, file) => ({
-    title: file.asset ? "An image, shown as a preview" : "A binary file has no text to read",
-    body: file.facts?.format
-      ? `The analyzer read its header as ${file.facts.format}${file.facts.width ? `, ${file.facts.width} × ${file.facts.height} px` : ""}.`
-      : `${formatBytes(file.bytes)} of binary data.`,
-  }),
-  disabled: () => ({
-    title: "This report was written without source",
-    body: "It was generated with --no-source, so file contents were left out for sharing. Metrics, history, imports and symbols are all still here.",
-  }),
-  "too-large": (report, file) => ({
-    title: "Over the size cap for embedded source",
-    body: `At ${formatBytes(file.bytes)}, this file is over the ${formatBytes(report.source?.maxFileBytes ?? 0)} per-file cap (or the report's total budget ran out), so its contents were left out.`,
-  }),
-  missing: () => ({
-    title: "The source for this file could not be loaded",
-    body: "Its chunk under data/source did not load. If the report was copied, check that the data folder came with it.",
-  }),
-};
-
 function NoSource({ report, file, reason }: { report: Report; file: FileRecord; reason: SourceUnavailable }) {
-  const { title, body } = REASON[reason](report, file);
+  const { title, body } = describeUnavailable(report, file, reason);
   const Icon = reason === "secret" ? Lock : file.asset ? ImageIcon : FileX;
   return (
     <div className="h-full overflow-auto">

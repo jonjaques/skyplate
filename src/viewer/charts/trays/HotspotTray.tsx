@@ -114,16 +114,20 @@ export function HotspotTray() {
             : undefined
         }
       >
-        <span className="flex min-w-0 items-center gap-2">
+        {/* In a narrow tray the file name takes its own line instead of shrinking to "harn…". */}
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2">
           {severe ? (
             <StatusMark level="warning" label="Top hotspot" />
           ) : (
-            <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold text-ink">
+            <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold whitespace-nowrap text-ink">
               <Flame aria-hidden className="size-4 text-ink-2" />
               Top hotspot
             </span>
           )}
-          <span className={cn("min-w-0 truncate font-mono text-[11px] text-ink", selectedId === top.id && "font-semibold")} title={top.path}>
+          <span
+            className={cn("min-w-0 truncate font-mono text-[11px] text-ink @max-[249px]:basis-full", selectedId === top.id && "font-semibold")}
+            title={top.path}
+          >
             {baseName(top.path)}
           </span>
         </span>

@@ -42,6 +42,18 @@ export interface FrameInfo {
 
 export type FrameListener = (info: FrameInfo) => void;
 
+/** Plate edges covered by chrome (title, legend, scrubber), in CSS px. Framing keeps clear of them. */
+export interface Insets {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/** The default three-quarter view: from below the disc's south edge, ~40° above its plane. */
+const HOME_DIRECTION = new THREE.Vector3(0, -1.45, 1.25).normalize();
+const WORLD_UP = new THREE.Vector3(0, 0, 1);
+
 const SECONDS_PER_DAY = 86400;
 /** Morph time constant (s). Exponential approach: damped, no overshoot, ~0.8 s to settle. */
 const MORPH_TAU = 0.2;
@@ -85,6 +97,18 @@ export class GalaxyEngine {
   width = 1;
   height = 1;
   invalidate: () => void = () => {};
+  /**
+   * Called once the camera controls exist. The view replaces it to frame whatever is already
+   * selected (a shared link opens on its selection); by default, the whole collection.
+   */
+  frameInitial: () => void = () => this.home(false);
+  /** Chrome insets, measured by the view (see GalaxyView); none until it says otherwise. */
+  insets: () => Insets = () => ({ top: 0, right: 0, bottom: 0, left: 0 });
+  /**
+   * The camera is still where home() put it. While true, a resize or a layout switch re-frames
+   * the whole collection; once the reader orbits or a flight runs, the camera is theirs.
+   */
+  atHome = false;
 
   /** A selected file's moons: symbol ids, their screen positions (CSS px, stride 2), the file. */
   moonSymbols: number[] = [];
@@ -104,6 +128,8 @@ export class GalaxyEngine {
   private gridItems: Int32Array;
   private gridCols = 0;
   private gridRows = 0;
+  private sat = new Float32Array(0);
+  private densityAge = 0;
   private projKey = "";
   private lastMatrix = new Float32Array(16);
   private projMorph = -1;
@@ -181,8 +207,8 @@ export class GalaxyEngine {
         uSizeScale: { value: 1000 },
         // Star sizes as fractions of the galaxy radius: framed whole, the smallest file is a
         // ~2 px point and the largest ~12 px, and zooming in grows them like real distance.
-        uBaseSize: { value: R * 0.0042 },
-        uSizeRange: { value: R * 0.02 },
+        uBaseSize: { value: R * 0.0046 },
+        uSizeRange: { value: R * 0.021 },
         uMinPx: { value: 1.6 },
         uMaxPx: { value: 40 },
         uHover: { value: -1 },
@@ -290,21 +316,145 @@ export class GalaxyEngine {
 
   // ─── Camera ────────────────────────────────────────────────────────────────────────────────
 
-  /** Frame the whole collection from the default three-quarter view. */
-  home(animate: boolean): void {
-    const c = this.controls;
-    if (!c) return;
-    const R = this.radius;
-    const transition = animate && !this.reducedMotion;
-    void c.setLookAt(0, -R * 1.45, R * 1.25, 0, 0, 0, transition);
-    void c.fitToSphere(new THREE.Sphere(new THREE.Vector3(), R * 0.82), transition);
+  /**
+   * Fit a set of files (all of them when null) into the plate's free area, seen along
+   * `direction` (unit, target → camera). Returns where the camera should look and from how far,
+   * plus the focal offset that moves the picture clear of the chrome.
+   *
+   * camera-controls' fitToSphere was used first. A sphere is the wrong shape for a tilted disc:
+   * the disc projects as a wide ellipse, so a sphere fitted to the plate's height left a third
+   * of the width empty, and it ignored the title and scrubber, which sat on top of stars.
+   * Instead this fits the files' actual projected extent: a binary search on distance (the
+   * projection is perspective, so near and far files scale differently), with the target moved
+   * to the middle of what is visible so orbiting pivots around the picture, not beside it.
+   */
+  framePose(files: ArrayLike<number> | null, direction: THREE.Vector3, minRadius: number, extra: readonly number[] = []) {
+    const camera = this.camera;
+    const W = Math.max(1, this.width);
+    const H = Math.max(1, this.height);
+    const ins = this.insets();
+    const tanV = Math.tan(THREE.MathUtils.degToRad((camera?.fov ?? 40) / 2));
+    const tanH = tanV * (W / H);
+    // The free rectangle in normalized device coordinates (−1…1), with a little air.
+    const x0 = -1 + (2 * ins.left) / W;
+    const x1 = 1 - (2 * ins.right) / W;
+    const y0 = -1 + (2 * ins.bottom) / H;
+    const y1 = 1 - (2 * ins.top) / H;
+    const freeW = Math.max(0.2, x1 - x0) * 0.94;
+    const freeH = Math.max(0.2, y1 - y0) * 0.94;
+
+    const back = direction.clone().normalize();
+    const right = new THREE.Vector3().crossVectors(WORLD_UP, back);
+    if (right.lengthSq() < 1e-8) right.set(1, 0, 0);
+    right.normalize();
+    const up = new THREE.Vector3().crossVectors(back, right).normalize();
+
+    // Positions in the layout the morph is heading to; a stride keeps 50k-file reports cheap.
+    const count = files ? files.length : this.n;
+    const stride = Math.max(1, Math.ceil(count / 12000));
+    const pts: number[] = [];
+    const v = new THREE.Vector3();
+    for (let k = 0; k < count; k += stride) {
+      this.filePos(files ? files[k]! : k, v, this.morphTarget);
+      pts.push(v.x, v.y, v.z);
+    }
+    // Points that are not files but must be in view too (the apexes of a symbol's arcs).
+    for (let k = 0; k + 2 < extra.length; k += 3) pts.push(extra[k]!, extra[k + 1]!, extra[k + 2]!);
+    const m = pts.length / 3;
+    const target = new THREE.Vector3();
+    if (m === 0) return { target, distance: this.radius * 2, focal: [0, 0] as [number, number] };
+    const lo = new THREE.Vector3(Infinity, Infinity, Infinity);
+    const hi = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+    for (let k = 0; k < m; k++) {
+      v.fromArray(pts, k * 3);
+      lo.min(v);
+      hi.max(v);
+    }
+    target.addVectors(lo, hi).multiplyScalar(0.5);
+
+    // NDC extents of the points from distance D along `back`, centered on `target`.
+    const extents = (D: number) => {
+      let ax = Infinity;
+      let bx = -Infinity;
+      let ay = Infinity;
+      let by = -Infinity;
+      for (let k = 0; k < m; k++) {
+        const dx = pts[k * 3]! - target.x;
+        const dy = pts[k * 3 + 1]! - target.y;
+        const dz = pts[k * 3 + 2]! - target.z;
+        const w = D - (dx * back.x + dy * back.y + dz * back.z);
+        if (w <= D * 0.02) return null; // behind or at the lens: too close
+        const sx = (dx * right.x + dy * right.y + dz * right.z) / (w * tanH);
+        const sy = (dx * up.x + dy * up.y + dz * up.z) / (w * tanV);
+        if (sx < ax) ax = sx;
+        if (sx > bx) bx = sx;
+        if (sy < ay) ay = sy;
+        if (sy > by) by = sy;
+      }
+      return { ax, bx, ay, by };
+    };
+    const fits = (D: number) => {
+      const e = extents(D);
+      return !!e && e.bx - e.ax <= freeW && e.by - e.ay <= freeH;
+    };
+    const span = Math.max(hi.distanceTo(lo), minRadius * 2, 1e-3);
+    // A sphere of minRadius must fit too, so a single file is shown with some surroundings.
+    const minD = minRadius / Math.sin(Math.atan(Math.min(tanV * freeH, tanH * freeW) / 2));
+    let D = minD;
+    for (let pass = 0; pass < 3; pass++) {
+      let a = minD;
+      let b = Math.max(minD * 2, span * 8);
+      if (!fits(a)) {
+        for (let i = 0; i < 28; i++) {
+          const mid = (a + b) / 2;
+          if (fits(mid)) b = mid;
+          else a = mid;
+        }
+        D = b;
+      } else D = a;
+      // Re-center the target on the visible middle, then fit again from there.
+      const e = extents(D);
+      if (!e) break;
+      target.addScaledVector(right, ((e.ax + e.bx) / 2) * D * tanH).addScaledVector(up, ((e.ay + e.by) / 2) * D * tanV);
+    }
+    // The free rectangle's center, as a camera shift. camera-controls moves the camera by
+    // −focal.y along its up axis, so a positive y lifts the picture.
+    const cx = (x0 + x1) / 2;
+    const cy = (y0 + y1) / 2;
+    return { target, distance: D, focal: [-cx * D * tanH, cy * D * tanV] as [number, number] };
   }
 
-  fly(sphere: THREE.Sphere): void {
+  /** Move the camera to a pose from framePose, eased (critically damped, no overshoot) unless asked not to. */
+  private applyPose(pose: ReturnType<GalaxyEngine["framePose"]>, direction: THREE.Vector3, animate: boolean): void {
     const c = this.controls;
     if (!c) return;
-    // camera-controls eases with a critically damped spring (smoothDamp): no overshoot.
-    void c.fitToSphere(sphere, !this.reducedMotion);
+    const transition = animate && !this.reducedMotion;
+    const p = pose.target.clone().addScaledVector(direction, pose.distance);
+    void c.setLookAt(p.x, p.y, p.z, pose.target.x, pose.target.y, pose.target.z, transition);
+    void c.setFocalOffset(pose.focal[0], pose.focal[1], 0, transition);
+    this.invalidate();
+  }
+
+  /** Frame the whole collection from the default three-quarter view. */
+  home(animate: boolean): void {
+    if (!this.controls) return;
+    this.applyPose(this.framePose(null, HOME_DIRECTION, this.radius * 0.1), HOME_DIRECTION, animate);
+    this.atHome = true;
+  }
+
+  /** Fly to a set of files, keeping the current viewing direction. */
+  fly(files: ArrayLike<number>, minRadius = this.radius * 0.06, extra: readonly number[] = [], animate = true): void {
+    const c = this.controls;
+    if (!c || files.length === 0) return;
+    const dir = new THREE.Vector3();
+    c.getPosition(dir);
+    const t = new THREE.Vector3();
+    c.getTarget(t);
+    dir.sub(t);
+    if (dir.lengthSq() < 1e-9) dir.copy(HOME_DIRECTION);
+    dir.normalize();
+    this.applyPose(this.framePose(files, dir, minRadius, extra), dir, animate);
+    this.atHome = false;
   }
 
   // ─── Frame bus ─────────────────────────────────────────────────────────────────────────────
@@ -318,8 +468,12 @@ export class GalaxyEngine {
   /** Called once per rendered frame from inside the Canvas, before the scene renders. */
   tick(camera: THREE.PerspectiveCamera, width: number, height: number, dpr: number, delta: number): void {
     this.camera = camera;
+    const resized = width !== this.width || height !== this.height;
     this.width = width;
     this.height = height;
+    // The plate changed size (window resize, the record column toggled): keep the whole
+    // collection framed if the reader has not taken the camera.
+    if (resized && this.atHome) this.home(false);
     this.clock += Math.min(delta, 0.1);
 
     if (this.morph !== this.morphTarget) {
@@ -399,6 +553,17 @@ export class GalaxyEngine {
       cellOf[i] = c;
       start[c + 1]!++;
     }
+    // Summed-area table of star counts per cell (before the counts become offsets), so label
+    // placement can ask "how many stars would this card cover" in constant time.
+    const sat = new Float32Array((cols + 1) * (rows + 1));
+    for (let r = 0; r < rows; r++) {
+      let rowSum = 0;
+      for (let c = 0; c < cols; c++) {
+        rowSum += start[c + r * cols + 1]!;
+        sat[c + 1 + (r + 1) * (cols + 1)] = sat[c + 1 + r * (cols + 1)]! + rowSum;
+      }
+    }
+    this.sat = sat;
     for (let c = 0; c < cols * rows; c++) start[c + 1]! += start[c]!;
     const fill = start.slice(0, cols * rows);
     for (let i = 0; i < n; i++) {
@@ -406,6 +571,31 @@ export class GalaxyEngine {
       if (c >= 0) this.gridItems[fill[c]!++] = i;
     }
     this.gridStart = start;
+  }
+
+  /**
+   * Re-project for density queries, at most every few frames while the camera moves: label
+   * placement can live with a slightly stale picture, and projecting 50k stars every frame of
+   * an orbit would spend the frame budget on something nobody sees.
+   */
+  refreshDensity(): void {
+    if (++this.densityAge < 6 && this.sat.length > 0) return;
+    this.densityAge = 0;
+    this.project();
+  }
+
+  /** Stars inside a plate rectangle (CSS px), counted by whole grid cells, from the last projection. */
+  starsIn(x: number, y: number, w: number, h: number): number {
+    const sat = this.sat;
+    if (sat.length === 0) return 0;
+    const cols = this.gridCols;
+    const rows = this.gridRows;
+    const c0 = Math.max(0, Math.min(cols, Math.floor(x / PICK_CELL)));
+    const c1 = Math.max(0, Math.min(cols, Math.ceil((x + w) / PICK_CELL)));
+    const r0 = Math.max(0, Math.min(rows, Math.floor(y / PICK_CELL)));
+    const r1 = Math.max(0, Math.min(rows, Math.ceil((y + h) / PICK_CELL)));
+    const S = cols + 1;
+    return sat[c1 + r1 * S]! - sat[c0 + r1 * S]! - sat[c1 + r0 * S]! + sat[c0 + r0 * S]!;
   }
 
   /** The star under a plate point (CSS px), or -1. Receding stars lose ties to lit ones. */

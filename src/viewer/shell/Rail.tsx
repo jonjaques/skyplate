@@ -138,9 +138,13 @@ function RailFooter({ report }: { report: Report }) {
   return (
     <div className="flex items-end justify-between gap-2 border-t border-rail-line px-[22px] py-4 text-xs text-rail-muted">
       <div className="min-w-0">
-        <div>Report generated {formatDate(Date.parse(report.generatedAt) / 1000)}</div>
+        {/* The 220px rail wraps these; a date or a figure split from its unit reads badly. */}
+        <div>
+          Report generated <span className="whitespace-nowrap">{formatDate(Date.parse(report.generatedAt) / 1000)}</span>
+        </div>
         <div className="figures mt-0.5">
-          {formatInt(report.totals.lines)} lines · {plural(report.totals.languages, "language")}
+          <span className="whitespace-nowrap">{formatInt(report.totals.lines)} lines</span> ·{" "}
+          <span className="whitespace-nowrap">{plural(report.totals.languages, "language")}</span>
         </div>
       </div>
       <Button

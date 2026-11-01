@@ -10,35 +10,10 @@
  * those tokens already flip with the theme and never need per-surface validation.
  */
 
-import { useSyncExternalStore } from "react";
 import { OTHER_DARK, OTHER_LIGHT, seriesColor, type Surface } from "../../lib/colors";
 
-const listeners = new Set<() => void>();
-let observer: MutationObserver | null = null;
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  if (!observer) {
-    observer = new MutationObserver(() => {
-      for (const l of listeners) l();
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  }
-  return () => {
-    listeners.delete(listener);
-    if (listeners.size === 0) {
-      observer?.disconnect();
-      observer = null;
-    }
-  };
-}
-
-const readSurface = (): Surface => (document.documentElement.dataset.theme === "dark" ? "dark" : "light");
-
-/** "light" or "dark", following the shell's theme attribute. */
-export function useSurface(): Surface {
-  return useSyncExternalStore(subscribe, readSurface, () => "light");
-}
+/** "light" or "dark", following the shell's theme attribute (one implementation, in the shell). */
+export { useSurface } from "../../shell/theme";
 
 /**
  * The single-series "measure" color. Blue is language slot 0 (usually TypeScript) in the

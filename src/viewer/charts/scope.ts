@@ -15,9 +15,9 @@ export type RangeKey = "all" | "12m" | "90d" | "30d";
 
 export const RANGES: { key: RangeKey; label: string; days: number | null }[] = [
   { key: "all", label: "All history", days: null },
-  { key: "12m", label: "12 months", days: 365 },
-  { key: "90d", label: "90 days", days: 90 },
-  { key: "30d", label: "30 days", days: 30 },
+  { key: "12m", label: "Last 12 months", days: 365 },
+  { key: "90d", label: "Last 90 days", days: 90 },
+  { key: "30d", label: "Last 30 days", days: 30 },
 ];
 
 export interface ChartScope {

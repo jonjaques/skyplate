@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Author, Report } from "../../../shared/schema";
-import { formatDate, formatInt, formatMonth, formatPercent, plural, shortenPath } from "../../lib/format";
+import { formatDate, formatInt, formatMonth, formatPercent, plural } from "../../lib/format";
 import type { Model } from "../../model/indices";
 import { commitsByAuthor } from "../derived";
 import { focusDrawer, openFile, show } from "../navigate";

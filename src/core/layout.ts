@@ -8,10 +8,9 @@
  *
  * ── Tree: a barred-spiral reading of the directory tree ──
  *
- *   bulge    the root's own files, packed into a lens at the center
- *   arms     each sizeable top-level directory is one spiral arm
- *   clusters small top-level directories (.github, .vscode…) are globular clusters that float
- *            above and below the disc, the way real ones sit in a galaxy's halo
+ *   core     the root's own files, with the small top-level directories (.github, .vscode…)
+ *            packed around them as star clusters, all in one lens at the center
+ *   arms     each sizeable top-level directory is one spiral arm, starting at the core's rim
  *
  * An earlier version circle-packed the whole tree and twisted the flat pack into a spiral. It
  * stayed truthful, but it read as a twisted pie: a filled disc has no arms, and with no gaps
@@ -100,8 +99,8 @@ const THICK_CORE = 0.055;
 const THICK_RIM = 0.01;
 /** Warp amplitude at the rim, as a fraction of the disc radius. */
 const WARP = 0.05;
-/** Bulge flattening: half-height over radius. */
-const BULGE_FLAT = 0.55;
+/** Core lens flattening: half-height over radius. A ball read as a cluster stuck on the disc. */
+const BULGE_FLAT = 0.42;
 
 const LINK_DISTANCE = 30;
 const CHARGE = -30;
@@ -265,9 +264,44 @@ function treeLayout(input: LayoutInput, m: Measures): { tree: Float64Array; radi
     }
   }
 
-  // ── Bulge ──
+  // ── Core: the root's own files as the bulge, the small regions packed around it ──
+  // Small top-level directories (.github, scripts, .vscode…) used to float as globular
+  // clusters out in the halo. That left the middle of the galaxy its darkest part, a ring of
+  // empty space between a few root files and the arms' inner ends, which is the opposite of
+  // how a galaxy reads. Packed around the root files instead, they make a bright, dense core
+  // the arms emerge from, and each cluster is still one contiguous patch.
   const bulge = input.dirFiles[0]!.length > 0 ? makeBead(0, input.dirFiles[0]!, m) : null;
-  const rBulge = bulge ? bulge.r : 0;
+  const clusters: Bead[][] = [];
+  for (const d of clusterDirs) {
+    // A cluster is its subtree packed hierarchically: subdirectories stay contiguous discs.
+    const beads: Bead[] = [];
+    const stack = [d];
+    while (stack.length > 0) {
+      const dir = stack.pop()!;
+      if (input.dirFiles[dir]!.length > 0) beads.push(makeBead(dir, input.dirFiles[dir]!, m));
+      for (const c of [...input.dirDirs[dir]!].reverse()) if (m.dirFiles[c]! > 0) stack.push(c);
+    }
+    clusters.push(beads);
+  }
+  for (const b of extraBeads) clusters.push([b]);
+  const clusterRadius: number[] = [];
+  const clusterLayouts = clusters.map((beads) => {
+    const circles = beads.map((b) => ({ x: 0, y: 0, r: b.r + PADDING[2]! }));
+    packSiblings(circles);
+    const enc = packEnclose(circles) ?? { x: 0, y: 0, r: UNIT };
+    clusterRadius.push(enc.r);
+    return circles.map((c) => ({ x: c.x - enc.x, y: c.y - enc.y }));
+  });
+  // The bulge goes first, so front-chain packing puts it in the middle and wraps the clusters
+  // around it, largest first.
+  const coreOrder = clusters.map((_, j) => j).sort((a, b) => clusterRadius[b]! - clusterRadius[a]! || a - b);
+  const coreCircles = [
+    ...(bulge ? [{ x: 0, y: 0, r: bulge.r + PADDING[1]! }] : []),
+    ...coreOrder.map((j) => ({ x: 0, y: 0, r: clusterRadius[j]! + PADDING[1]! })),
+  ];
+  if (coreCircles.length > 0) packSiblings(coreCircles);
+  const coreEnc = coreCircles.length > 0 ? (packEnclose(coreCircles) ?? { x: 0, y: 0, r: 0 }) : { x: 0, y: 0, r: 0 };
+  const rBulge = coreEnc.r;
 
   // ── Arms: hierarchy, cell areas, sectors ──
   // Built twice. The first pass sizes the bands; the second splits any directory whose single
@@ -438,107 +472,35 @@ function treeLayout(input: LayoutInput, m: Measures): { tree: Float64Array; radi
     });
   }
 
-  // ── Bulge: a lens of root files ──
-  if (bulge) {
-    for (let i = 0; i < bulge.files.length; i++) {
-      const f = bulge.files[i]!;
-      const x = bulge.px[i]!;
-      const y = bulge.py[i]!;
-      const d = Math.hypot(x, y) / Math.max(bulge.r, 1e-9);
-      const h = Math.sqrt(Math.max(0, 1 - d * d)) * bulge.r * BULGE_FLAT;
+  // ── Core placement: a lens, thick in the middle and thin at its rim ──
+  // Every file in the core gets its height from the lens profile at its distance from the
+  // center, so the bulge has volume when orbited, and the clusters ride its surface.
+  const lens = (x: number, y: number) => {
+    const d = Math.hypot(x, y) / Math.max(rBulge, 1e-9);
+    return Math.sqrt(Math.max(0, 1 - d * d)) * rBulge * BULGE_FLAT;
+  };
+  const placeCore = (bead: Bead, ox: number, oy: number) => {
+    for (let i = 0; i < bead.files.length; i++) {
+      const f = bead.files[i]!;
+      const x = ox + bead.px[i]!;
+      const y = oy + bead.py[i]!;
       tree[f * 3] = x;
       tree[f * 3 + 1] = y;
-      tree[f * 3 + 2] = (rand() + rand() - 1) * h;
+      tree[f * 3 + 2] = (rand() + rand() - 1) * lens(x, y);
     }
+  };
+  let ci = 0;
+  if (bulge) {
+    const c = coreCircles[ci++]!;
+    placeCore(bulge, c.x - coreEnc.x, c.y - coreEnc.y);
   }
-
-  // ── Globular clusters: small regions in the halo ──
-  const clusters: Bead[][] = [];
-  const clusterRadius: number[] = [];
-  for (const d of clusterDirs) {
-    // A cluster is its subtree packed hierarchically: subdirectories stay contiguous discs.
-    const beads: Bead[] = [];
-    const stack = [d];
-    while (stack.length > 0) {
-      const dir = stack.pop()!;
-      if (input.dirFiles[dir]!.length > 0) beads.push(makeBead(dir, input.dirFiles[dir]!, m));
-      for (const c of [...input.dirDirs[dir]!].reverse()) if (m.dirFiles[c]! > 0) stack.push(c);
-    }
-    clusters.push(beads);
-  }
-  for (const b of extraBeads) clusters.push([b]);
-  const clusterLayouts = clusters.map((beads) => {
-    const circles = beads.map((b) => ({ x: 0, y: 0, r: b.r + PADDING[2]! }));
-    packSiblings(circles);
-    const enc = packEnclose(circles) ?? { x: 0, y: 0, r: UNIT };
-    clusterRadius.push(enc.r);
-    return circles.map((c) => ({ x: c.x - enc.x, y: c.y - enc.y }));
-  });
-  // Place clusters around the disc on a golden-angle sequence, alternating above and below
-  // it, then relax so no two overlap.
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  const haloR = Math.max(discR, rBulge, UNIT * 10);
-  const centers = clusters.map((_, j) => {
-    const a = theta + 0.7 + j * golden;
-    const rr = haloR * (0.35 + 0.5 * (((j * 0.6180339887) % 1) + 0.1) / 1.1);
-    const side = j % 2 === 0 ? 1 : -1;
-    const lift = haloR * (0.12 + 0.12 * ((j * 0.381966) % 1)) + clusterRadius[j]!;
-    return [rr * Math.cos(a), rr * Math.sin(a), side * lift];
-  });
-  for (let iter = 0; iter < 60; iter++) {
-    let moved = false;
-    for (let i = 0; i < centers.length; i++) {
-      for (let j = i + 1; j < centers.length; j++) {
-        const a = centers[i]!;
-        const b = centers[j]!;
-        const dx = b[0]! - a[0]!;
-        const dy = b[1]! - a[1]!;
-        const dz = b[2]! - a[2]!;
-        const dist = Math.hypot(dx, dy, dz) || 1e-6;
-        const need = clusterRadius[i]! + clusterRadius[j]! + PADDING[0]!;
-        if (dist >= need) continue;
-        const push = (need - dist) / 2 / dist;
-        a[0] = a[0]! - dx * push;
-        a[1] = a[1]! - dy * push;
-        a[2] = a[2]! - dz * push;
-        b[0] = b[0]! + dx * push;
-        b[1] = b[1]! + dy * push;
-        b[2] = b[2]! + dz * push;
-        moved = true;
-      }
-    }
-    if (!moved) break;
-  }
-  clusters.forEach((beads, j) => {
-    const [ox, oy, oz] = centers[j]!;
-    const R = clusterRadius[j]!;
-    // A random tilt so the cluster's packing plane is not the galaxy's: it reads as a ball.
-    const tilt = rand() * Math.PI;
-    const spin = rand() * 2 * Math.PI;
-    const ct = Math.cos(tilt);
-    const st = Math.sin(tilt);
-    const cs = Math.cos(spin);
-    const ss = Math.sin(spin);
-    beads.forEach((bead, k) => {
+  for (const j of coreOrder) {
+    const c = coreCircles[ci++]!;
+    clusters[j]!.forEach((bead, k) => {
       const bc = clusterLayouts[j]![k]!;
-      for (let i = 0; i < bead.files.length; i++) {
-        const f = bead.files[i]!;
-        const x0 = bc.x + bead.px[i]!;
-        const y0 = bc.y + bead.py[i]!;
-        const d = Math.hypot(x0, y0) / Math.max(R, 1e-9);
-        const z0 = (rand() + rand() - 1) * Math.sqrt(Math.max(0, 1 - d * d)) * R * 0.75;
-        // Rotate about x by tilt, then about z by spin.
-        const y1 = y0 * ct - z0 * st;
-        const z1 = y0 * st + z0 * ct;
-        const x2 = x0 * cs - y1 * ss;
-        const y2 = x0 * ss + y1 * cs;
-        tree[f * 3] = ox! + x2;
-        tree[f * 3 + 1] = oy! + y2;
-        tree[f * 3 + 2] = oz! + z1;
-      }
+      placeCore(bead, c.x - coreEnc.x + bc.x, c.y - coreEnc.y + bc.y);
     });
-  });
-
+  }
   let radius = 0;
   for (let f = 0; f < n; f++) {
     tree[f * 3] = round2(tree[f * 3]!);

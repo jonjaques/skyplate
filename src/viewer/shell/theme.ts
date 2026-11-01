@@ -63,13 +63,33 @@ function readSurface(): Surface {
   return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
 }
 
+// One observer for every subscriber. The trays, the record and the Charts tab each subscribe,
+// and a whole Charts tab is dozens of components; one MutationObserver apiece did the same
+// work dozens of times on every theme flip.
+const surfaceListeners = new Set<() => void>();
+let surfaceObserver: MutationObserver | null = null;
+
 function subscribeSurface(onChange: () => void): () => void {
-  const observer = new MutationObserver(onChange);
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-  return () => observer.disconnect();
+  surfaceListeners.add(onChange);
+  if (!surfaceObserver) {
+    surfaceObserver = new MutationObserver(() => {
+      for (const l of surfaceListeners) l();
+    });
+    surfaceObserver.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+  }
+  return () => {
+    surfaceListeners.delete(onChange);
+    if (surfaceListeners.size === 0) {
+      surfaceObserver?.disconnect();
+      surfaceObserver = null;
+    }
+  };
 }
 
-/** The surface trays render on right now, for choosing light or dark swatch steps. */
+/**
+ * The surface the trays render on right now, for choosing light or dark swatch steps. This is
+ * the viewer's only reader of the resolved theme; the charts kit re-exports it.
+ */
 export function useSurface(): Surface {
   return useSyncExternalStore(subscribeSurface, readSurface, () => "light");
 }

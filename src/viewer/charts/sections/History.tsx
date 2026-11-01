@@ -22,7 +22,7 @@ import { measureColor, slotColor, surfaceColor } from "../kit/theme";
 import { TimeSeries } from "../kit/TimeSeries";
 import { ChartTooltip } from "../kit/Tooltip";
 import { useScope } from "../scope";
-import { Section, span } from "../Section";
+import { Section, SectionNote, span } from "../Section";
 import { formatShare } from "../kit/marks";
 
 export function HistorySection() {
@@ -31,11 +31,11 @@ export function HistorySection() {
     const n = report.git?.commits.time.length ?? 0;
     return (
       <Section id="history" title="History">
-        <p className="col-span-12 bg-tray px-5 py-5 text-sm text-ink-2">
+        <SectionNote>
           {!report.git
             ? "No history: this report was generated without git. Run starchart inside a git checkout to chart commits, growth and activity."
             : `Only ${plural(n, "commit")} in this history${report.git.shallow ? " (a shallow clone)" : ""}, so there is no change over time to chart. Re-run on a full clone to see it.`}
-        </p>
+        </SectionNote>
       </Section>
     );
   }
@@ -138,8 +138,12 @@ function LanguageChurn() {
   const { report, model, from, surface, filters } = useScope();
   const churn = report.git!.languageChurn;
   const { times, series } = useMemo(() => {
-    const monthFrom = from === null ? -Infinity : from - 31 * 86_400;
-    const idx = churn.months.map((m, i) => [m, i] as const).filter(([m]) => m >= monthFrom);
+    // Keep a month when any of it falls inside the range: it ends (the next month starts)
+    // after `from`. Keeping months that merely start near `from` let a whole month from before
+    // the range into "the last 30 days".
+    const idx = churn.months
+      .map((m, i) => [m, i] as const)
+      .filter(([, i]) => from === null || (churn.months[i + 1] ?? Infinity) > from);
     const times = idx.map(([m]) => m);
     const slots: StackSeries[] = [];
     const other = new Array<number>(idx.length).fill(0);
@@ -206,9 +210,15 @@ function Punchcard() {
       height={220}
       empty={total === 0 ? "No commit times recorded." : null}
       legend={<ScaleLegend low="0" high={formatInt(max)} label="Commits" surface={surface} />}
+      // Transposed from the chart: hours down, weekdays across. Twenty-four hour columns would
+      // leave every cell a truncated "2…" in a half-width tray; seven weekday columns fit.
       table={() => ({
-        columns: [{ label: "Weekday" }, ...Array.from({ length: 24 }, (_, h) => ({ label: String(h).padStart(2, "0"), align: "right" as const, mono: true }))],
-        rows: grid.map((row, d) => [{ text: WEEKDAYS[d]!, sort: d }, ...row]),
+        columns: [{ label: "Hour", mono: true }, ...WEEKDAYS.map((d) => ({ label: d.slice(0, 3), align: "right" as const, mono: true })), { label: "All days", align: "right", mono: true }],
+        rows: Array.from({ length: 24 }, (_, h) => [
+          { text: `${String(h).padStart(2, "0")}:00`, sort: h },
+          ...grid.map((row) => row[h] ?? 0),
+          sum(grid.map((row) => row[h] ?? 0)),
+        ]),
       })}
     >
       {(width) => {

@@ -71,6 +71,12 @@ export function ActivityTray() {
     setTime(col.end > git.last ? null : col.end);
   }
 
+  function columnAt(e: React.PointerEvent<SVGSVGElement> | React.MouseEvent<SVGSVGElement>): number | null {
+    const mx = e.clientX - e.currentTarget.getBoundingClientRect().left;
+    const i = Math.floor(mx / band);
+    return i >= 0 && i < cols.length ? i : null;
+  }
+
   const plotH = Math.max(40, height - AXIS);
   const band = cols.length ? width / cols.length : 0;
   const colW = Math.min(24, Math.max(1, band - 2));
@@ -111,6 +117,7 @@ export function ActivityTray() {
       <Headline
         value={formatInt(weeks.total)}
         caption={`${weeks.total === 1 ? "commit" : "commits"} since ${formatMonth(git.first)}${git.truncated ? " (capped)" : ""}`}
+        scope={dirPath ? `in ${dirPath}` : undefined}
       />
       <div ref={ref} className="relative mt-2 min-h-0 flex-1">
         {width > 0 && height > 0 && (
@@ -121,13 +128,20 @@ export function ActivityTray() {
             aria-label={`${label}, ${formatInt(weeks.total)} commits, one column per ${weeksLabel(span)}. Arrow keys step through columns, Enter moves the history scrubber there.`}
             className="absolute inset-0 block cursor-pointer overflow-visible outline-offset-2"
             {...focusProps}
-            onPointerMove={(e) => {
-              const mx = e.clientX - e.currentTarget.getBoundingClientRect().left;
-              const i = Math.floor(mx / band);
-              setActive(i >= 0 && i < cols.length ? i : null);
+            onKeyDown={(e) => {
+              // Escape lets go of the active column and also returns the scrubber to HEAD,
+              // the keyboard twin of the "Back to HEAD" button.
+              if (e.key === "Escape" && time !== null) setTime(null);
+              focusProps.onKeyDown(e);
             }}
+            onPointerMove={(e) => setActive(columnAt(e))}
             onPointerLeave={() => setActive(null)}
-            onClick={() => active !== null && pick(active)}
+            // Hit-test the click itself rather than trusting the last pointermove: a click
+            // can arrive before the render that recorded the hover (touch has no hover at all).
+            onClick={(e) => {
+              const i = columnAt(e);
+              if (i !== null) pick(i);
+            }}
           >
             {cols.map((c, i) => {
               const after = time !== null && c.start >= time;
@@ -146,7 +160,7 @@ export function ActivityTray() {
             <XAxis ticks={timeTicks(x, width)} y={plotH} x0={0} x1={width} />
           </svg>
         )}
-        <ChartTooltip tip={tip} width={width} />
+        <ChartTooltip tip={tip} width={width} height={height} />
       </div>
     </TrayShell>
   );

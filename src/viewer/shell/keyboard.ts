@@ -23,6 +23,8 @@ export function useGlobalShortcuts(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const s = useViewer.getState();
+      // Nothing to find or switch between until a report is in (the palette is not mounted).
+      if (!s.report) return;
       if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "k") {
         e.preventDefault();
         s.setPaletteOpen(!s.paletteOpen);

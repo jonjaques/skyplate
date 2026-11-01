@@ -260,16 +260,36 @@ function Scatter({
   );
 }
 
-/** The crowd of dots, memoized apart from hover so a pointer sweep does not redraw 2,000 circles. */
+/**
+ * The dots, memoized apart from hover so a pointer sweep never redraws them.
+ *
+ * The gray crowd is one <path> of circular subpaths rather than a <circle> per file: a large
+ * report puts tens of thousands of files here, and that many DOM nodes makes the whole tab
+ * stutter, while one path costs the same to the browser whatever the count. Every file still
+ * gets its dot; hover and selection come from the Delaunay layer, not from the marks. The few
+ * emphasized dots stay separate circles so their 2px surface ring sits above the crowd.
+ */
 const Points = memo(function Points({ pts, surface }: { pts: Pt[]; surface: "light" | "dark" }) {
   const ring = surfaceColor(surface);
   const ink = emphasisColor(surface);
   const gray = mutedColor(surface);
+  const crowd = useMemo(() => {
+    let d = "";
+    for (const p of pts) {
+      if (p.top) continue;
+      const r = p.r;
+      d += `M${(p.x - r).toFixed(1)},${p.y.toFixed(1)}a${r.toFixed(1)},${r.toFixed(1)} 0 1,0 ${(2 * r).toFixed(1)},0a${r.toFixed(1)},${r.toFixed(1)} 0 1,0 ${(-2 * r).toFixed(1)},0`;
+    }
+    return d;
+  }, [pts]);
   return (
     <g aria-hidden>
-      {pts.map((p) => (
-        <circle key={p.f.id} cx={p.x} cy={p.y} r={p.r} fill={p.top ? ink : gray} fillOpacity={p.top ? 1 : 0.7} stroke={ring} strokeWidth={p.top ? 2 : 1} />
-      ))}
+      <path d={crowd} fill={gray} fillOpacity={0.7} stroke={ring} strokeWidth={1} />
+      {pts
+        .filter((p) => p.top)
+        .map((p) => (
+          <circle key={p.f.id} cx={p.x} cy={p.y} r={p.r} fill={ink} stroke={ring} strokeWidth={2} />
+        ))}
     </g>
   );
 });

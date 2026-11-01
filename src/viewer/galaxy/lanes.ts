@@ -11,6 +11,22 @@ import { LANE_FRAGMENT, LANE_VERTEX } from "./shaders";
 
 export const LANE_STYLE = { import: 0, call: 1, other: 2, callee: 3, all: 4 } as const;
 
+/** How far a symbol's reference arcs bow off the disc, per unit of span (see Lane.lift). */
+export const ARC_LIFT = 0.32;
+/** Arcs drawn per symbol: past a few hundred they fog the stars they connect. */
+export const ARC_CAP = 600;
+
+/**
+ * Where a lane with `lift` peaks: a quadratic bezier's apex sits halfway to its control point,
+ * so framing a symbol's neighborhood can include the arcs, not just their ends.
+ */
+export function laneApex(a: THREE.Vector3, b: THREE.Vector3, lift: number, out: THREE.Vector3): THREE.Vector3 {
+  const d = a.distanceTo(b);
+  out.addVectors(a, b).multiplyScalar(0.5);
+  out.z += d * lift * 0.5;
+  return out;
+}
+
 export interface Lane {
   from: number;
   to: number;

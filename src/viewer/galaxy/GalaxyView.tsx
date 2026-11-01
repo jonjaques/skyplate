@@ -17,14 +17,15 @@ import { PLATE } from "../lib/colors";
 import { filesUnder, neighbors, type Model } from "../model/indices";
 import { ensureSymbols } from "../state/loaders";
 import { sameTarget, useHover, useViewer, type Target } from "../state/store";
-import { PlateControls, PlateLegend, PlateStatus, PlateTitle, SymbolLegend } from "./Chrome";
+import { PlateControls, PlateLegend, PlateStatus, PlateTitle } from "./Chrome";
 import { encodeColors, encodeEmphasis, encodeSizes } from "./encode";
 import { GalaxyEngine } from "./engine";
 import { SpecimenLabels } from "./Labels";
 import { RegionLabels } from "./RegionLabels";
 import { Scene } from "./Scene";
 import { HistoryScrubber } from "./Scrubber";
-import { buildSymbolScene } from "./symbolScene";
+import { ARC_CAP, ARC_LIFT, laneApex } from "./lanes";
+import { buildSymbolScene, type SymbolScene } from "./symbolScene";
 
 export function GalaxyView({ compact = false }: { compact?: boolean }) {
   const model = useViewer((s) => s.model);
@@ -68,6 +69,27 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   const hover = useHover((s) => s.hover);
   const setHover = useHover((s) => s.setHover);
 
+  // ── Framing keeps clear of the chrome: elements tagged data-plate-inset claim an edge ──
+  // Assigned during render, not in an effect: the Canvas mounts its scene (and the camera rig
+  // frames the collection) on its own schedule, which can run before this component's effects.
+  // The assignment is idempotent, and the function reads the DOM only when called.
+  {
+    engine.insets = () => {
+      const el = container.current;
+      const pad = compact ? 10 : 18;
+      const out = { top: pad, right: pad, bottom: pad, left: pad };
+      if (!el) return out;
+      const base = el.getBoundingClientRect();
+      el.querySelectorAll<HTMLElement>("[data-plate-inset]").forEach((c) => {
+        const r = c.getBoundingClientRect();
+        if (r.height === 0) return;
+        if (c.dataset.plateInset === "top") out.top = Math.max(out.top, r.bottom - base.top + 8);
+        else out.bottom = Math.max(out.bottom, base.bottom - r.top + 8);
+      });
+      return out;
+    };
+  }
+
   // ── Reduced motion: no flights, no morph tween, static pulses ──
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -89,9 +111,16 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
     encodeSizes(model, sizeBy, engine.size);
     engine.touch("aSize");
   }, [engine, model, sizeBy]);
+  const firstLayout = useRef(true);
   useEffect(() => {
     engine.morphTarget = layout === "graph" ? 1 : 0;
+    // A layout switch moves every star, so the camera re-frames whatever the reader is looking
+    // at (the selection, the open drawer, or the whole collection) as one move with the morph.
+    // Staying put would leave it aimed at where the subject used to be.
+    if (!firstLayout.current) frameSubject(true);
+    firstLayout.current = false;
     engine.invalidate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, layout]);
   useEffect(() => engine.setTime(time), [engine, time]);
 
@@ -148,17 +177,45 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   // Clicking a star on the plate selects without moving the camera (the reader is already
   // looking at it); a selection made elsewhere (explorer, palette, record) flies to it.
   const plateSelection = useRef<Target | null>(null);
-  const frameSelection = (target: Target | null) => {
-    if (!target) return engine.home(true);
+  const frameSelection = (target: Target | null, animate = true) => {
+    if (!target) return engine.home(animate);
     const R = engine.radius;
     if (target.kind === "file") {
+      // The file with its imports and importers, unless they span most of the galaxy (a hub
+      // imported from everywhere), in which case the file itself with a little surroundings.
       const near = [target.id, ...neighbors(model.imports, target.id), ...neighbors(model.importedBy, target.id)];
-      const sphere = engine.sphereOf(near, R * 0.1);
-      if (sphere.radius > R * 0.45) sphere.copy(engine.sphereOf([target.id], R * 0.14));
-      engine.fly(sphere);
-    } else if (target.kind === "dir") engine.fly(engine.sphereOf(filesUnder(model, target.id)));
-    else if (target.kind === "author") engine.fly(engine.sphereOf(model.authorFiles[target.id] ?? []));
-    else if (target.kind === "symbol" && scene && scene.symbol === target.id) engine.fly(engine.sphereOf(scene.frame, R * 0.12));
+      if (engine.sphereOf(near).radius > R * 0.45) engine.fly([target.id], R * 0.14, [], animate);
+      else engine.fly(near, R * 0.1, [], animate);
+    } else if (target.kind === "dir") {
+      if (target.id === 0) engine.home(animate);
+      else engine.fly(filesUnder(model, target.id), undefined, [], animate);
+    } else if (target.kind === "author") engine.fly(model.authorFiles[target.id] ?? [], undefined, [], animate);
+    else if (target.kind === "symbol" && scene && scene.symbol === target.id) flyToScene(scene, animate);
+    else engine.home(animate);
+  };
+  /** Frame what the reader is looking at: the selection, else the open drawer, else everything. */
+  function frameSubject(animate: boolean) {
+    const s = useViewer.getState();
+    if (s.selection) frameSelection(s.selection, animate);
+    else if (s.focusDir !== null && s.focusDir !== 0) engine.fly(filesUnder(model, s.focusDir), undefined, [], animate);
+    else if (engine.atHome || !engine.controls) engine.home(animate);
+    else engine.fly(model.fileOrder, undefined, [], animate);
+  }
+  // The camera rig asks for this once its controls exist. A shared link (or a selection made
+  // before the plate mounted) opens framed on its subject instead of the whole collection.
+  engine.frameInitial = () => frameSubject(false);
+  /** Frame a symbol's whole neighborhood: its files and the arcs rising between them. */
+  const flyToScene = (s: SymbolScene, animate = true) => {
+    const a = new THREE.Vector3();
+    const b = new THREE.Vector3();
+    const apex = new THREE.Vector3();
+    const extra: number[] = [];
+    engine.filePos(s.defFile, b, engine.morphTarget);
+    for (const arc of s.arcs.slice(0, ARC_CAP)) {
+      laneApex(engine.filePos(arc.file, a, engine.morphTarget), b, ARC_LIFT, apex);
+      extra.push(apex.x, apex.y, apex.z);
+    }
+    engine.fly(s.frame, engine.radius * 0.12, extra, animate);
   };
   useEffect(() => {
     if (!selection || selection.kind === "symbol") return;
@@ -167,12 +224,12 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selection]);
   useEffect(() => {
-    if (scene && !sameTarget(selection, plateSelection.current)) engine.fly(engine.sphereOf(scene.frame, engine.radius * 0.12));
+    if (scene && !sameTarget(selection, plateSelection.current)) flyToScene(scene);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scene]);
   const lastFocus = useRef<number | null>(focusDir);
   useEffect(() => {
-    if (focusDir !== null && focusDir !== 0) engine.fly(engine.sphereOf(filesUnder(model, focusDir)));
+    if (focusDir !== null && focusDir !== 0) engine.fly(filesUnder(model, focusDir));
     else if (lastFocus.current !== null) engine.home(true);
     lastFocus.current = focusDir;
   }, [engine, model, focusDir]);
@@ -271,7 +328,7 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   return (
     <div
       ref={container}
-      className="relative h-full w-full touch-none overflow-hidden bg-plate select-none"
+      className="@container relative h-full w-full touch-none overflow-hidden bg-plate select-none"
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
       onPointerDown={onPointerDown}
@@ -295,9 +352,8 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
       <SpecimenLabels engine={engine} compact={compact} />
       <MoonLabel engine={engine} index={moonHover} />
       <PlateTitle engine={engine} compact={compact} />
-      {!compact && scene && <SymbolLegend engine={engine} scene={scene} />}
       {!compact && <PlateStatus />}
-      <PlateLegend engine={engine} compact={compact} raised={hasHistory} />
+      <PlateLegend engine={engine} compact={compact} raised={hasHistory} scene={scene} />
       <PlateControls engine={engine} compact={compact} />
       {hasHistory && <HistoryScrubber engine={engine} />}
     </div>

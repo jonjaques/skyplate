@@ -6,7 +6,7 @@
  * Status, when present, always arrives as icon + label: the color alone never says "risk".
  */
 
-import { CircleAlert, OctagonAlert, TriangleAlert } from "lucide-react";
+import { ArrowDownRight, ArrowUpRight, CircleAlert, OctagonAlert, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import { STATUS } from "../../lib/colors";
 import { cn } from "../../lib/utils";
@@ -18,17 +18,30 @@ const STATUS_ICON = { warning: TriangleAlert, serious: CircleAlert, critical: Oc
 export function StatusMark({ level, label }: { level: StatusLevel; label: string }) {
   const Icon = STATUS_ICON[level];
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink">
+    <span className="inline-flex shrink-0 items-center gap-1.5 text-xs font-semibold whitespace-nowrap text-ink">
       <Icon aria-hidden className="size-4 shrink-0" style={{ color: STATUS[level] }} strokeWidth={2.25} />
       {label}
     </span>
   );
 }
 
+/**
+ * A signed change against a named period ("+12% vs the previous 90 days"). The arrow carries
+ * the direction and, through a status color, whether that direction is good; the figures stay
+ * in ink, because text never wears a data color.
+ */
+export interface Delta {
+  text: string;
+  direction: "up" | "down";
+  /** Whether this direction is an improvement (fewer hotspots down is good, more tests up). */
+  good: boolean;
+}
+
 export function StatTile({
   label,
   value,
   unit,
+  delta,
   status,
   detail,
   spark,
@@ -37,17 +50,25 @@ export function StatTile({
   label: string;
   value: string;
   unit?: string;
+  delta?: Delta;
   status?: { level: StatusLevel; label: string };
   detail?: ReactNode;
   spark?: ReactNode;
   className?: string;
 }) {
+  const DeltaIcon = delta?.direction === "up" ? ArrowUpRight : ArrowDownRight;
   return (
     <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
       <div className="text-xs text-ink-2">{label}</div>
       <div className="flex items-baseline gap-2">
         <span className="text-[34px] leading-none font-semibold tracking-[-0.015em] text-ink [font-stretch:85%]">{value}</span>
         {unit && <span className="text-sm text-ink-2">{unit}</span>}
+        {delta && (
+          <span className="inline-flex items-center gap-0.5 text-xs text-ink-2">
+            <DeltaIcon aria-hidden className="size-3.5" style={{ color: delta.good ? STATUS.good : STATUS.critical }} />
+            <span className="figures font-mono">{delta.text}</span>
+          </span>
+        )}
       </div>
       {status && <StatusMark level={status.level} label={status.label} />}
       {detail && <div className="text-xs leading-snug text-ink-2">{detail}</div>}

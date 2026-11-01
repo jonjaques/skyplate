@@ -169,7 +169,18 @@ function applyHash(hash: string): void {
       if (pendingSymbol !== sym) return;
       pendingSymbol = null;
       const id = resolveSymbolRef(sym);
-      if (id !== null) useViewer.getState().select({ kind: "symbol", id });
+      if (id === null) return;
+      const st = useViewer.getState();
+      // A symbol link on the Source tab means "read its declaration". On a fresh load the
+      // reader would derive that from the selection alone, but a link pasted into an open tab
+      // (hashchange) arrives with the reader already pinned to some other file.
+      if (tab === "source" && src === undefined && st.symbols) {
+        const t = st.symbols.symbols;
+        const line = t.line[id]!;
+        st.openSource({ file: t.file[id]!, line, marks: [{ line, col: t.col[id]!, len: t.name[id]!.length }] });
+        st.setTab("source");
+      }
+      st.select({ kind: "symbol", id });
     });
   }
   // The tab param was applied first, but openSource/select may have moved it; put it back.

@@ -439,8 +439,13 @@ function Treemap({
           const h = l.y1 - l.y0;
           if (w < 1 || h < 1) return null;
           const slot = l.data.lang ? languageSlot(l.data.lang) : -1;
-          const label = l.data.name;
-          const fits = w >= label.length * 6 + 10 && h >= 18;
+          // Names that do not fit are shortened with an ellipsis while four characters still
+          // fit ("creat…" says more than an unlabeled block); narrower cells stay unlabeled and
+          // keep their name in the tooltip and the table view.
+          const maxChars = Math.floor((w - 10) / 6);
+          const whole = l.data.name.length <= maxChars;
+          const label = whole ? l.data.name : maxChars >= 4 ? `${l.data.name.slice(0, maxChars - 1)}…` : "";
+          const fits = label !== "" && h >= 18;
           const lit = same(l.data.target, hover) || same(l.data.target, selection) || activeLeaf === l;
           return (
             <g
@@ -468,7 +473,7 @@ function Treemap({
                   {label}
                 </text>
               )}
-              {fits && h >= 32 && (
+              {fits && whole && h >= 32 && (
                 <text x={l.x0 + 5} y={l.y0 + 26} className="figures pointer-events-none fill-ink-2 font-mono text-[10px]">
                   {formatCompact(l.value ?? 0)}
                 </text>
