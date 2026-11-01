@@ -35,7 +35,7 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 
 # starchart: reports generated during development and the compiled CLI
 .starchart/
-starchart-report*/
+*.starchart/
 dist/
 
 # impeccable design-detector cache (local state)
