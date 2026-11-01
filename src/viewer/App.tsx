@@ -70,7 +70,7 @@ export function App() {
               role="tab"
               aria-selected={i === 0}
               className={`flex items-center border-b-2 px-4 text-sm font-semibold ${
-                i === 0 ? "border-ink text-ink" : "border-transparent text-muted"
+                i === 0 ? "border-ink text-ink" : "border-transparent text-muted-foreground"
               }`}
             >
               {tab}
@@ -100,8 +100,8 @@ export function App() {
       </main>
 
       <aside className="row-span-2 border-l border-rule bg-paper px-[22px] py-5" aria-label="Accession record">
-        <h2 className="text-xs text-muted">Accession record</h2>
-        <p className="mt-2 text-muted">Select a specimen in the galaxy to read its record.</p>
+        <h2 className="text-xs text-muted-foreground">Accession record</h2>
+        <p className="mt-2 text-muted-foreground">Select a specimen in the galaxy to read its record.</p>
       </aside>
 
       <section className="grid grid-cols-[1.15fr_1fr_1.2fr] border-t border-ink" aria-label="Unit trays">

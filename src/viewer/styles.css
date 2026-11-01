@@ -6,27 +6,38 @@
  * text, holotype red reserved for each region's most-depended-on file, and a dark glass plate
  * for the galaxy that stays dark in both themes.
  *
- * Every color below was checked with the dataviz skill's validate_palette.js against the
- * surface it renders on. The categorical slots are the skill's reference palette minus slot 8
- * (red): red already means "holotype" here, and a red language would impersonate it.
- * Light-mode slots 2-5 sit under 3:1 on the tray, so every chart ships direct labels or a
- * table view as relief (validator WARN, not dismissable).
+ * Two layers of tokens:
+ *   1. World tokens (tray, paper, rail, plate, holotype, series…): what the direction names.
+ *   2. shadcn's semantic tokens (background, primary, muted-foreground, ring…), mapped onto
+ *      the world tokens below, so every shadcn component in components/ui wears the world
+ *      without per-component overrides.
+ *
+ * Every color was checked with the dataviz skill's validate_palette.js against the surface it
+ * renders on. The categorical slots are the skill's reference palette minus slot 8 (red): red
+ * already means "holotype" here, and a red language would impersonate it. Light-mode slots
+ * 2-5 sit under 3:1 on the tray, so every chart ships direct labels or a table view as relief
+ * (validator WARN, not dismissable).
  */
 
 @import "tailwindcss";
+@import "tw-animate-css";
 @import "./fonts.css";
+
+/* Theme is resolved to data-theme="light" | "dark" on <html> before first paint (index.html),
+   so Tailwind's dark: variant keys off the attribute rather than a .dark class. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme {
   --font-sans: "Archivo Variable", system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 
-  /* Surfaces and ink (light). Dark overrides live in the theme blocks below. */
+  /* ── World tokens (light) ─────────────────────────────────────────────────────────────── */
   --color-tray: #f6f7f5;
   --color-paper: #ffffff;
   --color-wash: #eef0ee; /*         hover and quiet fills, one step off the tray */
   --color-ink: #15191c;
   --color-ink-2: #3b4348; /*        secondary text */
-  --color-muted: #5d666d; /*        5.45:1 on tray */
+  --color-ink-3: #5d666d; /*        tertiary text: 5.45:1 on tray */
   --color-rule: #d5d9d6; /*         hairline */
   --color-rule-strong: #b9c0c4; /*  control borders */
 
@@ -50,7 +61,7 @@
   --color-serious: #ec835a;
   --color-critical: #d03b3b;
 
-  /* Categorical slots, light trays. Plate and dark trays use the --series-dark-* steps. */
+  /* Categorical slots, light trays. The plate and dark trays use the --series-dark-* steps. */
   --color-series-1: #2a78d6;
   --color-series-2: #eb6834;
   --color-series-3: #1baf7a;
@@ -78,13 +89,63 @@
   --color-seq-600: #184f95;
   --color-seq-700: #0d366b;
 
+  /* ── shadcn semantic tokens, mapped onto the world ─────────────────────────────────────── */
+  --color-background: var(--color-tray);
+  --color-foreground: var(--color-ink);
+  --color-card: var(--color-paper);
+  --color-card-foreground: var(--color-ink);
+  --color-popover: var(--color-paper);
+  --color-popover-foreground: var(--color-ink);
+  --color-primary: var(--color-rail); /*          the archival gray-blue carries primary actions */
+  --color-primary-foreground: var(--color-rail-ink);
+  --color-secondary: var(--color-wash);
+  --color-secondary-foreground: var(--color-ink);
+  --color-muted: var(--color-wash);
+  --color-muted-foreground: var(--color-ink-3);
+  --color-accent: var(--color-wash); /*           hover wash, never a hue */
+  --color-accent-foreground: var(--color-ink);
+  --color-destructive: var(--color-critical);
+  --color-border: var(--color-rule);
+  --color-input: var(--color-rule-strong);
+  --color-ring: var(--color-series-1);
+  --color-chart-1: var(--color-series-1);
+  --color-chart-2: var(--color-series-2);
+  --color-chart-3: var(--color-series-3);
+  --color-chart-4: var(--color-series-4);
+  --color-chart-5: var(--color-series-5);
+  --color-sidebar: var(--color-rail);
+  --color-sidebar-foreground: var(--color-rail-ink);
+  --color-sidebar-primary: var(--color-tray);
+  --color-sidebar-primary-foreground: var(--color-ink);
+  --color-sidebar-accent: var(--color-rail-deep);
+  --color-sidebar-accent-foreground: var(--color-rail-ink);
+  --color-sidebar-border: var(--color-rail-line);
+  --color-sidebar-ring: var(--color-rail-muted);
+
+  /* Label stock has barely-there corners. shadcn derives its scale as calc(--radius - 4px),
+     which goes negative at these sizes (an invalid radius, silently dropped), so the scale
+     is set outright. */
+  --radius-xs: 1px;
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --radius-xl: 6px;
+  --radius-2xl: 8px;
+
+  /* Trays and controls sit flat on the tray; only layers that float over content (menus,
+     popovers, dialogs, the command palette) get depth, and that depth has an offset and a
+     soft blur. shadcn puts shadow-xs/sm on inputs, buttons and the active tab. */
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: 0 8px 20px -6px rgb(21 25 28 / 0.22), 0 1px 2px rgb(21 25 28 / 0.08);
+  --shadow-lg: 0 18px 40px -12px rgb(21 25 28 / 0.32), 0 2px 6px rgb(21 25 28 / 0.08);
+
   --ease-damped: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-/* Dark theme: the rail deepens, trays go to slate, the plate does not change. Declared for
-   both the OS setting and the explicit toggle; the toggle must win in both directions, so
-   the media block is guarded by :not([data-theme="light"]) and wrapped in :where() to keep
-   its specificity under the [data-theme="dark"] block. */
+/* Dark theme: the rail deepens, trays go to slate, the plate does not change. index.html
+   resolves the system preference into data-theme before first paint; the media block is the
+   no-script fallback, guarded so an explicit light choice still wins. */
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
@@ -93,7 +154,7 @@
     --color-wash: #222a30;
     --color-ink: #e8ecee;
     --color-ink-2: #c4ccd1;
-    --color-muted: #9aa5ad;
+    --color-ink-3: #9aa5ad;
     --color-rule: #2b3439;
     --color-rule-strong: #3d484f;
     --color-rail: #2c3a45;
@@ -101,6 +162,7 @@
     --color-rail-line: #3a4a56;
     --color-rail-muted: #d8dfe4;
     --color-holotype: #b8402f;
+    --color-ring: var(--color-series-dark-1);
   }
 }
 :root[data-theme="dark"] {
@@ -110,7 +172,7 @@
   --color-wash: #222a30;
   --color-ink: #e8ecee;
   --color-ink-2: #c4ccd1;
-  --color-muted: #9aa5ad;
+  --color-ink-3: #9aa5ad;
   --color-rule: #2b3439;
   --color-rule-strong: #3d484f;
   --color-rail: #2c3a45;
@@ -118,6 +180,7 @@
   --color-rail-line: #3a4a56;
   --color-rail-muted: #d8dfe4;
   --color-holotype: #b8402f;
+  --color-ring: var(--color-series-dark-1);
 }
 
 @layer base {
@@ -126,8 +189,13 @@
   #root {
     height: 100%;
   }
+  * {
+    @apply border-border;
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rule-strong) transparent;
+  }
   body {
-    @apply bg-tray text-ink font-sans antialiased;
+    @apply bg-background text-foreground font-sans antialiased;
     /* Archivo's width axis: UI text runs slightly condensed, like small-set label stock. */
     font-stretch: 88%;
     font-size: 13px;
@@ -138,16 +206,12 @@
     color: var(--color-ink);
   }
   :focus-visible {
-    outline: 2px solid var(--color-series-1);
+    outline: 2px solid var(--color-ring);
     outline-offset: 2px;
   }
   /* Figures that line up in columns; big standalone numbers stay proportional. */
   .figures {
     font-variant-numeric: tabular-nums;
-  }
-  * {
-    scrollbar-width: thin;
-    scrollbar-color: var(--color-rule-strong) transparent;
   }
 }
 

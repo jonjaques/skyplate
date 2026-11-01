@@ -5,6 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="generator" content="starchart" />
     <title>starchart</title>
+    <script>
+      // Resolve the theme before first paint so the page never flashes the wrong one. The
+      // viewer's theme toggle writes "starchart-theme"; absent that, follow the OS setting.
+      (function () {
+        var pref = null;
+        try { pref = localStorage.getItem("starchart-theme"); } catch (e) {}
+        var dark = pref ? pref === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+      })();
+    </script>
     <!-- Development entry. build.ts swaps this module script for the classic bundle. -->
   </head>
   <body>
