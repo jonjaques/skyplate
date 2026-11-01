@@ -419,7 +419,7 @@ function FileTable({ rows }: { rows: number[] }) {
             <TableCell className="px-2 py-0 text-xs">
               <span className="flex min-w-0 items-center gap-1.5">
                 {holotype && (
-                  <span className="size-1.5 shrink-0 rounded-full bg-holotype" title="Holotype: the most central file in its region (highest PageRank)" />
+                  <span className="size-1.5 shrink-0 rounded-full bg-holotype" title="Holotype: the most depended-on file in its region (most direct importers)" />
                 )}
                 <PathText path={f.path} className="text-ink" dirClass="text-ink-3" />
               </span>

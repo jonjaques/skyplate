@@ -55,11 +55,14 @@
   --color-plate-muted: #aeb8bf;
   --color-plate-rule: #26313a;
 
-  /* Status (fixed, never themed; always paired with an icon and a label). */
+  /* Status (fixed, never themed; always paired with an icon and a label). Critical is ink,
+     not the reference palette's red: this world reserves red for holotypes, and a red
+     "critical" beside a red holotype made the two read as one idea. Critical carries its
+     weight through a filled mark and its label instead (shell/parts.tsx SeverityIcon). */
   --color-good: #0ca30c;
   --color-warning: #fab219;
   --color-serious: #ec835a;
-  --color-critical: #d03b3b;
+  --color-critical: var(--color-ink);
 
   /* Categorical slots, light trays. The plate and dark trays use the --series-dark-* steps. */
   --color-series-1: #2a78d6;
@@ -134,9 +137,13 @@
 
   /* Trays and controls sit flat on the tray; only layers that float over content (menus,
      popovers, dialogs, the command palette) get depth, and that depth has an offset and a
-     soft blur. shadcn puts shadow-xs/sm on inputs, buttons and the active tab. */
-  --shadow-xs: none;
-  --shadow-sm: none;
+     soft blur. shadcn puts shadow-xs/sm on inputs, buttons and the active tab.
+     Flat is a transparent zero shadow, not `none`: Tailwind composes these into one
+     box-shadow list with the focus ring, and a `none` inside that list makes the whole
+     declaration invalid, so focus rings silently never painted on selects, switches and the
+     slider thumb. */
+  --shadow-xs: 0 0 #0000;
+  --shadow-sm: 0 0 #0000;
   --shadow-md: 0 8px 20px -6px rgb(21 25 28 / 0.22), 0 1px 2px rgb(21 25 28 / 0.08);
   --shadow-lg: 0 18px 40px -12px rgb(21 25 28 / 0.32), 0 2px 6px rgb(21 25 28 / 0.08);
 

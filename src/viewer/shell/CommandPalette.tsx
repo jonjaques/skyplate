@@ -165,7 +165,7 @@ function Results({ query, close, setActive }: { query: string; close(): void; se
   };
   const first = !hits
     ? model && model.holotypes.size > 0
-      ? `file:${[...model.holotypes].sort((a, b) => report!.files[b]!.rank - report!.files[a]!.rank)[0]}`
+      ? `file:${[...model.holotypes].sort((a, b) => report!.files[b]!.fanIn - report!.files[a]!.fanIn)[0]}`
       : (actions[0] && `action:${actions[0].id}`) || ""
     : (order.map((g) => firstOf[g]).find(Boolean) ?? "");
   useEffect(() => setActive(first), [first, setActive]);
@@ -190,11 +190,11 @@ function Results({ query, close, setActive }: { query: string; close(): void; se
 
   // An empty query offers the files most worth knowing, then the actions.
   if (!hits) {
-    const top = [...model.holotypes].sort((a, b) => report.files[b]!.rank - report.files[a]!.rank).slice(0, 6);
+    const top = [...model.holotypes].sort((a, b) => report.files[b]!.fanIn - report.files[a]!.fanIn).slice(0, 6);
     return (
       <>
         {top.length > 0 && (
-          <CommandGroup heading="Holotypes, each region's most central file">
+          <CommandGroup heading="Holotypes, each region's most depended-on file">
             {top.map((id) => (
               <FileItem key={id} id={id} onSelect={() => pickFile(id)} />
             ))}

@@ -98,7 +98,7 @@ export function DirRecordView({ report, model, dir }: { report: Report; model: M
             <span className="size-2 shrink-0 rounded-full bg-holotype" aria-hidden />
             <PathText path={report.files[holotype]!.path} className="text-xs" />
           </RowButton>
-          <Quiet className="text-xs">The most central file in this region: the highest PageRank, which counts files that depend on it through others, not only its direct importers.</Quiet>
+          <Quiet className="text-xs">The most depended-on file in this region: more files import it directly than any other here.</Quiet>
         </Section>
       )}
 

@@ -56,10 +56,13 @@ export function sequentialColor(t: number, surface: Surface): string {
   return SEQUENTIAL[i]!;
 }
 
-/** Status colors: reserved meaning, always shipped with an icon and a label. */
+/**
+ * Status colors: reserved meaning, always shipped with an icon and a label. There is no
+ * critical entry on purpose: critical renders in ink with a filled mark (see the
+ * --color-critical token), because red belongs to holotypes alone.
+ */
 export const STATUS = {
   good: "#0ca30c",
   warning: "#fab219",
   serious: "#ec835a",
-  critical: "#d03b3b",
 } as const;

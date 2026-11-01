@@ -100,7 +100,7 @@ export function FileRecordView({ report, model, file }: { report: Report; model:
           <span className="figures font-mono text-xs text-ink-3">{accession(file.id, report.files.length)}</span>
           {holotypeRegion !== undefined && (
             <span className="rounded-xs bg-holotype px-2 py-0.5 text-xs font-semibold text-holotype-ink">
-              Holotype · most central in {holotypeRegion === 0 ? "the root" : report.dirs[holotypeRegion]!.name}
+              Holotype · most depended on in {holotypeRegion === 0 ? "the root" : report.dirs[holotypeRegion]!.name}
             </span>
           )}
           {file.generated && <Tag>generated</Tag>}

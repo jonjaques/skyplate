@@ -38,8 +38,8 @@ export interface Model {
   importedBy: Adjacency; // file → files importing it
 
   /**
-   * Holotype per top-level region: its most depended-on file (highest PageRank with at least
-   * one importer). Holotype red is reserved for exactly these files.
+   * Holotype per top-level region: its most depended-on file, the one with the most direct
+   * importers (PageRank breaks ties). Holotype red is reserved for exactly these files.
    */
   holotypeOfDir: Map<number, number>;
   holotypes: Set<number>;
@@ -97,11 +97,16 @@ export function buildModel(report: Report): Model {
 
   const holotypeOfDir = new Map<number, number>();
   const best = new Map<number, number>();
+  // Chosen by direct importers, not PageRank. Every surface says "most depended on" and shows
+  // the importer count beside it; picked by PageRank, the label read false wherever a sibling
+  // had more importers (inertialref: spatial/index.ts 256 beside the shared/index.ts holotype
+  // at 251). PageRank still settles ties, so the more central of two equals wins.
   for (const f of files) {
-    if (f.fanIn === 0 || f.rank <= 0) continue;
+    if (f.fanIn === 0) continue;
     const region = topDir[f.id]!;
     const current = best.get(region);
-    if (current === undefined || f.rank > files[current]!.rank) best.set(region, f.id);
+    const c = current === undefined ? undefined : files[current]!;
+    if (!c || f.fanIn > c.fanIn || (f.fanIn === c.fanIn && f.rank > c.rank)) best.set(region, f.id);
   }
   for (const [dir, file] of best) holotypeOfDir.set(dir, file);
   const holotypes = new Set(holotypeOfDir.values());
