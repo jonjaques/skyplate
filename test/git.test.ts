@@ -12,7 +12,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { commitType, mineGit, scrubRemote, truncateSubject } from "../src/core/git";
+import { commitType, mineGit, renameWarning, scrubRemote, truncateSubject } from "../src/core/git";
 import {
   isBot,
   mergeIdentities,
@@ -27,7 +27,12 @@ import {
   weekStart,
   type FileAuthors,
 } from "../src/core/git/derive";
-import { LogParser, MergeFilesParser, type RawCommit } from "../src/core/git/stream";
+import {
+  LogParser,
+  MergeFilesParser,
+  RenamePairsParser,
+  type RawCommit,
+} from "../src/core/git/stream";
 import type { GitResult } from "../src/core/contracts";
 
 // ─── Fixture plumbing ────────────────────────────────────────────────────────────────────────
@@ -531,6 +536,28 @@ describe("coupling and truck factor", () => {
     expect(tf.value).toBe(1);
     expect(tf.authors).toEqual([authorNamed("Bob Builder")!.id]);
   });
+
+  test("excluded files keep their history but leave owned, coupling and truck factor", async () => {
+    // Stand-ins for generated/vendored files: the sweep, and README (half of the one pair).
+    const exclude = PATHS.map((p) => p.startsWith("sweep/") || p === "README.md");
+    const r = (await mineGit({
+      root: REPO,
+      paths: PATHS,
+      languages: PATHS.map(languageOf),
+      maxCommits: 10_000,
+      exclude,
+    }))!;
+    const s = r.summary;
+    const by = (name: string) => s.authors.find((a) => a.name === name)!;
+    // History views are untouched.
+    expect(r.perFile[id("README.md")]).toEqual(fileGit("README.md"));
+    expect(s.commits).toEqual(RESULT.summary.commits);
+    expect(s.authors.map((a) => a.commits)).toEqual(RESULT.summary.authors.map((a) => a.commits));
+    // The remaining 8 files: Alice owns and authors 6, Bob final.ts (DOA 4.366) and logo.png.
+    expect([by("Alice Liddell").owned, by("Bob Builder").owned]).toEqual([6, 2]);
+    expect(s.coupling).toEqual([]);
+    expect(s.truckFactor).toEqual({ value: 1, authors: [by("Alice Liddell").id] });
+  });
 });
 
 // ─── Scope, caps and odd repositories ────────────────────────────────────────────────────────
@@ -654,6 +681,125 @@ describe("scope and edge cases", () => {
     expect(r.perFile[0]).toMatchObject({ added: 9, created: unix("2024-02-01T09:00:00Z") });
   });
 
+  test("control bytes in an author name or subject do not shift other fields", async () => {
+    const dir = join(TMP, "ctrl");
+    mkdirSync(dir);
+    git(dir, ["init", "-q", "-b", "main"]);
+    write(dir, "a.txt", "a\n");
+    const subject = "\x1esubj\x1fwith\x1eseps";
+    commit(dir, { name: "Ev\x1fil", email: "e@x.com" }, "2024-02-06T14:00:00+00:00", subject);
+    const r = (await mineGit({ root: dir, paths: ["a.txt"], languages: ["text"], maxCommits: 0 }))!;
+    expect(r.summary.authors.map((a) => [a.name, a.email])).toEqual([["Ev\x1fil", "e@x.com"]]);
+    expect(r.summary.commits.subject).toEqual([subject]);
+    expect(r.summary.punchcard[1]![14]).toBe(1); // Tuesday 14:00: the date field was read
+    expect(r.summary.punchcard.flat().reduce((s, x) => s + x, 0)).toBe(1);
+  });
+
+  test("a move of more files than git's default rename limit still follows them", async () => {
+    // 1,100 files moved to new names and edited in one commit: past diff.renameLimit's 1,000,
+    // git skips exhaustive detection and every move becomes a delete plus an add.
+    const dir = join(TMP, "bigmove");
+    const N = 1100;
+    // Every line unique to its file: with "file 1 …" vs "file 11 …" git paired 14 of the
+    // 1,100 with the wrong partner, which is git's similarity guess, not what is under test.
+    const body = (i: number): string =>
+      Array.from({ length: 8 }, (_, k) => `${i}.${k} ${(i * 7919 + k * 104_729) % 1_000_003}\n`)
+        .join("");
+    mkdirSync(join(dir, "old"), { recursive: true });
+    git(dir, ["init", "-q", "-b", "main"]);
+    for (let i = 0; i < N; i++) write(dir, `old/f${i}.txt`, body(i));
+    commit(dir, ALICE, "2024-02-01T09:00:00Z", "create");
+    mkdirSync(join(dir, "new"));
+    for (let i = 0; i < N; i++) {
+      rmSync(join(dir, `old/f${i}.txt`));
+      write(dir, `new/g${i}.txt`, body(i) + `moved ${i}\n`);
+    }
+    commit(dir, BOB, "2024-02-02T09:00:00Z", "move and touch all");
+    const paths = trackedPaths(dir);
+    const r = (await mineGit({
+      root: dir,
+      paths,
+      languages: paths.map(() => "text"),
+      maxCommits: 0,
+    }))!;
+    expect(r.warnings).toEqual([]);
+    expect(r.perFile.every((g) => g?.commits === 2 && g.added === 9)).toBe(true);
+    expect(r.perFile[0]!.created).toBe(unix("2024-02-01T09:00:00Z"));
+  });
+
+  test("git's skipped-rename warning, as git prints it, becomes a report warning", () => {
+    // Real stderr: two edited moves in one commit under a limit of 1 (a 2 × 2 matrix), with
+    // LC_ALL=C as in mineGit, since git ships translations of this message.
+    const dir = join(TMP, "renamelimit");
+    mkdirSync(dir);
+    git(dir, ["init", "-q", "-b", "main"]);
+    write(dir, "a.txt", lines(6, "alpha"));
+    write(dir, "b.txt", lines(6, "beta"));
+    commit(dir, ALICE, "2024-02-01T09:00:00Z", "add");
+    rmSync(join(dir, "a.txt"));
+    rmSync(join(dir, "b.txt"));
+    write(dir, "c.txt", lines(6, "alpha") + "moved\n");
+    write(dir, "d.txt", lines(6, "beta") + "moved\n");
+    commit(dir, ALICE, "2024-02-02T09:00:00Z", "move both");
+    const r = Bun.spawnSync(
+      ["git", "-c", "diff.renameLimit=1", "log", "-M", "--numstat", "--format=%h", "HEAD"],
+      { cwd: dir, env: { ...ISOLATED, LC_ALL: "C" }, stdout: "pipe", stderr: "pipe" },
+    );
+    const stderr = r.stderr.toString();
+    expect(stderr).toContain("rename detection was skipped");
+    expect(renameWarning(stderr)).toContain("history of files moved in them starts at the move");
+    expect(renameWarning("")).toBeUndefined();
+  });
+
+  test("a subdirectory root follows files moved in from elsewhere in the repository", async () => {
+    // older/o.txt → other/o.txt (outside) → pkg/o.txt: two rounds of rename sources.
+    const dir = join(TMP, "movein");
+    mkdirSync(dir);
+    git(dir, ["init", "-q", "-b", "main"]);
+    write(dir, "older/o.txt", lines(6, "o"));
+    write(dir, "pkg/a.txt", lines(3, "a"));
+    commit(dir, ALICE, "2024-02-01T09:00:00Z", "init");
+    appendFileSync(join(dir, "older/o.txt"), "o 7\n");
+    commit(dir, ALICE, "2024-02-02T09:00:00Z", "edit outside");
+    mkdirSync(join(dir, "other"));
+    git(dir, ["mv", "older/o.txt", "other/o.txt"]);
+    commit(dir, BOB, "2024-02-03T09:00:00Z", "move once, still outside");
+    git(dir, ["mv", "other/o.txt", "pkg/o.txt"]);
+    appendFileSync(join(dir, "pkg/o.txt"), "o 8\n");
+    commit(dir, BOB, "2024-02-04T09:00:00Z", "move into pkg and edit");
+    write(dir, "unrelated.txt", "x\n");
+    commit(dir, BOB, "2024-02-05T09:00:00Z", "outside only, never in scope");
+
+    const whole = (await mineGit({
+      root: dir,
+      paths: ["pkg/a.txt", "pkg/o.txt", "unrelated.txt"],
+      languages: ["text", "text", "text"],
+      maxCommits: 0,
+    }))!;
+    const sub = (await mineGit({
+      root: join(dir, "pkg"),
+      paths: ["a.txt", "o.txt"],
+      languages: ["text", "text"],
+      maxCommits: 0,
+    }))!;
+    // Author ids are ranks by commit count, and the outside-only commit shifts them, so the
+    // owner is compared by name.
+    const ownerName = (r: GitResult) => r.summary.authors[r.perFile[1]!.owner]!.name; // o.txt
+    expect({ ...sub.perFile[1]!, owner: 0 }).toEqual({ ...whole.perFile[1]!, owner: 0 });
+    expect(sub.perFile[1]).toMatchObject({
+      commits: 4,
+      added: 8,
+      ownership: 0.875,
+      created: unix("2024-02-01T09:00:00Z"),
+    });
+    // The move is a rename again, so Bob is credited with one line of o.txt, not all eight.
+    expect(ownerName(sub)).toBe(ALICE.name);
+    expect(ownerName(whole)).toBe(ALICE.name);
+    expect(sub.summary.totalCommits).toBe(4); // the outside-only commit stays out
+    expect(sub.summary.analyzedCommits).toBe(4);
+    expect(sub.warnings).toEqual([]);
+  });
+
   test("a renamed-away path that is re-created later is a different file", async () => {
     // a.txt → b.txt (R); later a new a.txt is created and deleted. b.txt must not inherit it.
     const dir = join(TMP, "recreate");
@@ -678,14 +824,14 @@ describe("log parser", () => {
   const SAMPLE =
     "\x1e" +
     "a".repeat(40) +
-    "\x1f1704099600\x1fAlice\x1falice@x\x1f1 09\x1f" +
+    "\x001704099600\0Alice\0alice@x\x001 09\0" +
     "b".repeat(40) +
-    "\x1ffeat: one\0" +
+    "\0feat: one\0" +
     "\n3\t1\tsrc/x.ts\0-\t-\tlogo.png\0" +
     "0\t0\t\0dir/old name.ts\0dir/new => name.ts\0" +
     "\x1e" +
     "b".repeat(40) +
-    "\x1f1704013200\x1fBob\x1fbob@x\x1f7 23\x1f\x1fMerge it\0";
+    "\x001704013200\0Bob\0bob@x\x007 23\0\0Merge it\0";
 
   function parseAll(chunks: string[]): RawCommit[] {
     const out: RawCommit[] = [];
@@ -727,12 +873,46 @@ describe("log parser", () => {
     }
   });
 
-  test("merge-file lists cut the subdirectory prefix", () => {
+  test("separator bytes inside header fields stay in their field", () => {
+    // Under \x1f-separated fields, a \x1f in the name shifted email, date and subject; and a
+    // field opening with \x1e must not be taken for the next commit's header.
+    const [c, next] = parseAll([
+      "\x1e" + "c".repeat(40) + "\x001704099600\0Ev\x1fil\0e@x.com\x002 14\0\0" +
+        "\x1esubj\x1fwith\x1eseps\0\n1\t0\ta.txt\0" +
+        "\x1e" + "d".repeat(40) + "\x001704013200\0\x1eRS\0r@x\x003 08\0\0s\0",
+    ]);
+    expect(c).toMatchObject({
+      name: "Ev\x1fil",
+      email: "e@x.com",
+      weekday: 1,
+      hour: 14,
+      subject: "\x1esubj\x1fwith\x1eseps",
+      changes: [{ path: "a.txt", added: 1, deleted: 0, binary: false }],
+    });
+    expect(next).toMatchObject({ name: "\x1eRS", email: "r@x", weekday: 2, hour: 8 });
+  });
+
+  test("merge-file lists stay repo-relative; clean merges emit nothing", () => {
     const got: [string, string[]][] = [];
-    const p = new MergeFilesParser("sub/", (h, paths) => got.push([h, paths]));
+    const p = new MergeFilesParser((h, paths) => got.push([h, paths]));
     p.push("\x1eabc\0\0sub/c.txt\0sub/evil.txt\0\x1edef\0\0");
     p.end();
-    expect(got).toEqual([["abc", ["c.txt", "evil.txt"]]]);
+    expect(got).toEqual([["abc", ["sub/c.txt", "sub/evil.txt"]]]);
+  });
+
+  test("rename pairs are read positionally, whatever the paths look like", () => {
+    const got: [string, string][] = [];
+    const p = new RenamePairsParser((from, to) => got.push([from, to]));
+    const text =
+      "\x1eabc\0\nR100\0other/o.txt\0pkg/o.txt\0R087\0R100\0\x1eodd\0" +
+      "\x1edef\0\nR050\0a b\0pkg/c\0";
+    for (let i = 0; i < text.length; i += 5) p.push(text.slice(i, i + 5));
+    p.end();
+    expect(got).toEqual([
+      ["other/o.txt", "pkg/o.txt"],
+      ["R100", "\x1eodd"],
+      ["a b", "pkg/c"],
+    ]);
   });
 });
 
@@ -780,6 +960,68 @@ describe("authors helpers", () => {
     expect(authors).toHaveLength(4); // root ×2 separate, Sam merged, the bot
     expect(groupOf[2]).toBe(groupOf[3]);
     expect(groupOf[0]).not.toBe(groupOf[1]);
+  });
+
+  /** Adds `count` commits by name <email>; returns the identity id. */
+  const commits = (ids: Identities, name: string, email: string, count: number): number => {
+    let id = -1;
+    for (let i = 0; i < count; i++) id = ids.add(name, email);
+    return id;
+  };
+
+  test("a stray name cannot pull a large identity into someone else's", () => {
+    // vite: green@sapphi.red (1,476 commits) has 2 under "andrew"; andywangsy has 46.
+    const ids = new Identities();
+    const green = commits(ids, "翠", "a@x", 1000);
+    commits(ids, "andrew", "a@x", 2);
+    const andrew = commits(ids, "andrew", "b@y", 46);
+    const { authors, groupOf } = mergeIdentities(ids);
+    expect(authors).toHaveLength(2);
+    expect(groupOf[green]).not.toBe(groupOf[andrew]);
+    expect(authors.map((a) => a.commits)).toEqual([1002, 46]);
+  });
+
+  test("a name used ten times or more still merges, however small its share", () => {
+    // The same address's 17 "sapphi-red" commits (1%) are what join it to the noreply one.
+    const ids = new Identities();
+    const main = commits(ids, "翠 / green", "a@x", 1459);
+    commits(ids, "sapphi-red", "a@x", 17);
+    const noreply = commits(ids, "sapphi-red", "1+sapphi-red@users.noreply.github.com", 448);
+    // And a quarter of an identity's commits is enough on its own.
+    const jeff = commits(ids, "ydcjeff", "j@x", 3);
+    commits(ids, "Jeff Yang", "j@x", 1);
+    const jeffToo = commits(ids, "Jeff Yang", "j@y", 1);
+    const { groupOf } = mergeIdentities(ids);
+    expect(groupOf[main]).toBe(groupOf[noreply]);
+    expect(groupOf[jeff]).toBe(groupOf[jeffToo]);
+  });
+
+  test("a capitalized one-word name never merges; a handle and a CJK name do", () => {
+    const ids = new Identities();
+    const pairs = [
+      ["Alex", "alex@one", "Alex", "a16@two"], //            five different people in vite
+      ["Владимир", "v@one", "Владимир", "v@two"], //       Cyrillic spaces its words too
+      ["patak", "m@one", "patak", "583075+patak-dev@users.noreply.github.com"],
+      ["sun0day", "s@one", "sun0day", "s@two"],
+      ["OneNail", "o@one", "OneNail", "o@two"],
+      ["김정환", "k@one", "김정환", "k@two"],
+      ["Mergify", "m@bot", "Mergify", "m2@bot"], //        bots: a product name, not a person
+    ] as const;
+    const merged = pairs.map(([n1, e1, n2, e2]) => {
+      const a = ids.add(n1, e1);
+      const b = ids.add(n2, e2);
+      return [a, b] as const;
+    });
+    const { groupOf } = mergeIdentities(ids);
+    expect(merged.map(([a, b]) => groupOf[a] === groupOf[b])).toEqual([
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+    ]);
   });
 });
 
@@ -861,5 +1103,26 @@ describe("subjects and remotes", () => {
     expect(scrubRemote("/Users/someone/repos/r.git")).toBeUndefined();
     expect(scrubRemote("file:///Users/someone/r.git")).toBeUndefined();
     expect(scrubRemote("C:\\repos\\r.git")).toBeUndefined();
+  });
+
+  test("an unencoded '/', '?' or '#' in a password fails closed instead of leaking", () => {
+    // Each of these once came back holding the user and some or all of the secret.
+    for (const u of [
+      "https://user:ab/cdFAKE@host/x.git",
+      "https://user:ab?cdFAKE@host/x.git",
+      "https://user:ab#cdFAKE@host/x.git",
+      "https://ab?cdFAKE@host/x.git", //    bare token: "https://ab"
+      "https://ab/cdFAKE@host/x.git", //    bare token: host "ab", secret in the path
+      "user:a/bFAKE@host:path/r.git", //    scp-like: host "user", secret in the path
+    ]) {
+      const got = scrubRemote(u);
+      expect(got ?? "").not.toContain("FAKE");
+      expect(got ?? "").not.toContain("ab");
+    }
+    // Still kept: a password with "@" in it, a port, an IPv6 literal, scp with a password.
+    expect(scrubRemote("https://u:p@ss@host.example/x")).toBe("https://host.example/x");
+    expect(scrubRemote("ssh://git:pw@host:2222/o/r")).toBe("ssh://host:2222/o/r");
+    expect(scrubRemote("https://[::1]:8080/x.git")).toBe("https://[::1]:8080/x.git");
+    expect(scrubRemote("user:pw@host.example:o/r.git")).toBe("host.example:o/r.git");
   });
 });

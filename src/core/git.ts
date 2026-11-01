@@ -13,9 +13,10 @@
  * - Pathspec only for subdirectories. At the repository root the log runs with no pathspec:
  *   `-- .` turns on history simplification, which drops TREESAME merges and empty commits
  *   (flask: 5,566 commits become 4,579), so analyzedCommits would never match
- *   `rev-list --count HEAD`. When root is a subdirectory, `--relative -- .` is required — the
- *   pathspec picks the commits, --relative rewrites paths to be root-relative — and the total
- *   is counted with the same pathspec so the two numbers mean the same thing.
+ *   `rev-list --count HEAD`. When root is a subdirectory, `-- .` picks the commits, widened by
+ *   the outside paths of files that were moved in (renameSources), and the total is counted
+ *   with the same pathspec so the two numbers mean the same thing. Paths stay repo-relative
+ *   (no --relative, which would hide the outside paths); History keys files by prefix + path.
  *
  * - Merges. `git log --numstat` prints no diff for a merge, and no lines are ever taken from
  *   one: the merged work is already counted in the commits that made it, and `-m` (or --cc,
@@ -34,8 +35,12 @@
  *
  * - Shallow clones. `rev-list --count` can only count what was fetched, so totalCommits ==
  *   analyzedCommits and the oldest fetched commit shows every file as newly added. `truncated`
- *   is set, and "truncated with analyzedCommits === totalCommits" is the shallow signal the
- *   pipeline can surface as a warning: GitResult has no warnings field of its own.
+ *   and `shallow` are both set, and GitResult.warnings says so in words; it also carries the
+ *   commit cap, a skipped rename detection, and moved-in files that could not be followed.
+ *
+ * - Excluded files (GitInput.exclude: lockfiles, generated, vendored) keep their FileGit and
+ *   stay in every history view, but count toward no author's `owned`, form no coupling pair
+ *   and leave the truck factor's model.
  *
  * - Config and environment isolation. User config can silently change what log prints:
  *   log.follow makes a single "." pathspec follow renames, log.showSignature splices GPG
@@ -57,7 +62,7 @@ import {
   weeklySeries,
 } from "./git/derive";
 import { History } from "./git/history";
-import { LOG_DATE, LOG_FORMAT, LogParser, MergeFilesParser } from "./git/stream";
+import { LOG_DATE, LOG_FORMAT, LogParser, MergeFilesParser, RenamePairsParser } from "./git/stream";
 
 // ─── Running git ─────────────────────────────────────────────────────────────────────────────
 
@@ -80,14 +85,30 @@ function gitEnv(): Record<string, string> {
   for (const k of INHERITED_REPO_VARS) delete env[k];
   env.GIT_TERMINAL_PROMPT = "0";
   env.GIT_OPTIONAL_LOCKS = "0";
+  // stderr is matched for the rename-limit warning, and git ships translations (Homebrew's
+  // prints "Warnung: genaue Erkennung für Umbenennungen …" under de_DE). Nothing parsed from
+  // stdout depends on the locale: -z paths are raw bytes, %u/%H are numeric, and
+  // --encoding=UTF-8 fixes the message encoding.
+  env.LC_ALL = "C";
   return env;
 }
 
 /**
- * `-c` overrides applied to every command; see the module header for the first two. The main
- * pass asks for --relative explicitly; diff.relative=false pins the merges pass to
- * repo-relative paths (its prefix is cut in stream.ts) — as config rather than --no-relative,
- * which only exists from git 2.28 and would make older gits reject the whole command.
+ * Exhaustive rename detection compares every unpaired deleted file with every unpaired added
+ * one, and git skips it when that matrix exceeds limit² (default 1000): a reorganization that
+ * moves and edits more files than that loses every moved file's history. The cost is
+ * quadratic (one commit moving and editing 5,000 files: 2.4 s; 10,000: 8.9 s; git 2.56 on
+ * Apple Silicon), so the cap is raised rather than removed: 0 would mean unlimited, and one
+ * vendored-tree swap could then stall the walk for minutes.
+ */
+const RENAME_LIMIT = 10_000;
+
+/**
+ * `-c` overrides applied to every command; see the module header for the first two.
+ * diff.relative=false pins every pass to repo-relative paths, which History keys on, against
+ * a user's diff.relative=true — as config rather than --no-relative, which only exists from
+ * git 2.28 and would make older gits reject the whole command. The rename limit is pinned
+ * too, so a user's own (lower) diff.renameLimit cannot change results.
  */
 const SAFE_CONFIG = [
   "-c",
@@ -96,7 +117,21 @@ const SAFE_CONFIG = [
   "log.showSignature=false",
   "-c",
   "diff.relative=false",
+  "-c",
+  `diff.renameLimit=${RENAME_LIMIT}`,
 ];
+
+/**
+ * Printed once per command (not per commit) when any commit's matrix was still too large, so
+ * the warning it becomes cannot say how many commits were affected.
+ */
+const RENAME_SKIPPED = /exhaustive rename detection was skipped/;
+
+export function renameWarning(stderr: string): string | undefined {
+  return RENAME_SKIPPED.test(stderr)
+    ? "Git skipped rename detection in commits that moved too many files at once, so the history of files moved in them starts at the move."
+    : undefined;
+}
 
 async function git(root: string, args: string[]): Promise<{ ok: boolean; out: string }> {
   const proc = Bun.spawn(["git", "-C", root, ...SAFE_CONFIG, ...args], {
@@ -118,7 +153,15 @@ async function git(root: string, args: string[]): Promise<{ ok: boolean; out: st
  * or fragment (some hosts accept `?private_token=`). Local-path remotes return undefined: they
  * name a directory on the author's disk, which links nowhere for a reader and leaks a path the
  * report's --redact-paths would otherwise have hidden.
+ *
+ * It fails closed. A raw password pasted into a URL can hold an unencoded "/", "?" or "#"
+ * (AWS CodeCommit's generated ones are base64), which ends the authority early: the "host"
+ * left over is then "user:ab", and the secret sits in what looks like the path. So anything
+ * whose host is not a plain host[:port], or with an "@" anywhere after it, is dropped rather
+ * than guessed at. The field is display-only; losing an odd remote costs nothing.
  */
+const HOST = /^(?:\[[0-9a-f:.]+\]|[\w.-]+)(?::\d*)?$/i;
+
 export function scrubRemote(url: string): string | undefined {
   const u = url.trim();
   if (u.length === 0) return undefined;
@@ -128,11 +171,18 @@ export function scrubRemote(url: string): string | undefined {
     if (scheme === "file") return undefined;
     const authority = full[2]!;
     const host = authority.slice(authority.lastIndexOf("@") + 1);
-    return host.length > 0 ? `${scheme}://${host}${full[3]}` : undefined;
+    if (!HOST.test(host) || u.includes("@", scheme.length + 3 + authority.length)) {
+      return undefined;
+    }
+    return `${scheme}://${host}${full[3]}`;
   }
-  // scp-like "user@host:path". A one-letter "host" is a Windows drive ("C:\repo").
+  // scp-like "user@host:path". A one-letter "host" is a Windows drive ("C:\repo"). The user
+  // part cannot hold a "/", so "user:a/b@host:path" parses as host "user" with the password
+  // in the path, which is what the "@" check catches.
   const scp = /^(?:[^@/]*@)?([^/:@]+):(.*)$/.exec(u);
-  if (scp && scp[1]!.length > 1) return `${scp[1]}:${scp[2]}`;
+  if (scp && scp[1]!.length > 1 && HOST.test(scp[1]!) && !scp[2]!.includes("@")) {
+    return `${scp[1]}:${scp[2]}`;
+  }
   return undefined;
 }
 
@@ -192,27 +242,37 @@ export const mineGit: MineGit = async (input: GitInput): Promise<GitResult | nul
   const [inside, shallowFlag, prefix = ""] = probe.out.split("\n");
   if (inside !== "true") return null;
   const shallow = shallowFlag === "true";
-  // "HEAD --" ends the revision list, so a file named HEAD cannot make the argument ambiguous.
-  const scope = prefix.length > 0 ? ["HEAD", "--", "."] : ["HEAD", "--"];
 
   const headP = git(root, ["rev-parse", "-q", "--verify", "HEAD"]);
   const branchP = git(root, ["symbolic-ref", "-q", "--short", "HEAD"]);
   const remoteP = readRemote(root);
   const head = await headP;
   const hasCommits = head.ok;
+
+  const cap =
+    Number.isFinite(input.maxCommits) && input.maxCommits > 0 ? Math.floor(input.maxCommits) : 0;
+  const limit = cap > 0 ? [`-n${cap}`] : [];
+  const horizon = Math.floor(Date.now() / 1000) + 7 * 86_400;
+  const history = new History(input.paths, input.languages, horizon, prefix);
+  const warnings: string[] = [];
+
+  // "HEAD --" ends the revision list, so a file named HEAD cannot make the argument ambiguous.
+  let scope = ["HEAD", "--"];
+  if (prefix.length > 0 && hasCommits) {
+    const moved = await renameSources(root, prefix, limit);
+    scope = ["HEAD", "--", ".", ...moved.sources.map((p) => `:(top,literal)${p}`)];
+    if (!moved.complete) {
+      warnings.push(
+        "Not every file moved into this directory from elsewhere in the repository could be followed back, so for some of them history starts at the move.",
+      );
+    }
+  }
   const countP = hasCommits
     ? git(root, ["rev-list", "--count", ...scope])
     : Promise.resolve({ ok: false, out: "" });
 
-  const cap =
-    Number.isFinite(input.maxCommits) && input.maxCommits > 0 ? Math.floor(input.maxCommits) : 0;
-  const horizon = Math.floor(Date.now() / 1000) + 7 * 86_400;
-  const history = new History(input.paths, input.languages, horizon);
-
   let totalCommits = 0;
   if (hasCommits) {
-    const limit = cap > 0 ? [`-n${cap}`] : [];
-
     // Merges first (a fraction of a second even on vite), so the main walk can fold each
     // merge's own files in at the right point of the rename-alias timeline. The count (a
     // history walk of its own under a pathspec) overlaps it, so progress has a real total.
@@ -231,7 +291,7 @@ export const mineGit: MineGit = async (input: GitInput): Promise<GitResult | nul
         ...limit,
         ...scope,
       ],
-      new MergeFilesParser(prefix, (hash, paths) => mergeFiles.set(hash, paths)),
+      new MergeFilesParser((hash, paths) => mergeFiles.set(hash, paths)),
     );
     const counted = await countP;
     totalCommits = counted.ok ? Number.parseInt(counted.out, 10) || 0 : 0;
@@ -243,14 +303,13 @@ export const mineGit: MineGit = async (input: GitInput): Promise<GitResult | nul
       const done = history.commitCount;
       if (done % PROGRESS_EVERY === 0) input.onProgress?.(done, Math.max(expected, done));
     });
-    await streamGit(
+    const stderr = await streamGit(
       root,
       [
         "log",
         "-z",
         "--numstat",
         "-M",
-        "--relative",
         "--no-color",
         "--no-ext-diff",
         "--no-textconv",
@@ -263,6 +322,8 @@ export const mineGit: MineGit = async (input: GitInput): Promise<GitResult | nul
       ],
       parser,
     );
+    const skipped = renameWarning(stderr);
+    if (skipped) warnings.push(skipped);
     // A failed count (or a pathspec count of 0 racing a new commit) falls back to the walk.
     if (totalCommits === 0) totalCommits = history.commitCount;
     input.onProgress?.(history.commitCount, Math.max(expected, history.commitCount));
@@ -276,23 +337,92 @@ export const mineGit: MineGit = async (input: GitInput): Promise<GitResult | nul
     totalCommits,
     shallow,
     horizon,
+    exclude: input.exclude,
+    warnings,
   });
 };
 
-/** Runs one git command and feeds its stdout, decoded incrementally, to a parser. */
+/**
+ * Files moved into a subdirectory root from elsewhere in the repository. A pathspec filters
+ * the diff *before* rename detection, so under `-- .` the move of other/o.txt to pkg/o.txt is
+ * an add: the file's history starts at the move and the mover is credited with every line
+ * (vite's packages/vite: 21 such renames; bin/vite.js had 25 commits, not the 46 that
+ * `git log --follow` and a root-level run both count). Adding each outside source to the
+ * pathspec brings its earlier commits into the walk and makes the move a rename again, and
+ * History's repo-relative aliases carry them to the current file. Walking the whole history
+ * without a pathspec would do the same, at the cost of a root-level run (2.3 s against 1.6 s
+ * on packages/vite) and of git's own commit selection, which totalCommits is counted with.
+ *
+ * This pass finds the sources: --full-diff keeps the pathspec's commit selection but diffs
+ * the whole tree, and --diff-filter=R lists only renames (0.18 s on packages/vite, a quarter
+ * of the main walk). A source may itself have been moved from further out (a chain of moves
+ * is one round per hop), so the pass repeats with the widened pathspec until nothing new
+ * turns up; past the round or size cap, the rest are left to the warning.
+ *
+ * The widened scope errs the other way in one corner: a later, unrelated file at a source's
+ * old path enters the walk too, as commits that touch no current file.
+ */
+const MOVED_IN_ROUNDS = 4;
+/** Pathspecs go on the command line: kept far below macOS's 1 MiB ARG_MAX, env included. */
+const MOVED_IN_BYTES = 256 * 1024;
+
+async function renameSources(
+  root: string,
+  prefix: string,
+  limit: string[],
+): Promise<{ sources: string[]; complete: boolean }> {
+  const sources = new Set<string>();
+  const inScope = (p: string): boolean => p.startsWith(prefix) || sources.has(p);
+  let bytes = 0;
+  for (let round = 0; round < MOVED_IN_ROUNDS; round++) {
+    const found = new Set<string>();
+    await streamGit(
+      root,
+      [
+        "log",
+        "-z",
+        "-M",
+        "--full-diff",
+        "--diff-filter=R",
+        "--name-status",
+        "--no-color",
+        "--format=%x1e%H",
+        ...limit,
+        "HEAD",
+        "--",
+        ".",
+        ...[...sources].map((p) => `:(top,literal)${p}`),
+      ],
+      new RenamePairsParser((from, to) => {
+        if (inScope(to) && !inScope(from)) found.add(from);
+      }),
+    );
+    if (found.size === 0) return { sources: [...sources], complete: true };
+    for (const p of found) {
+      bytes += Buffer.byteLength(p) + 15; // ":(top,literal)" and the NUL that ends the arg
+      if (bytes > MOVED_IN_BYTES) return { sources: [...sources], complete: false };
+      sources.add(p);
+    }
+  }
+  return { sources: [...sources], complete: false };
+}
+
+/**
+ * Runs one git command and feeds its stdout, decoded incrementally, to a parser. Resolves to
+ * the command's stderr, where the only non-fatal news (the rename-limit warning) arrives.
+ */
 async function streamGit(
   root: string,
   args: string[],
   sink: { push(text: string): void; end(): void },
-): Promise<void> {
+): Promise<string> {
   const proc = Bun.spawn(["git", "-C", root, ...SAFE_CONFIG, ...args], {
     stdin: "ignore",
     stdout: "pipe",
     stderr: "pipe",
     env: gitEnv(),
   });
-  // Drained concurrently: rename-limit warnings arrive once per oversized commit, and a full
-  // stderr pipe would stall git (and so stdout) on a large history.
+  // Drained concurrently: a full stderr pipe would stall git, and so stdout, until it exits.
   const stderr = new Response(proc.stderr).text();
   const decoder = new TextDecoder();
   try {
@@ -303,10 +433,12 @@ async function streamGit(
     if (proc.exitCode === null) proc.kill();
   }
   const code = await proc.exited;
+  const err = await stderr;
   if (code !== 0) {
-    const why = (await stderr).trim().split("\n").at(-1) ?? "";
+    const why = err.trim().split("\n").at(-1) ?? "";
     throw new Error(`git ${args[0]} failed in ${root} (exit ${code})${why ? `: ${why}` : ""}`);
   }
+  return err;
 }
 
 // ─── Assembly ────────────────────────────────────────────────────────────────────────────────
@@ -318,6 +450,9 @@ interface Meta {
   totalCommits: number;
   shallow: boolean;
   horizon: number;
+  exclude: readonly boolean[] | undefined;
+  /** Raised while walking (rename limit, moved-in files not followed). */
+  warnings: string[];
 }
 
 function summarize(h: History, meta: Meta): GitResult {
@@ -376,9 +511,12 @@ function summarize(h: History, meta: Meta): GitResult {
   );
   const creator = new Int32Array(h.fileCount).fill(-1);
   const created: number[] = [];
+  const excluded = meta.exclude;
   perFile.forEach((g, f) => {
     if (!g) return;
-    authors[g.owner]!.owned++;
+    // Excluded files keep their own FileGit (the viewer still shows who touched a lockfile),
+    // but owning one is not knowledge of the code, so it does not count toward `owned`.
+    if (!excluded?.[f]) authors[g.owner]!.owned++;
     creator[f] = author[h.fileCreator[f]!]!;
     created.push(g.created);
   });
@@ -433,15 +571,23 @@ function summarize(h: History, meta: Meta): GitResult {
     punchcard: punchcard(h.punch),
     growth,
     languageChurn: languageChurn(h.time, h.churn, h.languageIds, meta.horizon),
-    coupling: coupling(h.fileCount, h.files, h.width, h.fileCommits),
+    // Width is still measured on every touched path (h.width), so dropping excluded files
+    // here cannot make a sweep look narrow enough to count as coupling.
+    coupling: coupling(
+      h.fileCount,
+      excluded ? h.files.map((fs) => fs.filter((f) => !excluded[f])) : h.files,
+      h.width,
+      h.fileCommits,
+    ),
     truckFactor: truckFactor(
       table,
       creator,
       bot,
       authors.map((a) => a.commits),
+      excluded,
     ),
   };
-  const warnings: string[] = [];
+  const warnings = [...meta.warnings];
   if (meta.shallow) {
     warnings.push(
       "This is a shallow clone, so history starts at the clone boundary: ages, creation dates and ownership reflect only the fetched commits.",

@@ -48,6 +48,20 @@ describe("analyzeGraph", () => {
     expect([...ranks].sort((a, b) => b - a)).toEqual(ranks);
   });
 
+  test("a loop closed only by type-only imports is not a cycle; the edges still count", () => {
+    // An engine imports its controller, which answers with `import type { Engine }`.
+    // 2 ↔ 3 is runtime both ways; 3 → 2 also has a type-only duplicate, which must not erase it.
+    const edges: [number, number, boolean][] = [[0, 1, false], [1, 0, true], [2, 3, false], [3, 2, true], [3, 2, false]];
+    const input = { ...flat(4, edges.map(([a, b]) => [a, b])), typeOnly: edges.map((e) => e[2]) };
+    const g = analyzeGraph(input);
+    expect(g.summary.cycles.map((c) => c.files)).toEqual([[2, 3]]);
+    expect(g.cycle).toEqual([-1, -1, 0, 0]);
+    expect(g.fanOut).toEqual([1, 1, 1, 1]);
+    expect(g.summary.edges).toBe(4);
+    // Without the flags every loop is a cycle, as before.
+    expect(analyzeGraph(flat(4, edges.map(([a, b]) => [a, b]))).summary.cycles.length).toBe(2);
+  });
+
   test("deep chains and one huge cycle do not overflow the stack", () => {
     const n = 100_000;
     const edges: [number, number][] = [];

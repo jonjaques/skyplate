@@ -87,6 +87,42 @@ describe("line classification", () => {
     expect(lines("elixir", '  @doc """\n  Docs.\n  """\n  def f, do: 1\n')).toEqual([1, 3, 0]);
   });
 
+  test("Ruby percent literals, ?x characters and backtick commands are strings", () => {
+    // fzf test/test_shell_integration.rb: the `'` in `%w[foo ' "]` once opened a string that
+    // ran 60 lines, hiding a `def` and turning three comment lines into code.
+    const rb = "%w[foo ' bar].each { |q| puts q }\n# a comment\ndef helper\n  x = 1 if y\nend\n# another comment\nz = 'it'\n";
+    const m = measureText("a.rb", rb, "ruby");
+    expect([m.code, m.comment, m.complexity, m.functions]).toEqual([5, 2, 2, 1]);
+    expect(lines("ruby", "x = %q(it's (nested) fine)\n# c\ny = %r{a'b}i\n# c\n")).toEqual([2, 2, 0]);
+    expect(lines("ruby", "q = c == ?\"\n# c\nok = x.empty? ? ?a : ?\\n\n")).toEqual([2, 1, 0]);
+    // A backtick command's `#{` is interpolation, not a comment hiding the `if`.
+    expect(measureText("a.rb", "v = `#{bin} --version`.to_i if ok\n# c\n", "ruby").complexity).toBe(2);
+    // Modulo, in every spacing, stays an operator.
+    const mod = "a = b % c; d = e%f; g = 10 %2; h %= 3; s = \"%d\"%[1]\n";
+    expect(scanText(mod, "ruby")!.mask).toBe(mod.replace("%d", "\x01\x01"));
+    // Whole-line comments inside a multi-line `%r[…]x` count as comments, as cloc counts them.
+    expect(lines("ruby", "R = %r[\n  # opening\n  a [b]\n]x\n")).toEqual([3, 1, 0]);
+  });
+
+  test("byte and wide char literals holding a quote (Rust b'\"', C++ L'\"')", () => {
+    const rs = "fn a(c: u8) -> bool {\n    c == b'\"'\n}\n// comment one\nfn b() {}\n// comment two\nfn c() { let s = \"x\"; }\n";
+    const m = measureText("a.rs", rs, "rust");
+    expect([m.code, m.comment, m.functions]).toEqual([5, 2, 3]);
+    const cpp = "wchar_t q = L'\"'; char8_t u = u8'\"'; int n = 1'000;\n";
+    expect(scanText(cpp, "c++")!.mask).toBe("wchar_t q = L'\x01'; char8_t u = u8'\x01'; int n = 1'000;\n");
+  });
+
+  test("Go / ARM assembly `//` comments; #include stays code", () => {
+    expect(lines("assembly", '#include "textflag.h"\nTEXT f(SB),NOSPLIT,$0-8\n// go-style comment\n\tMOVD R0, R1 // trailing\n')).toEqual([3, 1, 0]);
+  });
+
+  test("Nushell comments, strings, decision points and defs", () => {
+    const nu = "# comment\nexport def --env f [] {\n  if $x and $y { 'a#b' } # tail\n}\nlet s = \"multi\n# not a comment\"\n";
+    const m = measureText("a.nu", nu, "nushell");
+    expect([m.code, m.comment, m.blank]).toEqual([5, 1, 0]);
+    expect([m.complexity, m.functions]).toEqual([3, 1]);
+  });
+
   test("an unterminated single-line string only costs its own line", () => {
     expect(lines("javascript", "const a = 'oops\n// comment\nconst b = 1;\n")).toEqual([2, 1, 0]);
   });

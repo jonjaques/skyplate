@@ -54,6 +54,14 @@ export interface FileDecls {
   aliases: Map<number, number>;
   /** Node indexes of our declarations' own name identifiers. They are never references. */
   names: Set<number>;
+  /**
+   * The `module.exports = …` / `exports = …` assignment nodes. Whatever `aliases` maps them
+   * to is what requiring this file yields, which a `module.exports = require("./x")` in
+   * another file needs to know (see linkRequireExports).
+   */
+  exportNodes: number[];
+  /** `module.exports = require("./x")`: those assignments, aliased once x's declarations exist. */
+  requireExport?: { nodes: number[]; spec: string };
 }
 
 // ─── Symbols ─────────────────────────────────────────────────────────────────────────────────
@@ -70,6 +78,10 @@ export interface NewSymbol {
   signature: string;
   doc: string;
   params: number;
+  /** Offset, column and length of the bare name (no quotes), when the declaration has one. */
+  namePos?: number;
+  nameCol?: number;
+  nameLen?: number;
 }
 
 export class SymbolStore {
@@ -85,11 +97,25 @@ export class SymbolStore {
   readonly doc: string[] = [];
   readonly complexity: number[] = [];
   readonly params: number[] = [];
+  /**
+   * Where the name sits, for references placed on a declaration rather than found in the
+   * text (an override pointing at the member it overrides). Not part of the report.
+   */
+  readonly namePos: number[] = [];
+  readonly nameCol: number[] = [];
+  readonly nameLen: number[] = [];
 
   /** Canonical SourceFile.path → its declarations. NodeHandle.path is in the same form. */
   readonly files = new Map<string, FileDecls>();
   /** Set once the reference pass has asked the checker for a symbol's type. */
   readonly sigRequested: boolean[] = [];
+  /** Class symbol → its constructor's symbol, for classes that declare one. */
+  readonly ctor = new Map<number, number>();
+  /**
+   * Hooks named only by `const useX = call(…)`. The name alone cannot tell a zustand store
+   * (callable, a hook) from `useDefaults = merge(a, b)` (an object); the checked type can.
+   */
+  readonly hookByCall = new Set<number>();
 
   get size(): number {
     return this.name.length;
@@ -110,6 +136,9 @@ export class SymbolStore {
     // McCabe: one path through any callable, plus one per decision point the walk finds.
     this.complexity.push(CALLABLE.has(s.kind) ? 1 : 0);
     this.params.push(s.params);
+    this.namePos.push(s.namePos ?? -1);
+    this.nameCol.push(s.nameCol ?? s.col);
+    this.nameLen.push(s.nameLen ?? 0);
     this.sigRequested.push(!CHECKER_SIGNATURE.has(s.kind));
     return id;
   }

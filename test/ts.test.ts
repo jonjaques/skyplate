@@ -8,17 +8,18 @@
  * Positions in expectations are 0-based `line:col`, as the report stores them.
  */
 
-import { beforeAll, describe, expect, test } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { REF_KINDS, SymbolFlag, type CodeSymbols } from "../src/shared/schema";
 import type { TsInput } from "../src/core/contracts";
 import { analyzeTypeScript } from "../src/core/ts";
+import { limits } from "../src/core/ts/projects";
 
 const FIXTURE = join(import.meta.dir, "fixtures/ts");
 
-const LANG: Record<string, string> = { ts: "typescript", tsx: "tsx", js: "javascript", json: "json" };
+const LANG: Record<string, string> = { ts: "typescript", cts: "typescript", tsx: "tsx", js: "javascript", json: "json" };
 
 function inputFor(root: string, paths: string[], extra: Partial<TsInput> = {}): TsInput {
   return {
@@ -155,7 +156,7 @@ describe("symbols", () => {
     expect(has(member("Circle", "area"), SymbolFlag.abstract)).toBe(false);
     expect(has(member("Circle", "unit"), SymbolFlag.static)).toBe(true);
     expect(has(sym("count"), SymbolFlag.static)).toBe(true);
-    expect(has(sym("id"), SymbolFlag.protected)).toBe(true);
+    expect(has(sym("id", { file: "src/shapes.ts" }), SymbolFlag.protected)).toBe(true);
     expect(has(sym("#secret"), SymbolFlag.private)).toBe(true);
     expect(has(sym("hidden"), SymbolFlag.private)).toBe(true);
     expect(has(sym("checkAdd"), SymbolFlag.test)).toBe(true);
@@ -210,6 +211,19 @@ describe("symbols", () => {
     expect(r.symbols.kind[sym("Button")]).toBe("component");
     expect(r.symbols.kind[sym("Toolbar")]).toBe("component");
     expect(r.symbols.signature[sym("Button")]).toBe("(props: ButtonProps) => JSX.Element");
+  });
+
+  test("used as a JSX tag makes a component, even rendering nothing or loaded lazily", () => {
+    expect(r.symbols.kind[sym("Quiet")]).toBe("component"); // `return null`
+    expect(r.symbols.kind[sym("Later")]).toBe("component"); // `lazy(() => …)`
+    expect(r.symbols.complexity[sym("Later")]).toBe(1);
+    expect(r.symbols.kind[sym("lazy")]).toBe("function");
+  });
+
+  test("`const useX = call()` is a hook only when the call returns something callable", () => {
+    const defaults = sym("useDefaults");
+    expect([r.symbols.kind[defaults], r.symbols.complexity[defaults]]).toEqual(["variable", 0]);
+    expect(r.symbols.kind[sym("useStore")]).toBe("hook");
   });
 
   test("JavaScript with JSDoc gets doc and checker-inferred signature", () => {
@@ -287,8 +301,11 @@ describe("references", () => {
 
   test("method calls through an interface, statics, private names", () => {
     // `shape.area()` on a HasArea: the interface method, not either class's implementation.
-    expect(refsTo(member("HasArea", "area"))).toEqual(["src/app.ts 6:45 call ← describe"]);
+    // Shape's abstract `area` implements it, and is linked to it from its own name.
+    expect(refsTo(member("HasArea", "area"))).toEqual(["src/app.ts 6:45 call ← describe", "src/shapes.ts 15:11 implements ← area"]);
     expect(refsTo(member("Circle", "area"))).toEqual([]);
+    // Circle's `area` overrides the nearest declaration up its chain, Shape's, not the interface.
+    expect(refsTo(member("Shape", "area"))).toEqual(["src/shapes.ts 37:2 extends ← area"]);
     expect(refsTo(sym("unit"))).toEqual(["src/app.ts 11:36 call ← main"]);
     expect(refsTo(sym("#reveal"))).toEqual(["src/shapes.ts 18:36 call ← label"]);
     expect(refsTo(sym("#secret"))).toEqual(["src/shapes.ts 26:16 read ← #reveal"]);
@@ -298,7 +315,102 @@ describe("references", () => {
   test("a get/set pair: writes go to the setter, reads through the interface to its property", () => {
     expect(refsTo(sym("label", { kind: "setter" }))).toEqual(["src/app.ts 14:4 write ← main"]);
     expect(refsTo(sym("label", { kind: "getter" }))).toEqual([]);
-    expect(refsTo(member("HasArea", "label"))).toEqual(["src/app.ts 6:15 read ← describe"]);
+    expect(refsTo(member("HasArea", "label"))).toEqual([
+      "src/app.ts 6:15 read ← describe",
+      "src/shapes.ts 17:6 implements ← label",
+      "src/shapes.ts 21:6 implements ← label",
+    ]);
+  });
+
+  test("a member access on a union credits every member that declares it", () => {
+    // `p: Alpha | Beta`: `p.dispose()` calls whichever one p holds.
+    for (const cls of ["Alpha", "Beta"]) {
+      expect(refsTo(member(cls, "dispose"))).toEqual(["src/client.ts 4:4 call ← exercise"]);
+      expect(refsTo(member(cls, "warm"))).toEqual(["src/client.ts 5:4 call ← exercise"]);
+    }
+    // `m: MsgA | MsgB` reads `job` of both.
+    expect(refsTo(member("MsgA", "job"))).toEqual(["src/client.ts 6:10 read ← exercise"]);
+    expect(refsTo(member("MsgB", "job"))).toEqual([
+      "src/client.ts 6:10 read ← exercise",
+      "src/client.ts 9:33 write ← exercise",
+      "src/client.ts 16:14 read ← exercise",
+    ]);
+  });
+
+  test("an object literal in a union context writes only the members it is", () => {
+    // `{ kind: "b", job: 2 }` where a Msg is expected is a MsgB.
+    expect(refsTo(member("MsgB", "kind"))).toEqual(["src/client.ts 9:22 write ← exercise"]);
+    expect(refsTo(member("MsgA", "kind"))).toEqual([]);
+  });
+
+  test("a type and a value under one name: values go to the value, imports to both", () => {
+    const type = sym("Mode", { kind: "type" });
+    const value = sym("Mode", { kind: "variable" });
+    expect(refsTo(value)).toEqual([
+      "src/client.ts 0:17 import ← client.ts",
+      "src/client.ts 10:21 read ← exercise",
+      // `typeof Mode` is a type position naming the value.
+      "src/client.ts 11:22 type ← exercise",
+      "src/client.ts 11:29 read ← exercise",
+    ]);
+    expect(refsTo(type)).toEqual([
+      "src/client.ts 0:17 import ← client.ts",
+      "src/client.ts 10:14 type ← exercise",
+      "src/members.ts 34:32 type ← Mode",
+      "src/members.ts 34:48 type ← Mode",
+      "src/members.ts 40:49 type ← Worker",
+    ]);
+    expect(has(value, SymbolFlag.unusedExport)).toBe(false);
+    expect(has(type, SymbolFlag.unusedExport)).toBe(false);
+  });
+
+  test("an implementation and an override reference the member they implement", () => {
+    const runner = member("Runner", "run");
+    const worker = member("Worker", "run");
+    const night = member("Night", "run");
+    expect(refsTo(runner)).toEqual([
+      "src/client.ts 6:4 call ← exercise",
+      "src/members.ts 40:33 type ← Worker",
+      "src/members.ts 44:2 implements ← run",
+    ]);
+    expect(refsTo(worker)).toEqual(["src/client.ts 7:16 call ← exercise", "src/members.ts 54:11 extends ← run", "src/members.ts 55:10 call ← run"]);
+    // The links are call-table edges, implementation → the member callers name.
+    const edge = (from: number, to: number, kind: string) =>
+      r.calls.from.some((f, i) => f === from && r.calls.to[i] === to && REF_KINDS[r.calls.kind[i]!] === kind);
+    expect(edge(worker, runner, "implements")).toBe(true);
+    expect(edge(night, worker, "extends")).toBe(true);
+  });
+
+  test("constructors: `new` credits the class and its constructor, `super()` the base constructor", () => {
+    expect(refsTo(member("Circle", "constructor"))).toEqual(["src/app.ts 10:16 new ← main", "src/shapes.ts 42:15 new ← unit"]);
+    expect(refsTo(member("Shape", "constructor"))).toEqual(["src/shapes.ts 34:4 call ← constructor"]);
+    expect(refsTo(member("Worker", "constructor"))).toEqual([
+      "src/client.ts 7:6 new ← exercise",
+      "src/client.ts 12:34 new ← exercise",
+      "src/members.ts 51:4 call ← constructor",
+    ]);
+    expect(refsTo(member("Night", "constructor"))).toEqual(["src/client.ts 8:6 new ← exercise"]);
+    // The class keeps its own `new` references.
+    expect(refsTo(sym("Night"))).toEqual(["src/client.ts 0:23 import ← client.ts", "src/client.ts 8:6 new ← exercise"]);
+  });
+
+  test("string literals naming members: `T[\"p\"]` types and `o[\"p\"]` element access", () => {
+    expect(refsTo(member("Box", "width"))).toEqual(["src/client.ts 12:20 type ← exercise"]);
+    expect(refsTo(sym("id", { file: "src/members.ts" }))).toEqual(["src/client.ts 12:45 read ← exercise"]);
+  });
+
+  test("a call through `as`, `satisfies` or `<T>` is still a call", () => {
+    expect(refsTo(sym("helper"))).toEqual([
+      "src/client.ts 0:9 import ← client.ts",
+      "src/client.ts 13:3 call ← exercise",
+      "src/client.ts 14:3 call ← exercise",
+      "src/client.ts 15:26 call ← exercise",
+    ]);
+  });
+
+  test("JSDoc `{@link X}`, `{@link X.y}` and `@see X` reference their targets", () => {
+    expect(refsTo(sym("Runner"))).toContain("src/members.ts 40:26 type ← Worker");
+    expect(refsTo(sym("pick"))).toEqual(["src/client.ts 0:30 import ← client.ts", "src/client.ts 3:12 call ← exercise", "src/members.ts 40:61 type ← Worker"]);
   });
 
   test("writes: assignment and increment", () => {
@@ -396,7 +508,33 @@ describe("aggregates", () => {
   test("unused exports: exported, and nothing outside its file uses it (re-exports do not count)", () => {
     const unused = r.symbols.name.filter((_, i) => has(i, SymbolFlag.unusedExport)).sort();
     expect(unused).toEqual(
-      ["Badge", "Button", "Shape", "Toolbar", "bump", "checkAdd", "countdown", "describe", "legacyAdd", "main", "neverUsed", "times", "useCounter"].sort(),
+      [
+        "Badge",
+        "Button",
+        "Shape",
+        "Toolbar",
+        "bump",
+        "checkAdd",
+        "countdown",
+        "describe",
+        "legacyAdd",
+        "main",
+        "neverUsed",
+        "times",
+        "useCounter",
+        // members.ts / client.ts: used only through their members, or not at all.
+        "Alpha",
+        "Beta",
+        "MsgA",
+        "MsgB",
+        "exercise",
+        // ui.tsx: used only inside it.
+        "Later",
+        "Quiet",
+        "Shell",
+        "useDefaults",
+        "useStore",
+      ].sort(),
     );
     expect(r.stats.unusedExports).toBe(unused.length);
     // Used from another file, so not flagged.
@@ -443,6 +581,20 @@ describe("limits", () => {
     expect(await analyzeTypeScript(inputFor(FIXTURE, ["README.md", "data.json"]))).toBeNull();
   });
 
+  test("skip: a generated or vendored file has no symbols, and references into it are counted, not stored", async () => {
+    const messages: string[] = [];
+    const legacy = fileId("src/legacy.js");
+    const skip = fixturePaths.map((_, i) => i === legacy);
+    const t = (await analyzeTypeScript(inputFor(FIXTURE, fixturePaths, { skip, onProgress: (m) => messages.push(m) })))!;
+    expect(t.moduleSymbol[legacy]).toBe(-1);
+    expect(t.symbols.file.includes(legacy)).toBe(false);
+    expect(t.refs.file.includes(legacy)).toBe(false);
+    expect(t.stats.files).toBe(r.stats.files - 1);
+    // math.testcase.ts imports and calls `square`, declared in the skipped file.
+    expect(messages).toContain("TypeScript: 2 references into generated, vendored or minified files were left out");
+    expect(t.stats.unresolved).toBe(r.stats.unresolved);
+  }, 60_000);
+
   test("never throws: an unusable root is reported, not raised", async () => {
     const messages: string[] = [];
     const t = await analyzeTypeScript(inputFor("/nonexistent/starchart-root", ["a.ts"], { onProgress: (m) => messages.push(m) }));
@@ -480,6 +632,11 @@ describe("CommonJS without a config", () => {
       "module.exports = View;",
       "",
     ].join("\n"),
+    // express's shape: the package entry re-exports the factory another file exports.
+    "lib/app.js": ["exports = module.exports = createApp;", "function createApp() { return {}; }", ""].join("\n"),
+    "main.js": ["module.exports = require('./lib/app');", ""].join("\n"),
+    "start.js": ["const make = require('./main');", "make();", "make();", ""].join("\n"),
+    "run.cts": ["export = function run(command: string): string {", "  return command;", "};", ""].join("\n"),
   };
   const paths = Object.keys(files).sort();
   const name = (s: number) => c.symbols.name[s];
@@ -498,7 +655,24 @@ describe("CommonJS without a config", () => {
   }, 60_000);
 
   test("files land in the inferred project", () => {
-    expect(c.projects).toEqual([{ config: "", files: 3, ms: c.projects[0]!.ms }]);
+    expect(c.projects).toEqual([{ config: "", files: paths.length, ms: c.projects[0]!.ms }]);
+  });
+
+  test("module.exports = require('./x') hands x's export through, so calls reach the function", () => {
+    const createApp = find("createApp");
+    expect(refs(createApp)).toEqual([
+      "lib/app.js 0:27 export ← app.js",
+      "start.js 0:6 import ← start.js",
+      "start.js 1:0 call ← start.js",
+      "start.js 2:0 call ← start.js",
+    ]);
+    // Nothing is left on the re-exporting file's module symbol.
+    expect(refs(c.moduleSymbol[paths.indexOf("main.js")]!)).toEqual([]);
+  });
+
+  test("export = function run() is placed at its name, not at `export`", () => {
+    const run = find("run");
+    expect([c.symbols.kind[run], c.symbols.line[run], c.symbols.col[run]]).toEqual(["function", 0, 18]);
   });
 
   test("exports.x = function, module.exports = X, prototype methods", () => {
@@ -530,4 +704,51 @@ describe("CommonJS without a config", () => {
     expect(refs(find("slugify"))).toEqual(["lib/view.js 0:29 read ← slug"]);
     expect(refs(find("slug"))).toEqual(["lib/view.js 2:63 call ← render"]);
   });
+});
+
+// ─── Configs the compiler cannot open ────────────────────────────────────────────────────────
+
+describe("a circular tsconfig `extends`", () => {
+  // tsgo never answers a request that loads one of these configs, and loads it for any file
+  // beneath it, so before the fix the whole CLI hung with both processes idle.
+  let dir = "";
+  const files: Record<string, string> = {
+    "tsconfig.json": JSON.stringify({ extends: "./tsconfig.other.json", include: ["src"] }),
+    "tsconfig.other.json": JSON.stringify({ extends: "./tsconfig.json", include: ["src"] }),
+    "src/c.ts": "export const c = 1;\nexport const d = c;\n",
+  };
+  const paths = Object.keys(files).sort();
+
+  beforeAll(() => {
+    dir = mkdtempSync(join(tmpdir(), "starchart-ts-circular-"));
+    for (const [p, text] of Object.entries(files)) {
+      mkdirSync(join(dir, p, ".."), { recursive: true });
+      writeFileSync(join(dir, p), text);
+    }
+  });
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  test("is skipped with a reason, and its files are still analyzed without it", async () => {
+    const messages: string[] = [];
+    const configs = paths.filter((p) => p.endsWith(".json"));
+    const t = await analyzeTypeScript(inputFor(dir, paths, { configs, onProgress: (m) => messages.push(m) }));
+    expect(messages).toContain('TypeScript: skipping tsconfig.json: its "extends" chain is circular, which the compiler cannot open');
+    expect(t?.projects.map((p) => p.config)).toEqual([""]);
+    expect(t?.stats.references).toBe(1);
+  }, 30_000);
+
+  test("one the walker did not list cannot hang the analysis either: the request is bounded", async () => {
+    const messages: string[] = [];
+    const saved = limits.snapshotMs;
+    limits.snapshotMs = () => 1500;
+    try {
+      const started = performance.now();
+      const t = await analyzeTypeScript(inputFor(dir, paths, { configs: [], onProgress: (m) => messages.push(m) }));
+      expect(t).toBeNull();
+      expect(performance.now() - started).toBeLessThan(10_000);
+      expect(messages.some((m) => m.includes("got no answer"))).toBe(true);
+    } finally {
+      limits.snapshotMs = saved;
+    }
+  }, 30_000);
 });

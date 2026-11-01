@@ -19,11 +19,22 @@ import { getLexRules, type LexRules } from "../languages/syntax";
 
 // ─── Shared machinery ────────────────────────────────────────────────────────────────────────
 
+/**
+ * A RawImport that may also say the compiler erases it (`import type`, `export type … from`,
+ * or a list whose every specifier is written `type X`). Such an edge is real coupling but
+ * never runs, so it cannot make an import cycle bite at module evaluation; the graph keeps it
+ * out of cycle detection. The flag rides on the contract's RawImport as an extra field until
+ * the contract names it, which is why it is optional and only ever `true`.
+ */
+export interface ExtractedImport extends RawImport {
+  typeOnly?: true;
+}
+
 interface Ctx {
   text: string;
   mask: string;
-  out: RawImport[];
-  seen: Set<string>;
+  out: ExtractedImport[];
+  seen: Map<string, ExtractedImport>;
   lineStarts: number[];
 }
 
@@ -53,15 +64,21 @@ function lineOf(ctx: Ctx, pos: number): number {
   return lo;
 }
 
-function add(ctx: Ctx, spec: string, kind: EdgeKind, pos: number): void {
+function add(ctx: Ctx, spec: string, kind: EdgeKind, pos: number, typeOnly = false): void {
   const s = spec.trim();
   if (!s || s.length > 1000) return;
   const line = lineOf(ctx, pos);
-  // The same specifier twice on one line (`@import url("x")` seen by two patterns) is one edge.
+  // The same specifier twice on one line (`@import url("x")` seen by two patterns) is one edge,
+  // and a runtime import of it outweighs a type-only one beside it.
   const key = `${kind}\0${line}\0${s}`;
-  if (ctx.seen.has(key)) return;
-  ctx.seen.add(key);
-  ctx.out.push({ spec: s, kind, line });
+  const prior = ctx.seen.get(key);
+  if (prior) {
+    if (!typeOnly) delete prior.typeOnly;
+    return;
+  }
+  const imp: ExtractedImport = typeOnly ? { spec: s, kind, line, typeOnly: true } : { spec: s, kind, line };
+  ctx.seen.set(key, imp);
+  ctx.out.push(imp);
 }
 
 /**
@@ -93,20 +110,37 @@ const lastPos = (m: RegExpExecArray) => m.index + m[0].length - 1;
 
 // ─── JavaScript / TypeScript ─────────────────────────────────────────────────────────────────
 
-const JS_IMPORT = /(?<![\w$.])import\s+(?:type\s+)?(?:[\w$*{}\s,]{0,2000}?\s*from\s*)?(["'])/g;
-const JS_EXPORT_FROM = /(?<![\w$.])export\s+(?:type\s+)?(?:\*\s*(?:as\s+[\w$]+\s*)?|\{[^}]{0,4000}\}\s*)from\s*(["'])/g;
-const JS_DYNAMIC = /(?<![\w$.])import\s*\(\s*(["'`])/g;
-const JS_REQUIRE = /(?<![\w$.])require\s*\(\s*(["'`])/g;
+// Bindings may be any identifier (`import { café }`, `import * as ü`), so the classes are
+// Unicode ID_Continue rather than \w, which is ASCII-only and silently dropped those imports.
+const JS_IMPORT = /(?<![\p{ID_Continue}$.])import\s+(type\s+)?(?:([\p{ID_Continue}$*{}\s,]{0,2000}?)\s*from\s*)?(["'])/gu;
+const JS_EXPORT_FROM = /(?<![\p{ID_Continue}$.])export\s+(type\s+)?(\*\s*(?:as\s+[\p{ID_Continue}$]+\s*)?|\{[^}]{0,4000}\}\s*)from\s*(["'])/gu;
+const JS_DYNAMIC = /(?<![\p{ID_Continue}$.])import\s*\(\s*(["'`])/gu;
+const JS_REQUIRE = /(?<![\p{ID_Continue}$.])require\s*\(\s*(["'`])/gu;
 const TRIPLE_SLASH = /^[ \t]*\/\/\/[ \t]*<reference\s+(path|types)\s*=\s*(["'])([^"'\n]*)\2/gm;
+
+/**
+ * `{ type A, type B as C }` and nothing else: every specifier is erased. `{ type }` imports a
+ * value named `type`, and `{ type as t }` renames one, so both stay runtime imports.
+ */
+function allTypeSpecifiers(bindings: string): boolean {
+  const list = /^\s*\{([^}]*)\}\s*$/.exec(bindings)?.[1];
+  if (list === undefined) return false;
+  const parts = list.split(",").map((p) => p.trim()).filter(Boolean);
+  return parts.length > 0 && parts.every((p) => /^type\s+(?!as\s+[\p{ID_Continue}$]+$)/u.test(p));
+}
 
 function extractJs(ctx: Ctx, start: number, end: number): void {
   each(ctx, JS_IMPORT, start, end, (m) => {
     const spec = stringAt(ctx, lastPos(m));
-    if (spec !== undefined) add(ctx, spec, "import", m.index);
+    if (spec === undefined) return;
+    const bindings = m[2] ?? "";
+    // `import type from "./x"` is a default import named `type`: the keyword needs bindings after it.
+    const typeOnly = (!!m[1] && bindings.trim() !== "") || allTypeSpecifiers(bindings);
+    add(ctx, spec, "import", m.index, typeOnly);
   });
   each(ctx, JS_EXPORT_FROM, start, end, (m) => {
     const spec = stringAt(ctx, lastPos(m));
-    if (spec !== undefined) add(ctx, spec, "import", m.index);
+    if (spec !== undefined) add(ctx, spec, "import", m.index, !!m[1] || allTypeSpecifiers(m[2]!));
   });
   each(ctx, JS_DYNAMIC, start, end, (m) => {
     const spec = stringAt(ctx, lastPos(m));
@@ -262,8 +296,11 @@ function extractMarkdown(ctx: Ctx, withJs: boolean): void {
 
 // ─── Python ──────────────────────────────────────────────────────────────────────────────────
 
-const PY_FROM = /^[ \t]*from[ \t]+(\.*[\w.]*)[ \t]+import[ \t]+(\([^)]{0,4000}\)|[^\n#;]{0,2000})/gm;
+// Python 3 identifiers are Unicode (`import naïve`, `from .café import x`); \w would drop them.
+const PY_FROM = /^[ \t]*from[ \t]+(\.*[\p{ID_Continue}.]*)[ \t]+import[ \t]+(\([^)]{0,4000}\)|[^\n#;]{0,2000})/gmu;
 const PY_IMPORT = /^[ \t]*import[ \t]+([^\n#;]{1,2000})/gm;
+const PY_NAME = /^[\p{ID_Start}_]\p{ID_Continue}*$/u;
+const PY_DOTTED = /^[\p{ID_Start}_][\p{ID_Continue}.]*$/u;
 
 function extractPython(ctx: Ctx, start: number, end: number): void {
   each(ctx, PY_FROM, start, end, (m) => {
@@ -275,7 +312,7 @@ function extractPython(ctx: Ctx, start: number, end: number): void {
       let any = false;
       for (const part of names) {
         const name = part.trim().split(/\s+as\s+/)[0]?.trim();
-        if (name && name !== "*" && /^\w+$/.test(name)) {
+        if (name && name !== "*" && PY_NAME.test(name)) {
           add(ctx, mod + name, "import", m.index);
           any = true;
         }
@@ -286,7 +323,7 @@ function extractPython(ctx: Ctx, start: number, end: number): void {
   each(ctx, PY_IMPORT, start, end, (m) => {
     for (const part of m[1]!.split(",")) {
       const name = part.trim().split(/\s+/)[0];
-      if (name && /^[\w.]+$/.test(name)) add(ctx, name, "import", m.index);
+      if (name && PY_DOTTED.test(name)) add(ctx, name, "import", m.index);
     }
   });
 }
@@ -658,14 +695,15 @@ function segmentExtractor(rules: LexRules): Extractor | undefined {
   return undefined;
 }
 
-export const extractImports: ExtractImports = (_path, text, languageId) => {
+// Typed through `satisfies` so callers see ExtractedImport and can read `typeOnly`.
+export const extractImports = ((_path: string, text: string, languageId: string): ExtractedImport[] => {
   const markdown = languageId === "markdown" || languageId === "rmarkdown" || languageId === "mdx";
   const host = HOSTS.has(languageId);
   const extractor = BY_LANGUAGE[languageId];
   if (!extractor && !markdown && !host) return [];
   const rules = markdown ? undefined : getLexRules(languageId);
   const scan: Scan | undefined = rules ? scanWithRules(text, rules) : undefined;
-  const ctx: Ctx = { text, mask: scan?.mask ?? text, out: [], seen: new Set(), lineStarts: lineStartsOf(text) };
+  const ctx: Ctx = { text, mask: scan?.mask ?? text, out: [], seen: new Map(), lineStarts: lineStartsOf(text) };
   if (markdown) extractMarkdown(ctx, languageId === "mdx");
   else if (scan && scan.segments.length > 1) {
     // HTML-like files: scripts, styles and markup each get their own extractor.
@@ -674,4 +712,4 @@ export const extractImports: ExtractImports = (_path, text, languageId) => {
   else if (host) extractHtml(ctx, 0, text.length);
   ctx.out.sort((a, b) => a.line - b.line);
   return ctx.out;
-};
+}) satisfies ExtractImports;

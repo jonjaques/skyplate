@@ -5,7 +5,9 @@
  * the node (for the batched checker lookup), how it is used (REF kind, decided here from the
  * syntax around it), and who uses it (the innermost enclosing symbol of ours). Whether it
  * actually resolves to one of our symbols is the resolver's job; this pass only decides what
- * the use would be if it does.
+ * the use would be if it does. Three other nodes name symbols too, and find-all-references
+ * counts them: `super` in `super(…)` (the base constructor), a string literal naming a member
+ * (`T["width"]`, `o["area"]()`), and the names in JSDoc `{@link X}` / `@see X`.
  *
  * The walk is iterative with parallel arrays as the stack: generated code can nest thousands
  * deep (`a + b + c + …` chains parse as one left-deep tree), deep enough to risk overflowing
@@ -18,6 +20,7 @@ import {
   headerText,
   isAssignmentOperator,
   isRequireCall,
+  NodeFlags,
   SyntaxKind as K,
   type TsNode,
   type TsSourceFile,
@@ -28,6 +31,10 @@ export const SIG = -1;
 const SKIP = -2;
 
 export const CAND_SHORTHAND = 1; // resolve with getShorthandAssignmentValueSymbol(parent)
+/** `typeof Mode`: a type position naming the value, so a same-named type is the wrong pick. */
+export const CAND_VALUE = 2;
+/** `super(…)`: the checker names the base class; the reference is to its constructor. */
+export const CAND_SUPER = 4;
 
 /**
  * Property names that getSymbolAtLocation cannot attribute to the property they set or read:
@@ -126,6 +133,13 @@ export function walkReferences(sf: TsSourceFile, decls: FileDecls, store: Symbol
       }
     }
 
+    // forEachChild never visits JSDoc, so its links are reached from the node it documents.
+    // A `const` statement carries the JSDoc of the declaration inside it, which is the caller.
+    if (n.flags & NodeFlags.HasJSDoc) {
+      const first = k === K.VariableStatement ? n.declarationList?.declarations?.[0] : undefined;
+      docLinks(n, (first && decls.scopes.get(first.index)) ?? sym, sf, fileId, batch);
+    }
+
     if (k === K.Identifier || k === K.PrivateIdentifier) {
       if (decls.names.has(n.index)) continue;
       const kind = classify(n, inType);
@@ -136,7 +150,8 @@ export function walkReferences(sf: TsSourceFile, decls: FileDecls, store: Symbol
       const len = n.end - start;
       if (kind !== SKIP) {
         const shorthand = n.parent.kind === K.ShorthandPropertyAssignment && same(n.parent.name, n);
-        batch.push(n, kind, sym, fileId, start, lc.line, lc.character, len, shorthand ? CAND_SHORTHAND : 0, shorthand ? n.parent : undefined);
+        const flags = (shorthand ? CAND_SHORTHAND : 0) | (inType && inTypeQuery(n) ? CAND_VALUE : 0);
+        batch.push(n, kind, sym, fileId, start, lc.line, lc.character, len, flags, shorthand ? n.parent : undefined);
       }
       if (member) {
         const m = batch.members;
@@ -150,6 +165,29 @@ export function walkReferences(sf: TsSourceFile, decls: FileDecls, store: Symbol
         m.line.push(lc.line);
         m.col.push(lc.character);
         m.len.push(len);
+      }
+      continue;
+    }
+
+    if (k === K.SuperKeyword) {
+      // Only the call: `super.method()` already resolves through `method`.
+      if (n.parent.kind === K.CallExpression && same(n.parent.expression, n)) {
+        const start = n.getStart();
+        const lc = sf.getLineAndCharacterOfPosition(start);
+        batch.push(n, REF.call, sym, fileId, start, lc.line, lc.character, n.end - start, CAND_SUPER);
+      }
+      continue;
+    }
+
+    if (k === K.StringLiteral || k === K.NoSubstitutionTemplateLiteral) {
+      const kind = literalMember(n, inType);
+      // Placed on the name inside the quotes, and only when the text is the name as written:
+      // an escape would make the slice and the name differ.
+      const start = n.getStart() + 1;
+      const len = n.end - start - 1;
+      if (kind !== SKIP && len > 0 && n.text?.length === len) {
+        const lc = sf.getLineAndCharacterOfPosition(start);
+        batch.push(n, kind, sym, fileId, start, lc.line, lc.character, len, 0);
       }
       continue;
     }
@@ -309,8 +347,10 @@ function classify(id: TsNode, inType: boolean): number {
 /** Kind of use for an expression `e` (an identifier, or a property access naming the member). */
 function usage(e: TsNode, inType: boolean): number {
   let p = e.parent;
-  // `(fn)()`, `fn!()`: the wrappers do not change that it is the callee.
-  while (p.kind === K.ParenthesizedExpression || p.kind === K.NonNullExpression) {
+  // `(fn)()`, `fn!()`, `(fn as any)()`, `(fn satisfies F)()`, `(<F>fn)()`: the wrappers do not
+  // change that it is the callee. Only the wrapped expression climbs; the type beside it in an
+  // `as` is a type node and never gets here.
+  while (isWrapper(p.kind) && same(p.expression, e)) {
     e = p;
     p = p.parent;
   }
@@ -344,6 +384,72 @@ function usage(e: TsNode, inType: boolean): number {
       return REF.export;
   }
   return inType ? REF.type : REF.read;
+}
+
+function isWrapper(k: K): boolean {
+  return (
+    k === K.ParenthesizedExpression ||
+    k === K.NonNullExpression ||
+    k === K.AsExpression ||
+    k === K.SatisfiesExpression ||
+    k === K.TypeAssertionExpression
+  );
+}
+
+/** `typeof a` / `typeof a.b`: the names in a type query are values. */
+function inTypeQuery(id: TsNode): boolean {
+  let n = id;
+  while (n.parent.kind === K.QualifiedName) n = n.parent;
+  return n.parent.kind === K.TypeQuery && same(n.parent.exprName, n);
+}
+
+/**
+ * A string literal that names a member: the index of `T["width"]`, or the argument of
+ * `o["area"]`, whose use is that of the element access itself. SKIP for every other string.
+ */
+function literalMember(s: TsNode, inType: boolean): number {
+  const p = s.parent;
+  if (p.kind === K.LiteralType) {
+    const up = p.parent;
+    return up.kind === K.IndexedAccessType && same(up.indexType, p) ? REF.type : SKIP;
+  }
+  if (p.kind === K.ElementAccessExpression && same(p.argumentExpression, s)) return usage(p, inType);
+  return SKIP;
+}
+
+const LINKS = new Set<K>([K.JSDocLink, K.JSDocLinkCode, K.JSDocLinkPlain, K.JSDocNameReference]);
+
+/**
+ * Names in `{@link X}`, `{@link X.y}`, `{@link X#y}` and `@see X`, as type references: a link
+ * names a declaration, it does not use the value. Only links, not every JSDoc identifier: in
+ * a JS file tsgo reparses `@param {T}` types into real nodes, which the walk already reaches.
+ */
+function docLinks(n: TsNode, from: number, sf: TsSourceFile, fileId: number, batch: Batch): void {
+  for (const doc of n.jsDoc ?? []) {
+    const stack: TsNode[] = [doc];
+    while (stack.length) {
+      const d = stack.pop()!;
+      if (!LINKS.has(d.kind)) {
+        d.forEachChild((c) => {
+          stack.push(c);
+        });
+        continue;
+      }
+      const names: TsNode[] = d.name ? [d.name] : [];
+      while (names.length) {
+        const id = names.pop()!;
+        if (id.kind !== K.Identifier) {
+          id.forEachChild((c) => {
+            names.push(c);
+          });
+          continue;
+        }
+        const start = id.getStart();
+        const lc = sf.getLineAndCharacterOfPosition(start);
+        batch.push(id, REF.type, from, fileId, start, lc.line, lc.character, id.end - start, 0);
+      }
+    }
+  }
 }
 
 /**

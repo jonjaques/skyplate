@@ -12,27 +12,37 @@
  *
  * The byte layout, as observed with git 2.56 (and unchanged since numstat gained -z):
  *
- *   \x1e<hash>\x1f<at>\x1f<aN>\x1f<aE>\x1f<ad>\x1f<parents>\x1f<subject>\0   header
+ *   \x1e<hash>\0<at>\0<aN>\0<aE>\0<ad>\0<parents>\0<subject>\0    header: 7 tokens
  *   \n<added>\t<deleted>\t<path>\0                                first change ("\n" once)
  *   <added>\t<deleted>\t<path>\0                                  further changes
  *   <added>\t<deleted>\t\0<old path>\0<new path>\0                a rename: empty path field
  *
  * Binary files show "-" for both counts. Merges and empty commits are a bare header; which
  * files a merge itself changed comes from a separate, much smaller pass (MergeFilesParser).
+ *
+ * Header fields are NUL-separated because NUL is the one byte none of them can hold. They
+ * used to be split on \x1f, on the theory that a stray separator could only land in the
+ * subject; but git accepts control bytes in an author name too, and one \x1f there
+ * shifted every later field (author "Ev <il>", the weekday read from the email, the commit
+ * gone from the punchcard). A token that opens with \x1e only starts a header when no header
+ * fields are still owed, so a name or subject beginning with \x1e cannot open a phantom one.
  */
 
-/** Separators chosen because they cannot occur in a hash, a timestamp or a numstat count. */
-const RECORD = 0x1e; //  ASCII record separator, starts every header
-const UNIT = "\x1f"; //  ASCII unit separator, between header fields
+/**
+ * Starts every header. A numstat token never opens with it: those open with a digit, "-", or
+ * the one "\n" -z puts before a commit's first change.
+ */
+const RECORD = 0x1e;
+/** Tokens after the \x1e<hash> one: at, aN, aE, ad, parents, subject. */
+const HEADER_FIELDS = 6;
 
 /**
  * %aN/%aE apply .mailmap. %ad is rendered with `--date=format:%u %H`, which git formats in the
  * commit's own recorded zone (unlike `format-local:`), giving the author's local weekday
- * (1 = Monday) and hour for the punchcard without any time-zone arithmetic here. The subject
- * is last so a stray separator inside it can only ever corrupt the subject. %P (parent
+ * (1 = Monday) and hour for the punchcard without any time-zone arithmetic here. %P (parent
  * hashes) lets history.ts tell a parallel branch from a later re-creation of a path.
  */
-export const LOG_FORMAT = "%x1e%H%x1f%at%x1f%aN%x1f%aE%x1f%ad%x1f%P%x1f%s";
+export const LOG_FORMAT = "%x1e%H%x00%at%x00%aN%x00%aE%x00%ad%x00%P%x00%s";
 export const LOG_DATE = "format:%u %H";
 
 export interface RawChange {
@@ -67,6 +77,9 @@ export class LogParser {
   /** A rename's numstat token is followed by two path tokens: old (2 pending), new (1). */
   private renamePending = 0;
   private renameChange: RawChange | null = null;
+  /** Header tokens still owed after "\x1e<hash>"; collected in `fields` until it is 0. */
+  private headerPending = 0;
+  private fields: string[] = [];
 
   constructor(private readonly emit: (commit: RawCommit) => void) {}
 
@@ -91,8 +104,20 @@ export class LogParser {
     this.renameChange = null;
   }
 
+  private finishHeader(): void {
+    this.current = parseHeader(this.fields);
+    this.fields = [];
+    this.headerPending = 0;
+  }
+
   private token(t: string): void {
-    // Rename paths come first: they are arbitrary bytes and must not be sniffed as headers.
+    // Header fields and rename paths come first: both are arbitrary text and must not be
+    // sniffed as a header or a numstat line.
+    if (this.headerPending > 0) {
+      this.fields.push(t);
+      if (--this.headerPending === 0) this.finishHeader();
+      return;
+    }
     if (this.renamePending > 0 && this.renameChange) {
       if (this.renamePending === 2) this.renameChange.from = t;
       else this.renameChange.path = t;
@@ -101,7 +126,8 @@ export class LogParser {
     }
     if (t.charCodeAt(0) === RECORD) {
       this.flush();
-      this.current = parseHeader(t);
+      this.fields = [t.slice(1)];
+      this.headerPending = HEADER_FIELDS;
       return;
     }
     const commit = this.current;
@@ -133,19 +159,15 @@ export class LogParser {
  *
  *   \x1e<hash>\0 \0 <path>\0 <path>\0 …        (an empty token follows the header)
  *
- * Combined diffs ignore --relative (observed: a subdirectory root still gets "sub/c.txt"), so
- * the pass pins repo-relative output (diff.relative=false) and the prefix is cut here; the
- * pathspec already keeps every listed path inside it.
+ * Paths are repo-relative (diff.relative=false is pinned; combined diffs ignore --relative
+ * anyway), which is what History keys on.
  */
 export class MergeFilesParser {
   private carry = "";
   private hash = "";
   private paths: string[] = [];
 
-  constructor(
-    private readonly prefix: string,
-    private readonly emit: (hash: string, paths: string[]) => void,
-  ) {}
+  constructor(private readonly emit: (hash: string, paths: string[]) => void) {}
 
   push(text: string): void {
     if (text.length === 0) return;
@@ -157,8 +179,7 @@ export class MergeFilesParser {
         this.hash = t.slice(1).trim();
       } else if (t.length > 0 && t !== "\n" && this.hash) {
         // Defensive: no separator newline was observed under -c, but -z numstat has one.
-        const p = t.charCodeAt(0) === 10 ? t.slice(1) : t;
-        if (p.startsWith(this.prefix)) this.paths.push(p.slice(this.prefix.length));
+        this.paths.push(t.charCodeAt(0) === 10 ? t.slice(1) : t);
       }
     }
   }
@@ -175,6 +196,46 @@ export class MergeFilesParser {
   }
 }
 
+/**
+ * Parser for the rename-sources pass: `git log -z -M --full-diff --diff-filter=R
+ * --name-status --format=%x1e%H`, i.e. only the renames, with both sides repo-relative:
+ *
+ *   \x1e<hash>\0 \nR<score>\0 <old>\0 <new>\0  R<score>\0 <old>\0 <new>\0 …
+ *
+ * Tokens are taken positionally (status, then two paths), so a path that happens to start
+ * with \x1e or look like "R100" is never mistaken for a header or a status.
+ */
+export class RenamePairsParser {
+  private carry = "";
+  /** 0: expecting a header or a status; 2: old path next; 1: new path next. */
+  private pending = 0;
+  private from = "";
+
+  constructor(private readonly emit: (from: string, to: string) => void) {}
+
+  push(text: string): void {
+    if (text.length === 0) return;
+    const parts = (this.carry + text).split("\0");
+    this.carry = parts.pop() ?? "";
+    for (const t of parts) {
+      if (this.pending === 2) {
+        this.from = t;
+        this.pending = 1;
+      } else if (this.pending === 1) {
+        this.emit(this.from, t);
+        this.pending = 0;
+      } else if (t.charCodeAt(0) !== RECORD) {
+        const status = t.charCodeAt(0) === 10 ? t.slice(1) : t;
+        if (status.charCodeAt(0) === 82) this.pending = 2; // "R"; --diff-filter=R allows no other
+      }
+    }
+  }
+
+  end(): void {
+    if (this.carry.length > 0) this.push("\0");
+  }
+}
+
 /** Decimal digits in t[from, to) — hand-rolled because it runs once per numstat column. */
 function toCount(t: string, from: number, to: number): number {
   let n = 0;
@@ -186,8 +247,8 @@ function toCount(t: string, from: number, to: number): number {
   return n;
 }
 
-function parseHeader(t: string): RawCommit {
-  const f = t.slice(1).split(UNIT);
+/** `f`: the hash (its \x1e already cut) and the HEADER_FIELDS tokens after it. */
+function parseHeader(f: string[]): RawCommit {
   const date = f[4] ?? "";
   const weekday = date.charCodeAt(0) - 49; // "1" (Monday) → 0
   const hour = Number.parseInt(date.slice(2), 10);
@@ -200,7 +261,7 @@ function parseHeader(t: string): RawCommit {
     weekday: valid ? weekday : -1,
     hour: valid ? hour : -1,
     parents: f[5] ?? "",
-    subject: f.length > 7 ? f.slice(6).join(UNIT) : (f[6] ?? ""),
+    subject: f[6] ?? "",
     changes: [],
   };
 }

@@ -242,10 +242,18 @@ export function languagesForExtension(ext: string): readonly string[] {
   return idx().byExt.get(ext) ?? EMPTY;
 }
 
-/** Languages claiming an exact basename; falls back to a case-insensitive match. */
+/** Languages claiming exactly this basename, case included, as linguist's own lookup does. */
 export function languagesForFilename(name: string): readonly string[] {
-  const i = idx();
-  return i.byFilename.get(name) ?? i.byFilenameLower.get(name.toLowerCase()) ?? EMPTY;
+  return idx().byFilename.get(name) ?? EMPTY;
+}
+
+/**
+ * Languages claiming this basename in any case ("dockerfile", "license"). Linguist has no
+ * such fallback, and it collides with ordinary words: lowercase `install` is its Text
+ * `INSTALL`, `build` its Starlark `BUILD`. Callers rank it below a shebang for that reason.
+ */
+export function languagesForFilenameIgnoringCase(name: string): readonly string[] {
+  return idx().byFilenameLower.get(name.toLowerCase()) ?? EMPTY;
 }
 
 /** Languages run by an interpreter named in a shebang ("python3", "node"). */
@@ -261,4 +269,12 @@ export function languageForAlias(alias: string): string | undefined {
 /** Internal: linguist type of an id, or undefined when unknown. */
 export function languageType(id: string): LanguageInfo["type"] | undefined {
   return idx().byId.get(id)?.type;
+}
+
+/**
+ * Internal: the ids RANK_ORDER and EXTENSION_DEFAULTS name. A name linguist renames simply
+ * stops ranking, with no error anywhere, so a test resolves each one after every regenerate.
+ */
+export function rankedLanguageIds(): string[] {
+  return [...RANK_ORDER.map(toLanguageId), ...Object.values(EXTENSION_DEFAULTS)];
 }

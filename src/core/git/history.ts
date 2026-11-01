@@ -28,6 +28,11 @@
  *   file. Descent is decided from %P parents in one bounded backward scan, run only for
  *   renames that actually have pending touches.
  *
+ * Paths arrive repo-relative, never cut to the analyzed root: when that root is a subdirectory,
+ * a file moved into it from outside has its pre-move commits in the walk under the outside
+ * path (see the subdirectory note in git.ts), and only a repo-relative alias can carry them to
+ * the file. Current files are therefore keyed by `prefix + path`.
+ *
  * Typed-array reads use `!`: every index below is a file id, commit index, slot or buffer
  * position that was bounds-checked where it was produced, and noUncheckedIndexedAccess cannot
  * see that.
@@ -100,11 +105,12 @@ export class History {
   /** Touches adopted through a later rename; reported by tests and the proof runs. */
   adopted = 0;
 
-  constructor(paths: string[], languages: string[], horizon: number) {
+  /** `prefix`: the analyzed root's path inside the repository, "" or ending in "/". */
+  constructor(paths: string[], languages: string[], horizon: number, prefix = "") {
     const n = paths.length;
     this.fileCount = n;
     this.horizon = horizon;
-    paths.forEach((p, i) => this.pathIndex.set(p, i));
+    paths.forEach((p, i) => this.pathIndex.set(prefix + p, i));
     this.fileCommits = new Int32Array(n);
     this.fileAdded = new Float64Array(n);
     this.fileDeleted = new Float64Array(n);

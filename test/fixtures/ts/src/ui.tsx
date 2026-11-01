@@ -37,3 +37,35 @@ export const Toolbar = () => {
 export function Badge({ label }: ButtonProps) {
   return <span>{label}</span>;
 }
+
+/** Renders nothing: it only runs effects, which still makes it a component. */
+export function Quiet() {
+  return null;
+}
+
+function lazy<T>(load: () => T): T {
+  return load();
+}
+
+/** Loaded on first render, so its body is somewhere else. */
+export const Later = lazy(() => Quiet);
+
+export const Shell = () => (
+  <div>
+    <Quiet />
+    <Later />
+  </div>
+);
+
+function merge<A, B>(a: A, b: B): A & B {
+  return { ...a, ...b };
+}
+
+function create<T>(init: T): () => T {
+  return () => init;
+}
+
+/** Named like a hook, but an object. */
+export const useDefaults = merge({ size: 1 }, {});
+/** A store hook made by a factory, zustand style. */
+export const useStore = create({ count: 0 });

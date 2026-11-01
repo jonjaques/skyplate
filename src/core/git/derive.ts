@@ -355,8 +355,9 @@ function outranks(t: FileAuthors, i: number, j: number): boolean {
  * human who actually wrote it. Files no human ever touched carry no human knowledge to lose,
  * so they leave the denominator instead of counting as already orphaned.
  *
- * Every file with history is in scope; GitInput carries no generated/vendored flags, so
- * lockfiles and vendored trees count like code. Excluding them needs those flags in GitInput.
+ * Files flagged in `exclude` (GitInput.exclude: lockfiles, generated and vendored files) leave
+ * the model entirely, like bot-only files: nobody "knows" a lockfile, and counting them would
+ * let whoever runs `npm install` most often look like the project's key person.
  */
 export const DOA_THRESHOLD_ABS = 3.293;
 export const DOA_THRESHOLD_NORM = 0.75;
@@ -372,6 +373,8 @@ export function truckFactor(
   bot: boolean[],
   /** Author commit totals, for tie-breaks between authors owning equally many files. */
   authorCommits: number[],
+  /** Per file id: leave out of the model (see above). */
+  exclude?: readonly boolean[],
 ): GitSummary["truckFactor"] {
   const fileCount = creator.length;
   const authored: number[][] = bot.map(() => []);
@@ -381,6 +384,7 @@ export function truckFactor(
   const doa: number[] = [];
 
   for (let f = 0; f < fileCount; f++) {
+    if (exclude?.[f]) continue;
     let humanCommits = 0;
     for (let i = table.start[f]!; i < table.start[f + 1]!; i++) {
       if (!bot[table.author[i]!]) humanCommits += table.commits[i]!;

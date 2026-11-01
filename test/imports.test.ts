@@ -42,6 +42,30 @@ describe("extractImports", () => {
     ]);
   });
 
+  test("bindings and module names may be any Unicode identifier", () => {
+    const ts = ['import { café } from "./x";', 'import { π, τ } from "./math";', 'import naïve from "./n";', 'import * as ü from "./y";', 'export { ñ } from "./z";'].join("\n");
+    expect(specs(ts, "typescript")).toEqual(["0:import:./x", "1:import:./math", "2:import:./n", "3:import:./y", "4:import:./z"]);
+    expect(specs("from .café import x\nimport naïve, ok\nfrom . import (été,)\n", "python")).toEqual(["0:import:.café", "1:import:naïve", "1:import:ok", "2:import:.été"]);
+  });
+
+  test("type-only imports are flagged; `type` as a binding name is not", () => {
+    const ts = [
+      'import type { A } from "./a";',
+      'import type * as ns from "./ns";',
+      'import { type C, type D as E } from "./c";',
+      'export type { X } from "./x";',
+      'export { type Y } from "./y";',
+      'export type * from "./w";',
+      'import type from "./default-named-type";', // a default import called `type`
+      'import { type F, g } from "./mixed";',
+      'import H, { type I } from "./h";',
+      'import { type } from "./t";',
+      'import type { J } from "./j"; import { k } from "./j";', // one runtime import makes the edge runtime
+    ].join("\n");
+    const flagged = extractImports("x.ts", ts, "typescript").map((i) => `${i.spec}${i.typeOnly ? " (type)" : ""}`);
+    expect(flagged).toEqual(["./a (type)", "./ns (type)", "./c (type)", "./x (type)", "./y (type)", "./w (type)", "./default-named-type", "./mixed", "./h", "./t", "./j"]);
+  });
+
   test("Vue / Svelte script and style blocks, HTML references", () => {
     const vue = [
       "<template>",
@@ -166,6 +190,85 @@ describe("createResolver: JavaScript / TypeScript", () => {
     expect(r("src/main.ts", "react-dom/client", "typescript")).toBe("npm:react-dom");
     expect(r("src/main.ts", "~/not-configured", "typescript")).toBeNull();
   });
+
+  test("Node's builtins, not the host runtime's: Bun's extras are packages", () => {
+    expect(r("src/main.ts", "ws", "typescript")).toBe("npm:ws");
+    expect(r("src/main.ts", "undici", "typescript")).toBe("npm:undici");
+    expect(r("src/main.ts", "bun", "typescript")).toBe("bun:bun");
+    // Prefix-only builtins: the bare names are ordinary packages.
+    expect(r("src/main.ts", "test", "typescript")).toBe("npm:test");
+    expect(r("src/main.ts", "sqlite", "typescript")).toBe("npm:sqlite");
+    expect(r("src/main.ts", "node:test", "typescript")).toBe("node:test");
+  });
+
+  test("schemes and names npm could never publish are not npm packages", () => {
+    expect(r("src/main.ts", "data:text/javascript, export default 'hi'", "typescript")).toBe("url:data:text/javascript");
+    expect(r("src/main.ts", "virtual:my-module", "typescript")).toBe("virtual:virtual:my-module");
+    expect(r("src/main.ts", "cloudflare:workers", "typescript")).toBe("cloudflare:cloudflare:workers");
+    for (const alias of ["=/nested", "__F_ABSOLUTE_PACKAGE_PATH__", "@virtual-file", ".hidden"]) expect(r("src/main.ts", alias, "typescript")).toBeNull();
+    expect(r("src/main.ts", "JSONStream", "typescript")).toBe("npm:JSONStream"); // pre-rule uppercase name
+  });
+});
+
+describe("createResolver: package imports, tsconfig scope, stylesheets", () => {
+  const r = repo({
+    "app/package.json": JSON.stringify({ name: "app", imports: { "#star/*": "./star/*", "#imports": "./imports-field.css" } }),
+    "app/star/dollar$$.js": "",
+    "app/star/a$&b.js": "",
+    "app/main.js": "",
+    "app/a.css": "",
+    "app/imports-field.css": "",
+    // A nearer tsconfig whose include leaves __tests__ out does not own those files.
+    "web/tsconfig.json": JSON.stringify({ include: ["**/*.ts"], exclude: ["./skipped/**"], compilerOptions: { paths: { "~utils": ["./test-utils.ts"], "@/*": ["./src/*"] } } }),
+    "web/test-utils.ts": "",
+    "web/src/route$$.ts": "",
+    "web/feature/tsconfig.json": JSON.stringify({ include: ["./src"] }),
+    "web/feature/src/a.ts": "",
+    "web/feature/__tests__/a.spec.ts": "",
+    "web/skipped/x.ts": "",
+    "web/nested/tsconfig.json": JSON.stringify({ include: [], references: [{ path: "./tsconfig.a.json" }, { path: "./tsconfig.b.json" }] }),
+    "web/nested/tsconfig.a.json": JSON.stringify({ include: ["./a.ts"], compilerOptions: { paths: { "@imported": ["./a-imported.ts"] } } }),
+    "web/nested/tsconfig.b.json": JSON.stringify({ include: ["./b.ts"], compilerOptions: { paths: { "@imported": ["./b-imported.ts"] } } }),
+    "web/nested/a.ts": "",
+    "web/nested/b.ts": "",
+    "web/nested/a-imported.ts": "",
+    "web/nested/b-imported.ts": "",
+    "css/stylus.styl": "",
+    "css/nested/nested.less": "",
+    "css/nested/nested.styl": "",
+    "css/sass.scss": "",
+    "css/plain.css": "",
+    "css/dep/package.json": JSON.stringify({ name: "css-dep", main: "index.js", sass: "index.scss", style: "index.css" }),
+    "css/dep/index.js": "",
+    "css/dep/index.scss": "",
+    "css/dep/index.css": "",
+  });
+
+  test("wildcard targets insert the match literally ($$, $& in file names)", () => {
+    expect(r("app/main.js", "#star/dollar$$.js", "javascript")).toBe("app/star/dollar$$.js");
+    expect(r("app/main.js", "#star/a$&b.js", "javascript")).toBe("app/star/a$&b.js");
+    expect(r("web/test-utils.ts", "@/route$$", "typescript")).toBe("web/src/route$$.ts");
+  });
+
+  test("CSS @import of a package import (#name) is not a fragment", () => {
+    expect(r("app/a.css", "#imports", "css")).toBe("app/imports-field.css");
+  });
+
+  test("tsconfig paths come from the config whose include takes the file", () => {
+    expect(r("web/feature/__tests__/a.spec.ts", "~utils", "typescript")).toBe("web/test-utils.ts");
+    expect(r("web/nested/a.ts", "@imported", "typescript")).toBe("web/nested/a-imported.ts");
+    expect(r("web/nested/b.ts", "@imported", "typescript")).toBe("web/nested/b-imported.ts");
+    // A file no config takes keeps the nearest directory's aliases: the fallback for importers
+    // (`.vue`, `.css`) that an include list written for `.ts` leaves out.
+    expect(r("web/skipped/x.ts", "~utils", "typescript")).toBe("web/test-utils.ts");
+  });
+
+  test("stylesheets probe their own extension first and use a package's style entry", () => {
+    expect(r("css/stylus.styl", "./nested/nested", "stylus")).toBe("css/nested/nested.styl");
+    expect(r("css/sass.scss", "css-dep", "scss")).toBe("css/dep/index.scss");
+    expect(r("css/plain.css", "css-dep", "css")).toBe("css/dep/index.css");
+    expect(r("app/main.js", "css-dep", "javascript")).toBe("css/dep/index.js");
+  });
 });
 
 describe("createResolver: other ecosystems", () => {
@@ -199,7 +302,7 @@ describe("createResolver: other ecosystems", () => {
 
   test("Rust: mod files, crate/self/super paths, std and crates", () => {
     const r = repo({
-      "Cargo.toml": '[package]\nname = "my-app"\n',
+      "Cargo.toml": '[package]\nname = "my-app"\n\n[dependencies]\nserde = "1"\n',
       "src/main.rs": "",
       "src/config.rs": "",
       "src/fmt/mod.rs": "",
@@ -215,6 +318,55 @@ describe("createResolver: other ecosystems", () => {
     expect(r("src/fmt/mod.rs", "self::input::X", "rust")).toBe("src/fmt/input.rs");
     expect(r("src/main.rs", "std::io", "rust")).toBe("rust-stdlib:std");
     expect(r("src/main.rs", "serde::Deserialize", "rust")).toBe("cargo:serde");
+  });
+
+  test("Rust: crates by their declared names; undeclared first segments are items in scope", () => {
+    const r = repo({
+      "Cargo.toml": [
+        "[package]",
+        'name = "app"',
+        "[dependencies]",
+        'aho-corasick = "1"',
+        'jemalloc = { package = "tikv-jemallocator", version = "0.6" }',
+        'shared = { path = "crates/shared-lib" }',
+        "[target.'cfg(unix)'.dependencies]",
+        'nix = "0.29"',
+        "[dev-dependencies]",
+        'test-case = "3"',
+      ].join("\n"),
+      "src/main.rs": "",
+      "src/fmt/mod.rs": "",
+      "crates/shared-lib/Cargo.toml": '[package]\nname = "shared-lib"\n',
+      "crates/shared-lib/src/lib.rs": "",
+    });
+    // The pipeline merges externals by exact name: these must match the manifest's spelling.
+    expect(r("src/main.rs", "aho_corasick::AhoCorasick", "rust")).toBe("cargo:aho-corasick");
+    expect(r("src/main.rs", "test_case::test_case", "rust")).toBe("cargo:test-case");
+    expect(r("src/main.rs", "jemalloc::Jemalloc", "rust")).toBe("cargo:tikv-jemallocator");
+    expect(r("src/main.rs", "nix::unistd", "rust")).toBe("cargo:nix");
+    expect(r("src/main.rs", "shared::Thing", "rust")).toBe("crates/shared-lib/src/lib.rs");
+    expect(r("src/main.rs", "shared_lib::Thing", "rust")).toBe("crates/shared-lib/src/lib.rs");
+    // fd src/fmt/mod.rs: `use Token::*;` names its own enum, not a crate.
+    expect(r("src/fmt/mod.rs", "Token", "rust")).toBe("src/fmt/mod.rs");
+    expect(r("src/fmt/mod.rs", "helpers::x", "rust")).toBe("src/fmt/mod.rs");
+    // No manifest to say what is declared: lowercase names stay crates, types stay local.
+    const bare = repo({ "main.rs": "" });
+    expect(bare("main.rs", "regex::Regex", "rust")).toBe("cargo:regex");
+    expect(bare("main.rs", "Kind", "rust")).toBe("main.rs");
+  });
+
+  test("PyPI and gem externals use the names their manifests declare", () => {
+    const r = repo({
+      "pyproject.toml": '[project]\nname = "app"\ndependencies = ["pallets-sphinx-themes", "Typing_Extensions"]\n',
+      "Gemfile": 'source "https://rubygems.org"\ngem "minitest"\n',
+      "docs/conf.py": "",
+      "test/helper.rb": "",
+    });
+    expect(r("docs/conf.py", "pallets_sphinx_themes", "python")).toBe("pypi:pallets-sphinx-themes");
+    expect(r("docs/conf.py", "typing_extensions", "python")).toBe("pypi:typing-extensions");
+    expect(r("docs/conf.py", "yaml", "python")).toBe("pypi:yaml"); // undeclared: as written
+    expect(r("test/helper.rb", "minitest/autorun", "ruby")).toBe("gem:minitest");
+    expect(r("test/helper.rb", "json", "ruby")).toBe("ruby-stdlib:json");
   });
 
   test("JVM, C/C++, Ruby, PHP PSR-4, CSS partials", () => {

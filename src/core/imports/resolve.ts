@@ -13,9 +13,10 @@
  * read. See contractIssues in the module report.
  */
 
-import { builtinModules } from "node:module";
 import type { CreateResolver, ImportResolution, RawImport, ResolveContext } from "../contracts";
+import type { ExternalDependency } from "../../shared/schema";
 import { parseJsonc } from "../facts";
+import { readManifests } from "../manifests";
 
 /** A resolution to a package directory: the representative file plus its siblings. */
 export type PackageResolution = { file: number; also: number[] };
@@ -151,7 +152,25 @@ const CONDITIONS = ["source", "development", "style", "sass", "import", "module"
 // Build-output roots a package.json may point at; mapped back to src/ when the build isn't checked in.
 const BUILD_DIRS = /^(?:dist|lib|build|out|esm|cjs|es|types|dts|module)\//;
 
-const NODE_BUILTINS = new Set(builtinModules.filter((m) => !m.startsWith("bun:")).map((m) => m.replace(/^node:/, "")));
+// Node's own `require("module").builtinModules` (v24), written out rather than read from the
+// running runtime: under Bun that list also names `bun`, `undici` and `ws`, so the npm `ws` a
+// project declares was filed as a Node builtin. The prefix-only modules (node:sqlite,
+// node:test, node:sea) are left out because their bare names are ordinary npm packages.
+const NODE_BUILTINS = new Set(
+  (
+    "_http_agent _http_client _http_common _http_incoming _http_outgoing _http_server _stream_duplex _stream_passthrough " +
+    "_stream_readable _stream_transform _stream_wrap _stream_writable _tls_common _tls_wrap assert async_hooks buffer " +
+    "child_process cluster console constants crypto dgram diagnostics_channel dns domain events fs http http2 https " +
+    "inspector module net os path perf_hooks process punycode querystring readline repl stream string_decoder sys timers " +
+    "tls trace_events tty url util v8 vm wasi worker_threads zlib"
+  ).split(" "),
+);
+
+// npm's name rule: URL-safe characters, no leading `.` or `_`, a scope only with a slash.
+// Uppercase is let through because packages published before the rule keep it (JSONStream).
+// Anything else bare (`=/nested`, `__F_ABSOLUTE_PACKAGE_PATH__`, `@virtual-file`) is a
+// bundler alias or placeholder, not a package anyone could install.
+const NPM_NAME = /^(?:@[a-z0-9~-][a-z0-9._~-]*\/)?[a-z0-9~-][a-z0-9._~-]*$/i;
 
 interface PackageInfo {
   dir: string;
@@ -167,9 +186,41 @@ interface PathMapping {
 }
 
 interface TsConfig {
+  /** Directory of the config itself, which the default include and exclude are relative to. */
+  dir: string;
   baseUrl?: string;
   mappings?: PathMapping[];
+  /** include / exclude / files, each relative to the config that set it; inherited when unset. */
+  include?: RegExp[];
+  exclude?: RegExp[];
+  files?: Set<string>;
+  outDir?: string;
 }
+
+/**
+ * A tsconfig include/exclude pattern as a regex over repo paths, read the way tsc reads it:
+ * `*` and `?` stay within a segment, `**` spans directories, and a pattern whose last segment
+ * has neither a `.` nor a wildcard names a directory and takes everything beneath it.
+ */
+function tsconfigGlob(dir: string, pattern: string): RegExp | undefined {
+  const full = join(dir, pattern);
+  if (full === undefined) return undefined;
+  const last = pattern.split("/").filter((s) => s && s !== ".").pop() ?? "";
+  const segs = full ? full.split("/") : [];
+  if (last === "" || last === ".." || last === "**" || !/[.*?]/.test(last)) {
+    if (segs[segs.length - 1] === "**") segs.pop();
+    segs.push("**", "*");
+  }
+  let re = "";
+  segs.forEach((seg, k) => {
+    if (seg === "**") re += "(?:[^/]+/)*";
+    else re += seg.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, "[^/]*").replace(/\?/g, "[^/]") + (k < segs.length - 1 ? "/" : "");
+  });
+  return new RegExp(`^${re}$`);
+}
+
+const tsconfigGlobs = (dir: string, patterns: unknown[]) =>
+  patterns.flatMap((p) => (typeof p === "string" ? (tsconfigGlob(dir, p) ?? []) : []));
 
 /** npm package name of a bare specifier ("@scope/name/sub" → "@scope/name"). */
 export function npmName(spec: string): string {
@@ -183,6 +234,7 @@ class JsResolver {
   private configDirs = new Map<string, string[]>();
   private configCache = new Map<string, TsConfig | null>();
   private nearestConfigCache = new Map<string, TsConfig[]>();
+  private defaultScope = new Map<TsConfig, { include: RegExp[]; exclude: RegExp[] }>();
 
   constructor(
     private ctx: ResolveContext,
@@ -217,7 +269,8 @@ class JsResolver {
     }
   }
 
-  resolve(from: string, raw: string, kind: RawImport["kind"]): ImportResolution {
+  /** `style` marks a stylesheet importer, whose packages have their own entry fields. */
+  resolve(from: string, raw: string, kind: RawImport["kind"], style?: StyleImporter): ImportResolution {
     let spec = raw;
     // Loader prefixes (`raw-loader!./x`) and Vite / webpack queries (`./a.svg?raw`, `#hash`).
     if (spec.includes("!")) spec = spec.slice(spec.lastIndexOf("!") + 1);
@@ -228,6 +281,12 @@ class JsResolver {
     if (spec.startsWith("npm:")) return ext(npmName(spec.slice(4).replace(/@[^/]*$/, "")), "npm");
     if (spec.startsWith("jsr:")) return ext(npmName(spec.slice(4).replace(/(?<=.)@[^/]*$/, "")), "jsr");
     if (/^[a-z][a-z0-9+.-]*:\/\//i.test(spec)) return ext(spec, "url");
+    // Other schemes: data: URLs are inline modules (named by MIME type, not their contents);
+    // `virtual:x`, `astro:content`, `cloudflare:workers` belong to a plugin or runtime, filed
+    // under that scheme the way `bun:` is. Without this they became npm names like "data:text".
+    const scheme = /^([a-z][a-z0-9+.-]+):/i.exec(spec)?.[1]?.toLowerCase();
+    if (scheme === "data" || scheme === "blob") return ext(spec.slice(0, spec.search(/[,;]|$/)), "url");
+    if (scheme) return ext(spec, scheme);
     const fromDir = dirname(from);
 
     // Triple-slash path references are relative even without "./".
@@ -249,24 +308,25 @@ class JsResolver {
         for (const target of matchSubpath(imports as Record<string, unknown>, spec)) {
           const hit = target.startsWith(".") ? this.probeTarget(pkg.dir, target) : undefined;
           if (hit !== undefined) return { file: hit };
-          if (!target.startsWith(".")) return this.resolve(from, target, kind);
+          if (!target.startsWith(".")) return this.resolve(from, target, kind, style);
         }
       }
       // Not a package import: `#/x` is also a common tsconfig `paths` alias, tried below.
     }
 
-    for (const cfg of this.configsFor(fromDir)) {
+    for (const cfg of this.configsFor(from)) {
       const hit = this.viaConfig(cfg, spec);
       if (hit !== undefined) return { file: hit };
     }
 
-    const ws = this.workspace(spec);
+    const ws = this.workspace(spec, style);
     if (ws) return ws;
     const name = npmName(spec);
-    if (NODE_BUILTINS.has(name) || NODE_BUILTINS.has(spec)) return ext(name, "node");
+    if (name === "bun") return ext("bun", "bun"); // Bun's own module, as `bun:sqlite` is
+    if (NODE_BUILTINS.has(name)) return ext(name, "node");
     // `@/x`, `~/x`, `#x`, `$lib`: aliases configured somewhere we cannot see (a bundler config),
     // never npm package names.
-    if (name.startsWith("@/") || name === "@" || /^[~#$]/.test(name)) return UNRESOLVED;
+    if (name.startsWith("@/") || name === "@" || /^[~#$]/.test(name) || !NPM_NAME.test(name)) return UNRESOLVED;
     return ext(name, "npm");
   }
 
@@ -275,16 +335,16 @@ class JsResolver {
   }
 
   /** Workspace package by name → its source file, or undefined when the name isn't local. */
-  workspace(spec: string): ImportResolution | undefined {
+  workspace(spec: string, style?: StyleImporter): ImportResolution | undefined {
     const name = npmName(spec);
     const pkg = this.packages.get(name);
     if (!pkg) return undefined;
     const sub = spec.slice(name.length).replace(/^\//, "");
-    const hit = this.packageEntry(pkg, sub);
+    const hit = this.packageEntry(pkg, sub, style);
     return hit === undefined ? UNRESOLVED : { file: hit };
   }
 
-  private packageEntry(pkg: PackageInfo, sub: string): number | undefined {
+  private packageEntry(pkg: PackageInfo, sub: string, style?: StyleImporter): number | undefined {
     const exportsField = pkg.json.exports;
     if (exportsField !== undefined) {
       for (const target of matchExports(exportsField, sub ? `./${sub}` : ".")) {
@@ -293,7 +353,9 @@ class JsResolver {
       }
     }
     if (!sub) {
-      for (const field of ["source", "module", "main", "types", "typings", "browser"]) {
+      // A stylesheet's `@use "pkg"` wants the package's stylesheet, which Sass's package
+      // importer and Vite find in `sass` (Sass only) and then `style`; `main` is the JS entry.
+      for (const field of [...(style ? STYLE_FIELDS[style] : []), "source", "module", "main", "types", "typings", "browser"]) {
         const v = pkg.json[field];
         if (typeof v === "string") {
           const hit = this.probeTarget(pkg.dir, v);
@@ -401,21 +463,54 @@ class JsResolver {
     return found;
   }
 
-  /** The tsconfig/jsconfig files of the nearest directory that has any, fully loaded. */
-  private configsFor(dir: string): TsConfig[] {
-    const cached = this.nearestConfigCache.get(dir);
+  /**
+   * The configs whose `paths` apply to `from`: those of the nearest directory holding a config
+   * that takes the file in (include / files / exclude), as tsc -p and tsserver pick a project.
+   * A nearer config that leaves the file out does not stop the walk — vite's
+   * playground/tsconfig-json has `include: ["./src"]`, so its __tests__ belong to
+   * playground/tsconfig.json and its `~utils` alias. When no config anywhere takes the file,
+   * the nearest directory's configs still apply: an include list written for `.ts` leaves out
+   * the `.vue` and `.css` importers a bundler resolves with the same aliases.
+   */
+  private configsFor(from: string): TsConfig[] {
+    const cached = this.nearestConfigCache.get(from);
     if (cached) return cached;
-    let result: TsConfig[] = [];
-    for (let d = dir; ; d = dirname(d)) {
+    let nearest: TsConfig[] | undefined;
+    let owning: TsConfig[] | undefined;
+    for (let d = dirname(from); ; d = dirname(d)) {
       const list = this.configDirs.get(d);
       if (list) {
-        result = list.map((p) => this.loadConfig(p, 0)).filter((c): c is TsConfig => !!c && !!(c.baseUrl !== undefined || c.mappings));
-        break;
+        const loaded = list.map((p) => this.loadConfig(p, 0)).filter((c): c is TsConfig => !!c);
+        nearest ??= loaded;
+        const takes = loaded.filter((c) => this.covers(c, from));
+        if (takes.length) {
+          owning = takes;
+          break;
+        }
       }
       if (d === "") break;
     }
-    this.nearestConfigCache.set(dir, result);
+    const result = (owning ?? nearest ?? []).filter((c) => c.baseUrl !== undefined || !!c.mappings);
+    this.nearestConfigCache.set(from, result);
     return result;
+  }
+
+  /** Whether a config's files / include / exclude take `path` in. */
+  private covers(cfg: TsConfig, path: string): boolean {
+    if (cfg.files?.has(path)) return true;
+    let defaults = this.defaultScope.get(cfg);
+    if (!defaults) {
+      // tsc's defaults: everything under the config unless `files` lists the inputs, minus
+      // package folders and the build output.
+      const exclude = tsconfigGlobs(cfg.dir, ["**/node_modules", "**/bower_components", "**/jspm_packages"]);
+      // An outDir at or above the config (`"outDir": "."`) would exclude the whole project.
+      const out = cfg.outDir;
+      if (out !== undefined && out !== "" && out !== cfg.dir && !cfg.dir.startsWith(out + "/")) exclude.push(...tsconfigGlobs("", [out]));
+      defaults = { include: cfg.files ? [] : tsconfigGlobs(cfg.dir, ["**/*"]), exclude };
+      this.defaultScope.set(cfg, defaults);
+    }
+    if (!(cfg.include ?? defaults.include).some((re) => re.test(path))) return false;
+    return !(cfg.exclude ?? defaults.exclude).some((re) => re.test(path));
   }
 
   /**
@@ -431,7 +526,7 @@ class JsResolver {
     const json = readJson(this.ctx, path);
     if (!json) return null;
     const dir = dirname(path);
-    let merged: TsConfig = {};
+    let merged: TsConfig = { dir };
     const ext = json.extends;
     for (const e of Array.isArray(ext) ? ext : ext ? [ext] : []) {
       if (typeof e !== "string") continue;
@@ -439,7 +534,14 @@ class JsResolver {
       const parent = parentPath ? this.loadConfig(parentPath, depth + 1) : null;
       if (parent) merged = { ...merged, ...parent };
     }
+    merged.dir = dir;
+    if (Array.isArray(json.include)) merged.include = tsconfigGlobs(dir, json.include);
+    if (Array.isArray(json.exclude)) merged.exclude = tsconfigGlobs(dir, json.exclude);
+    if (Array.isArray(json.files)) {
+      merged.files = new Set(json.files.flatMap((f) => (typeof f === "string" ? (join(dir, f) ?? []) : [])));
+    }
     const opts = (json.compilerOptions ?? {}) as Record<string, unknown>;
+    if (typeof opts.outDir === "string") merged.outDir = join(dir, opts.outDir);
     if (typeof opts.baseUrl === "string") merged.baseUrl = join(dir, opts.baseUrl) ?? "";
     if (opts.paths && typeof opts.paths === "object") {
       const base = merged.baseUrl ?? dir;
@@ -488,7 +590,7 @@ class JsResolver {
       } else if (spec === m.prefix) star = "";
       else continue;
       for (const t of m.targets) {
-        const hit = this.probe(join(m.base, t.replace("*", star)));
+        const hit = this.probe(join(m.base, t.replace("*", () => star))); // literal `$$`, see matchSubpath
         if (hit !== undefined) return hit;
       }
     }
@@ -496,6 +598,11 @@ class JsResolver {
     return undefined;
   }
 }
+
+/** What kind of stylesheet is importing, for package entry fields and extension order. */
+type StyleImporter = "sass" | "less" | "stylus" | "css";
+
+const STYLE_FIELDS: Record<StyleImporter, string[]> = { sass: ["sass", "style"], less: ["style"], stylus: ["style"], css: ["style"] };
 
 /** Condition-ordered string targets of an exports/imports value. */
 function conditionTargets(value: unknown, out: string[] = [], depth = 0): string[] {
@@ -525,7 +632,9 @@ function matchSubpath(map: Record<string, unknown>, key: string): string[] {
       star = key.slice(pre.length, key.length - post.length);
     }
   }
-  return best ? conditionTargets(map[best]).map((t) => t.replaceAll("*", star)) : [];
+  // A function replacer inserts the match literally: as a string, `$$` / `$&` in a file name
+  // (vite's `#star/dollar$$.js`) would be read as replacement patterns.
+  return best ? conditionTargets(map[best]).map((t) => t.replaceAll("*", () => star)) : [];
 }
 
 function matchExports(exportsField: unknown, subpath: string): string[] {
@@ -540,33 +649,50 @@ function matchExports(exportsField: unknown, subpath: string): string[] {
 // ─── CSS ─────────────────────────────────────────────────────────────────────────────────────
 
 const CSS_EXTS = [".scss", ".sass", ".css", ".less", ".styl", ".pcss"];
+// Each preprocessor looks for its own extension first: a Stylus `@import "./nested"` next to
+// nested.less and nested.styl means the .styl one. The shared list is only the fallback.
+const preferring = (...first: string[]) => [...new Set([...first, ...CSS_EXTS])];
+const CSS_EXTS_FOR: Record<string, string[]> = {
+  stylus: preferring(".styl"),
+  less: preferring(".less"),
+  sass: preferring(".sass", ".scss"),
+  css: preferring(".css", ".pcss"),
+  postcss: preferring(".pcss", ".css"),
+};
 const SASS_BUILTINS = /^sass:/;
 
-function resolveCss(idx: RepoIndex, js: () => JsResolver, from: string, spec: string): ImportResolution {
+const styleImporter = (languageId: string): StyleImporter =>
+  languageId === "scss" || languageId === "sass" ? "sass" : languageId === "less" ? "less" : languageId === "stylus" ? "stylus" : "css";
+
+function resolveCss(idx: RepoIndex, js: () => JsResolver, from: string, spec: string, languageId: string): ImportResolution {
   if (SASS_BUILTINS.test(spec)) return ext(spec.slice(5) ? "sass" : spec, "sass");
-  if (spec.startsWith("~")) return js().resolve(from, spec.slice(1), "import");
+  const style = styleImporter(languageId);
+  if (spec.startsWith("~")) return js().resolve(from, spec.slice(1), "import", style);
+  // `#imports` is a package.json import, not a fragment: stripping `#…` left nothing to resolve.
+  if (spec.startsWith("#")) return js().resolve(from, spec, "import", style);
   const clean = spec.replace(/[?#].*$/, "");
   const fromDir = dirname(from);
   const base = clean.startsWith("/") ? join("", clean) : join(fromDir, clean);
-  const hit = cssProbe(idx, base);
+  const hit = cssProbe(idx, base, languageId);
   if (hit !== undefined) return { file: hit };
   if (clean.startsWith(".") || clean.startsWith("/")) return UNRESOLVED;
   // Bare: tsconfig aliases and packages, as a bundler would.
-  return js().resolve(from, clean, "import");
+  return js().resolve(from, clean, "import", style);
 }
 
-function cssProbe(idx: RepoIndex, p: string | undefined): number | undefined {
+function cssProbe(idx: RepoIndex, p: string | undefined, languageId = ""): number | undefined {
   if (p === undefined) return undefined;
   const exact = idx.file(p);
   if (exact !== undefined) return exact;
   const dir = dirname(p);
   const base = basename(p);
-  for (const e of CSS_EXTS) {
+  const exts = CSS_EXTS_FOR[languageId] ?? CSS_EXTS;
+  for (const e of exts) {
     // Sass partials: `@use "vars"` finds `_vars.scss`.
     const hit = idx.file(p + e) ?? idx.file(join(dir, `_${base}${e}`));
     if (hit !== undefined) return hit;
   }
-  for (const e of CSS_EXTS) {
+  for (const e of exts) {
     const hit = idx.file(`${p}/_index${e}`) ?? idx.file(`${p}/index${e}`);
     if (hit !== undefined) return hit;
   }
@@ -621,6 +747,9 @@ const PY_STDLIB = new Set(
     "warnings wave weakref webbrowser winreg winsound wsgiref xdrlib xml xmlrpc zipapp zipfile zipimport zlib zoneinfo _thread"
   ).split(" "),
 );
+
+/** PEP 503 name normalization, as manifests.ts applies it to every declared PyPI name. */
+const pep503 = (name: string) => name.toLowerCase().replace(/[-_.]+/g, "-");
 
 interface PyModule {
   id: number;
@@ -760,15 +889,42 @@ interface Crate {
   root: number | undefined; // lib.rs, else main.rs
 }
 
+const isTable = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
+/** A crate name as Rust code spells it: Cargo's `aho-corasick` is `aho_corasick` in a path. */
+const rustIdent = (name: string) => name.replaceAll("-", "_");
+
+/** Every dependency table of a manifest: the three kinds, per-target ones, and the workspace's. */
+function cargoDependencyTables(m: Record<string, unknown>): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  const take = (owner: unknown) => {
+    if (!isTable(owner)) return;
+    for (const t of ["dependencies", "dev-dependencies", "build-dependencies"]) if (isTable(owner[t])) out.push(owner[t]);
+  };
+  take(m);
+  if (isTable(m.target)) for (const t of Object.values(m.target)) take(t);
+  if (isTable(m.workspace) && isTable(m.workspace.dependencies)) out.push(m.workspace.dependencies);
+  return out;
+}
+
 class RustResolver {
   private crates = new Map<string, Crate>(); // by normalized name (`-` → `_`)
+  /**
+   * Registry dependencies by the identifier code uses (`aho_corasick`, or the key of a renamed
+   * `foo = { package = "bar" }`) → the name manifests.ts records (`aho-corasick`, `bar`). The
+   * pipeline merges externals by exact name, so returning the code spelling split each
+   * hyphenated crate into a declared row with 0 importers and an undeclared twin.
+   */
+  private declared = new Map<string, string>();
   private manifestDirs = new Set<string>();
+  /** Manifests that parsed, so their dependency lists are known to be complete. */
+  private parsedDirs = new Set<string>();
   private nearestCache = new Map<string, string | null>();
 
   constructor(
     ctx: ResolveContext,
     private idx: RepoIndex,
   ) {
+    const pathDeps: { key: string; dir: string }[] = [];
     for (const p of idx.paths) {
       if (basename(p) !== "Cargo.toml") continue;
       const dir = dirname(p);
@@ -780,13 +936,28 @@ class RustResolver {
       } catch {
         continue;
       }
+      this.parsedDirs.add(dir);
+      for (const table of cargoDependencyTables(manifest)) {
+        for (const [key, v] of Object.entries(table)) {
+          if (isTable(v) && typeof v.path === "string") {
+            const target = join(dir, v.path);
+            if (target !== undefined) pathDeps.push({ key: rustIdent(key), dir: target });
+          } else this.declared.set(rustIdent(key), isTable(v) && typeof v.package === "string" ? v.package : key);
+        }
+      }
       const pkg = manifest.package as Record<string, unknown> | undefined;
       const lib = manifest.lib as Record<string, unknown> | undefined;
       const name = (typeof lib?.name === "string" ? lib.name : undefined) ?? (typeof pkg?.name === "string" ? pkg.name : undefined);
       if (!name) continue;
       const libPath = typeof lib?.path === "string" ? join(dir, lib.path) : undefined;
       const root = idx.file(libPath) ?? idx.file(join(dir, "src/lib.rs")) ?? idx.file(join(dir, "src/main.rs"));
-      this.crates.set(name.replaceAll("-", "_"), { dir, root });
+      this.crates.set(rustIdent(name), { dir, root });
+    }
+    // A path dependency may be imported under its key rather than its package name.
+    const byDir = new Map([...this.crates.values()].map((c) => [c.dir, c]));
+    for (const { key, dir } of pathDeps) {
+      const crate = byDir.get(dir);
+      if (crate && !this.crates.has(key)) this.crates.set(key, crate);
     }
   }
 
@@ -896,7 +1067,19 @@ class RustResolver {
         start = dirname(this.idx.paths[crate.root]!);
         owner = crate.root;
         rest = segs.slice(1);
-      } else return ext(first, "cargo");
+      } else {
+        const declared = this.declared.get(first);
+        if (declared !== undefined) return ext(declared, "cargo");
+        // Neither a dependency, a std crate, a workspace crate nor a child module: under 2018
+        // uniform paths the name is an item in scope (`use Token::*` for an enum declared in this
+        // file), so the import stays in this file. Saying so takes a complete dependency list from
+        // a parsed manifest; without one, only a capitalized name (a type, never a crate) is
+        // surely local.
+        const manifest = this.crateDir(from);
+        const complete = manifest !== undefined && this.parsedDirs.has(manifest);
+        if (fromId !== undefined && !crate && (complete || /^[A-Z]/.test(first))) return { file: fromId };
+        return ext(first, "cargo");
+      }
     }
     const walked = this.walk(start, rest);
     const file = walked.file ?? owner;
@@ -1129,13 +1312,32 @@ export const createResolver: CreateResolver = (ctx) => {
     return names;
   });
   const fileOr = (id: number | undefined, fallback: ImportResolution = UNRESOLVED): ImportResolution => (id === undefined ? fallback : { file: id });
+  // Names the manifests declare, keyed the way imports spell them, so an import lands on the
+  // record its manifest created: the pipeline merges externals by exact (ecosystem, name), and
+  // `import pallets_sphinx_themes` beside `pallets-sphinx-themes` in pyproject.toml made two
+  // rows, the declared one with 0 importers. Read only when a Python or Ruby import needs it.
+  const declared = lazy(() => {
+    const by = new Map<string, Map<string, string>>();
+    let deps: ExternalDependency[] = [];
+    try {
+      deps = readManifests(ctx.paths, ctx.readText).dependencies;
+    } catch {
+      // A manifest that breaks the reader only costs the name matching.
+    }
+    for (const d of deps) {
+      let names = by.get(d.ecosystem);
+      if (!names) by.set(d.ecosystem, (names = new Map()));
+      names.set(d.ecosystem === "pypi" ? pep503(d.name) : d.name, d.name);
+    }
+    return by;
+  });
 
   return (fromFile, imp, languageId) => {
     const from = ctx.paths[fromFile];
     if (from === undefined) return UNRESOLVED;
     const spec = imp.spec;
     if (imp.kind === "link") return resolveLink(idx, js, from, spec);
-    if (CSS_LANGS.has(languageId)) return resolveCss(idx, js, from, spec);
+    if (CSS_LANGS.has(languageId)) return resolveCss(idx, js, from, spec, languageId);
     if (JS_LANGS.has(languageId)) {
       const r = js().resolve(from, spec, imp.kind);
       // Component <style> blocks import Sass partials by bare name; give them a CSS look.
@@ -1145,13 +1347,23 @@ export const createResolver: CreateResolver = (ctx) => {
       }
       return r;
     }
-    if (PY_LANGS.has(languageId)) return py().resolve(from, spec);
+    if (PY_LANGS.has(languageId)) {
+      const r = py().resolve(from, spec);
+      const name = "external" in r && r.external.ecosystem === "pypi" ? declared().get("pypi")?.get(pep503(r.external.name)) : undefined;
+      return name === undefined ? r : ext(name, "pypi");
+    }
     if (languageId === "go") return go().resolve(from, spec);
     if (languageId === "rust") return rust().resolve(from, spec, imp.kind);
     if (JVM_LANGS.has(languageId)) return jvm().resolve(from, spec);
     if (C_LANGS.has(languageId)) return resolveC(idx, from, spec);
     if (languageId === "php") return php().resolve(idx, from, spec);
-    if (languageId === "ruby" || languageId === "crystal") return resolveRuby(idx, from, spec);
+    if (languageId === "ruby" || languageId === "crystal") {
+      const r = resolveRuby(idx, from, spec);
+      // A Gemfile or gemspec that declares a bundled gem (minitest, cgi) pins it as a gem: the
+      // project installs that version, and the declared row is the one that should count it.
+      if ("external" in r && r.external.ecosystem === "ruby-stdlib" && declared().get("gem")?.has(r.external.name)) return ext(r.external.name, "gem");
+      return r;
+    }
 
     switch (languageId) {
       case "c#": {

@@ -11,7 +11,7 @@ import { describe, expect, test } from "bun:test";
 import { closeSync, existsSync, openSync, readdirSync, readSync } from "node:fs";
 import { join } from "node:path";
 import { rubyToJs } from "../scripts/gen-languages";
-import { detectFile } from "../src/core/languages/detect";
+import { detectFile, namedLanguageIds } from "../src/core/languages/detect";
 import { runHeuristics } from "../src/core/languages/heuristics";
 import { HEURISTICS, LANGUAGES, PATTERNS, VENDOR_PATTERNS } from "../src/core/languages/linguist.generated";
 import {
@@ -20,13 +20,16 @@ import {
   languageForAlias,
   languagesForExtension,
   languagesForFilename,
+  languagesForFilenameIgnoringCase,
   languagesForInterpreter,
+  rankedLanguageIds,
   toLanguageId,
 } from "../src/core/languages/registry";
 
 const enc = new TextEncoder();
 const text = (s: string) => enc.encode(s);
 const bytes = (...v: number[]) => new Uint8Array(v);
+const hex = (h: string) => new Uint8Array(h.match(/../g)!.map((b) => parseInt(b, 16)));
 const padded = (prefix: number[], size = 64) => {
   const b = new Uint8Array(size);
   b.set(prefix);
@@ -148,10 +151,20 @@ describe("registry", () => {
     expect(languagesForExtension(".spec")[0]).toBe("rpm-spec");
   });
 
+  test("every id the rules name by hand resolves", () => {
+    // A renamed or misspelled id never matches and fails silently; "robots.txt" did.
+    const dead = [...namedLanguageIds(), ...rankedLanguageIds()].filter((id) => !getLanguage(id));
+    expect(dead).toEqual([]);
+  });
+
   test("filename, interpreter and alias lookups", () => {
     expect(languagesForFilename("Makefile")).toEqual(["makefile"]);
     expect(languagesForFilename("makefile")).toEqual(["makefile"]);
     expect(languagesForFilename("tsconfig.json")).toEqual(["json-with-comments"]);
+    // Exact case, as linguist looks names up; the any-case fallback is a separate, weaker call.
+    expect(languagesForFilename("install")).toEqual([]);
+    expect(languagesForFilenameIgnoringCase("install")).toEqual(["text"]);
+    expect(languagesForFilenameIgnoringCase("dockerfile")).toEqual(["dockerfile"]);
     expect(languagesForInterpreter("node")[0]).toBe("javascript");
     expect(languagesForInterpreter("python3")).toEqual(["python"]);
     expect(languageForAlias("cpp")).toBe("c++");
@@ -219,6 +232,62 @@ describe("detectFile language", () => {
   test("ambiguous filenames go by shape", () => {
     expect(detect(".eslintrc", '{ "rules": {} }')).toMatchObject({ language: "json-with-comments" });
     expect(detect(".eslintrc", "rules:\n  semi: 2")).toMatchObject({ language: "yaml" });
+  });
+
+  test("a shebang beats a name matched only case-insensitively or by convention", () => {
+    // fzf's install and linguist's tools/grammars/docker/build were Text/docs and Starlark.
+    expect(detect("install", "#!/usr/bin/env bash\nset -u\n")).toMatchObject({ language: "shell", category: "code", reason: "shebang" });
+    expect(detect("tools/grammars/docker/build", "#!/bin/sh\nset -e\n")).toMatchObject({ language: "shell", reason: "shebang" });
+    expect(detect("news", "#!/usr/bin/env python3\nprint(1)\n")).toMatchObject({ language: "python" });
+    expect(detect("copying", "#!/usr/bin/env node\n")).toMatchObject({ language: "javascript" });
+    // Without a shebang the conventions still apply, and an exact linguist name still wins.
+    expect(detect("install", "Run make install.\n")).toMatchObject({ language: "text", category: "docs", reason: "filename" });
+    expect(detect("dockerfile", "FROM node\n")).toMatchObject({ language: "dockerfile", reason: "filename" });
+    expect(detect("INSTALL", "#!/bin/sh\necho\n")).toMatchObject({ language: "text", reason: "filename" });
+  });
+
+  test("names starchart adds: Cursor rules and Wrangler's .dev.vars", () => {
+    expect(detect(".cursor/rules/style.mdc", "---\ndescription: x\n---\n# Style\n")).toMatchObject({ language: "markdown", category: "docs" });
+    expect(detect(".dev.vars", "API_TOKEN=x\n")).toMatchObject({ language: "dotenv", category: "config" });
+  });
+
+  test("content settles what the ranked default would get wrong", () => {
+    // XML outranks Scheme and HCL, but an XML document must open with "<".
+    expect(detect("lib/sboyer.sch", ";;; File: sboyer.sch\n(define (f x) x)\n")).toMatchObject({ language: "scheme" });
+    expect(detect("main.workflow", 'workflow "Build" {\n  on = "push"\n}\n')).toMatchObject({ language: "hcl" });
+    expect(detect("views/Hello.gst", "<%!-- defined in Hello.gst --%>\n<%@ params(x : String) %>\n")).toMatchObject({ language: "gosu" });
+    // And one that does open with an element is XML, or the dialect its root names.
+    expect(detect("ideas.mm", '<map version="0.9.0">\n<node TEXT="x"/>\n</map>\n')).toMatchObject({ language: "xml", category: "markup" });
+    expect(detect("XmlIO.pluginspec", '<plugin name="XmlIO" version="0.0.1">\n</plugin>\n')).toMatchObject({ language: "xml" });
+    const eagle = '<?xml version="1.0" encoding="utf-8"?>\n<!DOCTYPE eagle SYSTEM "eagle.dtd">\n<eagle version="6.3">\n';
+    expect(detect("board/Eagle.brd", eagle)).toMatchObject({ language: "eagle" });
+    expect(detect("board/Eagle.sch", eagle)).toMatchObject({ language: "eagle" });
+    expect(detect("cgi/prefix.fcgi", '<?php\necho "x";\n')).toMatchObject({ language: "php" });
+    expect(detect("Calc.nb", "(* Content-type: application/vnd.wolfram.mathematica *)\n")).toMatchObject({ language: "wolfram-language" });
+    // Ordinary files keep their extension's default.
+    expect(detect("src/View.mm", "#import <UIKit/UIKit.h>\n@implementation View\n@end\n")).toMatchObject({ language: "objective-c++" });
+    expect(detect("rules/schematron.sch", '<?xml version="1.0"?>\n<sch:schema xmlns:sch="x"/>\n')).toMatchObject({ language: "xml" });
+    expect(detect("Notes.nb", "a plain note\n")).toMatchObject({ language: "text" });
+  });
+
+  test("negative_pattern applies alongside pattern, a known deviation from linguist", () => {
+    // Linguist's parser drops negative_pattern when a rule also has a pattern (parse_rule
+    // returns on the first key). Starchart keeps both, as the YAML evidently means.
+    // The cost, measured over linguist's samples: one file, samples/Tree-sitter Query/
+    // func_highlights.scm, whose literal "()" trips the Tree-sitter rule's negative pattern
+    // and leaves it to the ranked default, Scheme. Linguist says Tree-sitter Query.
+    const query = "(function_definition name: (identifier) @function)\n((identifier) @constant (#match? @constant \"^[A-Z]\"))\n";
+    expect(detect("queries/highlights.scm", query)).toMatchObject({ language: "tree-sitter-query" });
+    expect(detect("queries/highlights.scm", `${query}(arguments ()) @empty\n`)).toMatchObject({ language: "scheme" });
+    // The benefit: Scheme that splices with ,@ matches a Tree-sitter capture pattern, so under
+    // linguist's reading every such macro file would be a Tree-sitter query.
+    const macro = "(define (wrap x) `(begin ,@x)\n)\n(display (+ 1 2))\n";
+    const [, rules] = HEURISTICS.find(([exts]) => exts.includes(".scm"))!;
+    const tsq = rules[0]![1];
+    if (tsq === null || tsq[0] !== "&") throw new Error("the .scm heuristic changed shape");
+    const positive = tsq[1] as readonly ["p", ...number[]];
+    expect(positive.slice(1).some((i) => new RegExp(PATTERNS[i as number]!, "m").test(macro))).toBe(true);
+    expect(detect("lib/macros.scm", macro)).toMatchObject({ language: "scheme" });
   });
 
   test("shebangs", () => {
@@ -347,6 +416,24 @@ describe("detectFile text decoding", () => {
     expect(detectFile("a.c", l1)).toMatchObject({ binary: false, language: "c" });
     expect(detectFile("a.c", bytes(0x01, 0x02, 0xfc, 0xfd, 0x03))).toMatchObject({ binary: true });
   });
+
+  test("Shift_JIS, GBK and EUC-KR text is text, past the Latin-1 high-byte cap", () => {
+    const cases: [string, string, string][] = [
+      // "# はじめに\n\nこのプロジェクトは日本語の説明です。…" in Shift_JIS
+      ["docs/README.ja.md", "232082cd82b682df82c90a0a82b182cc8376838d83578346834e836782cd93fa967b8cea82cc90e096be82c582b781428343839383588367815b838b95fb964082cd88c889ba82cc92ca82e882c582b781420a", "markdown"],
+      // "/* 主程序入口，打印问候语 */\nint main(void) { return 0; }\n" in GBK
+      ["src/main_gbk.c", "2f2a20d6f7b3ccd0f2c8ebbfdaa3acb4f2d3a1cecabaf2d3ef202a2f0a696e74206d61696e28766f696429207b2072657475726e20303b207d0a", "c"],
+      // '// 사용자 이름 목록\nconst names = ["김철수", "이영희"];\n' in EUC-KR
+      ["src/name_euckr.js", "2f2f20bbe7bfebc0da20c0ccb8a720b8f1b7cf0a636f6e7374206e616d6573203d205b22b1e8c3b6bcf6222c2022c0ccbfb5c8f1225d3b0a", "javascript"],
+    ];
+    for (const [path, h, language] of cases) {
+      const b = hex(h);
+      expect(b.filter((c) => c >= 0x80).length / b.length).toBeGreaterThan(0.3); // the path under test
+      expect([path, detectFile(path, b)]).toMatchObject([path, { binary: false, language }]);
+    }
+    // A short run of high bytes with no whitespace stays binary even where GB18030 would take it.
+    expect(detectFile("blob.bin", bytes(0xb0, 0xa1, 0xb0, 0xa2, 0xb0, 0xa3)).binary).toBe(true);
+  });
 });
 
 // ─── detectFile: category ────────────────────────────────────────────────────────────────────
@@ -372,11 +459,21 @@ describe("detectFile category", () => {
       "tests/conftest.py",
       "vitestSetup.ts",
       "t/basic.t",
+      "packages/vite/src/node/__tests_dts__/config.ts",
     ]) {
       expect([p, detect(p, "x").category]).toEqual([p, "test"]);
     }
     expect(detect("src/latest.ts", "x").category).toBe("code");
     expect(detect("src/contest.py", "x").category).toBe("code");
+  });
+
+  test("prose is docs whatever its name says, unless a test directory holds it", () => {
+    expect(detect("docs/tutorial/tests.rst", "Test Coverage\n=============\n").category).toBe("docs");
+    expect(detect("docs/tests.md", "# Tests\n").category).toBe("docs");
+    expect(detect("spec/protocol.md", "# Protocol\n").category).toBe("docs");
+    expect(detect("spec/fixtures/sample.md", "# Fixture\n").category).toBe("test");
+    expect(detect("tests/data/input.txt", "hello\n").category).toBe("test");
+    expect(detect("src/__tests__/notes.md", "# Notes\n").category).toBe("test");
   });
 
   test("docs", () => {
@@ -390,9 +487,45 @@ describe("detectFile category", () => {
   });
 
   test("config", () => {
-    for (const p of ["vite.config.ts", "tailwind.config.js", "eslint.config.mjs", ".prettierrc", ".eslintrc.cjs", ".editorconfig", "package.json", "pyproject.toml", "Cargo.toml", "setup.cfg", "renovate.json", ".npmrc", ".env.example", "docs/.vitepress/config.ts", ".claude/settings.json"]) {
+    for (const p of [
+      "vite.config.ts",
+      "tailwind.config.js",
+      "eslint.config.mjs",
+      ".prettierrc",
+      ".eslintrc.cjs",
+      ".editorconfig",
+      "package.json",
+      "pyproject.toml",
+      "Cargo.toml",
+      "setup.cfg",
+      "renovate.json",
+      ".npmrc",
+      ".env.example",
+      "docs/.vitepress/config.ts",
+      ".claude/settings.json",
+      // Tool configs named for the tool alone, and the .conf / -config / _rc spellings.
+      "typos.toml",
+      "_typos.toml",
+      "typedoc.json",
+      "fta.json",
+      "angular.json",
+      "nodemon.json",
+      "mkdocs.yml",
+      "lefthook.yml",
+      "packages/create-vite/template-react/_oxlintrc.json",
+      "karma.conf.js",
+      "wdio.conf.ts",
+      "gatsby-config.js",
+      "playground/worker/worker-sourcemap-config.js",
+      // Data under a config/ directory configures the application.
+      "config/database.yml",
+      "config/settings.toml",
+      "apps/game/public/robots.txt",
+    ]) {
       expect([p, detect(p, "{}").category]).toEqual([p, "config"]);
     }
+    // An application's own config module is code it imports.
+    expect(detect("src/auth-config.ts", "export const auth = {};").category).toBe("code");
   });
 
   test("build", () => {
@@ -401,11 +534,30 @@ describe("detectFile category", () => {
     }
   });
 
-  test("lockfiles are lockfiles, not generated", () => {
-    for (const p of ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "Cargo.lock", "poetry.lock", "Pipfile.lock", "uv.lock", "Gemfile.lock", "composer.lock", "go.sum", "flake.lock", "mix.lock", "pubspec.lock", "Podfile.lock", "packages.lock.json", "gradle.lockfile"]) {
-      const d = detect(p, "x");
-      expect([p, d.category, d.generated]).toEqual([p, "lockfile", false]);
+  test("Kubernetes and Helm manifests are build (IaC); a kubeconfig is config", () => {
+    expect(detect("k8s/deployment.yaml", "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\n").category).toBe("build");
+    expect(detect("deploy/all.yaml", "# web\n---\napiVersion: v1\nkind: Service\n").category).toBe("build");
+    expect(detect("charts/web/Chart.yaml", "name: web\nversion: 0.1.0\n").category).toBe("build");
+    expect(detect("charts/web/values.yaml", "replicaCount: 1\n").category).toBe("build");
+    expect(detect("deploy/cluster.yaml", "apiVersion: v1\nkind: Config\nclusters: []\n").category).toBe("config");
+    // Plain YAML stays data: a root values.yaml could belong to anything.
+    expect(detect("values.yaml", "replicaCount: 1\n").category).toBe("data");
+    expect(detect("data/kinds.yaml", "kind: fruit\n").category).toBe("data");
+  });
+
+  test("stylesheets are style inside docs and examples trees too", () => {
+    for (const p of ["examples/ejs/public/stylesheets/style.css", "docs/.vitepress/theme/styles.css", "docs/theme/custom.scss"]) {
+      expect([p, detect(p, "body { color: red }").category]).toEqual([p, "style"]);
     }
+    expect(detect("docs/index.html", "<html>").category).toBe("docs");
+  });
+
+  test("lockfiles are lockfiles, and generated whatever their header says", () => {
+    for (const p of ["package-lock.json", "yarn.lock", "pnpm-lock.yaml", "bun.lock", "Cargo.lock", "poetry.lock", "Pipfile.lock", "uv.lock", "Gemfile.lock", "composer.lock", "go.sum", "flake.lock", "mix.lock", "pubspec.lock", "Podfile.lock", "packages.lock.json", "gradle.lockfile", "Manifest-v1.12.toml", "JuliaManifest-v1.12.toml"]) {
+      const d = detect(p, "x");
+      expect([p, d.category, d.generated]).toEqual([p, "lockfile", true]);
+    }
+    expect(detectFile("bun.lockb", bytes(0x23, 0x21, 0, 1, 2)).generated).toBe(true);
   });
 
   test("notebooks, markup, style, data, images", () => {
@@ -425,14 +577,76 @@ describe("detectFile category", () => {
 
 describe("detectFile flags", () => {
   test("secrets", () => {
-    for (const p of [".env", ".env.local", ".env.production", "certs/server.pem", "server.key", "store.p12", "release.jks", "id_rsa", "id_ed25519", ".npmrc", ".pypirc", ".netrc", ".htpasswd", "credentials.json", "service-account-prod.json", "config/secrets.yml", ".envrc"]) {
+    for (const p of [
+      ".env",
+      ".env.local",
+      ".env.production",
+      "certs/server.pem",
+      "server.key",
+      "store.p12",
+      "release.jks",
+      "id_rsa",
+      "id_ed25519",
+      ".htpasswd",
+      "credentials.json",
+      "service-account-prod.json",
+      "config/secrets.yml",
+      // Wrangler's local secrets, Terraform state and variables, kubeconfigs.
+      ".dev.vars",
+      ".dev.vars.staging",
+      "infra/terraform.tfstate",
+      "infra/terraform.tfstate.backup",
+      "terraform.tfstate.d/prod/terraform.tfstate",
+      "infra/prod.tfvars",
+      "infra/prod.auto.tfvars",
+      "infra/prod.tfvars.json",
+      "deploy/kubeconfig",
+      "deploy/staging.kubeconfig",
+      "home/.kube/config",
+    ]) {
       expect([p, detect(p, "x").secret]).toEqual([p, true]);
     }
-    for (const p of [".env.example", ".env.sample", ".env.template", ".env.dist", ".env.local.example", "id_rsa.pub", "src/env.ts", "keys.ts"]) {
+    for (const p of [".env.example", ".env.sample", ".env.template", ".env.dist", ".env.local.example", ".dev.vars.example", "infra/prod.tfvars.example", "id_rsa.pub", "src/env.ts", "keys.ts"]) {
       expect([p, detect(p, "x").secret]).toEqual([p, false]);
     }
     expect(detect("notes.txt", "-----BEGIN OPENSSH PRIVATE KEY-----\nabc").secret).toBe(true);
     expect(detect("notes.txt", "-----BEGIN PUBLIC KEY-----\nabc").secret).toBe(false);
+    expect(detect("deploy/cluster.yaml", "users:\n- name: ci\n  user:\n    client-key-data: LS0tLS1CRUdJTg==\n").secret).toBe(true);
+    // A file named for an Object.prototype member must not find it in a lookup table.
+    expect(detect("constructor", "x").secret).toBe(false);
+  });
+
+  test("tool configs are secret only when they hold a credential", () => {
+    // Express's .npmrc: settings only, which raised a false credentials warning.
+    expect(detect(".npmrc", "package-lock=false\nmin-release-age=7\nignore-scripts=true\n").secret).toBe(false);
+    expect(detect(".npmrc", "//registry.npmjs.org/:_authToken=npm_abc123\n").secret).toBe(true);
+    expect(detect(".npmrc", "_auth = dXNlcjpwYXNz\n").secret).toBe(true);
+    // Referencing the environment is the documented way to commit one.
+    expect(detect(".npmrc", "//registry.npmjs.org/:_authToken=${NPM_TOKEN}\n").secret).toBe(false);
+    expect(detect(".pypirc", "[distutils]\nindex-servers = pypi\n").secret).toBe(false);
+    expect(detect(".pypirc", "[pypi]\nusername = __token__\npassword = pypi-AgEIcHlwaS5vcmc\n").secret).toBe(true);
+    expect(detect(".netrc", "machine api.example.com login jon password hunter2\n").secret).toBe(true);
+    expect(detect(".netrc", "machine api.example.com login jon\n").secret).toBe(false);
+    expect(detect(".envrc", "export JAVA_HOME=/usr/lib/jvm\nexport AUTHOR=jon\n").secret).toBe(false);
+    expect(detect(".envrc", "export GITHUB_TOKEN=ghp_abc123\n").secret).toBe(true);
+    expect(detect(".envrc", 'export DATABASE_URL="postgres://app:s3cret@db/app"\n').secret).toBe(true);
+    expect(detect(".envrc", "export GITHUB_TOKEN=$(gh auth token)\n").secret).toBe(false);
+  });
+
+  test("key and certificate files", () => {
+    const cert = "-----BEGIN CERTIFICATE-----\nMIIB\n-----END CERTIFICATE-----\n";
+    expect(detect("certs/ca.pem", cert).secret).toBe(false);
+    expect(detect("certs/combined.pem", `${cert}-----BEGIN RSA PRIVATE KEY-----\nMIIE\n`).secret).toBe(true);
+    // Raw key material has no armor (Rails' master.key is 32 hex digits).
+    expect(detect("config/master.key", "0123456789abcdef0123456789abcdef\n").secret).toBe(true);
+    // A truncated head could hide a key behind its certificates.
+    const long = new Uint8Array(8192).fill(0x41);
+    long.set(text(cert));
+    expect(detectFile("certs/bundle.pem", long).secret).toBe(true);
+    // A Keynote deck is a ZIP named .key; DER key material is not.
+    const zip = padded([...text("PK"), 3, 4, 0x14, 0]);
+    expect(detectFile("slides/talk.key", zip)).toMatchObject({ secret: false, format: "Keynote", category: "docs" });
+    expect(detectFile("certs/server.key", padded([0x30, 0x82, 0x04, 0xa4, 0x02, 0x01, 0x00]))).toMatchObject({ secret: true });
   });
 
   test("secret files still get a language and category", () => {
@@ -451,6 +665,54 @@ describe("detectFile flags", () => {
     expect(detect("vendor.js", "var a=1;".repeat(1024)).generated).toBe(true); // 8 KiB, no newline
   });
 
+  test("a generator's signature alone marks a file generated", () => {
+    for (const [p, head] of [
+      // inertialref's 16,250-line type file, the largest "code" file in its report.
+      ["apps/server/.cloudflare/types/index.d.ts", "/* eslint-disable */\n// Generated by @cloudflare/config\ntype C = 1;\n"],
+      ["worker-configuration.d.ts", "// Generated by Wrangler by running `wrangler types`\n\ninterface Env {}\n"],
+      ["src/Parser.java", "// This is a generated file. Not intended for manual editing.\npackage x;\n"],
+      ["src/Lexer.java", "/* The following code was generated by JFlex 1.4.3 on 28/01/16 11:27 */\n\npackage x;\n"],
+      ["out/main.py", "# Generated by Haxe 4.0.5\n# coding: utf-8\nimport sys\n"],
+      ["requirements.txt", "#\n# This file is autogenerated by pip-compile with Python 3.11\n# by the following command:\n"],
+      ["man/ls.html", "<!DOCTYPE html>\n<html>\n<!-- This is an automatically generated file.  Do not edit.\n"],
+      ["lib/classes.js", "// Generated by CoffeeScript 1.2.1\n(function() {\n"],
+    ]) {
+      expect([p, detect(p!, head!).generated]).toEqual([p, true]);
+    }
+    for (const [p, head] of [
+      ["src/a.ts", "// Generated by hand, carefully.\nexport {}\n"],
+      ["src/b.ts", "// The ids below are generated by the server.\nexport {}\n"],
+      ["settings.gradle.kts", "/*\n * This file was generated by the Gradle 'init' task.\n */\nrootProject.name = \"x\"\n"],
+      ["src/c.ts", "export const a = 1;\n\n\n// Generated by X\n"], // past the opening lines
+      ["README.md", "# Tool\n\nCode generated by this tool is fast.\n"],
+    ]) {
+      expect([p, detect(p!, head!).generated]).toEqual([p, false]);
+    }
+  });
+
+  test("linguist's generated.rb rules for formats with a fixed stamp", () => {
+    const cases: [string, string][] = [
+      ["Assets/Scripts/Player.cs.meta", "fileFormatVersion: 2\nguid: 0123\n"],
+      ["project/GMS2_Project.yyp", '{\n  "resources": [],\n  "name": "x"\n}\n'],
+      ["db/metrics.frm", "TYPE=VIEW\nquery=select 1\n"],
+      ["out/app.map", '/** Begin line maps. **/{ "file":"out.js", "count": 2 }\n'],
+      ["fonts/lambda.pfa", "%!PS-AdobeFont-1.0: Lambda 020.017\n%%Creator: FontForge 20170719\n"],
+      ["c/image.c", "/* GIMP RGB C-Source image dump (image.c) */\n\nstatic const struct {\n"],
+      ["c/ppport.h", "#if 0\n<<'SKIP';\n#endif\n/*\n----\n\n ppport.h -- Perl/Pollution/Portability\n\n Automatically created by Devel::PPPort running under perl 5.0\n"],
+      ["Features/Binding.feature.cs", "namespace X {}\n"],
+      [".pnp.mjs", "export {}\n"],
+      ["Godeps/Godeps.json", "{}\n"],
+      ["docs/makeinfo.html", '<html lang="en">\n<head>\n<meta name="generator" content="makeinfo 4.8">\n'],
+      ["docs/org.html", "<!DOCTYPE html>\n<html>\n<head>\n<META   NAME= 'GENERATOR' \tCONTENT  \t= \t 'ORG MODE'>\n"],
+      ["docs/ronn.html", '<!DOCTYPE html>\n<html>\n<meta name="generator" value="Ronn/v0.7.3 (http://github.com/rtomayko/ronn)" />\n'],
+      ["docs/api.html", "<html>\n<head>\n<!-- Generated by Doxygen 1.8.17 -->\n"],
+    ];
+    for (const [p, head] of cases) expect([p, detect(p, head).generated]).toEqual([p, true]);
+    expect(detect("docs/hand.html", '<html>\n<meta name="generator" content="Some sick tool nobody uses">\n').generated).toBe(false);
+    expect(detect("src/parser.yy", "%{\n#include <stdio.h>\n%}\n%%\n").generated).toBe(false);
+    expect(detect("Assets/Readme.txt.meta", "just notes\n").generated).toBe(false);
+  });
+
   test("vendored by linguist's patterns, minus the ones starchart reads differently", () => {
     expect(detect("node_modules/react/index.js", "x").vendored).toBe(true);
     expect(detect("vendor/github.com/x/y.go", "x").vendored).toBe(true);
@@ -459,6 +721,12 @@ describe("detectFile flags", () => {
     expect(detect(".github/workflows/ci.yml", "x").vendored).toBe(false);
     expect(detect("types/global.d.ts", "x").vendored).toBe(false);
     expect(detect("src/cache/index.ts", "x").vendored).toBe(false);
+  });
+
+  test("CocoaPods' Pods/ is vendored, as node_modules is", () => {
+    expect(detect("ios/Pods/Alamofire/Source/Session.swift", "import Foundation\n").vendored).toBe(true);
+    expect(detect("Pods/Target Support Files/Pods-App/Pods-App-umbrella.h", "#import <UIKit/UIKit.h>\n").vendored).toBe(true);
+    expect(detect("src/pods/list.ts", "export {}\n").vendored).toBe(false); // Kubernetes pods, say
   });
 });
 

@@ -66,6 +66,18 @@ export interface LexRules extends Syntax {
    *  code. Rust lifetimes, OCaml type variables, Haskell primes and C++14 digit separators all
    *  put a lone apostrophe in code. */
   charLiterals?: boolean;
+  /** Words allowed directly before a char literal (Rust b'x', C/C++ L'x' u'x' U'x' u8'x').
+   *  Without them a quote after an identifier is code, and in `b'"'` the `"` then opens a
+   *  string that swaps code and string for the rest of a Rust file. */
+  charLiteralPrefixes?: string[];
+  /** Ruby `?a` / `?\n` character literals: `?` not directly after a value, then one character
+   *  that no identifier character follows. `empty?`, `a ? b : c` and `(x)? 1 : 2` stay code;
+   *  without this, `c == ?"` opens a string that inverts the rest of the file. */
+  questionChars?: boolean;
+  /** Ruby / Crystal percent literals (`%w[…]`, `%q(…)`, `%r{…}`, `%(…)`): one opaque string up
+   *  to the matching closer, bracket delimiters nesting. Lexed as code, the `'` in
+   *  `%w[foo ' bar]` opens a multi-line string that runs to the next stray apostrophe. */
+  percentLiterals?: boolean;
   /** Quotes open a string only at the start of a value (YAML plain scalars carry apostrophes). */
   quoteBoundary?: boolean;
   /** `'` after an identifier, `)` or `]` is an operator (MATLAB transpose, Julia adjoint). */
@@ -153,9 +165,12 @@ function cLike(extra: Partial<LexRules> = {}): LexRules {
   };
 }
 
-const C = cLike();
-const CPP = cLike({ raw: ["cpp"] });
-const OBJC = cLike({ functions: [C_FUNCTION, /^[ \t]*[-+][ \t]*\(/m] });
+// Wide and UTF char literals (L'x', u'x', U'x', u8'x'). Only the C family gets them: in
+// Haskell `u'` is a primed name, and there the prefix must stay an identifier.
+const C_CHAR_PREFIXES = ["u8", "u", "U", "L"];
+const C = cLike({ charLiteralPrefixes: C_CHAR_PREFIXES });
+const CPP = cLike({ raw: ["cpp"], charLiteralPrefixes: C_CHAR_PREFIXES });
+const OBJC = cLike({ charLiteralPrefixes: C_CHAR_PREFIXES, functions: [C_FUNCTION, /^[ \t]*[-+][ \t]*\(/m] });
 
 const JAVA = cLike({
   strings: ['"""', '"', "'"],
@@ -230,6 +245,7 @@ const RUST = cLike({
   strings: ['"', "'"],
   multiline: ['"'],
   raw: ["rust"],
+  charLiteralPrefixes: ["b"], // byte literals: b'"' is the standard idiom in byte parsers
   branches: ["if", "while", "for", "&&", "||", "=>"],
   functions: [/\bfn[ \t]+\w/m],
 });
@@ -337,15 +353,20 @@ const RUBY: LexRules = {
   line: ["#"],
   block: [],
   blockAtStart: [["=begin", "=end"]],
-  strings: ['"', "'"],
-  multiline: ['"', "'"],
+  // Backticks are command strings with `#{}` interpolation; read as code, the `#` of the
+  // interpolation would open a comment.
+  strings: ['"', "'", "`"],
+  multiline: ['"', "'", "`"],
   heredoc: "ruby",
   regex: true,
+  questionChars: true,
+  percentLiterals: true,
   branches: ["if", "elsif", "unless", "while", "until", "for", "when", "rescue", "&&", "||", "and", "or", "?"],
   functions: [/^[ \t]*def[ \t]+/m],
 };
 
-const CRYSTAL: LexRules = { ...RUBY, charLiterals: true, strings: ['"', "'"] };
+// Crystal writes chars as 'x', and its `?` only marks nilable types and predicates.
+const CRYSTAL: LexRules = { ...RUBY, charLiterals: true, questionChars: false };
 
 const SHELL_BOUNDARY: Record<string, OpenerPosition> = { "#": "boundary" };
 const SHELL: LexRules = {
@@ -364,6 +385,23 @@ const SHELL: LexRules = {
 };
 
 const FISH: LexRules = { ...SHELL, heredoc: undefined, strings: ['"', "'"], multiline: ['"', "'"], branches: ["if", "while", "for", "case", "and", "or", "&&", "||"], functions: [/^[ \t]*function[ \t]+/m] };
+
+// Nushell: brace blocks, `#` comments only at a word boundary (a bare word may hold one),
+// `'…'` and backtick strings without escapes, raw strings `r#'…'#`. Match arms (`=>`) are the
+// decision points of `match`, as in Rust.
+const NUSHELL: LexRules = {
+  programming: true,
+  braces: true,
+  line: ["#"],
+  lineAt: SHELL_BOUNDARY,
+  block: [],
+  strings: ['"', "'", "`"],
+  pairs: [["r#'", "'#"]],
+  multiline: ['"'],
+  noEscape: ["'", "`"],
+  branches: ["if", "for", "while", "catch", "and", "or", "=>"],
+  functions: [/^[ \t]*(?:export[ \t]+)?def(?:-env)?[ \t]+/m],
+};
 
 const PERL: LexRules = {
   programming: true,
@@ -684,10 +722,13 @@ const COMMON_LISP = lisp({ nested: true, block: [["#|", "|#"]], charPrefix: ["#\
 const SCHEME = lisp({ nested: true, block: [["#|", "|#"]], charPrefix: ["#\\"] });
 const EMACS_LISP = lisp({ charPrefix: ["?\\", "?"] });
 
+// `//` is the comment of Go (Plan 9) and ARM assembly, which linguist's heuristics file under
+// Assembly. It counts only at a word boundary because NASM spells signed division `//` inside
+// expressions; a comment line starts with it either way.
 const ASSEMBLY: LexRules = {
   programming: true,
-  line: [";", "#"],
-  lineAt: { "#": "start" },
+  line: [";", "#", "//"],
+  lineAt: { "#": "start", "//": "boundary" },
   lineNotBefore: { "#": "abcdefghijklmnopqrstuvwxyz" }, // #include / #define in .S files are code
   block: SLASH_BLOCK,
   strings: ['"', "'"],
@@ -695,7 +736,8 @@ const ASSEMBLY: LexRules = {
   branches: [],
   functions: [/^[A-Za-z_.$][\w.$]{0,80}:/m],
 };
-const UNIX_ASSEMBLY: LexRules = { ...ASSEMBLY, line: ["//", "#", ";"] };
+// GNU as has no `//` operator, so there it is a comment anywhere.
+const UNIX_ASSEMBLY: LexRules = { ...ASSEMBLY, line: ["//", "#", ";"], lineAt: { "#": "start" } };
 
 // ─── Percent family ──────────────────────────────────────────────────────────────────────────
 
@@ -967,6 +1009,7 @@ const TABLE: Record<string, LexRules> = {
   "openrc-runscript": SHELL,
   shellsession: SHELL,
   fish: FISH,
+  nushell: NUSHELL,
   perl: PERL,
   raku: { ...PERL, functions: [/\b(?:sub|method)[ \t]+\w/m] },
   r: R,

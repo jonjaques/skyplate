@@ -6,12 +6,13 @@
  * Pipeline:
  *   1. plan      open every real tsconfig/jsconfig, then the leftover files as an inferred
  *                project; give each file one owning project (projects.ts)
- *   2. pass A    declarations → symbols, in file-id order, from each owner's AST
- *                (declarations.ts)
+ *   2. pass A    declarations → symbols, in file-id order, from each owner's AST, then the
+ *                CommonJS re-exports that need another file's declarations (declarations.ts)
  *   3. pass B    per project: walk every node, batch identifiers through getSymbolAtLocation,
  *                follow aliases, map the checker's declarations back to our symbols
  *                (references.ts, resolve.ts)
- *   4. tables    sort, total, aggregate call edges, flag unused exports, cap (tables.ts)
+ *   4. refine    override links and component kinds, which need every reference (refine.ts)
+ *   5. tables    sort, total, aggregate call edges, flag unused exports, cap (tables.ts)
  *
  * Pass A must finish before pass B resolves anything: a reference can name a declaration in
  * any file, including one later in the order. The client caches every AST it fetches, so both
@@ -29,12 +30,13 @@
 
 import { readFileSync, realpathSync } from "node:fs";
 import { basename } from "node:path";
-import { API } from "typescript/unstable/async";
+import type { API } from "typescript/unstable/async";
 import type { CodeSymbols } from "../../shared/schema";
 import type { AnalyzeTypeScript, TsInput } from "../contracts";
-import { collectDeclarations } from "./declarations";
-import { findCandidates, message, planProjects, type OwnedProject } from "./projects";
+import { collectDeclarations, linkRequireExports } from "./declarations";
+import { Compiler, findCandidates, message, planProjects, screenConfigs, type OwnedProject } from "./projects";
 import { Batch, walkReferences } from "./references";
+import { linkOverrides, promoteComponents } from "./refine";
 import { newProjectCache, resolveBatch, type ResolveState } from "./resolve";
 import { RefStore, SymbolStore, type FileDecls } from "./store";
 import { ts, type TsSourceFile } from "./syntax";
@@ -71,22 +73,26 @@ export const analyzeTypeScript: AnalyzeTypeScript = async (input) => {
     // Keep the given root; files will simply fail to match and the result will be empty.
   }
 
-  let api: API | undefined;
+  let compiler: Compiler | undefined;
   try {
-    api = new API({ cwd: root });
-    const plan = await planProjects(api, input, root, candidates, log);
+    // Screened before the compiler starts: a circular config has to be hidden from it from
+    // the first request on (see Screened.hidden).
+    const configs = screenConfigs(root, input.configs, log);
+    compiler = new Compiler(root, configs.hidden);
+    const plan = await planProjects(compiler, input, root, candidates, configs.open, log);
     if (!plan?.projects.length) {
       log("TypeScript: no project could be opened");
       return null;
     }
     const owned = plan.projects.reduce((n, p) => n + p.files.length, 0);
     log(`TypeScript: ${plan.projects.length} project(s), ${owned} files`);
-    return await analyze(api, input, root, plan.projects, started, log);
+    // planProjects may have replaced the child; its projects belong to the current one.
+    return await analyze(compiler.api, input, root, plan.projects, started, log);
   } catch (e) {
     log(`TypeScript: analysis failed: ${message(e)}`);
     return null;
   } finally {
-    if (api) await closeQuietly(api, log);
+    if (compiler) await compiler.close(log);
   }
 };
 
@@ -101,7 +107,20 @@ async function analyze(
   const absOf = (id: number) => root + "/" + input.paths[id]!;
   const store = new SymbolStore();
   const refs = new RefStore();
-  const state: ResolveState = { store, refs, aliasTargets: new Map(), ours: new Map(), unresolved: 0 };
+  const skipped = new Set<string>();
+  input.skip?.forEach((s, id) => {
+    if (s) skipped.add(absOf(id)).add(absOf(id).toLowerCase());
+  });
+  const state: ResolveState = {
+    store,
+    refs,
+    aliasTargets: new Map(),
+    ours: new Map(),
+    unresolved: 0,
+    skipped,
+    intoSkipped: new Set(),
+    skippedRefs: 0,
+  };
   const report = projects.map((p) => ({ config: p.config, files: 0, ms: 0 }));
 
   // ─── Pass A: declarations, in global file order so symbol ids follow file ids ────────────
@@ -131,6 +150,7 @@ async function analyze(
     },
   );
   api.clearSourceFileCache();
+  linkRequireExports(decls, input.paths);
 
   // ─── Pass B: references, one project at a time ───────────────────────────────────────────
   for (let pi = 0; pi < projects.length; pi++) {
@@ -146,6 +166,12 @@ async function analyze(
     report[pi]!.ms = Math.round(report[pi]!.ms + ms);
     log(`TypeScript: ${p.config || "inferred project"}: ${report[pi]!.files} files, ${refs.length - before} references, ${Math.round(ms)} ms`);
   }
+  // Not a problem to report: TsInput.skip asked for exactly this.
+  if (state.skippedRefs) log(`TypeScript: ${state.skippedRefs} references into generated, vendored or minified files were left out`);
+
+  // ─── Post-pass: what only every reference together settles (refine.ts) ───────────────────
+  linkOverrides(store, refs);
+  promoteComponents(store, refs);
 
   const tables = buildTables(store, refs, input.paths.length, decls.values(), input.maxRefs);
   if (tables.truncated) log(`TypeScript: ${tables.truncated} references over the limit of ${input.maxRefs} were dropped`);
@@ -244,19 +270,6 @@ async function prefetched<T>(
       fail(ids[i]!, r.e);
     }
     last = performance.now();
-  }
-}
-
-async function closeQuietly(api: API, log: (m: string) => void): Promise<void> {
-  // Bounded: a wedged tsgo must not hang the report. The timer is cleared (not just raced)
-  // because a pending one keeps Bun's event loop, and so the CLI, alive for its full length.
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    await Promise.race([api.close(), new Promise((r) => (timer = setTimeout(r, 5000)))]);
-  } catch (e) {
-    log(`TypeScript: closing the compiler failed: ${message(e)}`);
-  } finally {
-    clearTimeout(timer);
   }
 }
 

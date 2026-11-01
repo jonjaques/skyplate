@@ -11,6 +11,7 @@
  * at node 117 of shapes.ts" as our symbol N.
  */
 
+import { posix } from "node:path";
 import { SymbolFlag, type SymbolKind } from "../../shared/schema";
 import { CHECKER_SIGNATURE, type FileDecls, type SymbolStore } from "./store";
 import {
@@ -72,6 +73,7 @@ export function collectDeclarations(
     scopes: new Map(),
     aliases: new Map(),
     names: new Set(),
+    exportNodes: [],
   };
   store.files.set(sf.path, decls);
 
@@ -96,6 +98,10 @@ export function collectDeclarations(
   function add(d: Decl): number {
     const at = d.nameNode ? d.nameNode.getStart() : (d.at ?? d.node.getStart());
     const lc = lineOf(at);
+    // A quoted member name (`"data-id": string`) is placed at its quote, as the reader shows
+    // it, but a reference laid on it should cover only the name.
+    const quoted = d.nameNode?.kind === K.StringLiteral || d.nameNode?.kind === K.NoSubstitutionTemplateLiteral;
+    const nameLen = d.nameNode ? d.nameNode.end - at - (quoted ? 2 : 0) : 0;
     const doc = jsDocOf(d.docNode ?? d.node);
     let flags = d.flags | fileFlags;
     if (d.node.flags & NodeFlags.Ambient) flags |= SymbolFlag.ambient;
@@ -117,6 +123,9 @@ export function collectDeclarations(
       signature: CHECKER_SIGNATURE.has(d.kind) ? "" : headerText(d.node, sf),
       doc: firstSentence(doc),
       params: d.fn ? paramCount(d.fn) : 0,
+      namePos: d.nameNode ? at + (quoted ? 1 : 0) : undefined,
+      nameCol: lc.character + (quoted ? 1 : 0),
+      nameLen,
     });
     decls.scopes.set(d.node.index, id);
     if (d.nameNode) decls.names.add(d.nameNode.index);
@@ -247,11 +256,13 @@ export function collectDeclarations(
       if (HOOK.test(name) && init?.kind === K.CallExpression) kind = "hook";
       else if (fn && PASCAL.test(name) && /[a-z]/.test(name) && containsJsx(fn.body)) kind = "component";
       id = add({ node: d, nameNode, name, kind, parent, flags, fn: kind === "variable" ? undefined : fn, docNode: d });
+      if (kind === "hook") store.hookByCall.add(id);
     }
     // `var app = exports = module.exports = {}`: requiring this file yields `app`.
     for (const b of assignmentChain(d.initializer)) {
       if (commonJsTarget(b.left) === "module") {
         decls.aliases.set(b.index, id);
+        decls.exportNodes.push(b.index);
         store.flags[id]! |= SymbolFlag.exported | SymbolFlag.defaultExport;
       }
     }
@@ -301,6 +312,7 @@ export function collectDeclarations(
               fn: m,
             });
             group = { name: mname, kind: k, id: mid, open: true };
+            if (k === K.Constructor) store.ctor.set(id, mid);
           }
           group.open = !m.body;
           if (k === K.Constructor) parameterProperties(m, id);
@@ -377,7 +389,9 @@ export function collectDeclarations(
     if (e.kind === K.ArrowFunction || e.kind === K.FunctionExpression) {
       const name = e.name?.text ?? "default";
       const kind = HOOK.test(name) ? "hook" : containsJsx(e.body) ? "component" : "function";
-      const id = add({ node: st, name, kind, parent, flags, fn: e });
+      // `export = function run()` is placed at `run`; only an anonymous value falls back to the
+      // statement's start (the `export` keyword).
+      const id = add({ node: st, nameNode: e.name, name, kind, parent, flags, fn: e });
       decls.aliases.set(e.index, id);
     } else if (e.kind === K.ClassExpression) {
       classLike(st, e, e.name, e.name?.text ?? "default", parent, flags);
@@ -415,6 +429,7 @@ export function collectDeclarations(
       }
       const isModule = target === "module";
       const flags = SymbolFlag.exported | (isModule ? SymbolFlag.defaultExport : 0);
+      if (isModule) decls.exportNodes.push(b.index);
       if (value.kind === K.Identifier) {
         pending.push({ node: b.index, local: value.text ?? "", flags });
         // `exports.helper = helper`: the left `helper` names the export, it does not write the local.
@@ -433,6 +448,14 @@ export function collectDeclarations(
         exportedObject(value);
       } else if (isModule) {
         decls.aliases.set(b.index, moduleSymbol);
+        // `module.exports = require("./lib/express")`: tsgo binds the requirer's export= at this
+        // assignment and stops there, so without a link every `express()` in the repository is
+        // a call to this file's module symbol instead of the factory function behind it.
+        const spec = isRequireCall(value) ? value.arguments?.[0] : undefined;
+        if (spec && (spec.kind === K.StringLiteral || spec.kind === K.NoSubstitutionTemplateLiteral) && spec.text?.startsWith(".")) {
+          const re = (decls.requireExport ??= { nodes: [], spec: spec.text });
+          if (re.spec === spec.text) re.nodes.push(b.index);
+        }
       } else if (!isRequireCall(value, true)) {
         add({ node: b, nameNode: skipOuter(b.left)?.name, name: target.name, kind: "variable", parent, flags, docNode: st });
       }
@@ -500,6 +523,52 @@ export function collectDeclarations(
     store.flags[id]! |= link.flags;
   }
   return decls;
+}
+
+// ─── Cross-file: CommonJS re-exports ─────────────────────────────────────────────────────────
+
+const REQUIRE_EXTS = [".js", ".cjs", ".mjs", ".jsx", ".ts", ".cts", ".mts", ".tsx"];
+
+/**
+ * After pass A, once every file's declarations exist: point each `module.exports =
+ * require("./x")` at what requiring x yields (its function, class, or module symbol), through
+ * chains of such files. Specifiers resolve as Node resolves relative ones: as written, with
+ * an extension, or as a directory's index. One that resolves to nothing we analyzed keeps the
+ * file's own module symbol.
+ */
+export function linkRequireExports(decls: ReadonlyMap<number, FileDecls>, paths: readonly string[]): void {
+  const byPath = new Map<string, number>();
+  for (const id of decls.keys()) byPath.set(paths[id]!, id);
+  const resolveSpec = (from: number, spec: string): number | undefined => {
+    let base = posix.normalize(posix.join(posix.dirname(paths[from]!), spec)).replace(/\/$/, "");
+    if (base === ".") base = "";
+    if (base.startsWith("../")) return undefined;
+    const dir = base ? base + "/index" : "index";
+    for (const c of [base, ...REQUIRE_EXTS.map((e) => base + e), ...REQUIRE_EXTS.map((e) => dir + e)]) {
+      const id = byPath.get(c);
+      if (id !== undefined) return id;
+    }
+    return undefined;
+  };
+  const yields = (id: number, seen: Set<number>): number | undefined => {
+    const d = decls.get(id)!;
+    if (d.requireExport) {
+      if (seen.has(id)) return undefined; // a require cycle; Node would hand back a partial `{}`
+      seen.add(id);
+      const target = resolveSpec(id, d.requireExport.spec);
+      return target === undefined ? undefined : yields(target, seen);
+    }
+    for (const n of d.exportNodes) {
+      const a = d.aliases.get(n);
+      if (a !== undefined) return a;
+    }
+    return undefined;
+  };
+  for (const [id, d] of decls) {
+    if (!d.requireExport) continue;
+    const target = yields(id, new Set());
+    if (target !== undefined) for (const n of d.requireExport.nodes) d.aliases.set(n, target);
+  }
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────────────────────

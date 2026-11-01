@@ -15,6 +15,27 @@
  * chaining (A@x "Sam" + A@x "Sam Lee" + B@y "Sam Lee"). Placeholder names ("root", "Your Name",
  * "unknown") never merge, and a bot never merges with a human, because those are where the
  * collisions would be systematic rather than unlucky.
+ *
+ * Two more places are systematic, both found on vite:
+ *
+ * - Stray names. green@sapphi.red has 1,476 commits, 2 of them (GitHub squash merges) under
+ *   "andrew", another contributor's name. Merging on every name an address ever carried
+ *   pulled that contributor's 46 commits into vite's top author. So an identity merges only on
+ *   names it goes by: its most-used, one on a quarter of its commits, or one used ten times or
+ *   more, which is a habit rather than an accident. The last clause is not optional: the same
+ *   address used "sapphi-red" on 17 commits (1%), and that is what joins it to the 448 commits
+ *   from the sapphi-red noreply address.
+ *
+ * - Bare given names. One word, written as a name is written ("Alex", "Mark", "Leo", in a
+ *   script that spaces its words), collides as a matter of course: vite's "alex" was five
+ *   people. But a bare handle is the commonest spelling that *should* merge: "patak" joins
+ *   vite's third most active author (919 commits) to the patak-dev noreply address (91), and
+ *   "underfin", "sun0day", "ygj6" and 13 more one-word groups in vite are handles too. Handles
+ *   keep their account spelling (lowercase, digits, inner capitals), so only the capitalized
+ *   word is held back. It errs both ways on a few small identities ("alex" typed lowercase
+ *   still merges, the handle "Zheeeng" does not), where skipping every one-word name would
+ *   have split all 17 handle groups. CJK names ("김정환") have no such convention and stay
+ *   mergeable.
  */
 
 // ─── Bot detection ───────────────────────────────────────────────────────────────────────────
@@ -118,6 +139,20 @@ const PLACEHOLDER_NAMES = new Set([
   "your name",
 ]);
 
+/** A name on this many of an identity's commits is one it goes by, whatever its share. */
+const NAME_HABIT = 10;
+/** Scripts that separate words with spaces, where one word alone is a first name or a handle. */
+const SPACED_SCRIPT = /^[\p{Script=Latin}\p{Script=Cyrillic}\p{Script=Greek}\p{N}]+$/u;
+/** A single word written the way names are: one capital, then lowercase ("Alex", "Владимир"). */
+const NAME_CASED = /^\p{Lu}\p{Ll}+$/u;
+
+/** `raw` as committed, `norm` its normalizeName form. See the header for why. */
+function isBareGivenName(raw: string, norm: string): boolean {
+  return (
+    !norm.includes(" ") && SPACED_SCRIPT.test(norm) && NAME_CASED.test(raw.trim().normalize("NFC"))
+  );
+}
+
 // ─── Raw identities (built during the log pass) ──────────────────────────────────────────────
 
 export class Identities {
@@ -188,9 +223,17 @@ export function mergeIdentities(ids: Identities): { groupOf: Int32Array; authors
 
   const firstWithName = new Map<string, number>();
   for (let i = 0; i < n; i++) {
-    for (const raw of ids.names[i]!.keys()) {
+    const names = ids.names[i]!;
+    const total = ids.commits[i]!;
+    let most = 0;
+    for (const count of names.values()) if (count > most) most = count;
+    for (const [raw, count] of names) {
+      if (count < most && count * 4 < total && count < NAME_HABIT) continue; // a stray name
       const norm = normalizeName(raw);
       if (PLACEHOLDER_NAMES.has(norm) || norm.length < 2) continue;
+      // Bots are exempt: their one word is a product name ("Mergify"), and two bot accounts
+      // of one product merging only ever groups automation with automation.
+      if (!ids.bot[i] && isBareGivenName(raw, norm)) continue;
       const key = (ids.bot[i] ? "b:" : "h:") + norm;
       const other = firstWithName.get(key);
       if (other === undefined) firstWithName.set(key, i);

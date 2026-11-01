@@ -46,6 +46,8 @@ const T_LUA = 9;
 const T_HEREDOC = 10;
 const T_REGEX = 11;
 const T_LINEWORD = 12;
+const T_QCHAR = 13;
+const T_PERCENT = 14;
 
 const AT_ANY = 0;
 const AT_START = 1;
@@ -66,6 +68,10 @@ interface Tok {
   tpl: boolean;
   /** Block comment that opens and closes only at line start. */
   atStartBlock: boolean;
+  /** Char code of an opener that nests inside the string (`%w[a [b] c]`), 0 for none. */
+  nest: number;
+  /** Lines whose first non-blank is `#` are comments (multi-line `%r[…]x` regexes). */
+  xComments: boolean;
   at: number;
   notAfter: string;
   notBefore: string;
@@ -85,7 +91,7 @@ interface Lexer {
 const lexers = new WeakMap<LexRules, Lexer>();
 
 function tok(t: number, open: string, close = "", extra: Partial<Tok> = {}): Tok {
-  return { t, open, close, esc: false, multi: false, doc: false, tpl: false, atStartBlock: false, at: AT_ANY, notAfter: "", notBefore: "", ...extra };
+  return { t, open, close, esc: false, multi: false, doc: false, tpl: false, atStartBlock: false, nest: 0, xComments: false, at: AT_ANY, notAfter: "", notBefore: "", ...extra };
 }
 
 function compile(rules: LexRules): Lexer {
@@ -143,6 +149,8 @@ function compile(rules: LexRules): Lexer {
   }
   if (rules.heredoc) add("<", tok(T_HEREDOC, "<"));
   if (rules.regex) add("/", tok(T_REGEX, "/"));
+  if (rules.questionChars) add("?", tok(T_QCHAR, "?"));
+  if (rules.percentLiterals) add("%", tok(T_PERCENT, "%"));
   // Longest opener first, so `"""` wins over `"` and `//` over a regex `/`.
   for (const bucket of table) bucket?.sort((a, b) => b.open.length - a.open.length);
   const lx: Lexer = {
@@ -227,6 +235,12 @@ const isSpace = (c: number) => c === 32 || c === 9 || c === 11 || c === 12 || c 
 const REGEX_KEYWORDS = new Set(["return", "typeof", "instanceof", "in", "of", "new", "delete", "void", "throw", "case", "do", "else", "yield", "await", "and", "or", "not", "if", "unless", "when", "while", "until", "split", "grep", "map"]);
 // Previous significant characters after which `/` starts a regex.
 const REGEX_AFTER = new Set("(,=:[!&|?{};+-*%<>~^".split("").map((c) => c.charCodeAt(0)));
+// Ruby percent-literal type letters (%q %Q %w %W %i %I %r %s %x) and the bracket pairs whose
+// closers differ from their openers; any other delimiter closes on itself.
+const PERCENT_LETTERS = new Set("qQwWiIrsx".split("").map((c) => c.charCodeAt(0)));
+const PERCENT_CLOSE: Record<number, number> = { 40: 41, 91: 93, 123: 125, 60: 62 };
+/** An identifier, `)`, `]`, `}` or a closing quote ends a value: a `?` or `%` right after one is an operator. */
+const endsValue = (c: number) => isIdent(c) || c === 41 || c === 93 || c === 125 || c === 34 || c === 39 || c === 96;
 
 /**
  * Scan `text` as `languageId`. Returns undefined when the language has no lexical rules, in
@@ -329,6 +343,8 @@ export function scanWithRules(text: string, rules: LexRules): Scan {
     let close = "";
     let closeFirst = 0;
     let depth = 0; // block-comment nesting
+    let strDepth = 0; // nested bracket delimiters inside a percent literal
+    let strComment = false; // this line of a `%r[…]x` regex is a `#` comment
     let spanStart = 0;
     let lastSig = -1;
     let lastSigPos = -1;
@@ -341,6 +357,7 @@ export function scanWithRules(text: string, rules: LexRules): Scan {
       cur = k;
       close = closer;
       closeFirst = closer.charCodeAt(0);
+      strDepth = 0;
       state = S_STR;
       // A docstring is a statement that is only a string: nothing but an allowed prefix before
       // it on the line, not inside brackets, not a continuation line.
@@ -428,7 +445,7 @@ export function scanWithRules(text: string, rules: LexRules): Scan {
         case T_CHAR: {
           if (at > 0) {
             const p = text.charCodeAt(at - 1);
-            if (isIdent(p)) return -1;
+            if (isIdent(p) && !charPrefixBefore(at)) return -1;
             if (R.primeAfterWord && (p === 41 || p === 93 || p === 125 || p === 39 || p === 46)) return -1;
           }
           const close = charLiteralEnd(at);
@@ -501,6 +518,51 @@ export function scanWithRules(text: string, rules: LexRules): Scan {
           return heredocStart(at);
         case T_REGEX:
           return regexLiteral(at);
+        case T_QCHAR: {
+          if (at > lineStart) {
+            const p = text.charCodeAt(at - 1);
+            if (endsValue(p) || p === 63) return -1; // `empty?`, `(x)? a : b`, and `nil??a:b` after a predicate
+          }
+          let q = at + 1;
+          const d = text.charCodeAt(q);
+          if (Number.isNaN(d) || d === 10 || d === 13 || isSpace(d)) return -1; // `a ? b : c`
+          if (d === 92) {
+            // ?\n, ?\": the escaped character is the literal.
+            const e = text.charCodeAt(q + 1);
+            if (Number.isNaN(e) || e === 10 || e === 13) return -1;
+            q += 2;
+          } else {
+            q += d >= 0xd800 && d <= 0xdbff ? 2 : 1;
+            if (isIdent(text.charCodeAt(q))) return -1; // `?abc` is not one character
+          }
+          markCode(at);
+          spans.push(at + 1, q, SPAN_STRING);
+          lastSig = 39;
+          lastSigPos = q - 1;
+          return q;
+        }
+        case T_PERCENT: {
+          // Right after a value, `%` is modulo: `x%y`, `f()%2`, `"%d"%[n]`.
+          if (at > lineStart && endsValue(text.charCodeAt(at - 1))) return -1;
+          let q = at + 1;
+          const letter = PERCENT_LETTERS.has(text.charCodeAt(q));
+          if (letter) q++;
+          const d = text.charCodeAt(q);
+          // `x % y`, `x %= 2`, a trailing `100%`: operators, not openers.
+          if (Number.isNaN(d) || d === 10 || d === 13 || d === 61 || isSpace(d)) return -1;
+          // A typed literal takes any punctuation; a bare `%` only brackets, `|` and `!`, so
+          // `n %2` and `a %-b` stay arithmetic.
+          if (letter ? isIdent(d) : !(d in PERCENT_CLOSE) && d !== 124 && d !== 33) return -1;
+          const closer = PERCENT_CLOSE[d] ?? d;
+          const k2 = tok(T_STR, "", String.fromCharCode(closer), {
+            esc: true,
+            multi: true,
+            nest: closer === d ? 0 : d,
+            xComments: letter && text.charCodeAt(at + 1) === 114, // %r
+          });
+          enterString(k2, at, q + 1 - at, k2.close, -2);
+          return q + 1;
+        }
       }
       return -1;
     }
@@ -522,13 +584,14 @@ export function scanWithRules(text: string, rules: LexRules): Scan {
       return p;
     }
 
-    /** A literal prefix (b, u8, u, U, L) ends right before `at`, standing alone as a word. */
+    /** One of the language's char-literal prefixes (b, u8, L…) ends right before `at`, as a whole word. */
     function charPrefixBefore(at: number): boolean {
+      const prefixes = R.charLiteralPrefixes;
+      if (!prefixes) return false;
       let p = at;
       while (p > lineStart && p > at - 3 && isIdent(text.charCodeAt(p - 1))) p--;
       if (p > 0 && isIdent(text.charCodeAt(p - 1))) return false;
-      const w = text.slice(p, at);
-      return w === "b" || w === "u8" || w === "u" || w === "U" || w === "L";
+      return prefixes.includes(text.slice(p, at));
     }
 
     /** `[` + n×`=` + `[` at `at` → n, else -1. */
@@ -631,6 +694,7 @@ export function scanWithRules(text: string, rules: LexRules): Scan {
           continued = p >= lineStart && text.charCodeAt(p) === 92;
         } else continued = false;
         endLine(i);
+        strComment = false;
         i += c === 13 && text.charCodeAt(i + 1) === 10 ? 2 : 1;
         lineStart = i;
         lineBracket = bracket;
@@ -752,7 +816,15 @@ export function scanWithRules(text: string, rules: LexRules): Scan {
             }
             i += 2;
             if (inDoc) hasText = true;
+            else if (strComment) hasComment = true;
             else markCode(i - 2);
+            continue;
+          }
+          if (k.nest !== 0 && d === k.nest) {
+            strDepth++;
+            if (strComment) hasComment = true;
+            else markCode(i);
+            i++;
             continue;
           }
           if (k.tpl && d === 36 && text.charCodeAt(i + 1) === 123) {
@@ -762,6 +834,13 @@ export function scanWithRules(text: string, rules: LexRules): Scan {
             markCode(i);
             i += 2;
             break;
+          }
+          if (d === closeFirst && strDepth > 0) {
+            strDepth--;
+            if (strComment) hasComment = true;
+            else markCode(i);
+            i++;
+            continue;
           }
           if (d === closeFirst && text.startsWith(close, i)) {
             const contentEnd = i;
@@ -790,8 +869,11 @@ export function scanWithRules(text: string, rules: LexRules): Scan {
             }
             break;
           }
+          // An extended regex holds whole-line `#` comments, which cloc counts as comments too.
+          if (k.xComments && d === 35 && !hasCode && !hasComment && text.charCodeAt(i + 1) !== 123) strComment = true;
           if (!isSpace(d)) {
             if (inDoc) hasText = true;
+            else if (strComment) hasComment = true;
             else markCode(i);
           }
           i++;

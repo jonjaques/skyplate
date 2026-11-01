@@ -54,6 +54,8 @@ export interface TsNode {
   readonly tagName?: TsNode;
   readonly typeName?: TsNode;
   readonly exprName?: TsNode;
+  readonly indexType?: TsNode;
+  readonly argumentExpression?: TsNode;
   readonly declarationList?: TsNode;
   readonly type?: TsNode;
   readonly exportClause?: TsNode;

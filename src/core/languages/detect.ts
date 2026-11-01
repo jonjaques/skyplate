@@ -30,6 +30,7 @@ import {
   languageType,
   languagesForExtension,
   languagesForFilename,
+  languagesForFilenameIgnoringCase,
   languagesForInterpreter,
 } from "./registry";
 
@@ -57,11 +58,35 @@ function trimPartialUtf8(b: Uint8Array): Uint8Array {
 }
 
 /**
+ * East Asian legacy encodings spend two high bytes on most characters, so Japanese, Chinese
+ * or Korean text runs 40-70% high bytes, far past the Latin-1 cap below. For those heads a
+ * strict decode is the evidence instead: random bytes stop forming valid double-byte
+ * sequences within a few characters. Shift_JIS is tried first because it is the strictest;
+ * GB18030 accepts almost any pair, so it only sees what the others refused. Which one wins
+ * matters little here, since detection reads only the ASCII in the head (names, keywords,
+ * comment markers), and every candidate leaves ASCII alone.
+ */
+const CJK_ENCODINGS = ["shift_jis", "euc-kr", "gb18030"] as const;
+
+function decodeCjk(head: Uint8Array): string | undefined {
+  for (const enc of CJK_ENCODINGS) {
+    try {
+      // Streaming holds back a character cut at the 8 KiB boundary instead of failing on it.
+      return new TextDecoder(enc, { fatal: true }).decode(head, { stream: true });
+    } catch {
+      // Not this encoding; try the next.
+    }
+  }
+  return undefined;
+}
+
+/**
  * Decode the head, or report it binary. NUL bytes mean binary except under a UTF-16 BOM.
- * Invalid UTF-8 also means binary, with one allowance: a head whose only control bytes are
- * whitespace, BEL, BS and ESC, and whose high bytes are under 30%, is legacy 8-bit text
- * (Latin-1 / Windows-1252 source with an accented author name is common in older C and
- * Delphi trees). Calling those binary would drop real code from every metric.
+ * Invalid UTF-8 also means binary, with two allowances for heads whose only control bytes are
+ * whitespace, BEL, BS and ESC. Under 30% high bytes, it is legacy 8-bit text (Latin-1 /
+ * Windows-1252 source with an accented author name is common in older C and Delphi trees).
+ * Over that, it is text if it decodes strictly as Shift_JIS, EUC-KR or GB18030. Calling
+ * either binary would drop real code from every metric.
  */
 function decodeHead(head: Uint8Array): { text: string; binary: boolean } {
   const n = head.length;
@@ -74,14 +99,19 @@ function decodeHead(head: Uint8Array): { text: string; binary: boolean } {
     return { text: utf8.decode(trimPartialUtf8(head.subarray(start))), binary: false };
   } catch {
     let high = 0;
+    let spaced = false;
     for (let i = 0; i < n; i++) {
       const c = head[i]!;
       if (c >= 0x80) high++;
+      else if (c === 0x20 || c === 0x0a) spaced = true;
       // BEL and backspace are allowed: nroff overstrike (bold as "x\bx") is full of them.
       else if (c < 0x07 || (c > 0x0d && c < 0x20 && c !== 0x1b)) return { text: "", binary: true };
     }
-    if (high / n > 0.3) return { text: "", binary: true };
-    return { text: cp1252.decode(head), binary: false };
+    if (high / n <= 0.3) return { text: cp1252.decode(head), binary: false };
+    // Prose and source both have spaces or line breaks; a short random blob that happens to
+    // decode as GB18030 usually has neither.
+    const cjk = spaced ? decodeCjk(head) : undefined;
+    return cjk === undefined ? { text: "", binary: true } : { text: cjk, binary: false };
   }
 }
 
@@ -112,6 +142,11 @@ const ZIP_KINDS: Record<string, Format> = {
   odt: { format: "ODT", category: "docs" },
   odp: { format: "ODP", category: "docs" },
   epub: { format: "EPUB", category: "docs" },
+  // iWork documents are ZIP since 2013. A Keynote deck shares .key with private keys, and the
+  // ZIP magic is what tells them apart (see isSecret).
+  key: { format: "Keynote", category: "docs" },
+  pages: { format: "Pages", category: "docs" },
+  numbers: { format: "Numbers", category: "data" },
   xlsx: { format: "XLSX", category: "data" },
   ods: { format: "ODS", category: "data" },
   npz: { format: "NumPy NPZ", category: "data" },
@@ -336,21 +371,68 @@ const GENERIC = new Set(GENERIC_EXTENSIONS);
 // a template by convention (.env.example, .env.local.example, .env.sample).
 const ENV_TEMPLATE = /(?:^|\.)(?:example|sample|template|dist|defaults?)(?:\.|$)/i;
 
+/**
+ * Names that hold credentials whatever is inside: key stores, SSH keys, credential dumps, and
+ * Terraform state, which stores every resource attribute (database passwords included) in
+ * plaintext. .tfvars is here too, though many hold only a region, because its secrets have
+ * no fixed key names to look for; GitHub's own Terraform .gitignore excludes it for that
+ * reason. kubeconfig carries a cluster token or client key.
+ */
 const SECRET_NAME =
-  /^(?:\.envrc|.+\.(?:pem|key|p12|pfx|jks|keystore|kdbx)|id_(?:rsa|dsa|ecdsa|ed25519)|\.npmrc|\.pypirc|\.netrc|_netrc|\.htpasswd|\.git-credentials|credentials\.json|service[-_]?account.*\.json|secrets?\.(?:json|ya?ml|toml))$/i;
-
-const PRIVATE_KEY = /-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-----/;
+  /^(?:.+\.(?:p12|pfx|jks|keystore|kdbx|tfstate|tfstate\.backup|tfvars|tfvars\.json|kubeconfig)|id_(?:rsa|dsa|ecdsa|ed25519)|\.htpasswd|\.git-credentials|credentials\.json|service[-_]?account.*\.json|secrets?\.(?:json|ya?ml|toml)|kubeconfig)$/i;
 
 /**
- * .envrc is direnv's, not in the brief's list, but it holds exported tokens as often as .env
- * does, and a false positive only means the file is not embedded. .aws/credentials has no
- * extension to catch it by.
+ * Tool configs that only sometimes hold a credential. Committed .npmrc files are mostly
+ * settings (engine-strict, ignore-scripts), and flagging those raised a false credentials
+ * warning on Express, so each needs its credential in the head, in the tool's own syntax.
+ * A value that only references the environment (`_authToken=${NPM_TOKEN}`,
+ * `export TOKEN=$(op read …)`) is how these files are meant to be committed, so it does not
+ * count. .envrc is direnv's: it exports tokens as often as .env does.
  */
-function isSecret(path: string, name: string, text: string): boolean {
+const ENV_REF = String.raw`(?!["']?\$)\S`;
+// A Map, not an object literal: a file named "constructor" must not find Object's.
+const CREDENTIAL_IN = new Map<string, RegExp>([
+  [".npmrc", new RegExp(String.raw`(?:_authToken|_auth|_password)\s*=\s*${ENV_REF}`)],
+  [".pypirc", new RegExp(String.raw`^\s*password\s*[=:]\s*${ENV_REF}`, "im")],
+  [".netrc", /\bpassword\s+\S/],
+  ["_netrc", /\bpassword\s+\S/],
+  [
+    ".envrc",
+    new RegExp(
+      String.raw`\b(?:\w+_)?(?:TOKEN|SECRET|PASSWORD|PASSWD|API_?KEY|ACCESS_?KEY|PRIVATE_?KEY|CREDENTIALS?|AUTH)(?:_\w+)?\s*=\s*${ENV_REF}|:\/\/[^\s:\/@]+:[^\s\/@$]+@`,
+      "i",
+    ),
+  ],
+]);
+
+/**
+ * Certificates, public keys and CSRs share .pem and .key with private keys. Only a complete
+ * head whose PEM armor holds no private key clears one: raw key material has no armor at all
+ * (Rails' config/master.key is 32 hex digits), and a truncated head may hide a key behind its
+ * certificate chain (HAProxy's combined .pem puts the key last).
+ */
+const KEY_FILE = /\.(?:pem|key)$/i;
+const PEM_ARMOR = /-----BEGIN [A-Z0-9 ]+-----/;
+const PRIVATE_KEY = /-----BEGIN (?:[A-Z0-9]+ )*PRIVATE KEY(?: BLOCK)?-----/;
+// A kubeconfig's client key is base64, so the PRIVATE KEY armor is not visible in it.
+const EMBEDDED_KEY = /^\s*client-key-data:\s*\S/m;
+
+/** `format` is the magic-number label of a binary head, when it has one. */
+function isSecret(path: string, name: string, text: string, complete: boolean, binary: boolean, format?: string): boolean {
   if (name === ".env" || (name.startsWith(".env.") && !ENV_TEMPLATE.test(name.slice(5)))) return true;
+  // Wrangler's local secrets, dotenv syntax: .dev.vars, or .dev.vars.<environment>.
+  if (name === ".dev.vars" || (name.startsWith(".dev.vars.") && !ENV_TEMPLATE.test(name.slice(10)))) return true;
   if (SECRET_NAME.test(name)) return true;
-  if (path === ".aws/credentials" || path.endsWith("/.aws/credentials")) return true;
-  return text.length > 0 && text.includes("PRIVATE KEY") && PRIVATE_KEY.test(text);
+  // Neither has an extension to catch it by.
+  if (/(?:^|\/)\.(?:aws\/credentials|kube\/config)$/.test(path)) return true;
+  if (KEY_FILE.test(name)) {
+    // A binary .key is DER key material unless its bytes are a Keynote deck.
+    if (binary) return format !== "Keynote";
+    return !complete || !PEM_ARMOR.test(text) || PRIVATE_KEY.test(text);
+  }
+  if (CREDENTIAL_IN.get(name)?.test(text)) return true;
+  if (!text) return false;
+  return (text.includes("PRIVATE KEY") && PRIVATE_KEY.test(text)) || (text.includes("client-key-data") && EMBEDDED_KEY.test(text));
 }
 
 // ─── Language: shebang and modeline ──────────────────────────────────────────────────────────
@@ -447,6 +529,8 @@ const FILENAME_RULES: readonly [RegExp, string][] = [
   [/(?:^|\/)\.vscode\/[^/]+\.json$/, "json-with-comments"],
   [/(?:^|\/)(?:tsconfig|jsconfig)[.-][^/]*\.json$/, "json-with-comments"],
   [/(?:^|\/)\.env(?:\.[\w-]+)*$/, "dotenv"],
+  // Wrangler's local secrets file is dotenv syntax under its own name.
+  [/(?:^|\/)\.dev\.vars(?:\.[\w-]+)?$/, "dotenv"],
   // Project templates ship ignore files as _gitignore because npm drops .gitignore on publish.
   [/(?:^|\/)_(?:gitignore|npmignore|dockerignore)$/, "ignore-list"],
   [/(?:^|\/)(?:Dockerfile|Containerfile)[.-][^/]+$/, "dockerfile"],
@@ -472,14 +556,53 @@ function byShape(ids: readonly string[], text: string): string {
   return ids[0]!;
 }
 
+/**
+ * Extensions linguist does not know yet. Cursor's rule files (.cursor/rules/*.mdc) are
+ * Markdown with YAML frontmatter; as unknown text they were colored with images and binaries.
+ */
+const EXTRA_EXTENSIONS = new Map<string, readonly string[]>([[".mdc", ["markdown"]]]);
+
 function extensionCandidates(lowerName: string): { ext: string; ids: readonly string[] } | undefined {
   // Longest dotted suffix first: "foo.d.ts" tries ".d.ts" then ".ts"; "x.cmake.in" finds CMake.
   for (let dot = lowerName.indexOf("."); dot >= 0; dot = lowerName.indexOf(".", dot + 1)) {
     const ext = lowerName.slice(dot);
     const ids = languagesForExtension(ext);
     if (ids.length) return { ext, ids };
+    const extra = EXTRA_EXTENSIONS.get(ext);
+    if (extra) return { ext, ids: extra };
   }
   return undefined;
+}
+
+// A document that opens like XML: prolog, comment, DOCTYPE or an element. "<%" (ERB, Gosu
+// templates) and "<?php" do not.
+const XML_START = /^<(?:\?xml\b|!--|!DOCTYPE\b|[A-Za-z_])/;
+// The root's name, past any prolog and comments: "eagle" in <!DOCTYPE eagle SYSTEM ...>.
+const XML_ROOT = /^(?:<\?xml\b[^>]*\?>\s*)?(?:<!--[\s\S]*?-->\s*)*<(?:!DOCTYPE\s+)?([A-Za-z_][\w.-]*)/;
+
+/**
+ * Settle a shared extension from the head where no heuristic spoke, before the ranked default
+ * would. The default is a prior over all repositories, and it contradicts content that admits
+ * one reading: a .mm or .pluginspec that opens with an element is XML, not Objective-C++ or
+ * Ruby, and an XML dialect named by its own root (<!DOCTYPE eagle> in a .brd) is that dialect.
+ * "<?php" and Mathematica's notebook banner are as plain. With rankedDefault below, these
+ * were 9 of the 79 misses on linguist's samples.
+ */
+function byContent(ids: readonly string[], text: string): string | undefined {
+  const t = text.trimStart();
+  if (t.startsWith("<?php") && ids.includes("php")) return "php";
+  if (ids.includes("wolfram-language") && /^\(\*[^\n]*\b(?:Mathematica|Wolfram)\b/i.test(t)) return "wolfram-language";
+  if (!XML_START.test(t)) return undefined;
+  const root = XML_ROOT.exec(t)?.[1]?.toLowerCase();
+  if (root && ids.includes(root)) return root;
+  return ids.includes("xml") ? "xml" : undefined;
+}
+
+/** The ranked default, minus XML when the head cannot be XML: a ";;;"-commented .sch is
+ * Scheme even though XML outranks Scheme, because an XML document must open with "<". */
+function rankedDefault(ids: readonly string[], text: string): string {
+  if (ids[0] === "xml" && ids.length > 1 && !XML_START.test(text.trimStart())) return ids[1]!;
+  return ids[0]!;
 }
 
 /** Last-resort shape sniff for unrecognized names; mirrors linguist's XML strategy, plus HTML. */
@@ -513,7 +636,14 @@ function detectLanguage(path: string, name: string, lower: string, text: string,
   const modeline = modelineLanguage(text, complete);
   if (modeline) return { language: modeline, reason: "modeline" };
 
-  let byName = languagesForFilename(name);
+  const exact = languagesForFilename(name);
+  if (exact.length) return { language: exact.length === 1 ? exact[0]! : byShape(exact, text), reason: "filename" };
+
+  // A name matched only case-insensitively or by starchart's own conventions is weaker than
+  // an interpreter line: `install` and `build` beside fzf's and linguist's bash and sh
+  // shebangs are scripts, not linguist's INSTALL (Text) and BUILD (Starlark). Linguist
+  // itself would never match them, since its filename lookup is exact.
+  let byName = languagesForFilenameIgnoringCase(name);
   if (!byName.length) {
     for (const [re, id] of FILENAME_RULES) {
       if (re.test(path)) {
@@ -522,8 +652,11 @@ function detectLanguage(path: string, name: string, lower: string, text: string,
       }
     }
   }
-  if (byName.length === 1) return { language: byName[0]!, reason: "filename" };
-  if (byName.length > 1) return { language: byShape(byName, text), reason: "filename" };
+  if (byName.length) {
+    const sb = shebangLanguages(text);
+    if (sb.length) return { language: sb[0]!, reason: "shebang" };
+    return { language: byName.length === 1 ? byName[0]! : byShape(byName, text), reason: "filename" };
+  }
 
   const ex = extensionCandidates(lower);
   if (ex) {
@@ -544,11 +677,13 @@ function detectLanguage(path: string, name: string, lower: string, text: string,
     if (!generic) {
       const sb = shebangLanguages(text).find((id) => ex.ids.includes(id));
       if (sb) return { language: sb, reason: "shebang" };
+      const read = ex.ids.length > 1 ? byContent(ex.ids, text) : undefined;
+      if (read) return { language: read, reason: "content" };
       // Markup is unmistakable where heuristics are silent: an .inc that opens with <html> or
       // a .mod that opens with <?xml is HTML / XML, whatever the extension's default is.
       const shaped = sniffText(text, complete);
       if (shaped && ex.ids.includes(shaped)) return { language: shaped, reason: "content" };
-      return { language: ex.ids[0]!, reason: "extension" };
+      return { language: rankedDefault(ex.ids, text), reason: "extension" };
     }
   }
 
@@ -607,10 +742,13 @@ const LOCKFILES = new Set([
   ".terraform.lock.hcl",
   "vcpkg-lock.json",
 ]);
-const LOCKFILE_RE = /(?:\.lock|\.lockfile|-lock\.(?:json|ya?ml)|^pylock\.[^/]+\.toml)$/;
+// Julia 1.11+ writes a versioned manifest beside the plain one: Manifest-v1.12.toml.
+const LOCKFILE_RE = /(?:\.lock|\.lockfile|-lock\.(?:json|ya?ml)|^pylock\.[^/]+\.toml|^(?:Julia)?Manifest-v\d+\.\d+\.toml)$/;
 
+// "__tests?_<kind>__" covers suites a project splits by kind: vite's __tests_dts__ holds
+// expectTypeOf assertions that its typecheck script runs.
 const TEST_DIR =
-  /^(?:__tests?__|tests?|specs?|e2e|cypress|playwright|__mocks__|__snapshots__|__fixtures__|testdata|test[-_]?data|test[-_]?(?:utils?|helpers?|support|fixtures?|cases?|suites?|resources)|(?:unit|integration|functional|acceptance|smoke|regression|system|end[-_]?to[-_]?end)[-_]?tests?|androidTest|testFixtures|[A-Za-z]+Tests)$/i;
+  /^(?:__tests?(?:_[a-z0-9]+)*__|tests?|specs?|e2e|cypress|playwright|__mocks__|__snapshots__|__fixtures__|testdata|test[-_]?data|test[-_]?(?:utils?|helpers?|support|fixtures?|cases?|suites?|resources)|(?:unit|integration|functional|acceptance|smoke|regression|system|end[-_]?to[-_]?end)[-_]?tests?|androidTest|testFixtures|[A-Za-z]+Tests)$/i;
 const TEST_FILE =
   /(?:^|[._-])(?:test|tests|spec|specs|e2e|cy)\.[^.]+$|^test_[^/]*\.py$|_test\.[^.]+$|_spec\.rb$|^conftest\.py$|^(?:setup[-_.]?tests?|tests?[-_.]setup|(?:vitest|jest|playwright)[-_.]?(?:global[-_.]?)?setup[\w.-]*)\.[cm]?[jt]sx?$|\.(?:snap|bats|t)$/i;
 // PascalCase JVM/.NET/Swift conventions are case-sensitive: "FooTest.java", not "latest.java".
@@ -810,9 +948,30 @@ const CONFIG_NAMES = new Set([
   "dependabot.yml",
   "dependabot.yaml",
   "py.typed",
+  // Tools whose config file is named for the tool alone, so no pattern below sees it.
+  "typos.toml",
+  "_typos.toml",
+  "typedoc.json",
+  "fta.json",
+  "angular.json",
+  "nodemon.json",
+  "mkdocs.yml",
+  "mkdocs.yaml",
+  "lefthook.yml",
+  "lefthook.yaml",
 ]);
+// "x.conf.js" is Karma's, WebdriverIO's and Protractor's spelling of "x.config.js". "_rc"
+// is the rc dotfile as project templates ship it (create-vite's _oxlintrc.json), for the
+// same reason they ship _gitignore: npm drops dotfiles on publish.
 const CONFIG_FILE =
-  /\.config\.(?:[cm]?[jt]s|json5?|jsonc|ya?ml|toml)$|^\.[\w-]+rc(?:\.(?:[cm]?[jt]s|json5?|jsonc|ya?ml|toml))?$|^(?:ts|js)config(?:[.-][\w.-]+)?\.json$|\.gemspec$|\.(?:ini|cfg|conf|properties|plist|editorconfig)$/i;
+  /\.config\.(?:[cm]?[jt]s|json5?|jsonc|ya?ml|toml)$|\.conf\.[cm]?[jt]s$|^[._][\w-]+rc(?:\.(?:[cm]?[jt]s|json5?|jsonc|ya?ml|toml))?$|^(?:ts|js)config(?:[.-][\w.-]+)?\.json$|\.gemspec$|\.(?:ini|cfg|conf|properties|plist|editorconfig)$/i;
+// gatsby-config.js, and a vite playground's worker-sourcemap-config.js. Inside src/, lib/ or
+// app/ the same spelling is the application's own config module (auth-config.ts), which is
+// code the app imports and belongs in its metrics.
+const TOOL_CONFIG_FILE = /-config\.[cm]?[jt]s$/;
+const SOURCE_DIR = /^(?:src|lib|app)$/;
+// Data files under these directories configure the application (Rails' config/database.yml).
+const CONFIG_SEGMENT = /^(?:config|configs|conf)$/;
 // Tool directories whose contents configure the project rather than make it.
 const CONFIG_DIR = /(?:^|\/)(?:\.vscode|\.idea|\.devcontainer|\.husky|\.cargo|\.config|\.github|\.storybook|\.changeset|\.yarn|\.circleci)\//;
 const CONFIG_LANGUAGES = new Set([
@@ -834,7 +993,7 @@ const CONFIG_LANGUAGES = new Set([
   "go-module",
   "go-workspace",
   "java-properties",
-  "robots.txt",
+  "robots-exclusion-rules",
   "hosts-file",
   "wget-config",
   "curl-config",
@@ -844,7 +1003,7 @@ const CONFIG_LANGUAGES = new Set([
   "cabal-config",
 ]);
 
-const STYLE_LANGUAGES = new Set(["css", "scss", "sass", "less", "stylus", "postcss", "sugarss", "pcss"]);
+const STYLE_LANGUAGES = new Set(["css", "scss", "sass", "less", "stylus", "postcss", "sugarss"]);
 // Single-file components carry the module's script, so the import graph and complexity
 // metrics treat them as code; linguist files them under markup.
 const COMPONENT_LANGUAGES = new Set(["vue", "svelte", "astro", "marko", "riot"]);
@@ -852,10 +1011,35 @@ const NOTEBOOK_LANGUAGES = new Set(["jupyter-notebook", "rmarkdown"]);
 // Linguist's type for these is "data"/"markup", but each is read as prose.
 const DOC_LANGUAGES = new Set(["mdx", "text", "roff-manpage", "texinfo", "pod", "pod-6", "rdoc"]);
 
-function isTestPath(segments: string[], name: string): boolean {
-  if (TEST_FILE.test(name) || TEST_CLASS.test(name)) return true;
-  for (let i = 0; i < segments.length - 1; i++) if (TEST_DIR.test(segments[i]!)) return true;
+/**
+ * `prose` is a recognized documentation language. Its name never makes it a test, since
+ * docs/tutorial/tests.rst is a tutorial page and docs/tests.md a guide; only a directory
+ * does. Not spec/ either: outside RSpec it holds specifications (spec/protocol.md), and RSpec
+ * keeps prose fixtures under spec/fixtures/, which counts.
+ */
+function isTestPath(segments: string[], name: string, prose: boolean): boolean {
+  if (!prose && (TEST_FILE.test(name) || TEST_CLASS.test(name))) return true;
+  for (let i = 0; i < segments.length - 1; i++) {
+    const s = segments[i]!;
+    if (prose ? /^fixtures?$/i.test(s) || (TEST_DIR.test(s) && !/^specs?$/i.test(s)) : TEST_DIR.test(s)) return true;
+  }
   return false;
+}
+
+// Kubernetes and Helm manifests are infrastructure as code, which the schema files under
+// build with Terraform. No name marks a Kubernetes manifest (k8s/deployment.yaml), but the two
+// keys every object carries do. A kubeconfig carries them too, and is a client's config.
+const K8S_API = /^apiVersion:[ \t]*\S/m;
+const K8S_KIND = /^kind:[ \t]*["']?(\w+)/m;
+const HELM_FILE = /(?:^|\/)Chart\.ya?ml$|(?:^|\/)(?:charts|helm)\/(?:[^/]+\/)*values[\w.-]*\.ya?ml$/;
+
+function infraCategory(path: string, id: string, text: string): Category | undefined {
+  if (id !== "yaml") return undefined;
+  if (HELM_FILE.test(path)) return "build";
+  if (!text.includes("apiVersion") || !K8S_API.test(text)) return undefined;
+  const kind = K8S_KIND.exec(text)?.[1];
+  if (!kind) return undefined;
+  return kind === "Config" ? "config" : "build";
 }
 
 /** Linguist type, but with components counted as programming (see COMPONENT_LANGUAGES). */
@@ -864,7 +1048,7 @@ function effectiveType(id: string): string {
   return languageType(id) ?? "other";
 }
 
-function categorize(path: string, name: string, lower: string, id: string, reason: DetectionReason): Category {
+function categorize(path: string, name: string, lower: string, id: string, reason: DetectionReason, text: string): Category {
   if (LOCKFILES.has(name) || LOCKFILE_RE.test(name)) return "lockfile";
   if (id === "svg") return "image";
   if (NOTEBOOK_LANGUAGES.has(id) || lower.endsWith(".qmd")) return "notebook";
@@ -872,25 +1056,34 @@ function categorize(path: string, name: string, lower: string, id: string, reaso
   const type = effectiveType(id);
   const prose = type === "prose" || DOC_LANGUAGES.has(id);
   const segments = path.split("/");
+  const dirs = segments.slice(0, -1);
 
   if (DOC_STEM.test(name) && (prose || type === "markup" || reason === "fallback")) return "docs";
-  if (isTestPath(segments, name)) return "test";
+  if (isTestPath(segments, name, prose && reason !== "fallback")) return "test";
 
   if (BUILD_NAMES.has(name) || BUILD_FILE.test(name) || BUILD_DIR.test(path) || BUILD_LANGUAGES.has(id)) return "build";
   // Scripts under .github/ run in CI (release, labeling, triage); they build, not ship.
   if (path.startsWith(".github/") && type === "programming") return "build";
+  const infra = infraCategory(path, id, text);
+  if (infra) return infra;
 
   if (CONFIG_NAMES.has(name) || CONFIG_FILE.test(name) || CONFIG_LANGUAGES.has(id)) return "config";
+  if (TOOL_CONFIG_FILE.test(name) && !dirs.some((s) => SOURCE_DIR.test(s))) return "config";
   if (CONFIG_DIR.test(path)) return "config";
   // Structured data inside any dot-directory belongs to some tool (.claude/settings.json,
   // .cursor/hooks.json); new agents and editors invent these faster than any list keeps up.
-  if (type === "data" && segments.slice(0, -1).some((s) => s.startsWith(".") && s.length > 1)) return "config";
+  if (type === "data" && dirs.some((s) => s.startsWith(".") && s.length > 1)) return "config";
+  if (type === "data" && dirs.some((s) => CONFIG_SEGMENT.test(s))) return "config";
   // Remaining dotfiles (.nojekyll, .pnp.cjs, .eslintrc.cjs...) configure some tool.
   if (name.startsWith(".")) return "config";
   // Config modules inside a tool's dot-directory: .vitepress/config.ts, .storybook/main.ts.
-  if (/^(?:config|main|preview|manager)\.[cm]?[jt]s$/.test(name) && segments.slice(0, -1).some((s) => s.startsWith("."))) {
+  if (/^(?:config|main|preview|manager)\.[cm]?[jt]s$/.test(name) && dirs.some((s) => s.startsWith("."))) {
     return "config";
   }
+
+  // Ahead of the documentation tree below: linguist types CSS as markup, and a stylesheet is a
+  // stylesheet in docs/.vitepress/theme/ or an examples/ app as much as anywhere.
+  if (STYLE_LANGUAGES.has(id)) return "style";
 
   // Prose and markup under a documentation tree are documentation, whatever their language;
   // code there (docs/conf.py, a docs site's components) stays code.
@@ -902,7 +1095,6 @@ function categorize(path: string, name: string, lower: string, id: string, reaso
   }
 
   if (reason === "fallback") return "unknown";
-  if (STYLE_LANGUAGES.has(id)) return "style";
   switch (type) {
     case "programming":
       return "code";
@@ -919,10 +1111,18 @@ function categorize(path: string, name: string, lower: string, id: string, reaso
 
 // ─── Generated / vendored ────────────────────────────────────────────────────────────────────
 
+// SpecFlow writes x.feature.cs beside each x.feature; Yarn PnP writes .pnp.cjs, .pnp.mjs and
+// .pnp.loader.mjs depending on version.
 const GENERATED_NAME =
-  /(?:[.-]min\.(?:js|mjs|cjs|css)|\.(?:js|css|mjs|cjs)\.map|\.pb\.(?:go|cc|h|swift|rs)|_pb2(?:_grpc)?\.pyi?|_pb\.(?:js|d\.ts)|_grpc_pb\.(?:js|d\.ts)|\.pb\.gw\.go|\.generated\.[^.]+|\.g\.dart|\.freezed\.dart|\.gr\.dart|\.mocks\.dart|\.designer\.(?:cs|vb)|\.g\.(?:cs|i\.cs)|\.nib|\.xcworkspacedata|\.xcuserstate|_tlb\.pas|\.zep\.(?:c|h|php)|^\.pnp\.(?:c?js|loader\.mjs|data\.json))$/i;
-const GENERATED_DIR = /(?:^|\/)(?:__generated__|htmlcov|\.sqlx)\//;
+  /(?:[.-]min\.(?:js|mjs|cjs|css)|\.(?:js|css|mjs|cjs)\.map|\.pb\.(?:go|cc|h|swift|rs)|_pb2(?:_grpc)?\.pyi?|_pb\.(?:js|d\.ts)|_grpc_pb\.(?:js|d\.ts)|\.pb\.gw\.go|\.generated\.[^.]+|\.g\.dart|\.freezed\.dart|\.gr\.dart|\.mocks\.dart|\.designer\.(?:cs|vb)|\.g\.(?:cs|i\.cs)|\.feature\.cs|\.nib|\.xcworkspacedata|\.xcuserstate|_tlb\.pas|\.zep\.(?:c|h|php)|^\.pnp\.[^/]+)$/i;
+// Godeps/ is the pre-modules Go dependency snapshot (its _workspace/ is vendored by linguist).
+const GENERATED_DIR = /(?:^|\/)(?:__generated__|htmlcov|\.sqlx|Godeps)\//;
 const GENERATED_FILENAMES = new Set(["gradlew", "gradlew.bat", "mvnw", "mvnw.cmd", "Cargo.toml.orig", ".secrets.baseline"]);
+
+// CocoaPods installs dependencies, their support files and its own Xcode project into Pods/.
+// Linguist calls that generated; to starchart it is someone else's code, as node_modules is,
+// so it is vendored. Case-sensitive, as CocoaPods writes it.
+const PODS_DIR = /(?:^|\/)Pods\//;
 
 // Markers generators write in a file's opening comment. Only the first lines are searched, so
 // a mention of "@generated" deep inside ordinary code (this file, say) never counts.
@@ -930,14 +1130,83 @@ const GENERATED_FILENAMES = new Set(["gradlew", "gradlew.bat", "mvnw", "mvnw.cmd
 // ("do not edit below this line") is not, so that half is case-sensitive.
 const GENERATED_MARK = /\bDO NOT EDIT\b|@generated\b|<auto-generated/;
 const GENERATED_HEADER =
-  /Code generated .*DO NOT EDIT|\b(?:auto-?generated|generated (?:by|from|with|automatically))\b.*\b(?:do not|don't|not to) (?:edit|modify)|\b(?:do not|don't) (?:edit|modify)\b.*\b(?:auto-?)?generated\b|Generated by the protocol buffer compiler|Autogenerated by Thrift|This file (?:is|was) (?:automatically|auto-) ?generated|Generated by Cython|parser generated by jison|generated by jison-lex|Generated by roxygen2|This file is generated by jOOQ|Jest Snapshot v\d|GENERATED CODE -- DO NOT EDIT|generated code\W{2,3}do not modify/i;
+  /Code generated .*DO NOT EDIT|\b(?:auto-?generated|generated (?:by|from|with|automatically))\b.*\b(?:do not|don't|not to) (?:edit|modify)|\b(?:do not|don't) (?:edit|modify)\b.*\b(?:auto-?)?generated\b|Generated by the protocol buffer compiler|Autogenerated by Thrift|This file (?:is|was) (?:automatically|auto-) ?generated|Generated by Cython|parser generated by jison|generated by jison-lex|Generated by roxygen2|This file is generated by jOOQ|Jest Snapshot v\d|GENERATED CODE -- DO NOT EDIT|generated code\W{2,3}do not modify|GIMP [\w -]+ C-Source image dump|GIMP header image file format|Automatically created by Devel::PPPort/i;
+
+/**
+ * A generator often signs only its name, with no "do not edit": "// Generated by Wrangler",
+ * "# Generated by Haxe 4.0.5", "/* The following code was generated by JFlex 1.4.3 *\/",
+ * "// This is a generated file. Not intended for manual editing." GENERATED_HEADER wants both
+ * halves on one line, which missed inertialref's 16,250-line Cloudflare type file, the
+ * largest "code" file in its report. So a comment in the first three lines that opens by
+ * naming its generator counts alone. Prose further down ("the ids below are generated by the
+ * server") never does, nor "generated by hand", nor the Gradle init scaffold, whose header
+ * stays on build files people have edited for years.
+ */
+const GENERATOR_SIGNATURE =
+  /^[ \t]*(?:\/\/+!?|\/\*+!?|\*|#+|--|;+|%+|<!--|\(\*+)[ \t]*(?:(?:this|the following) (?:[\w-]+ )?(?:file|code|source)(?: file)? (?:is|was|has been) )?(?:auto(?:matically)?[- ]?)?generated (?:by|from|with|using)[ \t]+(?!hand\b|humans?\b|the gradle 'init' task)\S|^[ \t]*(?:\/\/+|\/\*+|\*|#+|--|<!--)[ \t]*this is an? (?:auto(?:matically)?[- ]?)?generated file\b/im;
+
+// Ports of linguist's generated_html?: documentation tools that stamp a <meta name=generator>.
+const HTML_GENERATORS = /^(?:org\s+mode|j?latex2html|groff|makeinfo|texi2html|ronn)\b/i;
+const HTML_META = /<meta(\s[^>]+)>/gi;
+const HTML_ATTR = /(?<=^|\s)(name|content|value)\s*=\s*("[^"]+"|'[^']+'|[^\s"']+)/gi;
+
+function generatedHtml(text: string): boolean {
+  const top = headLines(text, 31);
+  if (/<!--\s+Generated by Doxygen\s+[.0-9]+\s*-->/i.test(top)) return true;
+  if (!/<meta\b/i.test(top)) return false;
+  for (const m of top.matchAll(HTML_META)) {
+    const attrs = new Map<string, string>();
+    for (const a of m[1]!.replace(/\/\s*$/, "").matchAll(HTML_ATTR)) {
+      attrs.set(a[1]!.toLowerCase(), a[2]!.replace(/^["']|["']$/g, ""));
+    }
+    if (attrs.get("name")?.toLowerCase() !== "generator") continue;
+    const tool = attrs.get("content") ?? attrs.get("value");
+    if (tool && HTML_GENERATORS.test(tool)) return true;
+  }
+  return false;
+}
+
+/**
+ * Linguist's content rules for formats that carry a fixed stamp (generated.rb): Unity's .meta
+ * sidecars, GameMaker Studio's JSON project files, MySQL view definitions, version-1 source
+ * maps, and PostScript written by a font converter or a versioned tool.
+ */
+function generatedFormat(ext: string, text: string): boolean {
+  const first = headLines(text, 1);
+  switch (ext) {
+    case "meta":
+      return first.includes("fileFormatVersion: ");
+    case "yy":
+    case "yyp":
+      return /^\s*[{[]/.test(headLines(text, 3)) || /^\d\.\d\.\d.+\|\{/.test(first);
+    case "frm":
+      return first.includes("TYPE=VIEW");
+    case "map":
+      return /^\{"version":\d+,/.test(first) || first.startsWith("/** Begin line maps. **/{");
+    case "ps":
+    case "eps":
+    case "pfa": {
+      if (/^\s*(?:currentfile eexec\s|\/sfnts\s+\[\s<)/m.test(text)) return true;
+      const creator = /^%%Creator: (.*)$/m.exec(headLines(text, 10))?.[1];
+      return creator !== undefined && /[0-9]|draw|mpage|ImageMagick|inkscape|MATLAB|PCBNEW|pnmtops|\(Unknown\)|Serif Affinity|Filterimage -tops/.test(creator);
+    }
+    case "html":
+    case "htm":
+    case "xhtml":
+      return generatedHtml(text);
+    default:
+      return false;
+  }
+}
 
 function isGenerated(path: string, name: string, lower: string, text: string, complete: boolean): boolean {
   if (GENERATED_FILENAMES.has(name) || GENERATED_NAME.test(name) || GENERATED_DIR.test(path)) return true;
   if (!text) return false;
   const top = headLines(text, 12).slice(0, 2000);
   if (GENERATED_MARK.test(top) || GENERATED_HEADER.test(top)) return true;
+  if (GENERATOR_SIGNATURE.test(headLines(top, 3))) return true;
   const ext = lastExt(lower);
+  if (generatedFormat(ext, text)) return true;
   if (ext === "js" || ext === "css" || ext === "mjs" || ext === "cjs") {
     // Linguist's minified_files? test: average line length over 110 means a build product.
     // The last line of a truncated head is partial, so it is left out of the average, unless
@@ -952,7 +1221,6 @@ function isGenerated(path: string, name: string, lower: string, text: string, co
     // A sourceMappingURL trailer marks compiled output; visible only when the head is the file.
     if (complete && /\n\/[/*][#@] sourceMappingURL=\S+\s*(?:\*\/)?\s*$/.test(text)) return true;
   }
-  if (ext === "map" && /^\{"version":3,/.test(text)) return true;
   return false;
 }
 
@@ -967,11 +1235,14 @@ export const detectFile: DetectFile = (path, head) => {
   // A head shorter than the walker's read size is the whole file, so end-of-file signals
   // (vim footer modelines, sourceMappingURL trailers, JSON validity) can be trusted.
   const complete = head.length < HEAD_BYTES;
-  const vendored = vendorPattern().test(path);
+  const vendored = vendorPattern().test(path) || PODS_DIR.test(path);
 
   const pdf = head.length >= 5 && at(head, 0, "%PDF-");
   const decoded = pdf ? { text: "", binary: true } : decodeHead(head);
 
+  // Lockfiles are always generated, as linguist has it. Deciding by header made the flag
+  // depend on whether the tool happens to stamp one: Cargo.lock says @generated, uv.lock and
+  // pnpm-lock.yaml say nothing, so fd reported 6% generated lines and vite none.
   if (decoded.binary) {
     const magic = sniffMagic(head, ext) ?? BINARY_EXT[ext];
     const lockfile = LOCKFILES.has(name);
@@ -979,10 +1250,10 @@ export const detectFile: DetectFile = (path, head) => {
       language: BINARY,
       category: lockfile ? "lockfile" : (magic?.category ?? "binary"),
       reason: magic ? "content" : "fallback",
-      generated: GENERATED_FILENAMES.has(name) || GENERATED_NAME.test(name),
+      generated: lockfile || GENERATED_FILENAMES.has(name) || GENERATED_NAME.test(name),
       vendored,
       binary: true,
-      secret: isSecret(path, name, ""),
+      secret: isSecret(path, name, "", complete, true, magic?.format),
     };
     if (magic) result.format = magic.format;
     return result;
@@ -990,13 +1261,33 @@ export const detectFile: DetectFile = (path, head) => {
 
   const { text } = decoded;
   const guess = detectLanguage(path, name, lower, text, complete);
+  const category = categorize(path, name, lower, guess.language, guess.reason, text);
   return {
     language: guess.language,
-    category: categorize(path, name, lower, guess.language, guess.reason),
+    category,
     reason: guess.reason,
-    generated: isGenerated(path, name, lower, text, complete),
+    generated: category === "lockfile" || isGenerated(path, name, lower, text, complete),
     vendored,
     binary: false,
-    secret: isSecret(path, name, text),
+    secret: isSecret(path, name, text, complete, false),
   };
 };
+
+/**
+ * Internal: every language id the rules in this file name by hand. An id that is misspelled
+ * or that linguist renames never matches and fails silently (the config set once held
+ * "robots.txt", whose real id is robots-exclusion-rules, so robots.txt files came out as
+ * data), so a test resolves each one.
+ */
+export function namedLanguageIds(): string[] {
+  return [
+    ...BUILD_LANGUAGES,
+    ...CONFIG_LANGUAGES,
+    ...STYLE_LANGUAGES,
+    ...COMPONENT_LANGUAGES,
+    ...NOTEBOOK_LANGUAGES,
+    ...DOC_LANGUAGES,
+    ...FILENAME_RULES.map(([, id]) => id),
+    ...[...EXTRA_EXTENSIONS.values()].flat(),
+  ];
+}

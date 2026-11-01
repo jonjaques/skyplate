@@ -295,9 +295,15 @@ function buildHeuristics(h: YamlHeuristics, names: Set<string>) {
       if (!p) throw new Error(`unknown named_pattern ${r.named_pattern}`);
       parts.push(["p", ...p]);
     }
-    // Linguist's parser ignores negative_pattern when a rule also has a pattern (it returns
-    // the first key it finds). The YAML's evident intent is "pattern and not negative", e.g.
-    // MiniYAML is "tab-indented and no --- marker", so both are kept as a conjunction.
+    // Linguist's parser ignores negative_pattern when a rule also has a pattern (parse_rule
+    // returns on the first key it finds). The YAML's evident intent is "pattern and not
+    // negative", e.g. MiniYAML is "tab-indented and no --- marker", so both are kept as a
+    // conjunction. Four rules have both (B, Tree-sitter Query, Scheme, MiniYAML). On
+    // linguist's samples this costs one file and gains none: Tree-sitter Query/
+    // func_highlights.scm holds a literal "()" that its negative pattern rejects. It is kept
+    // because linguist's reading fails worse on real code: a Scheme macro that splices at a
+    // line end ("`(begin ,@x)") matches a Tree-sitter capture pattern, and the negative
+    // pattern is what keeps that file Scheme. test/languages.test.ts holds both cases.
     if (r.negative_pattern !== undefined) parts.push(["n", ...list(r.negative_pattern)]);
     if (parts.length === 0) return null;
     if (parts.length === 1) return parts[0]!;

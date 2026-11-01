@@ -11,6 +11,14 @@
 import type { AnalyzeGraph, GraphInput, GraphResult } from "./contracts";
 import type { Cycle } from "../shared/schema";
 
+/**
+ * GraphInput plus, per edge (aligned with `from` / `to`), whether the compiler erases it
+ * (`import type`). Optional until the contract carries it; absent means every edge runs.
+ */
+export interface GraphEdges extends GraphInput {
+  typeOnly?: boolean[];
+}
+
 const DAMPING = 0.85;
 const MAX_ITERATIONS = 60;
 /** L1 change per node below which PageRank counts as converged. */
@@ -343,7 +351,8 @@ function chooseModules(input: GraphInput, connected: Uint8Array, rank: number[])
 
 // ─── analyzeGraph ────────────────────────────────────────────────────────────────────────────
 
-export const analyzeGraph: AnalyzeGraph = (input) => {
+// Typed through `satisfies` so callers can pass `typeOnly`, which the contract does not name yet.
+export const analyzeGraph = ((input: GraphEdges): GraphResult => {
   const n = input.fileCount;
   const g = buildCsr(n, input.from, input.to);
   const fanOut = new Array<number>(n);
@@ -360,8 +369,17 @@ export const analyzeGraph: AnalyzeGraph = (input) => {
   }
   const rank = pageRank(n, g);
 
-  // Cycles: components of two or more files, largest first, ids in that order.
-  const { comp, sizes } = stronglyConnected(n, g);
+  // Cycles: components of two or more files, largest first, ids in that order, over runtime
+  // edges only. A cycle hurts because evaluation order breaks (a binding read before its module
+  // ran); an `import type` is erased before anything runs, so a loop it closes is not one. In
+  // one TypeScript monorepo all eleven reported "cycles" were that kind. Fan-in/out, rank and
+  // coupling keep all edges: a type dependency is still one to read and to change together. A
+  // file pair stays runtime when any import between the two does.
+  const typeOnly = input.typeOnly;
+  const runtime = typeOnly?.some(Boolean)
+    ? buildCsr(n, input.from.filter((_, k) => !typeOnly[k]), input.to.filter((_, k) => !typeOnly[k]))
+    : g;
+  const { comp, sizes } = stronglyConnected(n, runtime);
   const members = new Map<number, number[]>();
   for (let v = 0; v < n; v++) {
     const c = comp[v]!;
@@ -418,4 +436,4 @@ export const analyzeGraph: AnalyzeGraph = (input) => {
     },
   };
   return result;
-};
+}) satisfies AnalyzeGraph;
