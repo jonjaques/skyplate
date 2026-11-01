@@ -1,113 +1,84 @@
-Default to using Bun instead of Node.js.
+# starchart
 
-- Use `bun <file>` instead of `node <file>` or `ts-node <file>`
-- Use `bun test` instead of `jest` or `vitest`
-- Use `bun check` instead of `tsc --noEmit`
-- Use `bun build <file.html|file.ts|file.css>` instead of `webpack` or `esbuild`
-- Use `bun install` instead of `npm install` or `yarn install` or `pnpm install`
-- Use `bun run <script>` instead of `npm run <script>` or `yarn run <script>` or `pnpm run <script>`
-- Use `bunx <package> <command>` instead of `npx <package> <command>`
-- Bun automatically loads .env, so don't use dotenv.
+A Bun CLI that analyzes any project directory and writes a static report folder: a 3D galaxy
+of files (react-three-fiber), D3 charts, an explorer, a source reader, and TypeScript code
+intelligence. `README.md` covers usage; this file covers how the code is put together and
+what breaks if you change it carelessly.
 
-## APIs
+## Commands
 
-- `Bun.serve()` supports WebSockets, HTTPS, and routes. Don't use `express`.
-- `bun:sqlite` for SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` for Redis. Don't use `ioredis`.
-- `Bun.sql` for Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` is built-in. Don't use `ws`.
-- Prefer `Bun.file` over `node:fs`'s readFile/writeFile
-- Bun.$`ls` instead of execa.
+| Task | Command |
+| --- | --- |
+| Analyze a project | `bun run starchart <path> [--out dir]` |
+| Serve a report | `bun run starchart serve <dir> [--open]` |
+| Viewer dev server (HMR, :4317) | `bun dev` (serves report data from `.starchart/dev`, or `STARCHART_REPORT=<dir>`) |
+| Build the viewer template | `bun run build` → `dist/viewer` (the CLI copies it into every report) |
+| Tests | `bun test` |
+| Typecheck | `bun check` (TypeScript 7; do not use `tsc`) |
 
-## Testing
+Bun is the runtime, package manager and bundler here (this project began from
+`bun init --react=tailwind`). Use `bun add`, never npm/yarn/pnpm.
 
-Use `bun test` to run tests.
+## Layout
 
-```ts#index.test.ts
-import { test, expect } from "bun:test";
-
-test("hello world", () => {
-  expect(1).toBe(1);
-});
+```
+bin/starchart.ts          CLI entry → src/cli/ (args, progress, serve)
+src/shared/schema.ts      THE contract between analyzer and viewer (Report, CodeSymbols…)
+src/core/contracts.ts     function types each analyzer module exports
+src/core/                 analyzer: walk, languages/, metrics, facts, imports/, graph, git/,
+                          ts/ (TypeScript 7 compiler API), stats, findings, layout, site,
+                          pipeline (orchestrates), worker + pool (per-file analysis), validate
+src/viewer/               React app: state/ (zustand store, loaders, URL), model/ (derived
+                          indexes), galaxy/, charts/ (+ kit/), shell/ (+ record/), source/,
+                          components/ui (shadcn), lib/ (format, colors, cn)
+build.ts                  viewer production build (see "file:// rules")
+src/index.ts              dev server
 ```
 
-## Type checking
+## Rules that hold the design together
 
-Use `bun check` to type check the project. It reads `tsconfig.json` and reports the same errors as `tsc`.
+- **Change the schema first.** Anything crossing from analyzer to viewer goes through
+  `src/shared/schema.ts`. Tables are columnar and reference files, symbols and authors by
+  integer id. Run `validateReport` (`src/core/validate.ts`) in tests after any change to the
+  report's shape.
+- **file:// rules.** Reports must open by double-clicking `index.html`. Browsers block
+  `fetch()` and module scripts over file://, so:
+  - data ships as classic scripts calling `window.__starchart.resolve(name, payload)`
+    (`DATA_GLOBAL` in schema.ts; loaded by `src/viewer/data/load.ts`);
+  - `build.ts` bundles the viewer as an IIFE behind a plain deferred `<script>`, and
+    highlight.js as a second lazily injected IIFE;
+  - all asset URLs stay relative.
 
-- `bun check src/index.ts` checks one file and what it imports
-- `bun --check src/index.ts`, `bun test --check` and `bun build --check` type check first, and do nothing else if there is an error
+  Don't switch to Bun's HTML entrypoint for production, and don't add `fetch()` for report
+  data.
+- **Secrets are never embedded.** `Detection.secret` files are measured but carry no content
+  and no hash. Keep it that way.
+- **TypeScript analysis uses the async API** (`typescript/unstable/async`). The sync client
+  reads Node-internal pipe handles that Bun does not have.
+- **Never write into an analyzed project.** The CLI refuses to replace a folder that isn't a
+  starchart report, or the project itself (`site.ts`).
 
-## Frontend
+## Visual world
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+The viewer's direction is **Specimen Cabinet**: the contract is in
+`.impeccable/surfaces/src-viewer-index-html.md` and the shipped system in `DESIGN.md`. In
+short:
+- a tray-white ground ruled by hairlines, with no cards and no tray shadows;
+- an archival gray-blue rail;
+- a dark glass galaxy plate in both themes;
+- Archivo (condensed) with JetBrains Mono for paths and figures;
+- holotype red (`#c23a2b`) reserved for each region's most depended-on file and nothing
+  else, so critical status is ink, not red.
 
-Server:
+Colors come from `src/viewer/styles.css` / `src/viewer/lib/colors.ts`, which were checked
+with the dataviz skill's palette validator. Don't add hues ad hoc; categorical sets cap at
+seven slots plus Other. Use the shadcn components in `src/viewer/components/ui` for standard
+controls; they are themed through the semantic tokens in `styles.css`.
 
-```ts#index.ts
-import index from "./index.html"
+The impeccable design hook runs on edits. Its findings are design feedback, not noise.
 
-Bun.serve({
-  routes: {
-    "/": index,
-    "/api/users/:id": {
-      GET: (req) => {
-        return new Response(JSON.stringify({ id: req.params.id }));
-      },
-    },
-  },
-  // optional websocket support
-  websocket: {
-    open: (ws) => {
-      ws.send("Hello, world!");
-    },
-    message: (ws, message) => {
-      ws.send(message);
-    },
-    close: (ws) => {
-      // handle close
-    }
-  },
-  development: {
-    hmr: true,
-    console: true,
-  }
-})
-```
+## Testing against real projects
 
-HTML files can import .tsx, .jsx or .js files directly and Bun's bundler will transpile & bundle automatically. `<link>` tags can point to stylesheets and Bun's CSS bundler will bundle.
-
-```html#index.html
-<html>
-  <body>
-    <h1>Hello, world!</h1>
-    <script type="module" src="./frontend.tsx"></script>
-  </body>
-</html>
-```
-
-With the following `frontend.tsx`:
-
-```tsx#frontend.tsx
-import React from "react";
-import { createRoot } from "react-dom/client";
-
-// import .css files directly and it works
-import './index.css';
-
-const root = createRoot(document.body);
-
-export default function Frontend() {
-  return <h1>Hello, world!</h1>;
-}
-
-root.render(<Frontend />);
-```
-
-Then, run index.ts
-
-```sh
-bun --hot ./index.ts
-```
-
-For more information, read the Bun API docs in `node_modules/bun-types/docs/**.mdx`.
+`bun test` builds small fixture repos. For realistic checks, run the CLI on a few public
+clones (a TypeScript monorepo, a Python project, a Go project) and open the reports. Never
+analyze into, or write inside, a repository you don't own.
