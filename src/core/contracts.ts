@@ -149,7 +149,12 @@ export interface ResolveContext {
 }
 
 export type ImportResolution =
-  | { file: number } //                                   resolved to a repo file id
+  /**
+   * Resolved to a repo file id. Imports that name a directory (Go packages, Java wildcards,
+   * C# namespaces, Terraform modules) resolve to a representative file plus `also`, a capped
+   * list of its siblings, so package-level edges can still be drawn.
+   */
+  | { file: number; also?: number[] }
   | { external: { name: string; ecosystem: string } } //  a package / stdlib module
   | { unresolved: true };
 
@@ -201,11 +206,19 @@ export interface GitInput {
   /** Language id per file id, for language churn. */
   languages: string[];
   maxCommits: number;
+  /**
+   * Files to leave out of ownership, coupling and the truck factor (lockfiles, generated and
+   * vendored files). They stay in the history views. Without this, vite's strongest
+   * "coupling" is package.json with pnpm-lock.yaml, which says nothing about the code.
+   */
+  exclude?: boolean[];
   onProgress?: (done: number, total: number) => void;
 }
 
 export interface GitResult {
   summary: GitSummary;
+  /** Non-fatal problems worth surfacing in the report (shallow clone, skipped rename detection). */
+  warnings: string[];
   /** Per file id; undefined for files git never saw (untracked). */
   perFile: (FileGit | undefined)[];
 }
@@ -222,6 +235,8 @@ export interface TsInput {
   languages: string[];
   /** Test-file flag per file id (category === "test"). */
   isTest: boolean[];
+  /** Files to leave out entirely: generated, vendored, minified. */
+  skip?: boolean[];
   /** Repo-relative tsconfig.json / jsconfig.json paths found by the walker. */
   configs: string[];
   /** Skip the analysis when more TS/JS files than this would be analyzed. */

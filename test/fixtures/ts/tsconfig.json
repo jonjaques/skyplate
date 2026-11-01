@@ -1,0 +1,17 @@
+{
+  // A tiny project for test/ts.test.ts. Strict, JS allowed, and JSX preserved so the .tsx file
+  // needs no React types: ui.tsx declares the JSX namespace itself.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+    "types": [],
+    "strict": true,
+    "allowJs": true,
+    "checkJs": true,
+    "jsx": "preserve",
+    "noEmit": true
+  },
+  "include": ["src"]
+}

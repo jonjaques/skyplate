@@ -27,16 +27,18 @@ export type Category =
   | "test" //       tests, specs, fixtures that sit under test conventions
   | "markup" //     HTML, XML, templates, JSX-free markup
   | "style" //      CSS, SCSS, Less, Stylus
-  | "data" //       JSON, CSV, YAML-as-data, SQL dumps, Parquet, protobuf schemas
+  | "data" //       JSON, CSV, YAML-as-data, SQL dumps; Parquet, SQLite, Arrow, NumPy, HDF5,
+  //                spreadsheets (XLSX/ODS)
   | "config" //     dotfiles, tool configs, editor configs, env templates
-  | "docs" //       prose: Markdown, reStructuredText, AsciiDoc, plain text, LICENSE, CHANGELOG
+  | "docs" //       prose: Markdown, reStructuredText, AsciiDoc, plain text, LICENSE, CHANGELOG,
+  //                and binary documents (PDF, DOCX, PPTX, ODT, EPUB)
   | "build" //      Dockerfile, Makefile, CI workflows, build scripts, IaC
   | "notebook" //   Jupyter and similar cell documents
   | "image" //      raster and vector images (SVG counts here, not as markup)
   | "media" //      audio and video
   | "font" //       font files
   | "archive" //    zip, tar, gz, jar, wheel…
-  | "binary" //     executables, object files, databases, model weights, unknown binary
+  | "binary" //     executables, object files, model weights (GGUF, safetensors, ONNX), unknown
   | "lockfile" //   package-manager lockfiles
   | "unknown"; //   text we could not classify
 
@@ -164,8 +166,10 @@ export interface FileFacts {
   /** Markdown/AsciiDoc/RST: heading count and title (first H1). */
   headings?: number;
   title?: string;
-  /** Markdown: outbound links (absolute URLs) and relative links. */
+  /** Markdown: links of every form (inline, images, reference definitions, autolinks, HTML). */
   links?: number;
+  /** Markdown: the subset of `links` that point inside the repository. */
+  relativeLinks?: number;
   /** JSON/YAML/TOML: top-level key count. */
   keys?: number;
   /** Binary: magic-number format label, e.g. "ELF", "Mach-O", "PDF", "SQLite", "GGUF". */
@@ -178,7 +182,7 @@ export interface FileRecord {
   name: string;
   /** Directory id. */
   dir: number;
-  /** Lowercased extension without the dot ("" when none). Compound kept: "d.ts" → "ts". */
+  /** Lowercased last extension without the dot ("" when none): "index.d.ts" → "ts". */
   ext: string;
   /** Language id (key into Report.languages by id). "text" or "binary" as fallbacks. */
   language: string;
@@ -307,6 +311,7 @@ export interface GraphSummary {
    */
   modules: {
     dir: number;
+    /** Modules are chosen adaptively (large subtrees split, small ones folded), so depths vary. */
     ca: number;
     ce: number;
     /** Ce / (Ca + Ce); 0 = stable, 1 = unstable. */
@@ -314,6 +319,7 @@ export interface GraphSummary {
   }[];
   /** Matrix of edge counts between `modules` (same order), row = from. */
   moduleMatrix: number[][];
+  /** Deepest directory depth among `modules`. */
   moduleDepth: number;
 }
 
@@ -375,6 +381,8 @@ export interface GitSummary {
   /** Commits actually analyzed (history may be capped; see `truncated`). */
   analyzedCommits: number;
   truncated: boolean;
+  /** The clone is shallow: history starts at a boundary commit, not the project's first. */
+  shallow: boolean;
   first: number;
   last: number;
   authors: Author[];
@@ -566,9 +574,14 @@ export interface SymbolTable {
   /** AST cyclomatic complexity of the body (1 + decision points); 0 for non-callables. */
   complexity: number[];
   params: number[];
-  /** Totals derived from the reference table, precomputed for sorting and labels. */
+  /**
+   * Totals over every resolved reference, computed before the `maxRefs` cap, so a capped
+   * report never makes a symbol look unused. After truncation a total can exceed the rows
+   * stored in RefTable; stats.truncated says how many were dropped.
+   */
   refs: number[];
-  callers: number[]; //    distinct enclosing symbols that reference it
+  /** Distinct enclosing symbols that reference it, not counting import/export specifiers. */
+  callers: number[];
   files: number[]; //      distinct files that reference it
 }
 
