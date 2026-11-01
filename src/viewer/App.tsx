@@ -1,116 +1,285 @@
 /**
- * Viewer shell. The layout is the chosen Specimen Cabinet composition: drawer rail, top bar,
- * galaxy plate, accession record, unit trays. Work areas fill in as their modules land.
+ * Viewer shell: the Specimen Cabinet composition. Drawer rail on the left, top bar, the work
+ * area for the active tab, the accession record on the right, and on the Galaxy tab the row of
+ * three unit trays under the plate (.impeccable/mocks/decision/assigned.html is the reference).
+ *
+ *   ≥ 1280px   260px rail | work | 340px record
+ *   1024+      220px rail | work | 300px record
+ *   < 1024     the rail is a sheet behind a top-bar button; the record follows the work area
+ *   < 768      one column; the plate takes about 60% of the viewport height
+ *
+ * Inactive tabs unmount. The galaxy is a WebGL scene, and a hidden one would keep its context
+ * and its frame loop alive behind the explorer; remounting it on return is the cheaper cost.
  */
 
-import { useEffect, useState } from "react";
-import type { Report } from "../shared/schema";
+import { useEffect, useState, type ReactNode } from "react";
+import { SCHEMA_VERSION } from "../shared/schema";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "./components/ui/sheet";
+import { ScrollArea } from "./components/ui/scroll-area";
+import { Tabs, TabsContent } from "./components/ui/tabs";
 import { loadReport } from "./data/load";
+import { cn } from "./lib/utils";
+import { ensureSymbols } from "./state/loaders";
+import { useViewer, type Tab } from "./state/store";
+import { startUrlSync } from "./state/url";
+import { About } from "./shell/About";
+import { Boundary } from "./shell/Boundary";
+import { CommandPalette } from "./shell/CommandPalette";
+import { Explorer } from "./shell/Explorer";
+import { Findings } from "./shell/Findings";
+import { useGlobalShortcuts } from "./shell/keyboard";
+import { useBreakpoint, type Breakpoint } from "./shell/media";
+import { ActivityTray, ChartsView, GalaxyView, HotspotTray, LanguageTray } from "./shell/mounts";
+import { Rail } from "./shell/Rail";
+import { Record } from "./shell/record/Record";
+import { useShell } from "./shell/shell-state";
+import { useThemeSync } from "./shell/theme";
+import { TopBar } from "./shell/TopBar";
+import { SourceTab } from "./source/SourceTab";
 
-type LoadState =
-  | { status: "loading" }
-  | { status: "ready"; report: Report }
-  | { status: "missing"; message: string };
-
-const TABS = ["Galaxy", "Charts", "Explorer", "Source", "Findings"] as const;
-const nf = new Intl.NumberFormat("en-US");
+type LoadState = { status: "loading" } | { status: "ready" } | { status: "missing" } | { status: "error"; message: string };
 
 export function App() {
   const [state, setState] = useState<LoadState>({ status: "loading" });
+  useThemeSync();
 
   useEffect(() => {
+    // A report.js that exists but does not parse never calls resolve(), so loadReport() would
+    // wait forever. Its syntax error still surfaces here, tagged with the script's URL.
+    const onError = (e: ErrorEvent) => {
+      if (e.filename && /data\/report\.js/.test(e.filename)) {
+        setState({ status: "error", message: `data/report.js could not be read: ${e.message}` });
+      }
+    };
+    window.addEventListener("error", onError);
     loadReport().then(
-      (report) => setState({ status: "ready", report }),
-      (error: Error) => setState({ status: "missing", message: error.message }),
+      (report) => {
+        if (report.schemaVersion !== SCHEMA_VERSION) {
+          setState({
+            status: "error",
+            message: `This report uses data format ${report.schemaVersion}; this viewer reads format ${SCHEMA_VERSION}. Re-run starchart to rebuild it with a matching viewer.`,
+          });
+          return;
+        }
+        try {
+          useViewer.getState().setReport(report);
+          document.title = `${report.project.name} · starchart`;
+          setState({ status: "ready" });
+        } catch (error) {
+          setState({ status: "error", message: `The report loaded but could not be indexed: ${(error as Error).message}` });
+        }
+      },
+      () => setState({ status: "missing" }),
     );
+    return () => window.removeEventListener("error", onError);
   }, []);
 
-  const report = state.status === "ready" ? state.report : undefined;
-  const topDirs = report
-    ? (report.dirs[0]?.dirs ?? [])
-        .map((id) => report.dirs[id]!)
-        .sort((a, b) => b.totalFiles - a.totalFiles)
-        .slice(0, 12)
-    : [];
+  const ready = state.status === "ready";
+
+  // Restore the view from the URL, then keep the URL in step.
+  useEffect(() => (ready ? startUrlSync() : undefined), [ready]);
+
+  // The symbol tables are the biggest data file; fetch them once the first view has painted
+  // and the main thread is idle, so a first look never waits on them.
+  useEffect(() => {
+    if (!ready) return;
+    const run = () => void ensureSymbols();
+    if ("requestIdleCallback" in window) {
+      const id = requestIdleCallback(run, { timeout: 4000 });
+      return () => cancelIdleCallback(id);
+    }
+    const id = setTimeout(run, 1200);
+    return () => clearTimeout(id);
+  }, [ready]);
+
+  return <Shell state={state} />;
+}
+
+function Shell({ state }: { state: LoadState }) {
+  const bp = useBreakpoint();
+  const tab = useViewer((s) => s.tab);
+  const setTab = useViewer((s) => s.setTab);
+  const ready = state.status === "ready";
+  useGlobalShortcuts();
+
+  const sheetRail = bp === "narrow" || bp === "compact";
+  const showRecord = ready && tab !== "charts";
+
+  const work = ready ? (
+    <WorkArea bp={bp} />
+  ) : (
+    <div className="relative h-full min-h-[60vh] bg-plate text-plate-ink">
+      {state.status === "loading" && <LoadingPlate />}
+      {state.status === "missing" && <MissingReport />}
+      {state.status === "error" && <BrokenReport message={state.message} />}
+    </div>
+  );
+
+  const record = (
+    <div className="px-[22px] py-5">
+      <Record />
+    </div>
+  );
 
   return (
-    <div className="grid h-full grid-cols-[260px_1fr_340px] grid-rows-[52px_1fr_216px]">
-      <nav className="row-span-3 flex flex-col bg-rail text-rail-ink" aria-label="Drawers">
-        <div className="border-b border-rail-line px-[22px] pt-5 pb-4">
-          <div className="text-[28px] leading-none font-bold tracking-[-0.01em] [font-stretch:80%]">
-            starchart
+    <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className="h-full gap-0">
+      {sheetRail ? (
+        <div className="flex h-full min-h-0 flex-col">
+          <TopBar bp={bp} />
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <main className="min-w-0">{work}</main>
+            {showRecord && (
+              <aside aria-label="Accession record" className="border-t border-ink bg-paper">
+                {record}
+              </aside>
+            )}
           </div>
-          <div className="mt-1.5 text-xs text-rail-muted">
-            {report ? report.project.name : "No report loaded"}
-          </div>
+          <RailSheet />
         </div>
-        <h2 className="px-[22px] pt-4 pb-2 text-xs font-semibold text-rail-muted [font-stretch:75%]">
-          {report ? `Drawers · ${nf.format(report.totals.files)} files` : "Drawers"}
-        </h2>
-        <ul>
-          {topDirs.map((dir) => (
-            <li
-              key={dir.id}
-              className="flex h-[38px] items-center justify-between border-t border-rail-line px-[22px] text-sm font-medium last:border-b"
-            >
-              <span className="truncate">{dir.name}</span>
-              <span className="figures font-mono text-xs text-rail-muted">
-                {nf.format(dir.totalFiles)}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </nav>
-
-      <header className="col-span-2 flex items-center gap-5 border-b border-rule bg-paper px-5">
-        <div className="flex h-full" role="tablist">
-          {TABS.map((tab, i) => (
-            <button
-              key={tab}
-              role="tab"
-              aria-selected={i === 0}
-              className={`flex items-center border-b-2 px-4 text-sm font-semibold ${
-                i === 0 ? "border-ink text-ink" : "border-transparent text-muted-foreground"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-      </header>
-
-      <main className="relative overflow-hidden bg-plate text-plate-ink">
-        {state.status === "missing" ? (
-          <div className="absolute inset-0 grid place-items-center p-10">
-            <div className="max-w-md">
-              <h1 className="text-2xl font-semibold [font-stretch:85%]">No report in this folder</h1>
-              <p className="mt-3 text-plate-muted">
-                The viewer looks for <code className="font-mono">data/report.js</code> next to this
-                page. Generate a report with{" "}
-                <code className="font-mono text-plate-ink">bun run starchart &lt;path&gt;</code>, then
-                open the folder it writes.
-              </p>
+      ) : (
+        <div className={cn("grid h-full min-h-0", bp === "wide" ? "grid-cols-[260px_minmax(0,1fr)]" : "grid-cols-[220px_minmax(0,1fr)]")}>
+          <nav aria-label="Drawers" className="min-h-0 overflow-hidden">
+            <Rail />
+          </nav>
+          <div className="grid min-h-0 min-w-0 grid-rows-[52px_minmax(0,1fr)]">
+            <TopBar bp={bp} />
+            <div className="flex min-h-0 min-w-0">
+              <main className="relative min-h-0 min-w-0 flex-1">{work}</main>
+              {(showRecord || !ready) && (
+                <aside
+                  aria-label="Accession record"
+                  className={cn("min-h-0 shrink-0 border-l border-rule bg-paper", bp === "wide" ? "w-[340px]" : "w-[300px]")}
+                >
+                  <ScrollArea className="h-full [&_[data-slot=scroll-area-viewport]>div]:!block">{record}</ScrollArea>
+                </aside>
+              )}
             </div>
           </div>
-        ) : (
-          <h1 className="absolute top-[18px] left-6 text-2xl font-semibold [font-stretch:85%]">
-            {report ? `${report.project.name} · ${nf.format(report.totals.files)} specimens` : "Loading report…"}
-          </h1>
+        </div>
+      )}
+      {ready && (
+        <>
+          <CommandPalette />
+          <About />
+        </>
+      )}
+    </Tabs>
+  );
+}
+
+/** One tab's content. Below 1024px each gets a height of its own, since the page scrolls. */
+function WorkArea({ bp }: { bp: Breakpoint }) {
+  const stacked = bp === "narrow" || bp === "compact";
+  const pane = (value: Tab, className: string, tall: string, children: ReactNode) => (
+    <TabsContent value={value} className={cn("min-h-0", stacked ? tall : "h-full", className)}>
+      {children}
+    </TabsContent>
+  );
+  return (
+    <>
+      {pane("galaxy", "", "", <GalaxyArea bp={bp} />)}
+      {pane(
+        "charts",
+        "overflow-hidden",
+        "h-[calc(100dvh-52px)]",
+        <Boundary what="The charts">
+          <ChartsView />
+        </Boundary>,
+      )}
+      {pane("explorer", "", "h-[72dvh]", <Explorer />)}
+      {pane("source", "", "h-[88dvh]", <SourceTab />)}
+      {pane("findings", "", "", <Findings />)}
+    </>
+  );
+}
+
+function GalaxyArea({ bp }: { bp: Breakpoint }) {
+  const stacked = bp === "narrow" || bp === "compact";
+  const cell = "relative min-h-0 min-w-0 overflow-hidden";
+  return (
+    <div className={cn("flex min-h-0 flex-col", !stacked && "h-full")}>
+      <div className={cn("relative min-h-0 overflow-hidden bg-plate", stacked ? "h-[60dvh] min-h-[360px]" : "flex-1")}>
+        <Boundary what="The galaxy" tone="plate">
+          <GalaxyView />
+        </Boundary>
+      </div>
+      <section
+        aria-label="Unit trays"
+        className={cn(
+          "grid shrink-0 border-t border-ink bg-tray",
+          bp === "compact" ? "grid-cols-1 [&>*]:h-[216px] [&>*]:border-b [&>*]:border-rule" : "h-[216px] grid-cols-[1.15fr_1fr_1.2fr]",
         )}
-      </main>
-
-      <aside className="row-span-2 border-l border-rule bg-paper px-[22px] py-5" aria-label="Accession record">
-        <h2 className="text-xs text-muted-foreground">Accession record</h2>
-        <p className="mt-2 text-muted-foreground">Select a specimen in the galaxy to read its record.</p>
-      </aside>
-
-      <section className="grid grid-cols-[1.15fr_1fr_1.2fr] border-t border-ink" aria-label="Unit trays">
-        {["Language composition", "Commit activity", "Hotspots"].map((title) => (
-          <div key={title} className="border-r border-rule px-[18px] py-3.5 last:border-r-0">
-            <h3 className="text-sm font-semibold">{title}</h3>
-          </div>
-        ))}
+      >
+        <div className={cn(cell, bp !== "compact" && "border-r border-rule")}>
+          <Boundary what="Language composition">
+            <LanguageTray />
+          </Boundary>
+        </div>
+        <div className={cn(cell, bp !== "compact" && "border-r border-rule")}>
+          <Boundary what="Commit activity">
+            <ActivityTray />
+          </Boundary>
+        </div>
+        <div className={cell}>
+          <Boundary what="Hotspots">
+            <HotspotTray />
+          </Boundary>
+        </div>
       </section>
+    </div>
+  );
+}
+
+function RailSheet() {
+  const open = useShell((s) => s.railSheetOpen);
+  const setOpen = useShell((s) => s.setRailSheetOpen);
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetContent side="left" className="w-[280px] gap-0 border-rail-line bg-rail p-0 text-rail-ink sm:max-w-[280px] [&>button]:text-rail-ink">
+        <SheetTitle className="sr-only">Drawers</SheetTitle>
+        <SheetDescription className="sr-only">The project's directories. Open one to focus it.</SheetDescription>
+        <Rail onNavigate={() => setOpen(false)} />
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ─── Before the report is in ─────────────────────────────────────────────────────────────────
+
+function LoadingPlate() {
+  return (
+    <div className="absolute inset-0 grid place-items-center" role="status">
+      <p className="text-sm text-plate-muted">Reading the report…</p>
+    </div>
+  );
+}
+
+function MissingReport() {
+  return (
+    <div className="absolute inset-0 grid place-items-center p-10">
+      <div className="max-w-md">
+        <h1 className="text-2xl font-semibold [font-stretch:85%]">No report in this folder</h1>
+        <p className="mt-3 text-plate-muted">
+          The viewer looks for <code className="font-mono text-plate-ink">data/report.js</code> next to this page and did not
+          find it. Run <code className="font-mono text-plate-ink">starchart &lt;path&gt;</code> on a project, then open the
+          folder it writes; starchart serves it for you.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function BrokenReport({ message }: { message: string }) {
+  return (
+    <div className="absolute inset-0 grid place-items-center p-10" role="alert">
+      <div className="max-w-lg">
+        <h1 className="text-2xl font-semibold [font-stretch:85%]">This report could not be opened</h1>
+        <p className="mt-3 text-plate-muted">{message}</p>
+        <p className="mt-3 text-plate-muted">
+          Re-running <code className="font-mono text-plate-ink">starchart &lt;path&gt;</code> writes a fresh copy of both the
+          data and the viewer.
+        </p>
+      </div>
     </div>
   );
 }

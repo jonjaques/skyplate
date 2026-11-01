@@ -3,7 +3,8 @@
  *
  *   bun run build
  *
- * Output: dist/viewer/index.html, dist/viewer/assets/app.js, app.css, and font files.
+ * Output: dist/viewer/index.html, dist/viewer/assets/app.js, app.css, font files, and
+ * highlight.js (the source reader's lazily loaded highlighter).
  *
  * Why not Bun's HTML entrypoint (which the dev server uses): it emits
  * <script type="module" crossorigin>, and browsers refuse module scripts over file://. A report
@@ -41,6 +42,25 @@ if (!result.success) {
   process.exit(1);
 }
 
+// The source reader's syntax highlighter (highlight.js, ~1 MB with every grammar) ships as a
+// second classic script, assets/highlight.js, that the reader injects on first use; see
+// src/viewer/source/highlight.ts. Same rules as app.js: IIFE, plain <script src>, relative URL,
+// so it loads over file:// too. Kept out of app.js so a first view never downloads it.
+const highlighter = await Bun.build({
+  entrypoints: [path.join(root, "src/viewer/source/highlight-entry.ts")],
+  outdir: assets,
+  format: "iife",
+  target: "browser",
+  minify: true,
+  naming: { entry: "highlight.[ext]" },
+  define: { "process.env.NODE_ENV": JSON.stringify("production") },
+});
+
+if (!highlighter.success) {
+  for (const log of highlighter.logs) console.error(log);
+  process.exit(1);
+}
+
 const template = await Bun.file(path.join(root, "src/viewer/index.html")).text();
 const devEntry = /<script type="module" src="\.\/main\.tsx"><\/script>/;
 if (!devEntry.test(template)) {
@@ -56,7 +76,7 @@ const html = template
 await Bun.write(path.join(outdir, "index.html"), html);
 
 let total = 0;
-for (const output of result.outputs) {
+for (const output of [...result.outputs, ...highlighter.outputs]) {
   total += output.size;
   console.log(` ${path.relative(root, output.path).padEnd(52)} ${(output.size / 1024).toFixed(1)} KB`);
 }

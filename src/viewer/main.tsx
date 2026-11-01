@@ -2,7 +2,10 @@ import { StrictMode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { App } from "./App";
 import { TooltipProvider } from "./components/ui/tooltip";
+import { initTheme } from "./shell/theme";
 import "./styles.css";
+
+initTheme();
 
 const elem = document.getElementById("root")!;
 const app = (

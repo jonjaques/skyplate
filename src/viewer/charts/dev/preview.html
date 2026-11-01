@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>charts preview</title>
+    <script>
+      (function () {
+        var q = new URLSearchParams(location.search);
+        document.documentElement.setAttribute("data-theme", q.get("theme") === "dark" ? "dark" : "light");
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./preview.tsx"></script>
+  </body>
+</html>
