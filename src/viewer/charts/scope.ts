@@ -9,7 +9,7 @@ import type { Report } from "../../shared/schema";
 import type { Surface } from "../lib/colors";
 import type { Model } from "../model/indices";
 import type { Filters } from "../state/store";
-import { DAY, hasHistory, scopeCommits, scopeFiles, type FileScope } from "./data";
+import { DAY, hasHistory, noCommitsReason, scopeCommits, scopeFiles, type FileScope } from "./data";
 
 export type RangeKey = "all" | "12m" | "90d" | "30d";
 
@@ -38,6 +38,18 @@ export interface ChartScope {
   history: boolean;
   /** "in the last 90 days", "" for all history: appended to subtitles. */
   rangePhrase: string;
+  /** Path of the open drawer, which scopes every chart here, or null for the whole tree. */
+  drawer: string | null;
+}
+
+/**
+ * The empty state of a chart drawn from the scoped commits (data.ts noCommitsReason says
+ * which reasons are possible). Names the drawer when it alone does the narrowing.
+ */
+export function noCommitsText(scope: ChartScope): string {
+  const filtered = !!scope.filters.languages || !!scope.filters.categories;
+  const where = scope.drawer && !filtered ? `the files in ${scope.drawer}` : "the files in view";
+  return noCommitsReason(scope.report.git!, scope.from, scope.rangePhrase, where, filtered ? "widen the filters" : "close the drawer");
 }
 
 export function buildScope(
@@ -54,7 +66,8 @@ export function buildScope(
   const from = history && days !== null ? report.git!.last - days * DAY : null;
   const commits = history ? scopeCommits(report.git!, files, from) : null;
   const rangePhrase = from === null ? "" : days === 365 ? "in the last 12 months" : `in the last ${days} days`;
-  return { report, model, surface, filters, files, range, from, commits, history, rangePhrase };
+  const drawer = files.dir !== null ? (report.dirs[files.dir]?.path ?? null) : null;
+  return { report, model, surface, filters, files, range, from, commits, history, rangePhrase, drawer };
 }
 
 export const ScopeContext = createContext<ChartScope | null>(null);

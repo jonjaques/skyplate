@@ -87,5 +87,29 @@ export const SIZE_BY_LABEL: Record<SizeBy, string> = {
   rank: "PageRank",
 };
 
+// ─── The report's generation time ────────────────────────────────────────────────────────────
+
+/**
+ * When the report was written, in the reader's own time zone with the zone named:
+ * { date: "Oct 31, 2026", time: "11:44 PM CDT" }. The rail used the UTC calendar date and About
+ * the local clock, so a report written late in the evening read "Nov 1" in one place and
+ * "October 31" in the other. Local wins because it is when the reader's team ran it; the zone
+ * is named so a link shared across zones cannot be misread. Two parts so the narrow rail can
+ * break between them, never inside one. `timeZone` is for tests.
+ */
+export function generatedParts(iso: string, timeZone?: string): { date: string; time: string } {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return { date: iso, time: "" };
+  const date = new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", timeZone }).format(at);
+  const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZoneName: "short", timeZone }).format(at);
+  return { date, time };
+}
+
+/** "Oct 31, 2026, 11:44 PM CDT": the one written form of generatedParts. */
+export function formatGenerated(iso: string, timeZone?: string): string {
+  const { date, time } = generatedParts(iso, timeZone);
+  return time ? `${date}, ${time}` : date;
+}
+
 /** Modes that read git history; disabled when the report has none. */
 export const NEEDS_GIT = new Set<ColorBy | SizeBy>(["churn", "age", "ownership", "hotspot", "commits"]);

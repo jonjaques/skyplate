@@ -10,6 +10,7 @@ import type { Report } from "../../shared/schema";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../components/ui/dialog";
 import { formatBytes, formatInt, plural } from "../lib/format";
 import { useViewer } from "../state/store";
+import { formatGenerated } from "./labels";
 import { takeAboutOpener, useShell } from "./shell-state";
 
 export function About() {
@@ -66,10 +67,10 @@ const mono = (s: ReactNode) => <span className="figures font-mono text-xs">{s}</
 const yesNo = (b: boolean) => (b ? "Yes" : "No");
 
 function Provenance({ report }: { report: Report }) {
-  const generated = new Date(report.generatedAt);
   const git = report.git;
   const rows: [string, ReactNode][] = [
-    ["Generated", generated.toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" })],
+    // The rail prints the same string (labels.ts formatGenerated), so the two never disagree.
+    ["Generated", formatGenerated(report.generatedAt)],
     ["Tool", mono(`${report.tool.name} ${report.tool.version}`)],
     ["Schema", mono(String(report.schemaVersion))],
   ];

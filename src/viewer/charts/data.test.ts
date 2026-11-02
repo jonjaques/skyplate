@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import * as d3 from "d3";
-import { composition, gini, giniAdjusted, monthBuckets, type LanguageShare } from "./data";
+import type { Category, FileRecord, GitSummary, Report } from "../../shared/schema";
+import type { Model } from "../model/indices";
+import { composition, facets, gini, giniAdjusted, monthBuckets, noCommitsReason, type LanguageShare } from "./data";
 import { timeTicks } from "./kit/interaction";
 import { placeLabels } from "./kit/labels";
 import { binPosition, boundaryLabel } from "./kit/Log2Histogram";
@@ -55,6 +57,103 @@ describe("composition", () => {
     const c = composition([lang("A", 10, 0), lang("Binary", 0)]);
     expect(c.languageCount).toBe(1);
     expect(c.parts.map((p) => p.label)).toEqual(["A"]);
+  });
+
+  // fd's shape under the current analyzer: slots go to the seven largest languages that are not
+  // fallbacks, and Text (186 lines) outgrows SVG (160), which holds slot 6.
+  const FD = [
+    lang("rust", 6951, 0),
+    lang("markdown", 1317, 1),
+    lang("toml", 885, 2),
+    lang("roff", 551, 3),
+    lang("shell", 432, 4),
+    lang("yaml", 323, 5),
+    lang("text", 186),
+    lang("svg", 160, 6),
+    lang("makefile", 51),
+    lang("awk", 31),
+  ];
+
+  test("a fallback never folds a slotted language: the tray names the galaxy key's seven", () => {
+    const c = composition(FD);
+    expect(c.parts.filter((p) => !p.rest).map((p) => p.slot)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    const rest = c.parts.at(-1)!;
+    expect(rest.languages.map((l) => l.id)).toEqual(["text", "makefile", "awk"]);
+    expect(rest.languages.every((l) => l.slot < 0)).toBe(true);
+  });
+
+  test("a fallback keeps its named place when no slotted language needs it", () => {
+    const c = composition([lang("text", 900), ...FD.filter((l) => l.id !== "text" && l.id !== "svg")]);
+    expect(c.parts.some((p) => p.key === "text" && !p.rest)).toBe(true);
+  });
+
+  test("ties go to the slotted language (express: CSS slot 6 and HTML, 44 lines each)", () => {
+    const tie = [
+      lang("javascript", 16249, 0),
+      lang("markdown", 3534, 1),
+      lang("yaml", 336, 2),
+      lang("ejs", 217, 3),
+      lang("json", 99, 4),
+      lang("handlebars", 71, 5),
+      { ...lang("html", 44), files: 8 },
+      { ...lang("css", 44, 6), files: 4 },
+      lang("text", 34),
+      lang("ignore-list", 12),
+    ];
+    const c = composition(tie);
+    expect(c.parts.filter((p) => !p.rest).map((p) => p.key)).toContain("css");
+    expect(c.parts.at(-1)!.languages.map((l) => l.id)).toContain("html");
+  });
+});
+
+describe("facets", () => {
+  const file = (id: number, language: string, category: string, extra: Partial<{ vendored: boolean; generated: boolean; code: number }> = {}) =>
+    ({ id, language, category, vendored: false, generated: false, code: 10, ...extra }) as unknown as FileRecord;
+  // Files 0-2 sit in drawer 1, files 3-5 outside it; fileOrder lists the drawer's run first.
+  const report = {
+    files: [
+      file(0, "typescript", "code"),
+      file(1, "typescript", "test"),
+      file(2, "css", "style"),
+      file(3, "ejs", "markup"),
+      file(4, "typescript", "code", { vendored: true }),
+      file(5, "json", "data"),
+    ],
+  } as unknown as Report;
+  const model = { fileOrder: Int32Array.from([0, 1, 2, 3, 4, 5]), dirStart: [0, 0], dirEnd: [6, 3] } as unknown as Model;
+  const none = { languages: null, categories: null, hideGenerated: false, hideVendored: true };
+
+  test("a drawer lists only its own languages, counted inside it", () => {
+    const f = facets(report, model, none, 1);
+    expect([...f.languages.keys()].sort()).toEqual(["css", "typescript"]);
+    expect(f.languages.get("typescript")!.files).toBe(2);
+    expect(f.languages.has("ejs")).toBe(false);
+  });
+
+  test("counts leave out what the other filters hide, but not the menu's own choice", () => {
+    const f = facets(report, model, { ...none, languages: new Set(["css"]), categories: new Set(["code"]) as Set<Category> }, null);
+    // Languages count under the category choice (code), ignoring the language choice.
+    expect(f.languages.get("typescript")!.files).toBe(1); // the vendored one is hidden
+    expect(f.languages.has("css")).toBe(false);
+    // Categories count under the language choice (css), ignoring the category choice.
+    expect([...f.categories.entries()]).toEqual([["style", 1]]);
+  });
+});
+
+describe("noCommitsReason", () => {
+  const DAY_S = 86_400;
+  const git = { last: 100 * DAY_S, truncated: false, commits: { time: [100, 95, 60, 10].map((d) => d * DAY_S) } } as unknown as GitSummary;
+
+  test("a range with commits that all miss the scope says how many it holds and the way out", () => {
+    const s = noCommitsReason(git, 70 * DAY_S, "in the last 30 days", "the files in .vscode", "close the drawer");
+    expect(s).toBe("None of the 2 commits in the last 30 days touch the files in .vscode. Choose a longer range or close the drawer.");
+  });
+
+  test("over the whole history it says the files were never committed", () => {
+    const s = noCommitsReason(git, null, "", "the files in view", "widen the filters");
+    expect(s).toStartWith("None of the 4 analyzed commits touch the files in view");
+    expect(s).toContain("untracked or not yet committed");
+    expect(s).not.toContain("analyzed history begins");
   });
 });
 

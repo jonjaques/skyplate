@@ -40,19 +40,23 @@ function LinesByLanguage() {
   const { report, model, files, surface } = useScope();
   const shares = useMemo(() => languageShares(report, model, files.ids).filter((s) => s.code > 0), [report, model, files]);
   const total = sum(shares.map((s) => s.code));
-  const shown = shares.slice(0, 12);
-  const rest = shares.slice(12);
-  // A bar wears its language's galaxy hue when it has one. The Other gray is kept for the
-  // folded "N more languages" row alone: Markdown and JSON in that same gray, ranked second
-  // and fourth, read as part of the remainder. A named language with no hue of its own wears
-  // the plain measure slate, the color of every single-series bar on this tab.
+  // A "1 more language" row takes the room naming that language would (fd's fish, 1 line).
+  const cut = shares.length <= 13 ? shares.length : 12;
+  const shown = shares.slice(0, cut);
+  const rest = shares.slice(cut);
+  // A bar wears exactly the color its language's stars have on the plate: its slot hue, or the
+  // Other gray, which is also what the language tray and the galaxy key show for it. Unslotted
+  // languages used to wear the measure slate, so as not to read as part of the folded
+  // remainder when Markdown and JSON ranked second and fourth without a slot; now that slots go
+  // to the seven largest languages, an unslotted one is the galaxy's Other, and a fourth color
+  // for it ("slate here means gray there") only made the three surfaces disagree.
   const unslotted = shown.some((s) => !hasSlot(s.slot));
   const items: BarItem[] = shown.map((s) => ({
     key: s.id,
     label: s.name,
     value: s.code,
     valueText: formatInt(s.code),
-    color: hasSlot(s.slot) ? slotColor(s.slot, surface) : measureColor(surface),
+    color: slotColor(hasSlot(s.slot) ? s.slot : -1, surface),
     tip: [
       { value: formatShare(s.code / total), label: "of code lines" },
       { value: formatInt(s.files), label: s.files === 1 ? "file" : "files" },
@@ -77,7 +81,7 @@ function LinesByLanguage() {
     <Figure
       className={span(6)}
       title="Code lines by language"
-      subtitle={`${formatInt(total)} code lines across ${plural(shares.length, "language")}, comments and blanks excluded${unslotted ? ". Slate bars are languages the galaxy draws in gray" : ""}`}
+      subtitle={`${formatInt(total)} code lines across ${plural(shares.length, "language")}, comments and blanks excluded${unslotted ? ". Gray bars are languages the galaxy groups as Other" : ""}`}
       height={items.length * 28}
       empty={shares.length === 0 ? "No code lines in view. Widen the filters to see languages." : null}
       table={() => ({

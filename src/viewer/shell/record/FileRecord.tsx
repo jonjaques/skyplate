@@ -7,7 +7,7 @@ import { BookOpen } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { FileRecord as FileRec, Report } from "../../../shared/schema";
 import { Button } from "../../components/ui/button";
-import { formatAgo, formatBytes, formatInt, formatIsoDate, formatPercent, plural } from "../../lib/format";
+import { formatAgo, formatBytes, formatDate, formatInt, formatIsoDate, formatPercent, plural } from "../../lib/format";
 import { neighbors, type Model } from "../../model/indices";
 import { useViewer } from "../../state/store";
 import { collectorsOf, degree, edgeSplit } from "../derived";
@@ -15,7 +15,7 @@ import { SYMBOL_KIND_LABEL } from "../labels";
 import { accession, openFile, show } from "../navigate";
 import { CategorySwatch, LanguageSwatch, MetricGrid, MoreButton, Quiet, RowButton, Section, Tag, type Metric, PathText } from "../parts";
 import { describeUnavailable, sourceUnavailable } from "../../source/availability";
-import { RecordHeading } from "./common";
+import { RecordHeading, ShowInGalaxy } from "./common";
 
 const CATEGORY_LABEL: Record<FileRec["category"], string> = {
   code: "Code",
@@ -51,6 +51,12 @@ export function FileRecordView({ report, model, file }: { report: Report; model:
   const holotypeRegion = [...model.holotypeOfDir].find(([, f]) => f === file.id)?.[0];
   const now = Date.parse(report.generatedAt) / 1000;
   const slash = file.path.lastIndexOf("/");
+  const time = useViewer((s) => s.time);
+  const setTime = useViewer((s) => s.setTime);
+  // The history scrubber moves the plate, not the measurements: every figure below is HEAD's.
+  // Scrubbed to before the file's first commit, the record listed its present-day size, owners
+  // and imports beside a plate where the file does not exist yet.
+  const unborn = time !== null && file.git !== undefined && time < file.git.created;
 
   const metrics: Metric[] = [];
   if (file.lines > 0) {
@@ -85,7 +91,7 @@ export function FileRecordView({ report, model, file }: { report: Report; model:
     metrics.push({ label: "Links to", value: formatInt(linksOut), note: "files in this project" });
     metrics.push({ label: "Linked from", value: formatInt(linksIn) });
   }
-  metrics.push({ label: "PageRank", value: file.rank.toFixed(3), note: "1 = most depended on" });
+  metrics.push({ label: "PageRank", value: file.rank.toFixed(3), note: "1 = most central" });
   if (file.lines > 0 && metrics.length % 2 === 1) metrics.push({ label: "Size", value: formatBytes(file.bytes) });
   if (file.git) {
     // The specimen-label date form: fixed width, and it fits the narrow record.
@@ -93,34 +99,60 @@ export function FileRecordView({ report, model, file }: { report: Report; model:
     metrics.push({ label: "Last changed", value: formatIsoDate(file.git.modified), note: formatAgo(file.git.modified, now) });
   }
 
+  const heading = (
+    <RecordHeading above={slash >= 0 ? file.path.slice(0, slash + 1) : undefined} title={file.name} action={<ShowInGalaxy />}>
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <span className="figures font-mono text-xs text-ink-3">{accession(file.id, report.files.length)}</span>
+        {holotypeRegion !== undefined && (
+          <span className="rounded-xs bg-holotype px-2 py-0.5 text-xs font-semibold text-holotype-ink">
+            Holotype · most depended on in {holotypeRegion === 0 ? "the root" : report.dirs[holotypeRegion]!.name}
+          </span>
+        )}
+        {file.generated && <Tag>generated</Tag>}
+        {file.vendored && <Tag>vendored</Tag>}
+        {file.minified && <Tag>minified</Tag>}
+        {file.secret && <Tag>credentials</Tag>}
+      </div>
+      <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-2">
+        <span className="flex items-center gap-1.5">
+          <LanguageSwatch languageId={file.language} />
+          {language?.name ?? file.language}
+        </span>
+        <span className="flex items-center gap-1.5">
+          <CategorySwatch category={file.category} />
+          {CATEGORY_LABEL[file.category]}
+        </span>
+      </div>
+      <p className="mt-1 text-xs text-ink-3">Language decided {DETECTION[file.detection]}.</p>
+    </RecordHeading>
+  );
+
+  if (unborn) {
+    return (
+      <div className="flex flex-col gap-5">
+        {heading}
+        <section className="border-y border-rule py-3" aria-live="polite">
+          <h3 className="text-[15px] font-semibold text-ink">Not yet created on {formatDate(time)}</h3>
+          <p className="mt-1 text-[13px] text-ink-2">
+            Its first commit is dated <span className="figures font-mono text-xs text-ink">{formatIsoDate(file.git!.created)}</span>.
+            Its measurements describe it at HEAD, so they are left out here.
+          </p>
+          <Button variant="outline" size="sm" className="mt-3 bg-paper" onClick={() => setTime(null)}>
+            Back to HEAD
+          </Button>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
-      <RecordHeading above={slash >= 0 ? file.path.slice(0, slash + 1) : undefined} title={file.name}>
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <span className="figures font-mono text-xs text-ink-3">{accession(file.id, report.files.length)}</span>
-          {holotypeRegion !== undefined && (
-            <span className="rounded-xs bg-holotype px-2 py-0.5 text-xs font-semibold text-holotype-ink">
-              Holotype · most depended on in {holotypeRegion === 0 ? "the root" : report.dirs[holotypeRegion]!.name}
-            </span>
-          )}
-          {file.generated && <Tag>generated</Tag>}
-          {file.vendored && <Tag>vendored</Tag>}
-          {file.minified && <Tag>minified</Tag>}
-          {file.secret && <Tag>credentials</Tag>}
-        </div>
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-ink-2">
-          <span className="flex items-center gap-1.5">
-            <LanguageSwatch languageId={file.language} />
-            {language?.name ?? file.language}
-          </span>
-          <span className="flex items-center gap-1.5">
-            <CategorySwatch category={file.category} />
-            {CATEGORY_LABEL[file.category]}
-          </span>
-        </div>
-        <p className="mt-1 text-xs text-ink-3">Language decided {DETECTION[file.detection]}.</p>
-      </RecordHeading>
-
+      {heading}
+      {time !== null && file.git && (
+        <Quiet className="-my-2 text-xs">
+          Figures are at HEAD; the scrubber at {formatDate(time)} moves the plate only.
+        </Quiet>
+      )}
       <MetricGrid items={metrics} />
 
       <Facts file={file} />

@@ -4,7 +4,11 @@
  * Tables are virtualized (see virtual.ts) so 50k rows scroll like 50. The open drawer applies
  * here too: with a drawer focused, the files table lists only what is inside it, with a chip to
  * widen back out, because the galaxy is dimming everything else at the same moment and the two
- * should agree. Click selects a row; double-click (or Enter) opens it in the source reader.
+ * should agree. The shared filters (language, category, generated, vendored) apply the same
+ * way, for the same reason: the explorer listed every file while the plate and the charts beside
+ * it hid vendored code, so vite's "2,911 files" here met 2,869 there. What they hide is counted in
+ * the toolbar, with the way to show it. Click selects a row; double-click (or Enter) opens it in
+ * the source reader.
  */
 
 import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
@@ -23,6 +27,7 @@ import { useViewer } from "../state/store";
 import { SYMBOL_KIND_LABEL } from "./labels";
 import { focusDrawer, openFile, openSymbolDefinition, show } from "./navigate";
 import { LanguageSwatch, PathText, Quiet } from "./parts";
+import { describeFilters, filtering, NO_FILTERS, passes } from "./derived";
 import { requestReaderFocus, useShell, type FileSortKey, type SortDir, type SymbolSortKey } from "./shell-state";
 import { useVirtualRows } from "./virtual";
 
@@ -112,22 +117,37 @@ function useFileSort(): { key: FileSortKey; dir: SortDir } {
   return !git && GIT_SORT_KEYS.has(sort.key) ? NO_GIT_SORT : sort;
 }
 
-function useFileRows(): number[] {
+interface FileRows {
+  rows: number[];
+  /** Files in scope (drawer and path filter) that the shared filters hide. */
+  hidden: number;
+}
+
+function useFileRows(): FileRows {
   const report = useViewer((s) => s.report);
   const model = useViewer((s) => s.model);
   const focusDir = useViewer((s) => s.focusDir);
+  const filters = useViewer((s) => s.filters);
   const filter = useShell((s) => s.fileFilter);
   const sort = useFileSort();
   return useMemo(() => {
-    if (!report || !model) return [];
+    if (!report || !model) return { rows: [], hidden: 0 };
     const terms = filter.toLowerCase().split(/\s+/).filter(Boolean);
     const pool = focusDir === null ? report.files.map((f) => f.id) : Array.from(filesUnder(model, focusDir));
-    const ids = terms.length
-      ? pool.filter((id) => {
-          const p = report.files[id]!.path.toLowerCase();
-          return terms.every((t) => p.includes(t));
-        })
-      : pool;
+    const narrowed = filtering(filters);
+    let hidden = 0;
+    const ids = pool.filter((id) => {
+      const f = report.files[id]!;
+      if (terms.length) {
+        const p = f.path.toLowerCase();
+        if (!terms.every((t) => p.includes(t))) return false;
+      }
+      if (narrowed && !passes(f, filters)) {
+        hidden++;
+        return false;
+      }
+      return true;
+    });
     const files = report.files;
     const authors = report.git?.authors;
     const key: Record<FileSortKey, (id: number) => number | string> = {
@@ -140,8 +160,8 @@ function useFileRows(): number[] {
       fanIn: (id) => files[id]!.fanIn,
       hotspot: (id) => files[id]!.hotspot,
     };
-    return sortIds(ids, key[sort.key], sort.dir, (id) => files[id]!.path);
-  }, [report, model, focusDir, filter, sort]);
+    return { rows: sortIds(ids, key[sort.key], sort.dir, (id) => files[id]!.path), hidden };
+  }, [report, model, focusDir, filters, filter, sort]);
 }
 
 /** Sort ids by a key, ties broken by a stable secondary (the path), without localeCompare. */
@@ -166,36 +186,61 @@ function sortIds(ids: number[], key: (id: number) => number | string, dir: SortD
  * it runs once here and both parts receive the result.
  */
 function FileView({ toggle }: { toggle: ReactNode }) {
-  const rows = useFileRows();
+  const { rows, hidden } = useFileRows();
   return (
     <>
       <Toolbar>
         {toggle}
-        <FileToolbar rows={rows} />
+        <FileToolbar rows={rows} hidden={hidden} />
       </Toolbar>
       <div className="min-h-0 flex-1">
-        <FileTable rows={rows} />
+        <FileTable rows={rows} hidden={hidden} />
       </div>
     </>
   );
 }
 
 function SymbolView({ toggle }: { toggle: ReactNode }) {
-  const { rows, kinds } = useSymbolRows();
+  const { rows, kinds, hidden } = useSymbolRows();
   return (
     <>
       <Toolbar>
         {toggle}
-        <SymbolToolbar rows={rows} kinds={kinds} />
+        <SymbolToolbar rows={rows} kinds={kinds} hidden={hidden} />
       </Toolbar>
       <div className="min-h-0 flex-1">
-        <SymbolTable rows={rows} />
+        <SymbolTable rows={rows} hidden={hidden} />
       </div>
     </>
   );
 }
 
-function FileToolbar({ rows }: { rows: number[] }) {
+/**
+ * "42 hidden by filters (vendored) · Show all files". The filters are shared with the plate and the
+ * charts and set there, so this names them and offers the one way back from here: show every
+ * file, vendored included, which is what an explorer of "every file" is for. Hidden while
+ * nothing in scope is hidden, so the default "hide vendored" says nothing in a repository
+ * without vendored code.
+ */
+function HiddenNote({ hidden, noun }: { hidden: number; noun: string }) {
+  const filters = useViewer((s) => s.filters);
+  const model = useViewer((s) => s.model);
+  const setFilters = useViewer((s) => s.setFilters);
+  if (hidden === 0 || !model) return null;
+  const why = describeFilters(filters, (id) => model.languages.get(id)?.name ?? id);
+  return (
+    <span className="flex min-w-0 items-center gap-1 text-xs text-ink-3">
+      <span className="truncate" title={why ? `Hidden by filters: ${why}` : undefined}>
+        <span className="figures font-mono">{formatInt(hidden)}</span> hidden by filters{why ? ` (${why})` : ""}
+      </span>
+      <Button variant="ghost" size="xs" className="shrink-0 text-ink-2 hover:text-ink" onClick={() => setFilters(NO_FILTERS)}>
+        Show all {noun}
+      </Button>
+    </span>
+  );
+}
+
+function FileToolbar({ rows, hidden }: { rows: number[]; hidden: number }) {
   const filter = useShell((s) => s.fileFilter);
   const setFilter = useShell((s) => s.setFileFilter);
   const focusDir = useViewer((s) => s.focusDir);
@@ -209,8 +254,11 @@ function FileToolbar({ rows }: { rows: number[] }) {
           <X aria-label="Show every drawer" />
         </Button>
       )}
-      <span className="figures ml-auto font-mono text-xs text-ink-3">
-        {rows.length === report?.files.length ? plural(rows.length, "file") : `${formatInt(rows.length)} of ${plural(report?.files.length ?? 0, "file")}`}
+      <span className="ml-auto flex min-w-0 items-center gap-3">
+        <HiddenNote hidden={hidden} noun="files" />
+        <span className="figures shrink-0 font-mono text-xs text-ink-3">
+          {rows.length === report?.files.length ? plural(rows.length, "file") : `${formatInt(rows.length)} of ${plural(report?.files.length ?? 0, "file")}`}
+        </span>
       </span>
     </>
   );
@@ -358,7 +406,7 @@ function VirtualTable({
 /** The keyboard cursor's outline, drawn inside the row so the next row's rule never covers it. */
 const CURSOR = "outline-2 -outline-offset-2 outline-ring";
 
-function FileTable({ rows }: { rows: number[] }) {
+function FileTable({ rows, hidden }: { rows: number[]; hidden: number }) {
   const report = useViewer((s) => s.report);
   const model = useViewer((s) => s.model);
   const selection = useViewer((s) => s.selection);
@@ -378,7 +426,7 @@ function FileTable({ rows }: { rows: number[] }) {
       onMove={(i) => show({ kind: "file", id: rows[i]! })}
       onOpen={(i) => openFile(rows[i]!)}
       describe={(i) => report.files[rows[i]!]!.path}
-      empty={<Quiet>No file path matches the filter.</Quiet>}
+      empty={<Quiet>{hidden > 0 ? `No file here passes the filters; ${plural(hidden, "file")} hidden.` : "No file path matches the filter."}</Quiet>}
       colgroup={
         <colgroup>
           <col />
@@ -455,6 +503,8 @@ const KINDS = Object.keys(SYMBOL_KIND_LABEL).filter((k) => k !== "module") as Sy
 
 interface SymbolRows {
   rows: number[];
+  /** Symbols in scope declared in files the shared filters hide. */
+  hidden: number;
   /**
    * Symbols per kind in the current scope (drawer and name filter, not the kind filter
    * itself), so the kind menu offers what is there with counts for here. It listed every kind
@@ -472,9 +522,14 @@ function useSymbolRows(): SymbolRows {
   const sort = useShell((s) => s.symbolSort);
   const focusDir = useViewer((s) => s.focusDir);
   const model = useViewer((s) => s.model);
+  const filters = useViewer((s) => s.filters);
   return useMemo(() => {
     const kinds = new Map<SymbolKind, number>();
-    if (!report || !symbols || !sm || !model) return { rows: [], kinds };
+    if (!report || !symbols || !sm || !model) return { rows: [], kinds, hidden: 0 };
+    // A symbol is hidden with its file. Decided once per file, not once per symbol.
+    const narrowed = filtering(filters);
+    const fileHidden = narrowed ? report.files.map((f) => !passes(f, filters)) : null;
+    let hidden = 0;
     const t = symbols.symbols;
     const q = filter.trim().toLowerCase();
     let inFocus: Set<number> | null = null;
@@ -485,6 +540,10 @@ function useSymbolRows(): SymbolRows {
       if (k === "module") continue;
       if (q && !sm.lowerNames[i]!.includes(q)) continue;
       if (inFocus && !inFocus.has(t.file[i]!)) continue;
+      if (fileHidden?.[t.file[i]!]) {
+        hidden++;
+        continue;
+      }
       kinds.set(k, (kinds.get(k) ?? 0) + 1);
       if (kind !== "all" && k !== kind) continue;
       ids.push(i);
@@ -497,11 +556,11 @@ function useSymbolRows(): SymbolRows {
       callers: (i) => t.callers[i]!,
       complexity: (i) => t.complexity[i]!,
     };
-    return { rows: sortIds(ids, key[sort.key], sort.dir, (i) => t.name[i]!), kinds };
-  }, [report, symbols, sm, model, filter, kind, sort, focusDir]);
+    return { rows: sortIds(ids, key[sort.key], sort.dir, (i) => t.name[i]!), kinds, hidden };
+  }, [report, symbols, sm, model, filter, kind, sort, focusDir, filters]);
 }
 
-function SymbolToolbar({ rows, kinds }: { rows: number[]; kinds: Map<SymbolKind, number> }) {
+function SymbolToolbar({ rows, kinds, hidden }: { rows: number[]; kinds: Map<SymbolKind, number>; hidden: number }) {
   const filter = useShell((s) => s.symbolFilter);
   const setFilter = useShell((s) => s.setSymbolFilter);
   const kind = useShell((s) => s.symbolKind);
@@ -536,7 +595,10 @@ function SymbolToolbar({ rows, kinds }: { rows: number[]; kinds: Map<SymbolKind,
           <X aria-label="Show every drawer" />
         </Button>
       )}
-      <span className="figures ml-auto font-mono text-xs text-ink-3">{status === "ready" ? plural(rows.length, "symbol") : ""}</span>
+      <span className="ml-auto flex min-w-0 items-center gap-3">
+        {status === "ready" && <HiddenNote hidden={hidden} noun="symbols" />}
+        <span className="figures shrink-0 font-mono text-xs text-ink-3">{status === "ready" ? plural(rows.length, "symbol") : ""}</span>
+      </span>
     </>
   );
 }
@@ -550,7 +612,7 @@ function KindOption({ label, count }: { label: string; count: number }) {
   );
 }
 
-function SymbolTable({ rows }: { rows: number[] }) {
+function SymbolTable({ rows, hidden }: { rows: number[]; hidden: number }) {
   const report = useViewer((s) => s.report);
   const symbols = useViewer((s) => s.symbols);
   const status = useViewer((s) => s.symbolsStatus);
@@ -573,7 +635,7 @@ function SymbolTable({ rows }: { rows: number[] }) {
       onMove={(i) => show({ kind: "symbol", id: rows[i]! })}
       onOpen={(i) => openSymbolDefinition(symbols, rows[i]!)}
       describe={(i) => `${t.name[rows[i]!]}, ${SYMBOL_KIND_LABEL[t.kind[rows[i]!]!].toLowerCase()}`}
-      empty={<Quiet>No symbol matches the filter.</Quiet>}
+      empty={<Quiet>{hidden > 0 ? `No symbol here passes the filters; ${plural(hidden, "symbol")} hidden.` : "No symbol matches the filter."}</Quiet>}
       colgroup={
         <colgroup>
           <col className="w-[22%]" />

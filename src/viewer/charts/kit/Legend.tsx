@@ -7,6 +7,8 @@
 import { cn } from "../../lib/utils";
 
 export interface LegendItem {
+  /** React key when labels can repeat (two authors with one name); defaults to the label. */
+  id?: string;
   label: string;
   color: string;
   /** Optional figure shown after the label, e.g. a share. */
@@ -26,7 +28,7 @@ export function Legend({ items, className }: { items: LegendItem[]; className?: 
   return (
     <ul className={cn("flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-2", className)}>
       {items.map((item) => (
-        <li key={item.label} className="flex min-w-0 items-center gap-1.5">
+        <li key={item.id ?? item.label} className="flex min-w-0 items-center gap-1.5">
           <Swatch color={item.color} kind={item.key} />
           <span className="truncate">{item.label}</span>
           {item.value && <span className="figures font-mono text-[11px] text-ink-3">{item.value}</span>}

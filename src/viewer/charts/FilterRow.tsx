@@ -5,11 +5,12 @@
  * The time range is local to this tab (it narrows history charts, not the galaxy's
  * scrubber). Language, category, generated and vendored are the shared store filters, so the
  * galaxy, the explorer and the trays narrow with them. The open drawer is shown here too: it
- * scopes the charts the same way it dims the plate, and this is where it can be closed.
+ * scopes the charts the same way it dims the plate, and this is where it can be closed. The
+ * language and category menus list and count only what the drawer holds.
  */
 
 import { Check, ChevronDown, FolderOpen, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { Category } from "../../shared/schema";
 import { Button } from "../components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../components/ui/command";
@@ -20,7 +21,9 @@ import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { formatInt } from "../lib/format";
 import { cn } from "../lib/utils";
 import { useViewer } from "../state/store";
+import { facets } from "./data";
 import { Swatch } from "./kit/Legend";
+import { PathText } from "./kit/PathText";
 import { slotColor } from "./kit/theme";
 import { RANGES, type ChartScope, type RangeKey } from "./scope";
 
@@ -44,31 +47,43 @@ const CATEGORY_LABEL: Record<Category, string> = {
 };
 
 export function FilterRow({ scope, range, onRange }: { scope: ChartScope; range: RangeKey; onRange: (r: RangeKey) => void }) {
-  const { report, filters, surface, files } = scope;
+  const { report, model, filters, surface, files } = scope;
   const setFilters = useViewer((s) => s.setFilters);
   const focusDir = useViewer((s) => s.focusDir);
   const focus = useViewer((s) => s.focus);
 
+  // The menus offer what is in scope: the open drawer and the other filters (data.ts facets).
+  // A chosen option stays listed at 0 when it falls out of scope, or it could not be unchecked.
+  const counts = useMemo(() => facets(report, model, filters, files.dir), [report, model, filters, files.dir]);
   const languageOptions = useMemo(
     () =>
-      [...report.languages]
-        .sort((a, b) => b.code - a.code || b.files - a.files)
-        .map((l) => ({ value: l.id, label: l.name, count: l.files, swatch: slotColor(l.slot, surface) })),
-    [report, surface],
+      report.languages
+        .map((l) => ({ l, n: counts.languages.get(l.id) ?? { files: 0, code: 0 } }))
+        .filter(({ l, n }) => n.files > 0 || filters.languages?.has(l.id))
+        .sort((a, b) => b.n.code - a.n.code || b.n.files - a.n.files)
+        .map(({ l, n }) => ({ value: l.id, label: l.name, count: n.files, swatch: slotColor(l.slot, surface) })),
+    [report, counts, filters.languages, surface],
   );
   const categoryOptions = useMemo(
     () =>
-      [...report.categories]
-        .sort((a, b) => b.files - a.files)
-        .map((c) => ({ value: c.category, label: CATEGORY_LABEL[c.category], count: c.files })),
-    [report],
+      report.categories
+        .map((c) => ({ c, n: counts.categories.get(c.category) ?? 0 }))
+        .filter(({ c, n }) => n > 0 || filters.categories?.has(c.category))
+        .sort((a, b) => b.n - a.n)
+        .map(({ c, n }) => ({ value: c.category, label: CATEGORY_LABEL[c.category], count: n })),
+    [report, counts, filters.categories],
   );
 
   const narrowed = !!filters.languages || !!filters.categories || filters.hideGenerated || focusDir !== null;
-  const drawer = focusDir !== null && focusDir > 0 ? report.dirs[focusDir] : undefined;
+  const drawer = scope.drawer;
+  const countNote = drawer ? (
+    <>
+      File counts in <span className="font-mono text-ink-2">{drawer}</span>
+    </>
+  ) : undefined;
 
   return (
-    <div className="sticky top-0 z-20 flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-rule bg-tray px-5 py-2.5">
+    <div className="sticky top-0 z-20 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-rule bg-tray px-5 py-2.5">
       {scope.history ? (
         <ToggleGroup
           type="single"
@@ -96,6 +111,7 @@ export function FilterRow({ scope, range, onRange }: { scope: ChartScope; range:
         options={languageOptions}
         value={filters.languages}
         onChange={(languages) => setFilters({ languages })}
+        note={countNote}
       />
       <MultiSelect
         noun="categories"
@@ -103,6 +119,7 @@ export function FilterRow({ scope, range, onRange }: { scope: ChartScope; range:
         options={categoryOptions}
         value={filters.categories as Set<string> | null}
         onChange={(categories) => setFilters({ categories: categories as Set<Category> | null })}
+        note={countNote}
       />
 
       <div className="flex items-center gap-2">
@@ -118,14 +135,19 @@ export function FilterRow({ scope, range, onRange }: { scope: ChartScope; range:
         </Label>
       </div>
 
+      {/* A bare path chip never said what it did. The sentence says the drawer scopes the
+          charts below, so their smaller numbers are not read as the whole project's. */}
       {drawer && (
-        <span className="inline-flex h-7 items-center gap-1.5 rounded-[3px] border border-rule-strong bg-paper pr-1 pl-2 text-xs text-ink">
-          <FolderOpen aria-hidden className="size-3.5 text-ink-3" />
-          <span className="max-w-[220px] truncate font-mono text-[11px]">{drawer.path}</span>
-          <button type="button" aria-label={`Close the ${drawer.path} drawer`} onClick={() => focus(null)} className="grid size-5 place-items-center rounded-sm text-ink-3 hover:bg-wash hover:text-ink">
-            <X aria-hidden className="size-3.5" />
-          </button>
-        </span>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="shrink-0 text-xs text-ink-2">Charts scoped to</span>
+          <span className="inline-flex h-7 min-w-0 items-center gap-1.5 rounded-[3px] border border-rule-strong bg-paper pr-1 pl-2 text-xs text-ink">
+            <FolderOpen aria-hidden className="size-3.5 shrink-0 text-ink-3" />
+            <PathText path={drawer} className="max-w-[220px] text-[11px]" />
+            <button type="button" aria-label={`Close the ${drawer} drawer`} onClick={() => focus(null)} className="grid size-5 shrink-0 place-items-center rounded-sm text-ink-3 hover:bg-wash hover:text-ink">
+              <X aria-hidden className="size-3.5" />
+            </button>
+          </span>
+        </div>
       )}
 
       <div className="ml-auto flex items-center gap-3">
@@ -168,12 +190,15 @@ function MultiSelect({
   options,
   value,
   onChange,
+  note,
 }: {
   noun: string;
   all: string;
   options: Option[];
   value: Set<string> | null;
   onChange: (next: Set<string> | null) => void;
+  /** What the counts cover, under the search field ("File counts in apps/game"). */
+  note?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const chosen = value ? options.filter((o) => value.has(o.value)) : [];
@@ -198,6 +223,7 @@ function MultiSelect({
       <PopoverContent align="start" className="w-64 p-0">
         <Command>
           <CommandInput placeholder={`Find ${noun}`} className="h-9 text-xs" />
+          {note && <p className="truncate border-b border-rule px-3 py-1.5 text-[11px] text-ink-3">{note}</p>}
           <CommandList className="max-h-[320px]">
             <CommandEmpty className="py-4 text-center text-xs text-ink-3">No {noun} match.</CommandEmpty>
             {chosen.length > 0 && (

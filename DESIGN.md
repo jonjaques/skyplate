@@ -270,7 +270,7 @@ A cool, nearly neutral ground with a single archival slate as the structural col
 ### Tertiary
 - **Categorical slots** (series-1 through series-7, plus series-other gray): language and category identity on stars, swatches, stacked bars and legends. Light trays use the light steps; the plate and the dark theme use the series-dark steps. The reference palette's red slot was removed so no category can impersonate the holotype.
 - **Sequential blue** (seq-100 to seq-700): magnitude ramps. On light surfaces more is darker; on dark surfaces the anchor flips so more is lighter. seq-200 is also the text selection color.
-- **Status** (good, warning, serious): always shipped with an icon and a label. Warning tints the top-hotspot callout (a 13% mix into the tray with a 55% border); serious orange marks an unfavorable delta.
+- **Status** (good, warning, serious): always shipped with an icon and a label. Warning tints the top-hotspot callout (a 13% mix into the tray with a 55% border); serious orange marks an unfavorable delta. Critical has no hue of its own: the critical token is Ink, and shadcn's destructive role maps to it, so a critical mark is a filled ink octagon with its exclamation knocked out in paper.
 
 ### Neutral
 - **Tray** (#f6f7f5): the page ground and every unit tray. Dark: #161c20.
@@ -282,7 +282,7 @@ A cool, nearly neutral ground with a single archival slate as the structural col
 - **Label Stock** (#ffffff): specimen labels on the plate, white in both themes.
 
 ### Named Rules
-**The Holotype Reservation Rule.** Red means "this region's most-depended-on file" and nothing else. Critical severity is drawn as a solid ink octagon, unfavorable deltas use serious orange, and no categorical slot is red.
+**The Holotype Reservation Rule.** Red means "this region's most-depended-on file" and nothing else. Critical severity is drawn as a solid ink octagon (the critical and destructive tokens are Ink), unfavorable deltas use serious orange, and no categorical slot is red.
 
 **The Ink Text Rule.** Text never wears a data color. Labels, values and legend entries stay in the ink tokens; identity is carried by a swatch dot beside them.
 
@@ -333,18 +333,21 @@ Insets are specific rather than scaled: 22px in the rail, 18px across unit trays
 
 ## Elevation & Depth
 
-The system is flat. Trays, the rail, the record, buttons, inputs and the active tab carry no shadow (shadcn's `shadow-xs` and `shadow-sm` are set to none). Depth comes from tone: the rail's solid slate against the tray, paper panels against the tray, and the dark plate against everything. Layers that genuinely float over content (dropdown menus, popovers, hover cards, dialogs, sheets, the command palette) take a soft offset shadow. Seams are rules: a 1px hairline in most places, a 1px ink rule where a block needs a firmer edge (the line above a specimen label's fields, the top of the record panel on compact screens).
+The system is flat. Trays, the rail, the record, buttons, inputs and the active tab carry no shadow: shadcn's `shadow-xs` and `shadow-sm` are a transparent zero shadow (`0 0 #0000`), not `none`, because Tailwind composes them into one box-shadow list with the focus ring and a `none` in that list voids the whole declaration. Depth comes from tone: the rail's solid slate against the tray, paper panels against the tray, and the dark plate against everything. Layers that genuinely float over content (dropdown menus, popovers, hover cards, dialogs, sheets, the command palette) take a soft offset shadow. Seams are rules: a 1px hairline in most places, a 1px ink rule where a block needs a firmer edge (the line above a specimen label's fields, the top of the record panel on compact screens).
 
 ### Shadow Vocabulary
-- **Float** (`box-shadow: 0 8px 20px -6px rgb(21 25 28 / 0.22), 0 1px 2px rgb(21 25 28 / 0.08)`): menus, popovers, select lists.
+- **Flat** (`box-shadow: 0 0 #0000`): the at-rest value of shadow-xs and shadow-sm on controls. Invisible, but a valid list member so focus rings still paint.
+- **Float** (`box-shadow: 0 8px 20px -6px rgb(21 25 28 / 0.22), 0 1px 2px rgb(21 25 28 / 0.08)`): menus, popovers, select lists, chart tooltips.
 - **Float Large** (`box-shadow: 0 18px 40px -12px rgb(21 25 28 / 0.32), 0 2px 6px rgb(21 25 28 / 0.08)`): dialogs, sheets, the command palette.
 
 ### Named Rules
 **The Flat Tray Rule.** Anything that sits in the layout sits flat. A shadow says "this is floating above the page" and appears nowhere else.
 
+**The Transparent Flat Rule.** Flat is written as a transparent zero shadow, never `none`, so a control's shadow and its focus ring can share one box-shadow.
+
 ## Shapes
 
-Label stock with barely-there corners. The radius scale is set outright (xs 1px, sm 2px, md 3px, lg 4px) because shadcn's derived scale goes negative at these sizes. Buttons, inputs and selects use 3px; tags, legend insets, drawer chevrons and the holotype badge use 1px; the top-hotspot callout uses 3px. Specimen labels and pins are square-cornered. The only fully round shapes are data: swatch dots, holotype dots and the scrubber thumb. Borders are always 1px; the active tab is marked by a 2px ink underline.
+Label stock with barely-there corners. The radius scale is set outright (xs 1px, sm 2px, md 3px, lg 4px) because shadcn's derived scale goes negative at these sizes. Buttons, inputs and selects use 3px; tags, legend insets, drawer chevrons and the holotype badge use 1px; the top-hotspot callout uses 3px. Specimen labels and pins are square-cornered. Full rounding is kept for data marks (swatch dots, holotype dots, legend rings) and for the two controls whose form is conventionally round: the switch track and the slider and scrubber thumbs. Borders are always 1px; the active tab is marked by a 2px ink underline.
 
 ## Components
 
@@ -354,7 +357,7 @@ Quiet and compact; most actions are ghost or outline so the rail's slate stays t
 - **Primary:** Archival Slate fill with white text; hover drops to 90% opacity.
 - **Outline:** tray ground with a hairline border; hover fills with wash.
 - **Ghost:** no fill; hover fills with wash. On the plate, ghost controls use plate-muted text and a 10% plate-ink hover.
-- **Focus:** a 2px series-1 blue outline offset 2px (dark theme uses series-dark-1).
+- **Focus:** the border shifts to the ring color and a 3px ring-color halo at 50% opacity draws as a box-shadow (series-1 in light, series-dark-1 in dark). Selects, toggles, switches and checkboxes share it. On the plate, controls use a plate-ink ring instead.
 
 ### Tabs
 - **Style:** the line variant: no container fill, 13-14px semibold labels in Ink 3, full top-bar height.
@@ -372,11 +375,12 @@ The signature navigation. Solid slate, white text, each drawer ruled by a rail-l
 
 ### Inputs / Fields
 - **Style:** transparent ground (paper in the top bar), 1px Rule Strong border, 3px radius, 36px height (32px small).
-- **Focus:** the global blue outline.
+- **Focus:** the control halo (border to ring color plus a 3px ring at 50%), as on buttons.
 - **Find trigger:** a field-styled button with a search icon, placeholder text and a keyboard hint.
 
 ### Record rows, metrics and tags
 - **Record row:** a full-width ruled button, label left and a mono figure right in Ink 3, hairline below, wash on hover, focus and when active.
+- **Everything else:** rows, links and tray titles take the global focus outline (2px ring color, offset 2px); scrolling panels (the explorer tree, the source reader, record panels) draw it inset at -2px so it is never clipped.
 - **Metric grid:** two columns ruled by hairlines; label 12px Ink 3, value 18px mono, optional 11px note.
 - **Tag:** 18px-tall hairline badge, 1px radius, Rule Strong border, 10.5px mono in Ink 2.
 - **Holotype badge:** 1px radius, red fill, 12px semibold white text, beside the accession number.
@@ -411,5 +415,5 @@ The plate title (display type in plate ink), the Tree/Imports toggle and Lanes c
 - **Don't** reorder the categorical slots or add a red slot.
 - **Don't** invert or dim light-surface colors to fit a dark surface.
 - **Don't** let the plate follow the theme; it is dark glass in both.
-- **Don't** round corners past 4px on structural elements; full rounding is for data dots only.
+- **Don't** round corners past 4px on structural elements; full rounding is for data dots, the switch track and slider thumbs.
 - **Don't** introduce a third typeface.

@@ -8,8 +8,9 @@
  * per click is what makes a big report feel slow.
  */
 
-import { REF_KINDS, type CodeSymbols, type FileRecord, type Report } from "../../shared/schema";
+import { REF_KINDS, type CodeSymbols, type FileRecord, type Report, type SymbolKind } from "../../shared/schema";
 import type { Adjacency, Model } from "../model/indices";
+import { CALL_KINDS } from "../model/symbols";
 import type { Filters } from "../state/store";
 import { filesUnder } from "../model/indices";
 
@@ -136,12 +137,36 @@ export interface DirSummary {
 }
 
 /** The shared filters' test, as the charts and trays apply it (charts/data.ts scopeFiles). */
-function passes(f: FileRecord, filters: Filters): boolean {
+export function passes(f: FileRecord, filters: Filters): boolean {
   if (filters.languages && !filters.languages.has(f.language)) return false;
   if (filters.categories && !filters.categories.has(f.category)) return false;
   if (filters.hideGenerated && f.generated) return false;
   if (filters.hideVendored && f.vendored) return false;
   return true;
+}
+
+/** Filters that hide nothing at all, vendored files included: what "Show all files" sets. */
+export const NO_FILTERS: Filters = { languages: null, categories: null, hideGenerated: false, hideVendored: false };
+
+/** Does any filter hide anything? Unlike the plate's chip, the default "hide vendored" counts. */
+export function filtering(filters: Filters): boolean {
+  return filters.languages !== null || filters.categories !== null || filters.hideGenerated || filters.hideVendored;
+}
+
+/**
+ * The filters in a few words, for a note beside a count ("TypeScript only, vendored"). Language
+ * names come from `languageName`; two or fewer are named, more are counted.
+ */
+export function describeFilters(filters: Filters, languageName: (id: string) => string): string {
+  const parts: string[] = [];
+  if (filters.languages) {
+    const names = [...filters.languages].map(languageName);
+    parts.push(names.length <= 2 ? `${names.join(" and ")} only` : `${names.length} languages only`);
+  }
+  if (filters.categories) parts.push(filters.categories.size === 1 ? `${[...filters.categories][0]} only` : `${filters.categories.size} categories only`);
+  if (filters.hideGenerated) parts.push("generated");
+  if (filters.hideVendored) parts.push("vendored");
+  return parts.join(", ");
 }
 
 /** Language mix, largest and hottest files, and owners beneath one directory. */
@@ -253,6 +278,36 @@ export function callEdges(symbols: CodeSymbols, symbol: number, direction: "inco
       kinds: [...e.kinds].sort((a, b) => b[1] - a[1]).map(([k]) => k),
     }))
     .sort((a, b) => b.count - a.count || symbols.symbols.name[a.symbol]!.localeCompare(symbols.symbols.name[b.symbol]!));
+}
+
+/**
+ * Kinds read as functions: their record keeps the words "Call hierarchy", "Incoming" and
+ * "Outgoing". Every other kind's dependents are "Used by": an interface's 435 incoming rows are
+ * type annotations, and "Callers 435" claimed they ran it.
+ */
+export const FUNCTION_LIKE: ReadonlySet<SymbolKind> = new Set<SymbolKind>(["function", "method", "constructor", "component", "hook"]);
+
+/**
+ * Split edges by whether the peer invokes the symbol at least once (a call, `new`, JSX) or only
+ * names it (passes it as a callback, reads it, uses it as a type). The two halves of "Callers".
+ */
+export function partitionByCall(edges: CallEdge[]): { calls: CallEdge[]; other: CallEdge[] } {
+  const calls: CallEdge[] = [];
+  const other: CallEdge[] = [];
+  for (const e of edges) (e.kinds.some((k) => CALL_KINDS.has(k)) ? calls : other).push(e);
+  return { calls, other };
+}
+
+/**
+ * Split outgoing edges into what a symbol uses and the types it only annotates with. A function
+ * whose signature names six interfaces listed them between its real callees, so "what does this
+ * call" had to be read off the per-row kind badges.
+ */
+export function partitionTypeRefs(edges: CallEdge[]): { uses: CallEdge[]; types: CallEdge[] } {
+  const uses: CallEdge[] = [];
+  const types: CallEdge[] = [];
+  for (const e of edges) (e.kinds.every((k) => k === KIND_INDEX.type) ? types : uses).push(e);
+  return { uses, types };
 }
 
 /** Type hierarchy rows: what a symbol extends/implements, and what extends/implements it. */

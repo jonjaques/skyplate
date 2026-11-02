@@ -24,7 +24,7 @@ import { StatTile, type StatusLevel } from "../kit/StatTile";
 import { measureColor, slotColor, surfaceColor } from "../kit/theme";
 import { PathText } from "../kit/PathText";
 import { ChartTooltip, type Tip } from "../kit/Tooltip";
-import { useScope } from "../scope";
+import { noCommitsText, useScope } from "../scope";
 import { Section, SectionNote, span } from "../Section";
 import { formatShare } from "../kit/marks";
 
@@ -116,7 +116,8 @@ function TruckFactor() {
 // ─── Contributors ────────────────────────────────────────────────────────────────────────────
 
 function Contributors() {
-  const { report, commits, surface, rangePhrase, files } = useScope();
+  const scope = useScope();
+  const { report, commits, surface, rangePhrase, files } = scope;
   const git = report.git!;
   const counts = useMemo(() => [...commitsByAuthor(git, commits!).entries()].sort((a, b) => b[1] - a[1]), [git, commits]);
   const total = commits!.length;
@@ -154,7 +155,7 @@ function Contributors() {
       title="Contributors"
       subtitle={`Commits ${rangePhrase || "over the whole history"}${files.selective ? " touching files in view" : ""}, top 15 and everyone else`}
       height={items.length * 28}
-      empty={total === 0 ? `No commits ${rangePhrase || "here"} touch the files in view.` : null}
+      empty={total === 0 ? noCommitsText(scope) : null}
       table={() => ({
         columns: [{ label: "Author" }, { label: "Commits", align: "right", mono: true }, { label: "Share", align: "right", mono: true }, { label: "Last commit", mono: true }, { label: "Automation" }],
         rows: counts.map(([id, n]) => [authorName(git.authors[id]), n, { text: formatShare(n / total), sort: n }, { text: formatDate(git.authors[id]!.last), sort: git.authors[id]!.last }, git.authors[id]!.bot ? "Bot" : ""]),
@@ -227,8 +228,9 @@ function Ownership() {
       legend={
         <Legend
           items={[
-            ...legendAuthors.map(([id, slot]) => ({ label: authorName(git.authors[id]), color: slotColor(slot, surface) })),
-            ...(anyOther ? [{ label: "Everyone else", color: slotColor(-1, surface) }] : []),
+            // Keyed by author id: two people can share a display name.
+            ...legendAuthors.map(([id, slot]) => ({ id: `author-${id}`, label: authorName(git.authors[id]), color: slotColor(slot, surface) })),
+            ...(anyOther ? [{ id: "everyone-else", label: "Everyone else", color: slotColor(-1, surface) }] : []),
           ]}
         />
       }
@@ -346,7 +348,9 @@ function OwnershipBar({
     >
       {row.parts.map((p, i) => (
         <span
-          key={p.slot}
+          // The person, not the palette slot: a slot is a color, which a re-ranking could hand
+          // to someone else. Everyone without a slot shares the one folded segment.
+          key={p.slot >= 0 ? `author-${p.authors[0]}` : "everyone-else"}
           ref={(el) => {
             segs.current[i] = el;
           }}
@@ -377,7 +381,8 @@ function OwnershipBar({
  * the share outright instead.
  */
 function Concentration() {
-  const { report, commits, surface, rangePhrase, files, from } = useScope();
+  const scope = useScope();
+  const { report, commits, surface, rangePhrase, files, from } = scope;
   const git = report.git!;
   const people = useMemo(
     () => [...commitsByAuthor(git, commits!).entries()].filter(([id, c]) => c > 0 && !git.authors[id]?.bot).sort((a, b) => b[1] - a[1]),
@@ -402,9 +407,16 @@ function Concentration() {
     <Figure
       className={span(4)}
       title="Commit concentration"
-      subtitle={`${headline}${rangePhrase ? ` ${rangePhrase}` : ""}${curveForm ? ". The diagonal is perfectly even." : "."}`}
+      // Under two people the headline has nobody to name (it read " made 0% of commits").
+      subtitle={n < 2 ? "How evenly the commits are spread across people" : `${headline}${rangePhrase ? ` ${rangePhrase}` : ""}${curveForm ? ". The diagonal is perfectly even." : "."}`}
       height={curveForm ? 260 : 150}
-      empty={n < 2 ? "Fewer than two people with commits here, so there is no concentration to measure." : null}
+      empty={
+        commits!.length === 0
+          ? noCommitsText(scope)
+          : n < 2
+            ? `Fewer than two people have commits ${rangePhrase || "in this history"}${files.selective ? " that touch the files in view" : ""}, so there is no concentration to measure.`
+            : null
+      }
       table={() =>
         curveForm
           ? {

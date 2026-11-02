@@ -50,12 +50,18 @@ export interface PlateRect {
   h: number;
 }
 
+/** A region name's box on the plate; `pinned` for the open drawer's, which never steps aside. */
+export interface RegionLabelRect extends PlateRect {
+  pinned?: boolean;
+}
+
 /**
  * Frame listener order. The overlays share the plate and must agree within one frame (with
  * frameloop "demand" a label that waits for the next frame may never get one):
  *   REGIONS   region labels work out where they would sit and publish it
- *   LABELS    specimen labels place themselves around those, then publish their own rects
- *   YIELD     region labels still under a specimen label step aside
+ *   LABELS    specimen labels place themselves around those, then publish their rects and leaders
+ *   YIELD     region labels a specimen label or its leader still touches move below or beside
+ *             their star, or step aside when those spots are taken too
  */
 export const FRAME_ORDER = { REGIONS: 0, LABELS: 1, YIELD: 2 } as const;
 
@@ -73,6 +79,22 @@ export function regionOfDir(engine: GalaxyEngine, dir: number): number {
   let d = dir;
   while (d > 0 && dirs[d]!.parent > 0) d = dirs[d]!.parent;
   return engine.regionByDir.get(d) ?? -1;
+}
+
+/**
+ * Flash files the scrubber is near. Past this many touched at once, each flash is scaled down by
+ * √(FLASH_BUDGET / touched), so the plate's total flash grows with the square root of the files
+ * touched instead of in step with them: a window that touched 800 files flashes each at half
+ * strength. A young project touches most of itself every few weeks, and at full strength every
+ * week of its history read as one white burst.
+ */
+const FLASH_BUDGET = 200;
+/** The scale-down never goes below this: a busy week's flash is quieter, never gone. */
+const FLASH_FLOOR = 0.4;
+
+/** Per-star flash scale for a week that touched `touched` files (1 when under the budget). */
+export function flashScale(touched: number): number {
+  return touched <= FLASH_BUDGET ? 1 : Math.max(FLASH_FLOOR, Math.sqrt(FLASH_BUDGET / touched));
 }
 
 /** The default three-quarter view: from below the disc's south edge, ~40° above its plane. */
@@ -136,9 +158,11 @@ export class GalaxyEngine {
   atHome = false;
 
   /** Region labels that would show this frame (published at FRAME_ORDER.REGIONS). */
-  regionLabelRects: PlateRect[] = [];
+  regionLabelRects: RegionLabelRect[] = [];
   /** Specimen labels placed this frame (published at FRAME_ORDER.LABELS). */
   labelRects: PlateRect[] = [];
+  /** Their leaders, flat [x1, y1, x2, y2, …] from each pinned star to its label (FRAME_ORDER.LABELS). */
+  labelLeaders: number[] = [];
   /** The symbol definition under the knockout disc, or -1. */
   definitionFile = -1;
 
@@ -322,6 +346,10 @@ export class GalaxyEngine {
       const strength = 1 - (time - times[c]!) / window;
       for (const f of git.commits.files[c]!) if (strength > this.flash[f]!) this.flash[f] = strength;
     }
+    let touched = 0;
+    for (let i = 0; i < this.n; i++) if (this.flash[i]! > 0) touched++;
+    const k = flashScale(touched);
+    if (k < 1) for (let i = 0; i < this.n; i++) this.flash[i] = this.flash[i]! * k;
     this.touch("aFlash");
   }
 

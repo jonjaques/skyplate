@@ -205,8 +205,22 @@ function WorkArea({ bp }: { bp: Breakpoint }) {
   // The charts fill the screen under the sticky bar: 52px, or 92px below 768px, where the tabs
   // take a second row (TopBar).
   const screen = bp === "compact" ? "h-[calc(100dvh-92px)]" : "h-[calc(100dvh-52px)]";
+  // Radix makes each panel a tab stop (the step from the tab list into its content), and the
+  // shared TabsContent sets outline-none, so the global focus ring never showed there and a
+  // keyboard reader could not tell where focus had gone. The ring is an inset outline on an
+  // overlay, not on the panel itself: an element's own outline paints beneath its positioned
+  // descendants, and the plate (positioned, edge to edge) hid all of it but the trays' edge.
+  // `isolate` keeps the overlay's z-index inside the panel, under the sticky top bar.
   const pane = (value: Tab, className: string, tall: string, children: ReactNode) => (
-    <TabsContent value={value} className={cn("min-h-0", stacked ? tall : "h-full", className)}>
+    <TabsContent
+      value={value}
+      className={cn(
+        "relative isolate min-h-0",
+        "focus-visible:after:pointer-events-none focus-visible:after:absolute focus-visible:after:inset-0 focus-visible:after:z-50 focus-visible:after:outline-2 focus-visible:after:-outline-offset-2 focus-visible:after:outline-ring focus-visible:after:outline-solid focus-visible:after:content-['']",
+        stacked ? tall : "h-full",
+        className,
+      )}
+    >
       {children}
     </TabsContent>
   );

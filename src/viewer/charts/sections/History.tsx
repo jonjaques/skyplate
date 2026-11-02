@@ -20,7 +20,7 @@ import { COLUMNS_UP_TO, spanWord, StackedColumns, type StackSeries } from "../ki
 import { measureColor, slotColor, surfaceColor } from "../kit/theme";
 import { TimeSeries } from "../kit/TimeSeries";
 import { ChartTooltip } from "../kit/Tooltip";
-import { useScope } from "../scope";
+import { noCommitsText, useScope } from "../scope";
 import { Section, SectionNote, span } from "../Section";
 import { formatShare } from "../kit/marks";
 
@@ -55,18 +55,22 @@ export function HistorySection() {
 }
 
 function WeeklyCommits() {
-  const { report, commits, from, surface, rangePhrase, files } = useScope();
+  const scope = useScope();
+  const { report, commits, from, surface, rangePhrase, files } = scope;
   const git = report.git!;
   const weeks = useMemo(() => weekly(git, commits!, from), [git, commits, from]);
   const total = commits!.length;
   const busiest = weeks.reduce((best, w) => (w.commits > best.commits ? w : best), weeks[0]!);
+  const what = `${rangePhrase || "over the whole history"}${files.selective ? " that touch files in view" : ""}`;
   return (
     <Figure
       className={span(12)}
       title="Commits per week"
-      subtitle={`${plural(total, "commit")} ${rangePhrase || "over the whole history"}${files.selective ? " that touch files in view" : ""}; the busiest week, ${formatDate(busiest.start)}, had ${formatInt(busiest.commits)}`}
+      // With nothing in scope every week ties at zero, and "the busiest week had 0" named
+      // the first of them as if it meant something. The empty state says why instead.
+      subtitle={total === 0 ? `Commits ${what}` : `${plural(total, "commit")} ${what}; the busiest week, ${formatDate(busiest.start)}, had ${formatInt(busiest.commits)}`}
       height={220}
-      empty={total === 0 ? `No commits ${rangePhrase || "in this history"} touch the files in view. Widen the range or the filters.` : null}
+      empty={total === 0 ? noCommitsText(scope) : null}
       table={() => ({
         columns: [{ label: "Week of", mono: true }, { label: "Commits", align: "right", mono: true }, { label: "Authors", align: "right", mono: true }, { label: "Lines added", align: "right", mono: true }, { label: "Lines deleted", align: "right", mono: true }],
         rows: weeks.filter((w) => w.commits > 0).map((w) => [{ text: formatDate(w.start), sort: w.start }, w.commits, w.authors, w.added, w.deleted]),
@@ -93,7 +97,7 @@ function WeeklyCommits() {
 }
 
 function Growth() {
-  const { report, from, surface, files } = useScope();
+  const { report, from, surface, files, rangePhrase } = useScope();
   const points = useMemo(() => report.git!.growth.filter((g) => from === null || g.start >= from - 7 * 86_400), [report, from]);
   const last = points[points.length - 1];
   return (
@@ -102,7 +106,11 @@ function Growth() {
       title="Growth"
       subtitle={`Net lines (added minus deleted) over time, all files${files.selective ? "; not narrowed by the filters" : ""}`}
       height={220}
-      empty={points.length < 2 ? "Too few weeks in this range to draw growth. Widen the range." : null}
+      empty={
+        points.length < 2
+          ? `Growth is sampled once a week, and there are fewer than two samples ${rangePhrase || "in this history"}.${rangePhrase ? " Choose a longer range." : ""}`
+          : null
+      }
       table={() => ({
         columns: [{ label: "Week of", mono: true }, { label: "Net lines", align: "right", mono: true }, { label: "Files", align: "right", mono: true }],
         rows: points.map((p) => [{ text: formatDate(p.start), sort: p.start }, p.lines, p.files]),
@@ -134,7 +142,7 @@ function Growth() {
 }
 
 function LanguageChurn() {
-  const { report, model, from, surface, filters } = useScope();
+  const { report, model, from, surface, filters, files, rangePhrase } = useScope();
   const churn = report.git!.languageChurn;
   const { times, series } = useMemo(() => {
     // Keep a month when any of it falls inside the range: it ends (the next month starts)
@@ -182,13 +190,27 @@ function LanguageChurn() {
     };
   }, [times, series]);
 
+  // The analyzer summed these per language over every file, so only the language filter can
+  // narrow them; a drawer or a category choice leaves them whole, and the subtitle says so.
+  const unnarrowed = [files.dir !== null && "the drawer", !!filters.categories && "the categories"].filter(Boolean).join(" or ");
+  const empty =
+    times.length < 2
+      ? `${rangePhrase ? `${capitalize(rangePhrase.replace(/^in /, ""))} fall` : "The whole history falls"} within one calendar month${
+          times[0] !== undefined ? `, ${formatMonth(times[0])}` : ""
+        }, so there is no month-to-month trend to stack.${rangePhrase ? " Choose a longer range." : ""}`
+      : series.length === 0
+        ? `No lines were added to ${filters.languages ? "the chosen languages" : "any language"} ${rangePhrase || "in this history"}.`
+        : null;
+
   return (
     <Figure
       className={span(8)}
       title="Lines added by language"
-      subtitle={`Per ${spanWord(columns.step)}, stacked; the seven palette languages and the rest as Other${filters.languages ? ", only the chosen languages" : ""}`}
+      subtitle={`Per ${spanWord(columns.step)}, stacked; the seven palette languages and the rest as Other${filters.languages ? ", only the chosen languages" : ""}${
+        unnarrowed ? `; every file${filters.languages ? " in those languages" : ""}, not narrowed by ${unnarrowed}` : ""
+      }`}
       height={240}
-      empty={times.length < 2 || series.length === 0 ? "Fewer than two months of history in this range, so there is no trend to stack. Widen the range." : null}
+      empty={empty}
       legend={<Legend items={series.map((s) => ({ label: s.label, color: s.color }))} />}
       table={() => ({
         columns: [{ label: "Month", mono: true }, ...series.map((s) => ({ label: s.label, align: "right" as const, mono: true }))],
@@ -201,6 +223,8 @@ function LanguageChurn() {
     </Figure>
   );
 }
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -302,7 +326,8 @@ function Punchcard() {
 }
 
 function CommitTypes() {
-  const { report, commits, surface, rangePhrase } = useScope();
+  const scope = useScope();
+  const { report, commits, surface, rangePhrase } = scope;
   const types = useMemo(() => commitTypes(report.git!, commits!), [report, commits]);
   const total = commits!.length;
   const untyped = types.find((t) => t.type === "")?.commits ?? 0;
@@ -329,14 +354,16 @@ function CommitTypes() {
       className={span(6)}
       title="Commit types"
       subtitle={
-        untyped > 0
-          ? `Conventional-commit prefixes (feat:, fix:…); ${formatInt(untyped)} of ${formatInt(total)} commits (${formatShare(untyped / Math.max(1, total))}) have none and are left out`
-          : `Conventional-commit prefixes (feat:, fix:…) on ${plural(total, "commit")} ${rangePhrase}`
+        total === 0
+          ? "Conventional-commit prefixes (feat:, fix:…)"
+          : untyped > 0
+            ? `Conventional-commit prefixes (feat:, fix:…); ${formatInt(untyped)} of ${formatInt(total)} commits (${formatShare(untyped / Math.max(1, total))}) have none and are left out`
+            : `Conventional-commit prefixes (feat:, fix:…) on ${plural(total, "commit")} ${rangePhrase}`
       }
       height={items.length * 28}
       empty={
         total === 0
-          ? `No commits ${rangePhrase || "here"} touch the files in view.`
+          ? noCommitsText(scope)
           : sparse
             ? `Few commits ${rangePhrase || "in this history"} use conventional prefixes (feat:, fix:…), so there is no breakdown to draw.`
             : null

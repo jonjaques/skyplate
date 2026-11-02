@@ -219,7 +219,7 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
     const apex = new THREE.Vector3();
     const extra: number[] = [];
     engine.filePos(s.defFile, b, engine.morphTarget);
-    for (const arc of s.arcs.slice(0, ARC_CAP)) {
+    for (const arc of [...s.arcs, ...s.dispatch].slice(0, ARC_CAP)) {
       laneApex(engine.filePos(arc.file, a, engine.morphTarget), b, ARC_LIFT, apex);
       extra.push(apex.x, apex.y, apex.z);
     }
@@ -306,6 +306,16 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   const hoverFrame = useRef(0);
   const lastPoint = useRef({ x: 0, y: 0 });
   const [moonHover, setMoonHover] = useState(-1);
+  // The moon ring belongs to the selected file. Clicking a moon selects its symbol and the ring
+  // goes, but with the pointer still the hover was never cleared, so the moon's name stayed on
+  // the plate over nothing; the same happened when another star took the selection.
+  useEffect(() => {
+    if (engine.hoverMoon < 0) return;
+    engine.hoverMoon = -1;
+    setMoonHover(-1);
+    if (container.current) container.current.style.cursor = "";
+    engine.invalidate();
+  }, [engine, selection]);
   const local = (e: { clientX: number; clientY: number }) => {
     const r = container.current!.getBoundingClientRect();
     return { x: e.clientX - r.left, y: e.clientY - r.top };

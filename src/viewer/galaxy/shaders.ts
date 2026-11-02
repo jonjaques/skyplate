@@ -2,7 +2,8 @@
  * GLSL for the plate. Four programs, each one draw call:
  *
  *   stars  every file as a point sprite: soft core + faint halo, holotype and selection rings,
- *          morph between tree and graph positions, history fade and flash, region hover
+ *          morph between tree and graph positions, history fade and flash (on the core only),
+ *          region hover
  *   lanes  import edges and symbol arcs as hairlines whose brightness travels toward the
  *          dependency (or the definition), so direction reads without arrowheads
  *   moons  a selected file's declared symbols, orbiting it
@@ -51,6 +52,7 @@ varying float vRingPulse;
 varying float vAlpha;
 varying float vHalo;        // halo strength: full for small stars, fading for big ones
 varying float vGhost;       // 1 for a selected file not yet created at the scrubber's date
+varying float vFlash;
 
 void main() {
   vec3 p = mix(position, aGraph, uMorph);
@@ -79,7 +81,8 @@ void main() {
   float world = uBaseSize + aSize * uSizeRange;
   float px = world * uSizeScale / max(-mv.z, 1e-3);
   px *= mix(0.7, 1.0, clamp(emph, 0.0, 1.0)) * (1.0 + 0.25 * clamp(emph - 1.0, 0.0, 1.0));
-  px *= 1.0 + 0.7 * isHover + 0.35 * isSel + 0.8 * aFlash + 0.5 * wave;
+  // The flash barely grows the star: a bigger sprite is a bigger halo, and halos add up.
+  px *= 1.0 + 0.7 * isHover + 0.35 * isSel + 0.25 * aFlash + 0.5 * wave;
   px = clamp(px, uMinPx, uMaxPx);
 
   // The sprite is larger than the star so its halo has room to spread: a halo clipped at the
@@ -106,7 +109,12 @@ void main() {
   vRingPulse = mark > 1.5 && mark < 2.5 ? 0.5 + 0.5 * sin(uClock * 2.4 * uMotion) : 0.0;
 
   float bright = clamp(emph, 0.0, 2.4);
-  vColor = aColor * bright + vec3(1.0, 0.95, 0.85) * (aFlash * 0.7 + wave * 0.5 + isHover * 0.35);
+  // The history flash is not in here: added to the color it lit the halo too, and where a
+  // busy week touched a whole cluster the summed halos went near-white, taking every
+  // language's color and the selection's ghost ring with them. The fragment shader puts it on
+  // the core alone (see STAR_FRAGMENT).
+  vColor = aColor * bright + vec3(1.0, 0.95, 0.85) * (wave * 0.5 + isHover * 0.35);
+  vFlash = aFlash;
   vAlpha = visible;
 }
 `;
@@ -120,6 +128,7 @@ varying float vRingPulse;
 varying float vAlpha;
 varying float vHalo;
 varying float vGhost;
+varying float vFlash;
 
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
@@ -139,7 +148,9 @@ void main() {
   // circle outline ever shows.
   float core = smoothstep(0.62, 0.2, rr);
   float halo = 0.42 * vHalo * exp(-1.6 * rr) * (1.0 - smoothstep(0.65, 1.0, r));
-  vec3 col = vColor * (core + halo);
+  // A flash brightens the core in its own hue, with a faint warm glint at the center: a lone
+  // touched file still twinkles, and a touched cluster stays the color of its language.
+  vec3 col = vColor * (core * (1.0 + vFlash) + halo) + vec3(1.0, 0.95, 0.85) * (vFlash * 0.45 * core * core);
 
   if (vMark > 0.5) {
     float ringR = 0.8;
@@ -167,9 +178,13 @@ void main() {
  *   3 callee link      faint dotted, outward from the definition
  *   4 every edge       faint and static
  *   5 implementation   solid, in the second ink, a slow pulse running out from the definition
+ *   6 dispatch arc     solid, steady and dim: a caller of the interface member it implements,
+ *                      which reaches it only when the call lands on this implementation. No
+ *                      pulse, since a pulse claims a call the checker never saw.
  *
- * Symbol arcs (1, 2, 5) fade over their last tenth into the definition. A function with 155
+ * Symbol arcs (1, 2, 5, 6) fade over their last tenth into the definition. A function with 155
  * referencing files otherwise converged in a white blob that swallowed the definition ring.
+ * aGain scales a whole lane (test files' arcs are drawn at TEST_GAIN).
  */
 export const LANE_VERTEX = /* glsl */ `
 uniform float uMorph;
@@ -178,10 +193,12 @@ attribute float aT;
 attribute float aStyle;
 attribute float aWeight;
 attribute float aLen;       // lane length in world units, for dash spacing
+attribute float aGain;      // whole-lane strength, 1 by default
 varying float vT;
 varying float vStyle;
 varying float vWeight;
 varying float vLen;
+varying float vGain;
 void main() {
   vec3 p = mix(position, aGraph, uMorph);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
@@ -189,6 +206,7 @@ void main() {
   vStyle = aStyle;
   vWeight = aWeight;
   vLen = aLen;
+  vGain = aGain;
 }
 `;
 
@@ -202,6 +220,7 @@ varying float vT;
 varying float vStyle;
 varying float vWeight;
 varying float vLen;
+varying float vGain;
 void main() {
   float a = 0.0;
   float clock = uClock * uMotion;
@@ -225,17 +244,21 @@ void main() {
     a = 0.2 * dot;
   } else if (vStyle < 4.5) {
     a = 0.07;
-  } else {
+  } else if (vStyle < 5.5) {
     // Implementation: solid and steady, with one slow pulse leaving the definition (t falls).
     float k = max(vLen / 180.0, 1.0);
     float pulse = pow(max(0.0, 1.0 - abs(fract(vT * k + clock * 0.3) - 0.5) * 2.0), 8.0);
     if (uMotion < 0.5) pulse = 0.0;
     a = (0.36 + 0.4 * vWeight) + pulse * 0.6;
+  } else {
+    // Dispatch: a call arc's line at about half its strength, with nothing travelling on it.
+    a = 0.13 + 0.2 * vWeight;
   }
   bool arc = (vStyle > 0.5 && vStyle < 2.5) || vStyle > 4.5;
   if (arc) a *= 1.0 - 0.9 * smoothstep(0.88, 1.0, vT);
+  a *= vGain;
   if (a <= 0.001) discard;
-  vec3 ink = vStyle > 4.5 ? uInk2 : uInk;
+  vec3 ink = vStyle > 4.5 && vStyle < 5.5 ? uInk2 : uInk;
   gl_FragColor = vec4(ink * a * uOpacity, 1.0);
 }
 `;

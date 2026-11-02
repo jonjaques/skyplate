@@ -24,7 +24,7 @@ import { baseName, formatDate, formatInt, formatIsoDate, shortenPath } from "../
 import { cn } from "../lib/utils";
 import { useHover, useViewer } from "../state/store";
 import { passesFilters } from "./encode";
-import { FRAME_ORDER, regionOfDir, type GalaxyEngine, type PlateRect } from "./engine";
+import { FRAME_ORDER, regionOfDir, type GalaxyEngine, type PlateRect, type RegionLabelRect } from "./engine";
 import { ARC_LIFT, laneApex, selectionLanes } from "./lanes";
 import { describeRelation, type SymbolScene } from "./symbolScene";
 
@@ -60,8 +60,28 @@ const PIN_NEAR = 18;
 const PIN_FAR = 52;
 const MARGIN = 8;
 
-function overlaps(a: PlateRect, b: PlateRect, pad = 6): boolean {
+export function overlaps(a: PlateRect, b: PlateRect, pad = 6): boolean {
   return a.x < b.x + b.w + pad && b.x < a.x + a.w + pad && a.y < b.y + b.h + pad && b.y < a.y + a.h + pad;
+}
+
+/**
+ * What covering a region name costs a label, per name its card or leader touches. More than the
+ * densest star field (capped at 18) or lane bundle (24) can cost, so a label takes a busier spot
+ * before it strikes a name out: at 8 a name, capped at 24, a holotype pin's leader ran straight
+ * through ".claude 49" at 1280 px. Still soft, because a name that cannot be avoided steps aside
+ * (RegionLabels' yield pass) rather than hiding the label.
+ */
+const REGION_COST = 26;
+/** The open drawer's name never steps aside, so a label pays far more to touch it. */
+const REGION_PINNED_COST = 60;
+
+/** Cost of a label at `r`, its leader running (ax, ay) → (ex, ey), over the region names shown. */
+export function regionCost(regions: readonly RegionLabelRect[], r: PlateRect, ax: number, ay: number, ex: number, ey: number): number {
+  let cost = 0;
+  for (const g of regions) {
+    if (overlaps(r, g, 3) || segmentHitsRect(ax, ay, ex, ey, g)) cost += g.pinned ? REGION_PINNED_COST : REGION_COST;
+  }
+  return cost;
 }
 
 /** Does the segment (x1, y1)–(x2, y2) pass through the rectangle? Liang-Barsky clipping. */
@@ -248,7 +268,7 @@ export function SpecimenLabels({
         engine.filePos(scene.defFile, b3);
         const d = project(b3, camera, W, H);
         if (d) {
-          for (const arc of scene.arcs.slice(0, ARC_OBSTACLES)) {
+          for (const arc of [...scene.arcs, ...scene.dispatch].slice(0, ARC_OBSTACLES)) {
             engine.filePos(arc.file, a3);
             laneApex(a3, b3, ARC_LIFT, apex);
             const s0 = project(a3, camera, W, H);
@@ -266,6 +286,10 @@ export function SpecimenLabels({
       const regions = engine.regionLabelRects;
 
       const placed: PlateRect[] = [];
+      // Leaders as drawn this frame, from the star itself (not the gap) to the label's edge, so a
+      // region name sitting on a pinned star counts as crossed. The region labels' yield pass
+      // reads them.
+      const leaders: number[] = [];
       specs.forEach((spec, idx) => {
         const card = cards.current.get(spec.key);
         const line = lines.current.get(spec.key);
@@ -339,13 +363,14 @@ export function SpecimenLabels({
           // region name strikes it out as surely as a label on top of it.
           const ex = Math.min(Math.max(a.x, x), x + w);
           const ey = Math.min(Math.max(a.y, y), y + h);
-          let names = 0;
-          for (const g of regions) if (overlaps(r, g, 3) || segmentHitsRect(a.x, a.y, ex, ey, g)) names++;
+          return regionCost(regions, r, a.x, a.y, ex, ey) + laterCost(x, y, w, h) + Math.min(18, engine.starsIn(x, y, w, h) * 0.25) + Math.min(24, crossings(r) * 0.7) + pref;
+        };
+        const laterCost = (x: number, y: number, w: number, h: number) => {
           let later = 0;
           anchors.forEach((o, j) => {
             if (o && j > idx && o.x > x - 6 && o.x < x + w + 6 && o.y > y - 6 && o.y < y + h + 6) later++;
           });
-          return Math.min(24, names * 8) + later * 6 + Math.min(18, engine.starsIn(x, y, w, h) * 0.25) + Math.min(24, crossings(r) * 0.7) + pref;
+          return later * 6;
         };
         const score = (ci: number) => hard(ci) + soft(ci);
         // Keep last frame's spot unless another is clearly better, so labels do not hop while
@@ -395,14 +420,17 @@ export function SpecimenLabels({
         dot.setAttribute("cx", ex.toFixed(1));
         dot.setAttribute("cy", ey.toFixed(1));
         dot.setAttribute("visibility", len > gap ? "visible" : "hidden");
+        if (len > gap) leaders.push(a.x, a.y, ex, ey);
       });
       engine.labelRects = placed;
+      engine.labelLeaders = leaders;
     }, FRAME_ORDER.LABELS);
   }, [engine, specs, laneEnds, scene]);
 
   useEffect(
     () => () => {
       engine.labelRects = [];
+      engine.labelLeaders = [];
     },
     [engine],
   );

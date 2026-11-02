@@ -17,6 +17,7 @@
 import {
   CATEGORY_GROUP,
   SymbolFlag,
+  type Category,
   type CategoryGroup,
   type CodeSymbols,
   type FileRecord,
@@ -24,6 +25,7 @@ import {
   type Report,
 } from "../../shared/schema";
 import { CATEGORY_GROUPS } from "../lib/colors";
+import { formatDate, plural } from "../lib/format";
 import { filesUnder, type Model } from "../model/indices";
 import type { Filters } from "../state/store";
 
@@ -108,6 +110,62 @@ export function hasHistory(report: Report): boolean {
   return !!report.git && report.git.commits.time.length >= 2 && report.git.last > report.git.first;
 }
 
+/**
+ * Why a commit chart has nothing to draw, as a sentence for its empty state. Only asked when
+ * the report has history: without git, or with a single commit, the History and People
+ * sections and the activity tray say so before any chart is drawn.
+ *
+ * The range is measured back from the newest commit, so it always holds at least one commit;
+ * an empty chart means every commit in it misses the files in view. Saying that, with the
+ * count, keeps "no commits in the last 30 days" from reading as a quiet month for the project.
+ *
+ * `where` names the scope ("the files in apps/game", "the files in view") and `widen` the way
+ * out of it ("close the drawer", "widen the filters").
+ */
+export function noCommitsReason(git: GitSummary, from: number | null, rangePhrase: string, where: string, widen: string): string {
+  let inRange = 0;
+  for (const t of git.commits.time) if (from === null || t >= from) inRange++;
+  if (inRange === 0) return `No commits ${rangePhrase || "in this history"}: the newest is from ${formatDate(git.last)}.`;
+  if (from !== null) return `None of the ${plural(inRange, "commit")} ${rangePhrase} touch ${where}. Choose a longer range or ${widen}.`;
+  return `None of the ${plural(inRange, "analyzed commit")} touch ${where}: they are untracked or not yet committed${
+    git.truncated ? ", or last changed before the analyzed history begins" : ""
+  }.`;
+}
+
+// ─── Filter menus ────────────────────────────────────────────────────────────────────────────
+
+export interface Facets {
+  /** Files and code lines per language id. */
+  languages: Map<string, { files: number; code: number }>;
+  /** Files per category. */
+  categories: Map<Category, number>;
+}
+
+/**
+ * Counts for the Charts filter menus, faceted the usual way: each menu counts the files that
+ * the open drawer and every other filter leave in view, ignoring its own choice, so a count is
+ * what checking that option would show. Report-wide totals offered EJS (21 files) inside a
+ * six-file drawer with no EJS in it, and counted vendored files the view was hiding.
+ */
+export function facets(report: Report, model: Model, filters: Filters, dir: number | null): Facets {
+  const languages = new Map<string, { files: number; code: number }>();
+  const categories = new Map<Category, number>();
+  const visit = (f: FileRecord) => {
+    if (filters.hideGenerated && f.generated) return;
+    if (filters.hideVendored && f.vendored) return;
+    if (!filters.categories || filters.categories.has(f.category)) {
+      const e = languages.get(f.language) ?? { files: 0, code: 0 };
+      e.files += 1;
+      e.code += f.code;
+      languages.set(f.language, e);
+    }
+    if (!filters.languages || filters.languages.has(f.language)) categories.set(f.category, (categories.get(f.category) ?? 0) + 1);
+  };
+  if (dir !== null && dir > 0) for (const id of filesUnder(model, dir)) visit(report.files[id]!);
+  else for (const f of report.files) visit(f);
+  return { languages, categories };
+}
+
 // ─── Languages and categories ────────────────────────────────────────────────────────────────
 
 export interface LanguageShare {
@@ -117,6 +175,17 @@ export interface LanguageShare {
   code: number;
   files: number;
 }
+
+export const hasSlot = (slot: number) => slot >= 0 && slot < 7;
+
+/**
+ * Largest first. On a tie the slotted language goes first: the analyzer breaks ties by id, and
+ * breaking them here by file count named express's HTML (44 lines, 8 files) and folded CSS (44
+ * lines, 4 files), the language holding slot 6, so the tray's gray "6 others" hid a language
+ * the plate draws in color.
+ */
+const bySize = (a: LanguageShare, b: LanguageShare) =>
+  b.code - a.code || Number(hasSlot(b.slot)) - Number(hasSlot(a.slot)) || b.files - a.files;
 
 /** Code lines per language over the scope, largest first. */
 export function languageShares(report: Report, model: Model, ids: number[]): LanguageShare[] {
@@ -132,13 +201,17 @@ export function languageShares(report: Report, model: Model, ids: number[]): Lan
     entry.code += f.code;
     entry.files += 1;
   }
-  return [...by.values()].sort((a, b) => b.code - a.code || b.files - a.files);
+  return [...by.values()].sort(bySize);
 }
 
 /** How many languages a composition names before folding the rest. Fills the tray's 2 × 4 key. */
 export const NAMED_LANGUAGES = 7;
 
-export const hasSlot = (slot: number) => slot >= 0 && slot < 7;
+/**
+ * linguist's fallbacks for "nothing matched". The analyzer never gives them a slot
+ * (src/core/pipeline.ts summarizeLanguages), so the plate files them under Other.
+ */
+const FALLBACK_LANGUAGES = new Set(["text", "binary"]);
 
 export interface CompositionPart {
   /** Language id, or "rest" for the folded remainder. */
@@ -168,15 +241,29 @@ export interface Composition {
  * named entry. A named language keeps its own color from the report, so a filter never
  * repaints it: its slot hue when it has one, else the gray the plate draws it in.
  *
+ * One exception to size: a fallback (Text, Binary) gives its named place to a slotted language
+ * that would otherwise fold. Slots go to the seven largest languages that are not fallbacks,
+ * so without it, whenever Text outgrew the seventh (fd, flask, fzf), the tray named Text in gray
+ * and folded that seventh language, colored on the plate and in the galaxy key, into "N others".
+ * With it the unfiltered tray names exactly the galaxy key's seven, and Text sits in the
+ * remainder, as it sits in the key's Other.
+ *
  * Order: slotted parts in slot order (the order the palette was validated in, which also
  * keeps a drawer from shuffling the bar), then the unslotted ones by size, then the rest.
  */
 export function composition(shares: LanguageShare[], named = NAMED_LANGUAGES): Composition {
-  const withCode = shares.filter((s) => s.code > 0).sort((a, b) => b.code - a.code || b.files - a.files);
+  const withCode = shares.filter((s) => s.code > 0).sort(bySize);
   // Folding a single language into "1 other" would hide its name to save no room.
   const cut = withCode.length <= named + 1 ? withCode.length : named;
   const head = withCode.slice(0, cut);
   const tail = withCode.slice(cut);
+  for (let t = 0; t < tail.length; t++) {
+    if (!hasSlot(tail[t]!.slot)) continue;
+    const h = head.findLastIndex((s) => FALLBACK_LANGUAGES.has(s.id));
+    if (h < 0) break;
+    [head[h], tail[t]] = [tail[t]!, head[h]!];
+  }
+  tail.sort(bySize);
   const part = (s: LanguageShare, slot: number): CompositionPart => ({ key: s.id, slot, label: s.name, code: s.code, languages: [s], rest: false });
   const parts = [
     ...head.filter((s) => hasSlot(s.slot)).sort((a, b) => a.slot - b.slot).map((s) => part(s, s.slot)),

@@ -3,10 +3,15 @@
  *
  * Each label sits on the region's own stars (the member nearest the region's centroid, so it
  * lands on a crescent arm rather than in the empty middle of its curve) and follows the morph.
- * Hovering one lights its members and its outline; clicking opens the drawer. Labels that would
- * collide with a larger region's label, or with the plate chrome, step aside for the frame, and
- * so does any label a specimen label could not avoid (see FRAME_ORDER). With a drawer open, the
- * other regions' names dim with their stars: at full strength they floated over empty plate.
+ * Hovering one lights its members and its outline; clicking opens the drawer. A label that would
+ * collide with a larger region's label, or with the plate chrome, steps aside for the frame. One
+ * that a specimen label or its leader could not avoid moves below or beside its star, and steps
+ * aside only when those spots are taken too (see FRAME_ORDER). With a drawer open, the other
+ * regions' names dim with their stars: at full strength they floated over empty plate.
+ *
+ * Every name carries a halo in the plate's own color, as a map knocks a road out from under a
+ * town name. The names sit on their region's stars by design, and without it a star landed on
+ * the "3" of "packages 349" and contour lines ran through the letters.
  */
 
 import { useEffect, useMemo, useRef } from "react";
@@ -14,9 +19,32 @@ import * as THREE from "three";
 import { formatInt } from "../lib/format";
 import { cn } from "../lib/utils";
 import { useHover, useViewer } from "../state/store";
-import { FRAME_ORDER, regionOfDir, type GalaxyEngine, type PlateRect, type Region } from "./engine";
+import { FRAME_ORDER, regionOfDir, type GalaxyEngine, type PlateRect, type Region, type RegionLabelRect } from "./engine";
+import { overlaps, segmentHitsRect } from "./Labels";
 
 type Placed = PlateRect;
+
+/** Gap between a name and the star it is pinned to. */
+const NAME_GAP = 10;
+
+/**
+ * The halo: a plate-colored stroke painted under the glyphs (paint-order puts the fill on top,
+ * so the letters keep their full weight), feathered by a soft shadow of the same color. Two
+ * pixels each side covers a 12px label's counters and letter gaps, so no star or lane shows
+ * inside a word; a wider stroke would start erasing the region's own stars around the name.
+ */
+const HALO = "[paint-order:stroke_fill] [-webkit-text-stroke:4px_var(--color-plate)] [text-shadow:0_0_4px_var(--color-plate)]";
+
+/**
+ * Does any specimen label, or any leader running from a pinned star to its label, touch `r`?
+ * A leader starting on a star the name sits over counts, so the name gives up that star.
+ */
+export function touchedBySpecimens(r: PlateRect, labels: readonly PlateRect[], leaders: readonly number[]): boolean {
+  for (const p of labels) if (overlaps(r, p, 3)) return true;
+  const g = { x: r.x - 2, y: r.y - 2, w: r.w + 4, h: r.h + 4 };
+  for (let k = 0; k + 3 < leaders.length; k += 4) if (segmentHitsRect(leaders[k]!, leaders[k + 1]!, leaders[k + 2]!, leaders[k + 3]!, g)) return true;
+  return false;
+}
 
 /** The member nearest the centroid of the region's positions in one layout. */
 function anchorOf(pos: Float32Array, files: Int32Array): number {
@@ -82,17 +110,37 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
     const container = wrapper.current?.parentElement ?? null;
     let chrome: Placed[] = [];
     let age = 0;
-    const shown: { el: HTMLButtonElement; r: Placed; focused: boolean }[] = [];
-    // After the specimen labels have placed themselves: a region name one of them covers steps
-    // aside for this frame (the open drawer's name excepted; the label then avoids it instead).
+    let W = 0;
+    let H = 0;
+    /** Names shown this frame: where each sits, the other spots it could take, and whether it is the open drawer's. */
+    const shown: { el: HTMLButtonElement; r: Placed; alts: Placed[]; focused: boolean }[] = [];
+    const onPlate = (r: Placed) => r.x > 4 && r.y > 4 && r.x + r.w < W - 4 && r.y + r.h < H - 4;
+    const clear = (r: Placed, others: readonly Placed[], gap: number) => {
+      for (const p of others) if (r.x < p.x + p.w + gap && p.x < r.x + r.w + gap && r.y < p.y + p.h + 2 && p.y < r.y + r.h + 2) return false;
+      return true;
+    };
+    // After the specimen labels have placed themselves: a name one of them, or one of their
+    // leaders, still touches moves to another spot around its star when one is free, and
+    // otherwise steps aside for this frame. The open drawer's name never steps aside (the
+    // labels pay more to avoid it instead), but it does move when it can.
     const yieldOff = engine.onFrame(() => {
-      for (const { el, r, focused } of shown) {
-        if (focused) continue;
-        const covered = engine.labelRects.some((p) => r.x < p.x + p.w + 3 && p.x < r.x + r.w + 3 && r.y < p.y + p.h + 3 && p.y < r.y + r.h + 3);
-        el.style.visibility = covered ? "hidden" : "visible";
+      const labels = engine.labelRects;
+      const leaders = engine.labelLeaders;
+      if (labels.length === 0 && leaders.length === 0) return;
+      for (const entry of shown) {
+        if (!touchedBySpecimens(entry.r, labels, leaders)) continue;
+        const rest = [...chrome];
+        for (const o of shown) if (o !== entry && o.el.style.visibility !== "hidden") rest.push(o.r);
+        const spot = entry.alts.find((r) => onPlate(r) && clear(r, rest, 6) && !touchedBySpecimens(r, labels, leaders));
+        if (spot) {
+          entry.r = spot;
+          entry.el.style.transform = `translate3d(${Math.round(spot.x)}px, ${Math.round(spot.y)}px, 0)`;
+        } else if (!entry.focused) entry.el.style.visibility = "hidden";
       }
     }, FRAME_ORDER.YIELD);
-    const placeOff = engine.onFrame(({ camera, width: W, height: H, morph }) => {
+    const placeOff = engine.onFrame(({ camera, width, height, morph }) => {
+      W = width;
+      H = height;
       if (age-- <= 0 && container) {
         const base = container.getBoundingClientRect();
         chrome = [...container.querySelectorAll<HTMLElement>("[data-plate-chrome]")].map((el) => {
@@ -101,7 +149,7 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
         });
         age = 30;
       }
-      const placed: Placed[] = [];
+      const placed: RegionLabelRect[] = [];
       shown.length = 0;
       for (const { region, tree, graph } of regions) {
         const el = els.current.get(region.index);
@@ -114,22 +162,24 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
         const sx = (a.x + 1) * 0.5 * W;
         const sy = (1 - a.y) * 0.5 * H;
         const { w, h } = sizes.current.get(region.index) ?? { w: 80, h: 18 };
-        const r = { x: sx - w / 2, y: sy - h - 10, w, h };
-        let visible = !behind && r.x > 4 && r.y > 4 && r.x + w < W - 4 && r.y + h < H - 4;
+        // A name sits above its star. The other spots (below, then beside it) are only for
+        // stepping out from under a specimen label in the yield pass: offered to every name at
+        // rest, they let the small regions a larger name had crowded out back in, and the core
+        // of the plate filled with names sitting over their neighbors' stars.
+        const above = { x: sx - w / 2, y: sy - h - NAME_GAP, w, h };
+        const alts: Placed[] = [
+          { x: sx - w / 2, y: sy + NAME_GAP, w, h },
+          { x: sx + NAME_GAP + 4, y: sy - h / 2, w, h },
+          { x: sx - NAME_GAP - 4 - w, y: sy - h / 2, w, h },
+        ];
+        const focused = region.index === focusRegion;
         // The focused region always keeps its label; others yield to larger regions and chrome.
-        if (visible && region.index !== focusRegion) {
-          for (const p of [...placed, ...chrome]) {
-            if (r.x < p.x + p.w + 6 && p.x < r.x + r.w + 6 && r.y < p.y + p.h + 2 && p.y < r.y + r.h + 2) {
-              visible = false;
-              break;
-            }
-          }
-        }
+        const visible = !behind && onPlate(above) && (focused || clear(above, [...placed, ...chrome], 6));
         if (visible) {
-          placed.push(r);
-          shown.push({ el, r, focused: region.index === focusRegion });
+          placed.push(focused ? { ...above, pinned: true } : above);
+          shown.push({ el, r: above, alts, focused });
         }
-        el.style.transform = `translate3d(${Math.round(r.x)}px, ${Math.round(r.y)}px, 0)`;
+        el.style.transform = `translate3d(${Math.round(above.x)}px, ${Math.round(above.y)}px, 0)`;
         el.style.visibility = visible ? "visible" : "hidden";
       }
       engine.regionLabelRects = placed;
@@ -159,6 +209,7 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
           type="button"
           className={cn(
             "pointer-events-auto absolute top-0 left-0 flex items-baseline gap-1.5 rounded-xs px-1 py-px text-xs font-semibold whitespace-nowrap [font-stretch:80%] outline-none",
+            HALO,
             "text-plate-muted transition-[color,opacity] hover:text-plate-ink hover:opacity-100 focus-visible:text-plate-ink focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-plate-ink/60",
             region.index === focusRegion && "text-plate-ink",
             litRegion >= 0 && region.index !== litRegion && "opacity-35",
@@ -180,7 +231,10 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
           aria-label={`Open the ${region.name} drawer, ${formatInt(region.files.length)} files`}
         >
           {region.name}
-          <span className="figures font-mono text-[10.5px] font-normal opacity-80">{formatInt(region.files.length)}</span>
+          {/* Dimmed through its color, not opacity: opacity would thin the halo with it. */}
+          <span className="figures font-mono text-[10.5px] font-normal text-[color-mix(in_srgb,currentColor_80%,transparent)]">
+            {formatInt(region.files.length)}
+          </span>
         </button>
       ))}
     </div>

@@ -30,6 +30,13 @@ const CALLISH = new Set<number>([
   REF_KINDS.indexOf("jsx"),
 ]);
 
+/**
+ * Ref kinds that invoke the symbol (a call, `new`, a JSX element). The record labels a caller by
+ * these: callersOf above keeps every kind (the galaxy's ripples want every dependent), so an
+ * interface read "Callers 435" when all 435 were type annotations.
+ */
+export const CALL_KINDS: ReadonlySet<number> = CALLISH;
+
 export function buildSymbolModel(symbols: CodeSymbols, model: Model): SymbolModel {
   const count = symbols.symbols.name.length;
   const refs = symbols.refs;
@@ -96,6 +103,38 @@ export function impactOf(sm: SymbolModel, start: number, maxDepth = 3): Map<numb
     frontier = next;
   }
   return depth;
+}
+
+export interface HostUse {
+  /** The importing file: a Vue, Svelte or Astro component, a VitePress page, an MDX file. */
+  file: number;
+  /** 0-based line of its import statement. */
+  line: number;
+}
+
+const hostUseIndex = new WeakMap<CodeSymbols, Adjacency>();
+
+/**
+ * Imports of a symbol from files the compiler never read (CodeSymbols.hostUses), in file order.
+ * They are not references, so refs, callers and files all leave them out, and a composable used
+ * only from .vue files read "References 0, Callers 0" with nothing to say where it is used.
+ * Grouped once per table rather than binary-searched, so it holds even if a report's rows ever
+ * arrive unsorted.
+ */
+export function hostUsesOf(symbols: CodeSymbols, symbol: number): HostUse[] {
+  const host = symbols.hostUses;
+  if (!host || host.symbol.length === 0) return [];
+  let index = hostUseIndex.get(symbols);
+  if (!index) {
+    index = group(symbols.symbols.name.length, host.symbol, (i) => i);
+    hostUseIndex.set(symbols, index);
+  }
+  const out: HostUse[] = [];
+  for (let i = index.offsets[symbol]!; i < index.offsets[symbol + 1]!; i++) {
+    const row = index.targets[i]!;
+    out.push({ file: host.file[row]!, line: host.line[row]! });
+  }
+  return out;
 }
 
 /** Files referencing a symbol, with reference counts split into call-like and other uses. */

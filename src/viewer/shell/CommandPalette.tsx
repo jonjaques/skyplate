@@ -136,6 +136,12 @@ function Results({ query, close, setActive }: { query: string; close(): void; se
 
   const symbolsReady = symbolsStatus === "ready";
   const t = symbols?.symbols;
+  // The ref-count column is as wide as its widest entry, in ch of the mono face (exact, since
+  // every glyph is one ch). A fixed 68px fit "283 refs" and wrapped "1,117 refs" onto two lines.
+  const refsWidth = useMemo(
+    () => (t && hits ? Math.max(0, ...hits.symbols.map(({ i }) => plural(t.refs[i]!, "ref").length)) : 0),
+    [t, hits],
+  );
 
   // Groups in order of their best hit, so an exact author or action is not buried under eight
   // fuzzy file rows. A symbol whose name is exactly the query, and that something actually
@@ -232,7 +238,7 @@ function Results({ query, close, setActive }: { query: string; close(): void; se
             >
               <Folder />
               <span className="min-w-0 flex-1 truncate font-mono text-[12.5px]">{d.path}</span>
-              <span className="figures font-mono text-xs text-ink-3">{formatInt(d.totalFiles)}</span>
+              <span className="figures shrink-0 font-mono text-xs whitespace-nowrap text-ink-3">{formatInt(d.totalFiles)}</span>
             </CommandItem>
           );
         })}
@@ -259,14 +265,16 @@ function Results({ query, close, setActive }: { query: string; close(): void; se
             return (
               <CommandItem key={id} value={`sym:${id}`} onSelect={() => pickSymbol(id)}>
                 <Braces />
-                <span className="min-w-0 truncate font-mono text-[12.5px] text-ink">{t.name[id]}</span>
+                {/* The name is what the reader typed toward, so the path gives way first: at
+                    390px both shrank together and "vec3" was cut to "v…" beside a long path. */}
+                <span className="max-w-[45%] shrink-0 truncate font-mono text-[12.5px] text-ink">{t.name[id]}</span>
                 <span className="shrink-0 text-xs text-ink-3">{SYMBOL_KIND_LABEL[t.kind[id]!]}</span>
                 <span className="ml-auto min-w-0 truncate font-mono text-xs text-ink-3">
                   {file ? `${file.path}:${t.line[id]! + 1}` : ""}
                 </span>
                 {/* Two symbols can share a name ("Vec3" the interface, "Vec3" a test-local
                     alias); how much the project uses each is what tells them apart. */}
-                <span className="figures w-[68px] shrink-0 text-right font-mono text-xs text-ink-3">
+                <span className="figures shrink-0 text-right font-mono text-xs whitespace-nowrap text-ink-3" style={{ width: `${refsWidth}ch` }}>
                   {plural(t.refs[id]!, "ref")}
                 </span>
               </CommandItem>
@@ -292,7 +300,7 @@ function Results({ query, close, setActive }: { query: string; close(): void; se
               <User />
               <span className="truncate">{a.name}</span>
               <span className="min-w-0 truncate font-mono text-xs text-ink-3">{a.email}</span>
-              <span className="figures ml-auto shrink-0 font-mono text-xs text-ink-3">{plural(a.commits, "commit")}</span>
+              <span className="figures ml-auto shrink-0 font-mono text-xs whitespace-nowrap text-ink-3">{plural(a.commits, "commit")}</span>
             </CommandItem>
           );
         })}

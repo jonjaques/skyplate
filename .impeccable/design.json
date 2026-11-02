@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-01T04:57:50.077Z",
+  "generatedAt": "2026-11-01T05:44:07.000Z",
   "title": "Design System: starchart",
   "extensions": {
     "colorMeta": {
@@ -954,18 +954,18 @@
     "shadows": [
       {
         "name": "shadow-xs",
-        "value": "none",
-        "purpose": "Neutralizes shadcn's input and button shadow; in-layout surfaces sit flat."
+        "value": "0 0 #0000",
+        "purpose": "Flat: neutralizes shadcn's input and button shadow. A transparent zero shadow, not none, so it composes with the focus ring in one box-shadow list."
       },
       {
         "name": "shadow-sm",
-        "value": "none",
-        "purpose": "Neutralizes shadcn's active-tab shadow."
+        "value": "0 0 #0000",
+        "purpose": "Flat: neutralizes shadcn's active-tab and slider-thumb shadow; transparent zero for the same reason as shadow-xs."
       },
       {
         "name": "shadow-md",
         "value": "0 8px 20px -6px rgb(21 25 28 / 0.22), 0 1px 2px rgb(21 25 28 / 0.08)",
-        "purpose": "Float: menus, popovers, select lists."
+        "purpose": "Float: menus, popovers, select lists, chart tooltips."
       },
       {
         "name": "shadow-lg",
@@ -1024,11 +1024,19 @@
     ],
     "focus": {
       "value": "outline: 2px solid var(--color-ring); outline-offset: 2px",
-      "purpose": "Global focus-visible; ring is series-1 in light, series-dark-1 in dark."
+      "purpose": "Global focus-visible for rows, links and tray titles; ring is series-1 in light, series-dark-1 in dark. Scrolling panels draw it inset (outline-offset: -2px).",
+      "control": "border-color: var(--color-ring); box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ring) 50%, transparent)",
+      "controlPurpose": "shadcn controls (buttons, inputs, selects, toggles, switches, checkboxes, slider thumbs). Plate controls use a plate-ink ring instead."
     },
     "selection": {
       "background": "{colors.seq-200}",
       "color": "{colors.ink}"
+    },
+    "statusMeta": {
+      "critical": {
+        "value": "{colors.ink}",
+        "purpose": "Critical severity and shadcn destructive map to Ink; drawn as a filled ink octagon with the mark knocked out in paper."
+      }
     }
   },
   "components": [
@@ -1038,7 +1046,7 @@
       "refersTo": "button-primary",
       "description": "Solid slate action; rare, so the rail stays the dominant slate.",
       "html": "<button class=\"ds-btn-primary\">Open in Charts</button>",
-      "css": ".ds-btn-primary { font-family: var(--font-sans); font-stretch: 88%; display: inline-flex; align-items: center; height: 36px; padding: 8px 16px; border: none; border-radius: var(--radius-md, 3px); background: var(--color-rail, #4e6170); color: var(--color-rail-ink, #fff); font-size: 14px; font-weight: 500; transition: background-color 150ms; cursor: pointer; } .ds-btn-primary:hover { background: color-mix(in oklab, var(--color-rail, #4e6170) 90%, transparent); } .ds-btn-primary:focus-visible { outline: 2px solid var(--color-ring, #2a78d6); outline-offset: 2px; }"
+      "css": ".ds-btn-primary { font-family: var(--font-sans); font-stretch: 88%; display: inline-flex; align-items: center; height: 36px; padding: 8px 16px; border: 1px solid transparent; border-radius: var(--radius-md, 3px); background: var(--color-rail, #4e6170); color: var(--color-rail-ink, #fff); font-size: 14px; font-weight: 500; transition: background-color 150ms, box-shadow 150ms; cursor: pointer; } .ds-btn-primary:hover { background: color-mix(in oklab, var(--color-rail, #4e6170) 90%, transparent); } .ds-btn-primary:focus-visible { outline: none; border-color: var(--color-ring, #2a78d6); box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ring, #2a78d6) 50%, transparent); }"
     },
     {
       "name": "Outline Button",
@@ -1046,7 +1054,7 @@
       "refersTo": "button-outline",
       "description": "Default secondary action: tray ground, hairline border, wash on hover.",
       "html": "<button class=\"ds-btn-outline\">Show as a table</button>",
-      "css": ".ds-btn-outline { font-family: var(--font-sans); font-stretch: 88%; display: inline-flex; align-items: center; height: 36px; padding: 8px 16px; border: 1px solid var(--color-rule, #d5d9d6); border-radius: var(--radius-md, 3px); background: var(--color-tray, #f6f7f5); color: var(--color-ink, #15191c); font-size: 14px; font-weight: 500; transition: background-color 150ms; cursor: pointer; } .ds-btn-outline:hover { background: var(--color-wash, #eef0ee); } .ds-btn-outline:focus-visible { outline: 2px solid var(--color-ring, #2a78d6); outline-offset: 2px; }"
+      "css": ".ds-btn-outline { font-family: var(--font-sans); font-stretch: 88%; display: inline-flex; align-items: center; height: 36px; padding: 8px 16px; border: 1px solid var(--color-rule, #d5d9d6); border-radius: var(--radius-md, 3px); background: var(--color-tray, #f6f7f5); color: var(--color-ink, #15191c); font-size: 14px; font-weight: 500; transition: background-color 150ms, box-shadow 150ms; cursor: pointer; } .ds-btn-outline:hover { background: var(--color-wash, #eef0ee); } .ds-btn-outline:focus-visible { outline: none; border-color: var(--color-ring, #2a78d6); box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ring, #2a78d6) 50%, transparent); }"
     },
     {
       "name": "Ghost Button",
@@ -1054,15 +1062,15 @@
       "refersTo": "button-ghost",
       "description": "Quiet control; no fill until hover.",
       "html": "<button class=\"ds-btn-ghost\">16 more</button>",
-      "css": ".ds-btn-ghost { font-family: var(--font-sans); font-stretch: 88%; display: inline-flex; align-items: center; height: 36px; padding: 8px 16px; border: none; border-radius: var(--radius-md, 3px); background: transparent; color: var(--color-ink, #15191c); font-size: 14px; font-weight: 500; transition: background-color 150ms; cursor: pointer; } .ds-btn-ghost:hover { background: var(--color-wash, #eef0ee); } .ds-btn-ghost:focus-visible { outline: 2px solid var(--color-ring, #2a78d6); outline-offset: 2px; }"
+      "css": ".ds-btn-ghost { font-family: var(--font-sans); font-stretch: 88%; display: inline-flex; align-items: center; height: 36px; padding: 8px 16px; border: 1px solid transparent; border-radius: var(--radius-md, 3px); background: transparent; color: var(--color-ink, #15191c); font-size: 14px; font-weight: 500; transition: background-color 150ms, box-shadow 150ms; cursor: pointer; } .ds-btn-ghost:hover { background: var(--color-wash, #eef0ee); } .ds-btn-ghost:focus-visible { outline: none; border-color: var(--color-ring, #2a78d6); box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ring, #2a78d6) 50%, transparent); }"
     },
     {
       "name": "Find Field",
       "kind": "input",
       "refersTo": "input",
-      "description": "Hairline field with a 3px radius; focus is the global blue outline.",
+      "description": "Hairline field with a 3px radius; focus shifts the border to the ring color with a 3px halo.",
       "html": "<label class=\"ds-input\"><svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg><input placeholder=\"Find a file, symbol or author\"><kbd>⌘K</kbd></label>",
-      "css": ".ds-input { font-family: var(--font-sans); font-stretch: 88%; display: flex; align-items: center; gap: 8px; height: 36px; padding: 4px 12px; border: 1px solid var(--color-rule-strong, #b9c0c4); border-radius: var(--radius-md, 3px); background: var(--color-paper, #fff); color: var(--color-ink-3, #5d666d); width: 280px; } .ds-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--color-ink, #15191c); } .ds-input input::placeholder { color: var(--color-ink-3, #5d666d); } .ds-input kbd { font-family: var(--font-mono); font-size: 11px; padding: 1px 4px; border-radius: var(--radius-xs, 1px); background: var(--color-wash, #eef0ee); color: var(--color-ink-2, #3b4348); } .ds-input:focus-within { outline: 2px solid var(--color-ring, #2a78d6); outline-offset: 2px; }"
+      "css": ".ds-input { font-family: var(--font-sans); font-stretch: 88%; display: flex; align-items: center; gap: 8px; height: 36px; padding: 4px 12px; border: 1px solid var(--color-rule-strong, #b9c0c4); border-radius: var(--radius-md, 3px); background: var(--color-paper, #fff); color: var(--color-ink-3, #5d666d); width: 280px; } .ds-input input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 13px; color: var(--color-ink, #15191c); } .ds-input input::placeholder { color: var(--color-ink-3, #5d666d); } .ds-input kbd { font-family: var(--font-mono); font-size: 11px; padding: 1px 4px; border-radius: var(--radius-xs, 1px); background: var(--color-wash, #eef0ee); color: var(--color-ink-2, #3b4348); } .ds-input:focus-within { outline: none; border-color: var(--color-ring, #2a78d6); box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-ring, #2a78d6) 50%, transparent); }"
     },
     {
       "name": "Top-bar Tabs",
@@ -1128,7 +1136,7 @@
     "rules": [
       {
         "name": "The Holotype Reservation Rule",
-        "body": "Red means \"this region's most-depended-on file\" and nothing else. Critical severity is drawn as a solid ink octagon, unfavorable deltas use serious orange, and no categorical slot is red.",
+        "body": "Red means \"this region's most-depended-on file\" and nothing else. Critical severity is drawn as a solid ink octagon (the critical and destructive tokens are Ink), unfavorable deltas use serious orange, and no categorical slot is red.",
         "section": "colors"
       },
       {
@@ -1175,6 +1183,11 @@
         "name": "The Flat Tray Rule",
         "body": "Anything that sits in the layout sits flat. A shadow says \"this is floating above the page\" and appears nowhere else.",
         "section": "elevation"
+      },
+      {
+        "name": "The Transparent Flat Rule",
+        "body": "Flat is written as a transparent zero shadow, never `none`, so a control's shadow and its focus ring can share one box-shadow.",
+        "section": "elevation"
       }
     ],
     "dos": [
@@ -1194,7 +1207,7 @@
       "Don't reorder the categorical slots or add a red slot.",
       "Don't invert or dim light-surface colors to fit a dark surface.",
       "Don't let the plate follow the theme; it is dark glass in both.",
-      "Don't round corners past 4px on structural elements; full rounding is for data dots only.",
+      "Don't round corners past 4px on structural elements; full rounding is for data dots, the switch track and slider thumbs.",
       "Don't introduce a third typeface."
     ]
   }

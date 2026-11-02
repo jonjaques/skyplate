@@ -16,23 +16,34 @@
 
 import { ArrowUpRight, ChevronLeft, ChevronRight, Crosshair, Repeat } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
-import { REF_KINDS, SymbolFlag, type CodeSymbols, type Report } from "../../../shared/schema";
+import { REF_KINDS, SymbolFlag, type CodeSymbols, type Report, type SymbolKind } from "../../../shared/schema";
 import { Button } from "../../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { formatInt, plural } from "../../lib/format";
 import { cn } from "../../lib/utils";
-import type { SymbolModel } from "../../model/symbols";
+import { hostUsesOf, type HostUse, type SymbolModel } from "../../model/symbols";
 import { useViewer } from "../../state/store";
 import { linesOf, useSourceText } from "../../source/useSource";
-import { callEdges, callSite, callsThroughBases, heritage, HERITAGE_KINDS, selfCalls, type CallEdge } from "../derived";
+import {
+  callEdges,
+  callSite,
+  callsThroughBases,
+  FUNCTION_LIKE,
+  heritage,
+  HERITAGE_KINDS,
+  partitionByCall,
+  partitionTypeRefs,
+  selfCalls,
+  type CallEdge,
+} from "../derived";
 import { InlineDoc } from "../inline-doc";
 import { SYMBOL_KIND_LABEL, symbolFlagLabels } from "../labels";
 import { dig, openSourceKeepingSymbol, openSymbolDefinition } from "../navigate";
-import { MetricGrid, MoreButton, PathText, Quiet, Section, Tag, type Metric } from "../parts";
+import { LanguageSwatch, MetricGrid, MoreButton, PathText, Quiet, Section, Tag, type Metric } from "../parts";
 import { step, stepTo, useTrail } from "../trail";
-import { RecordHeading } from "./common";
+import { RecordHeading, ShowInGalaxy } from "./common";
 
 interface Ctx {
   report: Report;
@@ -52,6 +63,27 @@ function qualified(symbols: CodeSymbols, s: number): string {
   return t.parent[s]! >= 0 ? `${t.name[t.parent[s]!]}.${t.name[s]}` : t.name[s]!;
 }
 
+/**
+ * How the record names a symbol's dependents. The analyzer's `callers` counts every symbol that
+ * names it, so an interface read "Callers 435" over 435 type annotations, and a function passed
+ * as a callback 28 times and called 12 read "Callers 40". Functions and classes split the figure
+ * into the symbols that invoke it and the ones that only name it; every other kind's dependents
+ * are "Used by", with the callers among them in the note (a variable holding a logger is called,
+ * an interface never is).
+ */
+function usageWords(kind: SymbolKind) {
+  const functionLike = FUNCTION_LIKE.has(kind);
+  return {
+    split: functionLike || kind === "class",
+    callers: kind === "class" ? "Constructed by" : "Callers",
+    section: functionLike ? "Call hierarchy" : "Usage",
+    incoming: functionLike ? "Incoming" : "Used by",
+    outgoing: functionLike ? "Outgoing" : "Uses",
+    /** What a dependent is called in sentences: "No TypeScript callers". */
+    dependents: functionLike ? "callers" : "users",
+  };
+}
+
 export function SymbolRecordView({ report, symbols, sm, id }: Ctx & { id: number }) {
   const t = symbols.symbols;
   const kind = t.kind[id]!;
@@ -62,18 +94,51 @@ export function SymbolRecordView({ report, symbols, sm, id }: Ctx & { id: number
   const lines = t.endLine[id]! - t.line[id]! + 1;
   const through = useMemo(() => callsThroughBases(symbols, id), [symbols, id]);
   const self = useMemo(() => selfCalls(symbols, id), [symbols, id]);
+  const incoming = useMemo(() => callEdges(symbols, id, "incoming"), [symbols, id]);
+  const byCall = useMemo(() => partitionByCall(incoming), [incoming]);
+  const hosts = useMemo(() => hostUsesOf(symbols, id), [symbols, id]);
+  const members = useMemo(() => (kind === "class" ? t.parent.reduce((n, p) => (p === id ? n + 1 : n), 0) : 0), [kind, t, id]);
+  const words = usageWords(kind);
   if (self > 0) flags.push("recursive");
 
+  // Pairs fill the two-column grid row by row: what references it, who depends on it, then its
+  // own shape. Lines takes a cell only when the count is odd and otherwise rides as the
+  // complexity note, so no kind ends the grid on a half-empty row.
   const metrics: Metric[] = [
-    { label: "References", value: formatInt(t.refs[id]!) },
-    { label: "Callers", value: formatInt(t.callers[id]!), note: "distinct symbols using it" },
+    {
+      label: "References",
+      value: formatInt(t.refs[id]!),
+      note: hosts.length > 0 ? `+${formatInt(hosts.length)} outside TypeScript` : undefined,
+    },
     { label: "Files", value: formatInt(t.files[id]!), note: "that reference it" },
-    { label: "Lines", value: formatInt(lines) },
   ];
+  if (words.split) {
+    metrics.push({ label: words.callers, value: formatInt(byCall.calls.length), note: kind === "class" ? "symbols using new" : "symbols calling it" });
+    metrics.push({ label: "Other uses", value: formatInt(byCall.other.length), note: kind === "class" ? "as a type or value" : "name it, no call" });
+  } else {
+    const calls = byCall.calls.length;
+    metrics.push({ label: "Used by", value: formatInt(t.callers[id]!), note: calls > 0 ? `${formatInt(calls)} of them call it` : "distinct symbols" });
+  }
+  // The Incoming tab counts callers that reach this through the interface or base method it
+  // implements; without this cell, Callers + Other uses fell short of Incoming by exactly them.
+  const throughCount = through.reduce((n, g) => n + g.edges.length, 0);
+  if (throughCount > 0) {
+    // Same rule the galaxy legend uses: a base whose parent is a class is overridden, not implemented.
+    const viaClass = through.every((g) => t.parent[g.base]! >= 0 && t.kind[t.parent[g.base]!] === "class");
+    metrics.push({
+      label: viaClass ? "Through the base method" : "Through the interface",
+      value: formatInt(throughCount),
+      note: viaClass ? "callers of what it overrides" : "callers of what it implements",
+    });
+  }
   if (callable) {
     metrics.push({ label: "Complexity", value: formatInt(t.complexity[id]!) });
     metrics.push({ label: "Parameters", value: formatInt(t.params[id]!) });
+  } else if (kind === "class") {
+    metrics.push({ label: "Members", value: formatInt(members) });
   }
+  if (metrics.length % 2 === 1) metrics.push({ label: "Lines", value: formatInt(lines) });
+  else if (callable) metrics[metrics.length - 2]!.note = plural(lines, "line");
 
   return (
     <div className="flex flex-col gap-5">
@@ -82,6 +147,7 @@ export function SymbolRecordView({ report, symbols, sm, id }: Ctx & { id: number
         above={parent >= 0 ? `${t.name[parent]}.` : undefined}
         title={t.name[id]}
         titleClass="font-mono text-[19px] font-semibold [font-stretch:100%]"
+        action={<ShowInGalaxy />}
       >
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-[13px] text-ink-2">{SYMBOL_KIND_LABEL[kind]}</span>
@@ -140,9 +206,19 @@ export function SymbolRecordView({ report, symbols, sm, id }: Ctx & { id: number
         </Quiet>
       )}
 
-      <CallHierarchy report={report} symbols={symbols} sm={sm} id={id} through={through} self={self} />
+      <CallHierarchy
+        report={report}
+        symbols={symbols}
+        sm={sm}
+        id={id}
+        incoming={incoming}
+        through={through}
+        self={self}
+        hosts={hosts}
+        words={words}
+      />
       <TypeHierarchy report={report} symbols={symbols} sm={sm} id={id} />
-      <References key={id} report={report} symbols={symbols} sm={sm} id={id} />
+      <References key={id} report={report} symbols={symbols} sm={sm} id={id} hosts={hosts} />
     </div>
   );
 }
@@ -225,24 +301,38 @@ function TrailBar({ symbols, id }: { symbols: CodeSymbols; id: number }) {
 
 // ─── Call hierarchy ──────────────────────────────────────────────────────────────────────────
 
+type Words = ReturnType<typeof usageWords>;
+
+/**
+ * The record's own tab panels are tab stops (Radix gives each tabIndex 0) and the shared
+ * TabsContent turns the outline off, so a keyboard reader landed on the list with no ring.
+ * Inset, because the record's scroller clips anything drawn outside the panel.
+ */
+const PANEL_FOCUS = "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring focus-visible:outline-solid";
+
 function CallHierarchy({
   id,
+  incoming,
   through,
   self,
+  hosts,
+  words,
   ...ctx
-}: Ctx & { id: number; through: { base: number; edges: CallEdge[] }[]; self: number }) {
-  const incoming = useMemo(() => callEdges(ctx.symbols, id, "incoming"), [ctx.symbols, id]);
+}: Ctx & { id: number; incoming: CallEdge[]; through: { base: number; edges: CallEdge[] }[]; self: number; hosts: HostUse[]; words: Words }) {
   const outgoing = useMemo(() => callEdges(ctx.symbols, id, "outgoing"), [ctx.symbols, id]);
   const throughCount = through.reduce((n, g) => n + g.edges.length, 0);
   const incomingCount = incoming.length + throughCount;
+  // A symbol imported only from .vue or Markdown files opens on its incoming side, where the
+  // empty state names those files; opening on Outgoing hid the one fact that says it is used.
+  const startIncoming = incomingCount > 0 || hosts.length > 0 || outgoing.length === 0;
   return (
-    <Section title="Call hierarchy">
-      <Tabs defaultValue={incomingCount || !outgoing.length ? "incoming" : "outgoing"} className="gap-0">
+    <Section title={words.section}>
+      <Tabs defaultValue={startIncoming ? "incoming" : "outgoing"} className="gap-0">
         <TabsList variant="line" className="h-8 w-full justify-start gap-0 rounded-none border-b border-rule p-0">
           {(
             [
-              ["incoming", "Incoming", incomingCount],
-              ["outgoing", "Outgoing", outgoing.length],
+              ["incoming", words.incoming, incomingCount],
+              ["outgoing", words.outgoing, outgoing.length],
             ] as const
           ).map(([value, label, n]) => (
             <TabsTrigger
@@ -255,15 +345,22 @@ function CallHierarchy({
             </TabsTrigger>
           ))}
         </TabsList>
-        <TabsContent value="incoming">
-          <TopEdges {...ctx} root={id} edges={incoming} direction="incoming" through={through} self={self} />
+        <TabsContent value="incoming" className={PANEL_FOCUS}>
+          <TopEdges {...ctx} root={id} edges={incoming} direction="incoming" through={through} self={self} hosts={hosts} words={words} />
         </TabsContent>
-        <TabsContent value="outgoing">
-          <TopEdges {...ctx} root={id} edges={outgoing} direction="outgoing" through={[]} self={self} />
+        <TabsContent value="outgoing" className={PANEL_FOCUS}>
+          <TopEdges {...ctx} root={id} edges={outgoing} direction="outgoing" through={[]} self={self} hosts={[]} words={words} />
         </TabsContent>
       </Tabs>
     </Section>
   );
+}
+
+/** "AsideSponsors.vue, Layout.vue and 2 more": the distinct importing files, by name. */
+function hostFileNames(report: Report, hosts: HostUse[], max = 3): string {
+  const names = [...new Set(hosts.map((h) => report.files[h.file]?.name ?? ""))].filter(Boolean);
+  if (names.length <= max) return names.join(", ");
+  return `${names.slice(0, max).join(", ")} and ${formatInt(names.length - max)} more`;
 }
 
 type Direction = "incoming" | "outgoing";
@@ -285,20 +382,41 @@ function TopEdges({
   direction,
   through,
   self,
+  hosts,
+  words,
   ...ctx
-}: Ctx & { root: number; edges: CallEdge[]; direction: Direction; through: { base: number; edges: CallEdge[] }[]; self: number }) {
-  const { production, tests } = useMemo(() => {
-    const production: CallEdge[] = [];
+}: Ctx & {
+  root: number;
+  edges: CallEdge[];
+  direction: Direction;
+  through: { base: number; edges: CallEdge[] }[];
+  self: number;
+  hosts: HostUse[];
+  words: Words;
+}) {
+  const { production, types, tests } = useMemo(() => {
+    const own: CallEdge[] = [];
     const tests: CallEdge[] = [];
-    for (const e of edges) (inTest(ctx, e.symbol) ? tests : production).push(e);
-    return { production, tests };
-  }, [edges, ctx.symbols, ctx.report]);
+    for (const e of edges) (inTest(ctx, e.symbol) ? tests : own).push(e);
+    // Outgoing only: the types a function merely annotates with go in a group of their own,
+    // so the list leads with what it actually calls and reads. Incoming stays one list, its
+    // rows already badged by kind.
+    if (direction === "incoming") return { production: own, types: [] as CallEdge[], tests };
+    const { uses, types } = partitionTypeRefs(own);
+    return { production: uses, types, tests };
+  }, [edges, direction, ctx.symbols, ctx.report]);
   const top = useMemo(() => new Set([root]), [root]);
 
+  const runs = words.dependents === "callers";
   let empty: string | null = null;
   if (edges.length === 0) {
-    if (direction === "outgoing") empty = self > 0 ? "It calls nothing else in the project." : "It calls or uses nothing in the project.";
-    else if (through.length > 0) empty = "Nothing calls it by name; the project reaches it through what it implements.";
+    if (direction === "outgoing") {
+      empty = !runs ? "It refers to nothing else in the project." : self > 0 ? "It calls nothing else in the project." : "It calls or uses nothing in the project.";
+    } else if (through.length > 0) empty = "Nothing calls it by name; the project reaches it through what it implements.";
+    // The compiler never reads a .vue or Markdown file, so "nothing uses it" would be false
+    // for a composable that only components import.
+    else if (hosts.length > 0) empty = `No TypeScript ${words.dependents}; imported by ${hostFileNames(ctx.report, hosts)}.`;
+    else if (!runs) empty = "Nothing in the project uses it.";
     else empty = self > 0 ? "Nothing else in the project calls it." : "Nothing in the project calls or uses it.";
   }
 
@@ -318,8 +436,13 @@ function TopEdges({
           <EdgeList {...ctx} root={g.base} edges={g.edges} direction={direction} ancestors={top} />
         </EdgeGroup>
       ))}
+      {types.length > 0 && (
+        <EdgeGroup title="Type references" count={types.length} defaultOpen={production.length === 0}>
+          <EdgeList {...ctx} root={root} edges={types} direction={direction} />
+        </EdgeGroup>
+      )}
       {tests.length > 0 && (
-        <EdgeGroup title="In tests" count={tests.length} defaultOpen={production.length === 0 && through.length === 0}>
+        <EdgeGroup title="In tests" count={tests.length} defaultOpen={production.length === 0 && through.length === 0 && types.length === 0}>
           <EdgeList {...ctx} root={root} edges={tests} direction={direction} />
         </EdgeGroup>
       )}
@@ -551,7 +674,7 @@ const GROUP_CAP = 8;
 const ROW_CAP = 10;
 const OPEN_BY_DEFAULT = 4;
 
-function References({ id, ...ctx }: Ctx & { id: number }) {
+function References({ id, hosts, ...ctx }: Ctx & { id: number; hosts: HostUse[] }) {
   const { symbols, sm, report } = ctx;
   const r = symbols.refs;
   const [kind, setKind] = useState<string>("all");
@@ -595,7 +718,7 @@ function References({ id, ...ctx }: Ctx & { id: number }) {
   return (
     <Section title="References" count={all.length}>
       {all.length === 0 ? (
-        <Quiet>No resolved references in the project.</Quiet>
+        <Quiet>{hosts.length > 0 ? "No TypeScript references." : "No resolved references in the project."}</Quiet>
       ) : (
         <>
           {kindCounts.length > 1 && (
@@ -645,7 +768,52 @@ function References({ id, ...ctx }: Ctx & { id: number }) {
           )}
         </>
       )}
+      {hosts.length > 0 && <HostUses report={report} hosts={hosts} />}
     </Section>
+  );
+}
+
+/**
+ * Imports from files the compiler does not read (a Vue component's <script>, a VitePress page).
+ * They are matched by exported name, not resolved, so they carry no column and no kind: each
+ * row opens the importing file at its import line, and they stay out of the counts above.
+ */
+function HostUses({ report, hosts }: { report: Report; hosts: HostUse[] }) {
+  const [limit, setLimit] = useState(ROW_CAP);
+  const activeSource = useViewer((s) => s.source);
+  return (
+    <div className="mt-3">
+      <h4 className="mb-1 text-xs font-medium text-ink-2">
+        Used from files outside the TypeScript analysis
+        <span className="figures ml-1.5 font-mono text-[11px] font-normal text-ink-3">{formatInt(hosts.length)}</span>
+      </h4>
+      <ul className="border-t border-rule">
+        {hosts.slice(0, limit).map((h) => {
+          const f = report.files[h.file];
+          if (!f) return null;
+          const current = activeSource?.file === h.file && activeSource.line === h.line;
+          return (
+            <li key={`${h.file}:${h.line}`}>
+              <button
+                type="button"
+                onClick={() => openSourceKeepingSymbol({ file: h.file, line: h.line })}
+                aria-current={current || undefined}
+                title={`${f.path}:${h.line + 1}`}
+                className={cn(
+                  "flex w-full min-w-0 items-center gap-1.5 border-b border-rule py-1.5 pl-1 text-left transition-colors duration-150 hover:bg-wash",
+                  current && "bg-wash",
+                )}
+              >
+                <LanguageSwatch languageId={f.language} />
+                <PathText path={f.path} line={h.line + 1} className="flex-1 text-xs text-ink" dirClass="text-ink-3" />
+                <Tag className="shrink-0">import</Tag>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <MoreButton hidden={hosts.length - limit} onClick={() => setLimit((l) => l + 40)} />
+    </div>
   );
 }
 

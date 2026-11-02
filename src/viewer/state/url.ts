@@ -2,11 +2,12 @@
  * The view, in the URL hash, so a link opens the same view.
  *
  * Reports get shared with teams ("look at this hotspot"), so the tab, the selection, the open
- * drawer and the encodings round-trip through `location.hash`:
+ * drawer, the encodings and the filters round-trip through `location.hash`:
  *
  *   #tab=source&file=src/server/index.ts&line=120
  *   #sym=createServer@src/node/server/index.ts:412
  *   #dir=packages/vite&color=hotspot&size=commits&layout=graph
+ *   #tab=explorer&lang=typescript&generated=hide
  *
  * References are paths, names and emails, never report ids: ids are positions in one report's
  * tables and shift when the project changes, so a link written against last week's report
@@ -21,21 +22,75 @@
  * included, not just the params it happens to carry.
  */
 
-import type { Report } from "../../shared/schema";
+import { CATEGORY_GROUP, type Category, type Report } from "../../shared/schema";
 import { ensureSymbols } from "./loaders";
-import { useViewer, type ColorBy, type LayoutMode, type SizeBy, type Tab, type Target } from "./store";
+import { useViewer, type ColorBy, type Filters, type LayoutMode, type SizeBy, type Tab, type Target } from "./store";
 
 const TABS: Tab[] = ["galaxy", "charts", "explorer", "source", "findings"];
 const COLOR_MODES: ColorBy[] = ["language", "category", "churn", "age", "complexity", "ownership", "hotspot", "rank"];
 const SIZE_MODES: SizeBy[] = ["lines", "bytes", "complexity", "commits", "rank"];
 const LAYOUTS: LayoutMode[] = ["tree", "graph"];
+const CATEGORIES = Object.keys(CATEGORY_GROUP) as Category[];
 
 /** encodeURIComponent, but leave the characters paths and symbol refs are made of readable. */
 function enc(s: string): string {
   return encodeURIComponent(s).replace(/%2F/g, "/").replace(/%3A/g, ":").replace(/%40/g, "@");
 }
 
-function parseHash(hash: string): Map<string, string> {
+// ─── Filters <-> params ──────────────────────────────────────────────────────────────────────
+
+/** The store's starting filters: vendored code hidden, nothing else. A link omits these. */
+export const DEFAULT_FILTERS: Filters = { languages: null, categories: null, hideGenerated: false, hideVendored: true };
+
+/**
+ * The filters as hash params, defaults left out:
+ *
+ *   lang=typescript,vue  cat=code,test  generated=hide  vendored=show
+ *
+ * A link to "the TypeScript hotspots" used to open on every language, because the filters set
+ * on the Charts tab never reached the URL; the reader shared a view the recipient never saw.
+ * Language ids and category names are the report's own stable slugs, not table positions.
+ * Sorted, so the same filters always write the same hash (and an unchanged view no-ops).
+ */
+export function filterParams(filters: Filters): string[] {
+  const out: string[] = [];
+  if (filters.languages) out.push(`lang=${[...filters.languages].sort().map(encodeURIComponent).join(",")}`);
+  if (filters.categories) out.push(`cat=${[...filters.categories].sort().join(",")}`);
+  if (filters.hideGenerated) out.push("generated=hide");
+  if (!filters.hideVendored) out.push("vendored=show");
+  return out;
+}
+
+/**
+ * Read filter params back. `full` means the entry describes the whole view (history traversal):
+ * a missing param is its default. Otherwise only what the link names changes. Unknown language
+ * ids and category names are dropped; a list with nothing valid left means "no filter", since
+ * an empty set would hide every file for the sake of a typo.
+ */
+export function readFilters(p: Map<string, string>, languageIds: ReadonlySet<string>, full: boolean): Partial<Filters> {
+  const out: Partial<Filters> = full ? { ...DEFAULT_FILTERS } : {};
+  const list = (key: string) => {
+    const raw = p.get(key);
+    return raw === undefined ? undefined : raw.split(",").map((s) => s.trim()).filter(Boolean);
+  };
+  const langs = list("lang");
+  if (langs) {
+    const valid = langs.filter((l) => languageIds.has(l));
+    out.languages = valid.length > 0 ? new Set(valid) : null;
+  }
+  const cats = list("cat");
+  if (cats) {
+    const valid = cats.filter((c): c is Category => (CATEGORIES as string[]).includes(c));
+    out.categories = valid.length > 0 ? new Set(valid) : null;
+  }
+  const generated = p.get("generated");
+  if (generated === "hide" || generated === "show") out.hideGenerated = generated === "hide";
+  const vendored = p.get("vendored");
+  if (vendored === "hide" || vendored === "show") out.hideVendored = vendored === "hide";
+  return out;
+}
+
+export function parseHash(hash: string): Map<string, string> {
   const out = new Map<string, string>();
   for (const part of hash.replace(/^#/, "").split("&")) {
     if (!part) continue;
@@ -176,6 +231,8 @@ function applyHashParams(hash: string, full: boolean): void {
   const layout = p.get("layout") as LayoutMode | undefined;
   if (layout && LAYOUTS.includes(layout)) s.setLayout(layout);
   else if (full) s.setLayout("tree");
+  const filters = readFilters(p, new Set(report.languages.map((l) => l.id)), full);
+  if (Object.keys(filters).length > 0) s.setFilters(filters);
 
   const focus = p.get("focus");
   if (focus !== undefined) {
@@ -266,6 +323,7 @@ function buildHash(): string {
   if (s.colorBy !== "language") parts.push(`color=${s.colorBy}`);
   if (s.sizeBy !== "lines") parts.push(`size=${s.sizeBy}`);
   if (s.layout !== "tree") parts.push(`layout=${s.layout}`);
+  parts.push(...filterParams(s.filters));
   return parts.join("&");
 }
 
@@ -297,6 +355,7 @@ export function startUrlSync(): () => void {
       state.colorBy === prev.colorBy &&
       state.sizeBy === prev.sizeBy &&
       state.layout === prev.layout &&
+      state.filters === prev.filters &&
       state.symbols === prev.symbols
     ) {
       return;

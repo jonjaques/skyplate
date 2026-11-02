@@ -68,7 +68,13 @@ function Guide() {
   const setTab = useViewer((s) => s.setTab);
   const holotypes = [...model.holotypeOfDir]
     .map(([dir, file]) => ({ dir, file }))
-    .sort((a, b) => report.files[b.file]!.rank - report.files[a.file]!.rank)
+    // Ordered by the same rule that picked them (direct importers, rank breaking ties), so the
+    // figure printed beside each one descends; sorting by PageRank put a 4 above a 30.
+    .sort((a, b) => {
+      const fa = report.files[a.file]!;
+      const fb = report.files[b.file]!;
+      return fb.fanIn - fa.fanIn || fb.rank - fa.rank;
+    })
     .slice(0, 6);
   const pressing = report.findings.filter((f) => f.severity === "critical" || f.severity === "warning").slice(0, 3);
 

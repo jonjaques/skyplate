@@ -13,10 +13,11 @@ import { useEffect, useMemo, useState } from "react";
 import type { DirRecord, Report } from "../../shared/schema";
 import { Button } from "../components/ui/button";
 import { ScrollArea } from "../components/ui/scroll-area";
-import { formatDate, formatInt, plural } from "../lib/format";
+import { formatInt, plural } from "../lib/format";
 import { cn } from "../lib/utils";
 import { dirAncestry } from "../model/indices";
 import { useViewer } from "../state/store";
+import { generatedParts } from "./labels";
 import { focusDrawer, show } from "./navigate";
 import { useShell } from "./shell-state";
 
@@ -135,12 +136,14 @@ function RailHeader({ report }: { report: Report }) {
 
 function RailFooter({ report }: { report: Report }) {
   const setAboutOpen = useShell((s) => s.setAboutOpen);
+  const generated = generatedParts(report.generatedAt);
   return (
     <div className="flex items-end justify-between gap-2 border-t border-rail-line px-[22px] py-4 text-xs text-rail-muted">
       <div className="min-w-0">
         {/* The 220px rail wraps these; a date or a figure split from its unit reads badly. */}
-        <div>
-          Report generated <span className="whitespace-nowrap">{formatDate(Date.parse(report.generatedAt) / 1000)}</span>
+        <div title={report.generatedAt}>
+          Report generated <span className="whitespace-nowrap">{generated.time ? `${generated.date},` : generated.date}</span>{" "}
+          <span className="whitespace-nowrap">{generated.time}</span>
         </div>
         <div className="figures mt-0.5">
           <span className="whitespace-nowrap">{formatInt(report.totals.lines)} lines</span> ·{" "}

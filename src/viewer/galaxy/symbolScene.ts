@@ -4,14 +4,26 @@
  * it calls, and, per file, why that file is lit (the hover card reads it).
  *
  * This is the user's own ask, verbatim: "dig down into a function def and see it light up the
- * project in the galaxy for usage, callsites, all interrelated". The galaxy draws exactly what
- * the compiler resolved, nothing inferred.
+ * project in the galaxy for usage, callsites, all interrelated". The galaxy draws what the
+ * compiler resolved, plus two things it resolved one step away, each drawn apart so neither
+ * passes for a direct use:
+ *   - imports from files the checker never reads (CodeSymbols.hostUses: Vue, Svelte, Astro,
+ *     VitePress pages), drawn like any other use; without them a composable used only from
+ *     .vue files reached "0 files"
+ *   - callers of what it implements or overrides (shell/derived.ts callsThroughBases), drawn as
+ *     dimmer dispatch arcs; a method behind an interface is called as `this.saves.read()`, which
+ *     the checker resolves to the interface member, so the implementation reached "0 files"
+ *
+ * Test files are grouped apart, as the record groups them, and drawn fainter: for a hub most
+ * users are tests (101 of 156 files for one vector helper), and drawn like the rest their arcs
+ * outnumber the production callers a reader came to see two to one.
  */
 
 import { REF_KINDS, type CodeSymbols, type RefKind, type SymbolKind } from "../../shared/schema";
 import { formatInt, plural } from "../lib/format";
 import type { Model } from "../model/indices";
-import type { SymbolModel } from "../model/symbols";
+import { hostUsesOf, type SymbolModel } from "../model/symbols";
+import { callsThroughBases } from "../shell/derived";
 import { DIM } from "./encode";
 
 const kindIndex = (k: RefKind) => REF_KINDS.indexOf(k);
@@ -45,12 +57,33 @@ export interface SymbolArc {
   impl: number;
   /** Every other row: types, reads, writes, imports, exports. */
   other: number;
+  /** Imports read from the file's script block (hostUses), outside the checker's reach. */
+  host: number;
   /** Rows per REF_KINDS index, for the hover card ("12 calls, 1 import of vec3"). */
   kinds: Uint32Array;
   /** Drawn in the implementation style (it has extends or implements rows). */
   implementation: boolean;
-  /** 1 for the heaviest arc (most rows), counting up. */
+  /** A test file (category "test", the record's grouping): drawn fainter, counted apart. */
+  test: boolean;
+  /** 1 for the heaviest arc (most rows) within its group (production or tests), counting up. */
   rank: number;
+}
+
+/** A file that reaches the symbol only through a base member it implements or overrides. */
+export interface DispatchArc {
+  file: number;
+  /** The base member those callers name (the first, when they name several). */
+  base: number;
+  /** The calling symbols in this file. */
+  callers: number[];
+  /** References across those callers, for the arc's weight. */
+  count: number;
+  test: boolean;
+}
+
+/** Is the file a test? The record's grouping (category "test"), so the two always agree. */
+function isTestFile(model: Model, file: number): boolean {
+  return model.report.files[file]?.category === "test";
 }
 
 export interface RippleStep {
@@ -68,8 +101,14 @@ export interface SymbolScene {
   /** An interface or type alias: no ripple, and the legend says "uses", not "calls". */
   typeLevel: boolean;
   callable: boolean;
+  /** Direct arcs, production files first, then tests, each heaviest first. */
   arcs: SymbolArc[];
   arcOf: Map<number, SymbolArc>;
+  /** Files reached only through what it implements or overrides, heaviest first. */
+  dispatch: DispatchArc[];
+  dispatchOf: Map<number, DispatchArc>;
+  /** What the dispatch goes through: an interface member, or an overridden base method. */
+  through: "interface" | "base method" | null;
   /** References inside the definition's own file (they draw no arc), with rows per kind. */
   own: { calls: number; impl: number; other: number; kinds: ArrayLike<number> };
   /** Files the symbol calls into (call, new and jsx only; not its own file), with symbol counts. */
@@ -86,12 +125,19 @@ export interface SymbolScene {
   frame: number[];
   /** Totals for the plate legend. */
   totals: {
-    /** Distinct files with any reference, the definition's own file included. */
+    /** Distinct files with any reference or host import, the definition's own file included. */
     files: number;
+    /** The test files among `files`. */
+    tests: number;
     calls: number;
     other: number;
+    /** Files that import it from a script the checker does not read (hostUses). */
+    host: number;
     /** Files that implement or override it, its own file included. */
     implementations: number;
+    /** Files reached only through a base member (the dispatch arcs), and the tests among them. */
+    dispatch: number;
+    dispatchTests: number;
     ripple: number;
   };
 }
@@ -170,6 +216,18 @@ export function callIndex(symbols: CodeSymbols): CallIndex {
   return index;
 }
 
+/** Rows an arc stands for: the checker's references plus host imports. */
+export function weightOf(a: SymbolArc): number {
+  return a.calls + a.impl + a.other + a.host;
+}
+
+/**
+ * Emphasis for test files, as a share of what a production file in the same role gets. Low
+ * enough that a hub's hundred test files read as a haze behind its callers, high enough that
+ * each still stands clear of the receding rest of the plate.
+ */
+const TEST_LIGHT = 0.55;
+
 /** Ripple frames are capped: past this many files the frame is the whole galaxy anyway. */
 const RIPPLE_FRAME_CAP = 240;
 /** "Tiny" direct set: fewer arcs than this and the ripple joins the frame. */
@@ -190,28 +248,41 @@ export function buildSymbolScene(model: Model, symbols: CodeSymbols, sm: SymbolM
   // implementers up in the call table and skipping files already in the references, is what
   // lets them be drawn at all: an implementer's file always holds that very row.
   const perFile = new Map<number, SymbolArc>();
+  const arcFor = (file: number): SymbolArc => {
+    let arc = perFile.get(file);
+    if (!arc) {
+      arc = { file, calls: 0, impl: 0, other: 0, host: 0, kinds: new Uint32Array(REF_KINDS.length), implementation: false, test: isTestFile(model, file), rank: 0 };
+      perFile.set(file, arc);
+    }
+    return arc;
+  };
   const { offsets, targets } = sm.refsOf;
   for (let i = offsets[symbol]!; i < offsets[symbol + 1]!; i++) {
     const row = targets[i]!;
-    const file = symbols.refs.file[row]!;
     const k = symbols.refs.kind[row]!;
-    let arc = perFile.get(file);
-    if (!arc) perFile.set(file, (arc = { file, calls: 0, impl: 0, other: 0, kinds: new Uint32Array(REF_KINDS.length), implementation: false, rank: 0 }));
+    const arc = arcFor(symbols.refs.file[row]!);
     arc.kinds[k]!++;
     if (isCallish(k)) arc.calls++;
     else if (isImpl(k)) arc.impl++;
     else arc.other++;
   }
+  // Host imports are kept out of `kinds` and the row counts: those are what the checker
+  // resolved, and the legend's "Other uses: imports · 12" must not quietly include them.
+  for (const use of hostUsesOf(symbols, symbol)) if (use.file !== defFile) arcFor(use.file).host++;
 
   const own: SymbolScene["own"] = { calls: 0, impl: 0, other: 0, kinds: new Uint32Array(REF_KINDS.length) };
   const arcs: SymbolArc[] = [];
   let calls = 0;
   let other = 0;
   let implFiles = 0;
+  let hostFiles = 0;
+  let testFiles = 0;
   for (const arc of perFile.values()) {
     calls += arc.calls;
     other += arc.other;
     if (arc.impl > 0) implFiles++;
+    if (arc.host > 0) hostFiles++;
+    if (arc.test) testFiles++;
     arc.implementation = arc.impl > 0;
     if (arc.file === defFile) {
       own.calls = arc.calls;
@@ -220,10 +291,33 @@ export function buildSymbolScene(model: Model, symbols: CodeSymbols, sm: SymbolM
       own.kinds = arc.kinds;
     } else arcs.push(arc);
   }
-  // Heaviest first: if the arc budget ever truncates, the lightest uses go.
-  arcs.sort((a, b) => b.calls + b.impl + b.other - (a.calls + a.impl + a.other) || a.file - b.file);
-  arcs.forEach((a, i) => (a.rank = i + 1));
+  // Production files first, then tests, heaviest first within each: if the arc budget ever
+  // truncates, the faint test arcs go before any production use does.
+  arcs.sort((a, b) => Number(a.test) - Number(b.test) || weightOf(b) - weightOf(a) || a.file - b.file);
+  let prodRank = 0;
+  let testRank = 0;
+  for (const a of arcs) a.rank = a.test ? ++testRank : ++prodRank;
   const arcOf = new Map(arcs.map((a) => [a.file, a]));
+
+  // ── Through what it implements: callers of the base member, in files with no use of their own ──
+  const dispatchOf = new Map<number, DispatchArc>();
+  let through: SymbolScene["through"] = null;
+  for (const group of callsThroughBases(symbols, symbol)) {
+    const parent = table.parent[group.base]!;
+    // An interface or type-literal member is a contract; a class's method is a base to override.
+    const via = parent >= 0 && table.kind[parent] === "class" ? "base method" : "interface";
+    through = through === "interface" ? through : via;
+    for (const edge of group.edges) {
+      const file = table.file[edge.symbol]!;
+      if (file === defFile || perFile.has(file)) continue;
+      let d = dispatchOf.get(file);
+      if (!d) dispatchOf.set(file, (d = { file, base: group.base, callers: [], count: 0, test: isTestFile(model, file) }));
+      if (!d.callers.includes(edge.symbol)) d.callers.push(edge.symbol);
+      d.count += edge.count;
+    }
+  }
+  const dispatch = [...dispatchOf.values()].sort((a, b) => Number(a.test) - Number(b.test) || b.count - a.count || a.file - b.file);
+  if (dispatch.length === 0) through = null;
 
   // ── Ripple: who calls the code that uses it, up to three hops, run-time edges only ──
   const depth = new Int8Array(n).fill(-1);
@@ -257,12 +351,13 @@ export function buildSymbolScene(model: Model, symbols: CodeSymbols, sm: SymbolM
     for (const [s, d] of reached) {
       if (d < 2) continue;
       const f = table.file[s]!;
-      if (f === defFile || perFile.has(f)) continue;
+      if (f === defFile || perFile.has(f) || dispatchOf.has(f)) continue;
       const prev = ripple.get(f);
       if (!prev || d < prev.depth) ripple.set(f, { depth: d, caller: s, via: parent.get(s)! });
     }
   }
   for (const [f, step] of ripple) depth[f] = step.depth;
+  for (const d of dispatch) depth[d.file] = 1;
   for (const a of arcs) depth[a.file] = 1;
   depth[defFile] = 0;
 
@@ -282,20 +377,26 @@ export function buildSymbolScene(model: Model, symbols: CodeSymbols, sm: SymbolM
   // ── Emphasis: references lit by count (log-scaled so a 200-call hub does not blow out the
   // plate), the ripple at falling intensity, callees faint, everything else receding ──
   const light = new Float32Array(n).fill(DIM);
+  // Tests recede by TEST_LIGHT in every role, never below DIM (where they would vanish into the
+  // plate they are meant to stand out from).
+  const testScale = (f: number, v: number) => (isTestFile(model, f) ? Math.max(DIM * 1.5, v * TEST_LIGHT) : v);
   let maxRefs = 1;
-  for (const a of arcs) maxRefs = Math.max(maxRefs, a.calls + a.impl + a.other);
-  for (const [f, step] of ripple) light[f] = step.depth === 2 ? 0.75 : 0.48;
+  for (const a of arcs) maxRefs = Math.max(maxRefs, weightOf(a));
+  for (const [f, step] of ripple) light[f] = testScale(f, step.depth === 2 ? 0.75 : 0.48);
   for (const c of callees) light[c.file] = Math.max(light[c.file]!, 0.6);
+  // Dispatch files sit between the ripple and the direct users: they do reach it, but only if
+  // the call through the interface lands on this implementation.
+  for (const d of dispatch) light[d.file] = Math.max(light[d.file]!, testScale(d.file, 0.95));
   for (const a of arcs) {
-    const t = Math.log1p(a.calls + a.impl + a.other) / Math.log1p(maxRefs);
-    light[a.file] = Math.max(light[a.file]!, 1.15 + 0.85 * t);
+    const t = Math.log1p(weightOf(a)) / Math.log1p(maxRefs);
+    light[a.file] = Math.max(light[a.file]!, testScale(a.file, 1.15 + 0.85 * t));
   }
   light[defFile] = 2.2;
 
   // A symbol used only in its own file, or by one or two others, framed on its direct set
   // alone is a close-up of one star while the "14 more files" of ripple sit off-screen.
-  const frame = [defFile, ...arcs.map((a) => a.file)];
-  if (arcs.length < TINY_DIRECT) {
+  const frame = [defFile, ...arcs.map((a) => a.file), ...dispatch.map((d) => d.file)];
+  if (arcs.length + dispatch.length < TINY_DIRECT) {
     const extra = [...ripple].sort((a, b) => a[1].depth - b[1].depth || a[0] - b[0]).slice(0, RIPPLE_FRAME_CAP);
     for (const [f] of extra) frame.push(f);
   }
@@ -307,6 +408,9 @@ export function buildSymbolScene(model: Model, symbols: CodeSymbols, sm: SymbolM
     callable: CALLABLE.has(kind),
     arcs,
     arcOf,
+    dispatch,
+    dispatchOf,
+    through,
     own,
     callees,
     calleeSymbols,
@@ -314,8 +418,31 @@ export function buildSymbolScene(model: Model, symbols: CodeSymbols, sm: SymbolM
     depth,
     light,
     frame,
-    totals: { files: perFile.size, calls, other, implementations: implFiles, ripple: ripple.size },
+    totals: {
+      files: perFile.size,
+      tests: testFiles,
+      calls,
+      other,
+      host: hostFiles,
+      implementations: implFiles,
+      dispatch: dispatch.length,
+      dispatchTests: dispatch.filter((d) => d.test).length,
+      ripple: ripple.size,
+    },
   };
+}
+
+/**
+ * "55 files + 101 tests": how far a symbol reaches, production and tests counted apart, as the
+ * record groups them. Dispatch files count too; a method only ever called through its interface
+ * otherwise "reached 0 files" while the legend under it drew three.
+ */
+export function reachPhrase(totals: SymbolScene["totals"]): string {
+  const tests = totals.tests + totals.dispatchTests;
+  const prod = totals.files + totals.dispatch - tests;
+  if (tests === 0) return plural(prod, "file");
+  if (prod === 0) return plural(tests, "test file");
+  return `${plural(prod, "file")} + ${plural(tests, "test")}`;
 }
 
 // ─── Why a file is lit ───────────────────────────────────────────────────────────────────────
@@ -387,12 +514,21 @@ export function describeRelation(scene: SymbolScene, symbols: CodeSymbols, file:
   const arc = scene.arcOf.get(file);
   if (arc) {
     const uses = usePhrase(arc.kinds);
-    const rank = `${ordinal(arc.rank)} heaviest of ${formatInt(scene.arcs.length)}`;
+    // Ranked within its own group, as the arcs are sorted: a test is "3rd heaviest of 101 in
+    // tests", never outranked by production files it is not being compared with.
+    const group = scene.arcs.reduce((c, a) => c + (a.test === arc.test ? 1 : 0), 0);
+    const rank = `${ordinal(arc.rank)} heaviest of ${formatInt(group)}${arc.test ? " in tests" : ""}`;
     if (arc.implementation) {
       const verb = arc.kinds[IMPLEMENTS]! > 0 ? "Implements" : member ? "Overrides" : "Extends";
       return `${verb} ${name}${uses ? `, plus ${uses}` : ""} · ${rank}`;
     }
+    if (!uses) return `Imports ${name} from a script the checker does not read · ${rank}`;
     return `${uses} of ${name} · ${rank}`;
+  }
+  const d = scene.dispatchOf.get(file);
+  if (d) {
+    const verb = d.callers.length === 1 ? "calls" : "call";
+    return `Through the ${scene.through ?? "interface"}: ${names(t, d.callers)} ${verb} ${qualified(t, d.base)}`;
   }
   const step = scene.ripple.get(file);
   if (step) return `Ripple, ${step.depth} hops: ${caller(t, step.caller)} calls ${qualified(t, step.via)}`;

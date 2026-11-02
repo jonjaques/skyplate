@@ -10,7 +10,15 @@ import * as THREE from "three";
 import { neighbors, type Model } from "../model/indices";
 import { LANE_FRAGMENT, LANE_VERTEX } from "./shaders";
 
-export const LANE_STYLE = { import: 0, call: 1, other: 2, callee: 3, all: 4, implementation: 5 } as const;
+export const LANE_STYLE = { import: 0, call: 1, other: 2, callee: 3, all: 4, implementation: 5, dispatch: 6 } as const;
+
+/**
+ * Gain on a test file's arc. The arc keeps its style (a test that calls still pulses), so what
+ * says "test" is strength alone, and it has to be a big step: the blend is additive, and a hub's
+ * test arcs can outnumber its production arcs two to one (101 to 55 for one vector helper), so
+ * a mild cut would still leave the tests the brighter half of the fan.
+ */
+export const TEST_GAIN = 0.38;
 
 /**
  * Importer lanes drawn for one selected file. A hub imported from 251 files drew 251 additive
@@ -63,6 +71,8 @@ export interface Lane {
   weight: number;
   /** Lift the lane off the disc as a curve: 0 is straight, positive bows up, negative down. */
   lift: number;
+  /** Overall strength multiplier, 1 when omitted (TEST_GAIN for a test file's arc). */
+  gain?: number;
 }
 
 /** Segments per curved lane: smooth at plate scale, cheap at hundreds of arcs. */
@@ -77,6 +87,7 @@ export function buildLaneGeometry(tree: Float32Array, graph: Float32Array, lanes
   const style = new Float32Array(segs * 2);
   const weight = new Float32Array(segs * 2);
   const len = new Float32Array(segs * 2);
+  const gain = new Float32Array(segs * 2);
 
   let v = 0;
   const a = new THREE.Vector3();
@@ -112,6 +123,7 @@ export function buildLaneGeometry(tree: Float32Array, graph: Float32Array, lanes
     style[v] = l.style;
     weight[v] = l.weight;
     len[v] = length;
+    gain[v] = l.gain ?? 1;
     v++;
   };
   for (const l of lanes) {
@@ -141,6 +153,7 @@ export function buildLaneGeometry(tree: Float32Array, graph: Float32Array, lanes
   g.setAttribute("aStyle", new THREE.BufferAttribute(style, 1));
   g.setAttribute("aWeight", new THREE.BufferAttribute(weight, 1));
   g.setAttribute("aLen", new THREE.BufferAttribute(len, 1));
+  g.setAttribute("aGain", new THREE.BufferAttribute(gain, 1));
   g.computeBoundingSphere();
   return g;
 }

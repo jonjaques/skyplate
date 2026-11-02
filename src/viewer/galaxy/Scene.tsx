@@ -17,9 +17,9 @@ import { PLATE } from "../lib/colors";
 import { useViewer } from "../state/store";
 import { traceContour } from "./contour";
 import { regionOfDir, type GalaxyEngine } from "./engine";
-import { ARC_CAP, ARC_LIFT, LANE_STYLE, buildLaneGeometry, makeLaneMaterial, selectionLanes, type Lane } from "./lanes";
+import { ARC_CAP, ARC_LIFT, LANE_STYLE, TEST_GAIN, buildLaneGeometry, makeLaneMaterial, selectionLanes, type Lane } from "./lanes";
 import { KNOCKOUT_FRAGMENT, KNOCKOUT_VERTEX, MOON_FRAGMENT, MOON_VERTEX } from "./shaders";
-import type { SymbolScene } from "./symbolScene";
+import { weightOf, type SymbolScene } from "./symbolScene";
 
 export function Scene({ engine, symbolScene }: { engine: GalaxyEngine; symbolScene: SymbolScene | null }) {
   return (
@@ -224,7 +224,11 @@ function SelectionLanes({ engine }: { engine: GalaxyEngine }) {
   return <LaneObject geometry={geometry} material={material} order={3} />;
 }
 
-/** A selected symbol's arcs: references in (calls pulse, implementations solid, other uses dashed), callees out. */
+/**
+ * A selected symbol's arcs: references in (calls pulse, implementations solid, other uses and
+ * host imports dashed), dispatch arcs through what it implements (dim, steady), callees out.
+ * Test files' arcs keep their style at TEST_GAIN.
+ */
 function SymbolArcs({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene | null }) {
   const material = useMemo(() => makeLaneMaterial(1), []);
   useLaneSync(engine, material);
@@ -232,13 +236,21 @@ function SymbolArcs({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScen
     if (!scene) return null;
     const lanes: Lane[] = [];
     let max = 1;
-    for (const a of scene.arcs) max = Math.max(max, a.calls + a.impl + a.other);
+    for (const a of scene.arcs) max = Math.max(max, weightOf(a));
+    // Direct uses take the arc budget first (production before tests, as scene.arcs is sorted);
+    // dispatch arcs get whatever is left.
     for (const a of scene.arcs.slice(0, ARC_CAP)) {
-      const weight = Math.log1p(a.calls + a.impl + a.other) / Math.log1p(max);
+      const weight = Math.log1p(weightOf(a)) / Math.log1p(max);
       // An implementer that also calls it is drawn as an implementation: that is the rarer
       // and more structural fact, and the hover card lists the calls beside it.
       const style = a.implementation ? LANE_STYLE.implementation : a.calls > 0 ? LANE_STYLE.call : LANE_STYLE.other;
-      lanes.push({ from: a.file, to: scene.defFile, style, weight, lift: ARC_LIFT });
+      lanes.push({ from: a.file, to: scene.defFile, style, weight, lift: ARC_LIFT, gain: a.test ? TEST_GAIN : 1 });
+    }
+    let dmax = 1;
+    for (const d of scene.dispatch) dmax = Math.max(dmax, d.count);
+    for (const d of scene.dispatch.slice(0, Math.max(0, ARC_CAP - scene.arcs.length))) {
+      const weight = Math.log1p(d.count) / Math.log1p(dmax);
+      lanes.push({ from: d.file, to: scene.defFile, style: LANE_STYLE.dispatch, weight, lift: ARC_LIFT, gain: d.test ? TEST_GAIN : 1 });
     }
     for (const c of scene.callees.slice(0, 120)) lanes.push({ from: scene.defFile, to: c.file, style: LANE_STYLE.callee, weight: 0.3, lift: -0.22 });
     return lanes.length > 0 ? buildLaneGeometry(engine.tree, engine.graph, lanes) : null;

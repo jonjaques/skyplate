@@ -15,7 +15,7 @@ import { useMemo } from "react";
 import { Button } from "../../components/ui/button";
 import { formatDate, formatInt, formatMonth, plural } from "../../lib/format";
 import { useViewer } from "../../state/store";
-import { columns, hasHistory, scopeCommits, weekly, weeksLabel } from "../data";
+import { columns, hasHistory, noCommitsReason, scopeCommits, weekly, weeksLabel } from "../data";
 import { XAxis } from "../kit/Axis";
 import { timeTicks, toDate, useActiveIndex } from "../kit/interaction";
 import { columnPath } from "../kit/marks";
@@ -30,6 +30,7 @@ export function ActivityTray() {
   const { report, scope, dirPath } = useTrayScope();
   const time = useViewer((s) => s.time);
   const setTime = useViewer((s) => s.setTime);
+  const narrowedByFilters = useViewer((s) => !!s.filters.languages || !!s.filters.categories);
   const surface = useSurface();
   const [ref, width, height] = useMeasure<HTMLDivElement>();
   const git = report?.git;
@@ -59,6 +60,17 @@ export function ActivityTray() {
         <TrayEmpty>
           {n === 1 ? "One commit" : `${formatInt(n)} commits`} in this history{git.shallow ? ", a shallow clone" : ""}, on{" "}
           {formatDate(git.last)}. Activity needs a longer history; re-run on a full clone to see it.
+        </TrayEmpty>
+      </TrayShell>
+    );
+  }
+
+  // A drawer no commit touches drew a row of zero-height columns under "0 commits": say why.
+  if (weeks.total === 0) {
+    return (
+      <TrayShell title="Commit activity" label={dirPath ? `Commit activity in ${dirPath}` : undefined}>
+        <TrayEmpty>
+          {noCommitsReason(git, null, "", dirPath && !narrowedByFilters ? `the files in ${dirPath}` : "the files in view", narrowedByFilters ? "widen the filters" : "close the drawer")}
         </TrayEmpty>
       </TrayShell>
     );

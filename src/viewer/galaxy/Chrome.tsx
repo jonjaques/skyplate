@@ -10,7 +10,7 @@
 
 import { AlertCircle, LoaderCircle, Maximize2, Spline, X } from "lucide-react";
 import { useMemo } from "react";
-import { CATEGORY_GROUP, REF_KINDS, type Category, type CategoryGroup, type RefKind } from "../../shared/schema";
+import { CATEGORY_GROUP, REF_KINDS, type Category, type CategoryGroup, type CodeSymbols, type RefKind } from "../../shared/schema";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
@@ -29,7 +29,7 @@ import { useViewer, type ColorBy, type EdgeMode, type Filters, type LayoutMode, 
 import { isNarrowed, passesFilters } from "./encode";
 import type { GalaxyEngine } from "./engine";
 import { LANE_INK, LANE_INK_2, selectionLanes } from "./lanes";
-import type { SymbolScene } from "./symbolScene";
+import { reachPhrase, type SymbolScene } from "./symbolScene";
 
 // ─── Title ───────────────────────────────────────────────────────────────────────────────────
 
@@ -148,7 +148,9 @@ const SEQUENTIAL_LABEL: Record<Exclude<ColorBy, "language" | "category">, [strin
   complexity: ["Complexity", "lowest", "highest"],
   ownership: ["Top author's share of lines", "shared", "one author"],
   hotspot: ["Hotspot score", "calm", "hottest"],
-  rank: ["Dependency rank", "leaf", "most depended on"],
+  // "Most depended on" names the holotype rule (direct importers); PageRank also weighs who
+  // imports the importers, so it gets its own word.
+  rank: ["Dependency rank", "leaf", "most central"],
 };
 
 const SIZE_LABEL: Record<SizeBy, string> = {
@@ -365,7 +367,7 @@ const OTHER_KIND_WORD: Record<(typeof OTHER_KIND_ORDER)[number], string> = {
   export: "re-exports",
 };
 
-function LineSample({ kind }: { kind: "call" | "other" | "callee" | "implementation" | "import" }) {
+function LineSample({ kind }: { kind: "call" | "other" | "callee" | "implementation" | "import" | "dispatch" }) {
   return (
     <svg width="26" height="8" viewBox="0 0 26 8" className="shrink-0" aria-hidden="true">
       {kind === "call" && (
@@ -385,6 +387,8 @@ function LineSample({ kind }: { kind: "call" | "other" | "callee" | "implementat
       )}
       {kind === "other" && <line x1="1" y1="4" x2="25" y2="4" stroke={LANE_INK} strokeOpacity="0.6" strokeDasharray="3 3" />}
       {kind === "callee" && <line x1="1" y1="4" x2="25" y2="4" stroke={LANE_INK} strokeOpacity="0.5" strokeDasharray="1 3" />}
+      {/* A call's line at the strength the plate draws it, with no pulse riding it. */}
+      {kind === "dispatch" && <line x1="1" y1="4" x2="25" y2="4" stroke={LANE_INK} strokeOpacity="0.38" />}
     </svg>
   );
 }
@@ -414,13 +418,24 @@ function SymbolKey({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene
     .map((k) => OTHER_KIND_WORD[k])
     .join(", ");
   const n = (v: number) => <span className="figures font-mono">{formatInt(v)}</span>;
+  const files = (v: number) => (
+    <>
+      {n(v)} {v === 1 ? "file" : "files"}
+    </>
+  );
+  const tests = totals.tests + totals.dispatchTests;
+  const hostKinds = hostExtensions(engine, scene);
+  const bases = [...new Set(scene.dispatch.map((d) => d.base))].map((b) => qualifiedName(symbols, b)).join(", ");
   // Rows with nothing to show are left out: a type alias's "Calls · 0" and an interface's
   // pulse legend described lines that were never drawn.
   return (
     <div className="mb-1 flex max-w-[360px] flex-col gap-1">
       <p className="mb-0.5 text-plate-ink">
         <span className="font-mono">{name}</span> <span className="text-plate-muted">({t.kind[scene.symbol]})</span>{" "}
-        {scene.typeLevel || !scene.callable ? "is used in" : "reaches"} {plural(totals.files, "file")}
+        {scene.typeLevel || !scene.callable ? "is used in" : "reaches"} {reachPhrase(totals)}
+        {/* reachPhrase counts dispatch files too; saying so keeps this figure from disagreeing
+            with the record's Files cell, which counts only files that name the symbol. */}
+        {scene.dispatch.length > 0 && <span className="text-plate-muted">, including through the {scene.through}</span>}
       </p>
       <span className="flex items-center gap-2">
         <svg width="26" height="12" viewBox="0 0 26 12" aria-hidden="true">
@@ -446,7 +461,19 @@ function SymbolKey({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene
       )}
       {arcOther > 0 && (
         <span className="flex items-center gap-2">
-          <LineSample kind="other" /> {scene.callable || arcCalls > 0 ? "Other uses" : "Uses"}: {otherKinds} · {n(arcOther)}
+          {/* These count references; the record's "Other uses" counts symbols. Sharing the
+              label made 12 here and 3 there look like a contradiction. */}
+          <LineSample kind="other" /> {scene.callable || arcCalls > 0 ? "Other references" : "References"}: {otherKinds} · {n(arcOther)}
+        </span>
+      )}
+      {totals.host > 0 && (
+        <span className="flex items-center gap-2" title="Imports read from script blocks the TypeScript checker does not open">
+          <LineSample kind="other" /> Imports from {hostKinds}, read outside the checker · {files(totals.host)}
+        </span>
+      )}
+      {scene.dispatch.length > 0 && (
+        <span className="flex items-center gap-2" title={`Callers of ${bases}, which this ${scene.through === "base method" ? "overrides" : "implements"}`}>
+          <LineSample kind="dispatch" /> Through the {scene.through} · {files(scene.dispatch.length)}
         </span>
       )}
       {scene.callees.length > 0 && (
@@ -459,8 +486,30 @@ function SymbolKey({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene
           Callers of its callers glow dimmer, up to 3 hops · {n(totals.ripple)} more {totals.ripple === 1 ? "file" : "files"}
         </span>
       )}
+      {tests > 0 && tests < totals.files + totals.dispatch && <span className="pl-[34px]">Arcs and stars from tests are drawn fainter</span>}
     </div>
   );
+}
+
+/** "Vue and Markdown": the kinds of file a symbol's host imports come from, for the legend. */
+function hostExtensions(engine: GalaxyEngine, scene: SymbolScene): string {
+  const files = engine.model.report.files;
+  const names: string[] = [];
+  for (const a of scene.arcs) {
+    if (a.host === 0) continue;
+    const f = files[a.file]!;
+    const name = engine.model.languages.get(f.language)?.name ?? (f.ext ? `.${f.ext}` : f.name);
+    if (!names.includes(name)) names.push(name);
+  }
+  if (names.length <= 2) return names.join(" and ");
+  return `${names.slice(0, 2).join(", ")} and other`;
+}
+
+/** "SaveStore.read" for a member, the bare name otherwise (as the record writes it). */
+function qualifiedName(symbols: CodeSymbols, s: number): string {
+  const t = symbols.symbols;
+  const p = t.parent[s]!;
+  return p >= 0 && t.kind[p] !== "module" ? `${t.name[p]}.${t.name[s]}` : t.name[s]!;
 }
 
 /**
@@ -469,9 +518,10 @@ function SymbolKey({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene
  */
 function CompactSymbolKey({ scene }: { scene: SymbolScene }) {
   const { totals } = scene;
-  const parts = [plural(totals.files, "file")];
+  const parts = [reachPhrase(totals)];
   if (totals.calls > 0) parts.push(plural(totals.calls, "call"));
   if (totals.implementations > 0) parts.push(plural(totals.implementations, "implementation"));
+  if (totals.dispatch > 0) parts.push(`${formatInt(totals.dispatch)} through the ${scene.through}`);
   if (totals.ripple > 0) parts.push(`${formatInt(totals.ripple)} ripple`);
   return (
     <span className="flex items-center gap-2 text-plate-ink">
