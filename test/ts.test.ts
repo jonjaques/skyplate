@@ -748,6 +748,47 @@ describe("CommonJS without a config", () => {
   });
 });
 
+describe("doc comments with every link form", () => {
+  // A bare `{@link}` made the compiler's own comment formatter throw, and that one comment
+  // ended the analysis of the whole project: starchart's report of itself had no symbols.
+  let dir = "";
+  let c: CodeSymbols | null;
+  const files: Record<string, string> = {
+    "tsconfig.json": JSON.stringify({ compilerOptions: { strict: true }, include: ["src"] }),
+    "src/store.ts": [
+      "export class Store {",
+      "  read(): number { return 1; }",
+      "  write(): void {}",
+      "}",
+      "/** Reads a {@link Store} by {@link Store.read}, {@link Store#write}, {@linkcode Store | the store} and {@link}. Then more. */",
+      "export function use(s: Store): number { return s.read(); }",
+      "",
+    ].join("\n"),
+  };
+  const paths = Object.keys(files).sort();
+
+  beforeAll(async () => {
+    dir = mkdtempSync(join(tmpdir(), "starchart-ts-links-"));
+    for (const [p, text] of Object.entries(files)) {
+      mkdirSync(join(dir, p, ".."), { recursive: true });
+      writeFileSync(join(dir, p), text);
+    }
+    c = await analyzeTypeScript(inputFor(dir, paths));
+    rmSync(dir, { recursive: true, force: true });
+  }, 60_000);
+
+  test("the analysis survives, and the summary keeps each link as written", () => {
+    expect(c).not.toBeNull();
+    const use = c!.symbols.name.indexOf("use");
+    expect(c!.symbols.doc[use]).toBe(
+      "Reads a {@link Store} by {@link Store.read}, {@link Store#write}, {@linkcode Store | the store} and {@link}.",
+    );
+    // The links still count as references to what they name.
+    const store = c!.symbols.name.indexOf("Store");
+    expect(c!.refs.symbol.filter((s, i) => s === store && c!.refs.from[i] === use).length).toBeGreaterThanOrEqual(4);
+  });
+});
+
 // ─── Configs the compiler cannot open ────────────────────────────────────────────────────────
 
 describe("a circular tsconfig `extends`", () => {

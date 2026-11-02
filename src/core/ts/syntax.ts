@@ -10,7 +10,6 @@
  */
 
 import {
-  getTextOfJSDocComment,
   ModifierFlags,
   NodeFlags,
   SyntaxKind,
@@ -220,13 +219,31 @@ export function isDeprecated(doc: TsNode | undefined): boolean {
  */
 export function firstSentence(doc: TsNode | undefined): string {
   if (!doc) return "";
-  // The remote node's comment is the string or JSDocText/JSDocLink list this helper expects.
-  const raw = getTextOfJSDocComment(doc.comment as Parameters<typeof getTextOfJSDocComment>[0]) ?? "";
+  const raw = commentText(doc);
   const para = raw.split(/\n\s*\n/)[0] ?? "";
   const flat = para.replace(/\s+/g, " ").trim();
   const m = /^(.+?[.!?])(?=\s+[A-Z0-9("'`[]|$)/.exec(flat);
   const s = m?.[1] ?? flat;
   return s.length > 200 ? s.slice(0, 199) + "…" : s;
+}
+
+/**
+ * A doc comment's text with each link as written in the source. Not the compiler's
+ * getTextOfJSDocComment, which rebuilds a link from `link.name`: for a link with no name
+ * (`{@link}`) the remote node's `name` is the link's text node, its formatter calls assertNever
+ * on that, and assertNever's message throws trying to JSON.stringify the cyclic remote node.
+ * Nothing caught it, so one such comment ended the analysis of the whole repository (starchart's
+ * own inline-doc.tsx has one). The written form is also what the viewer's inline-doc parser
+ * reads, `{@link Name|label}` and `{@link Name#member}` included.
+ */
+function commentText(doc: TsNode): string {
+  const c = doc.comment;
+  if (typeof c === "string") return c;
+  if (!c) return "";
+  const text = doc.getSourceFile().text;
+  let out = "";
+  for (const part of c) out += part.kind === K.JSDocText ? (part.text ?? "") : text.slice(part.pos, part.end);
+  return out;
 }
 
 // ─── Source text ─────────────────────────────────────────────────────────────────────────────
