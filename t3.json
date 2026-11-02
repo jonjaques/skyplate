@@ -1,0 +1,34 @@
+{
+  "$schema": "https://t3.codes/schema/t3.json",
+  "scripts": [
+    {
+      "name": "Install deps",
+      "icon": "configure",
+      "command": "bun install --frozen-lockfile",
+      "runOnWorktreeCreate": true
+    },
+    {
+      "name": "Dev server",
+      "icon": "play",
+      "command": "bun dev",
+      "async": true,
+      "previewUrl": "http://localhost:4317",
+      "autoOpenPreview": true
+    },
+    {
+      "name": "Test",
+      "icon": "test",
+      "command": "bun test"
+    },
+    {
+      "name": "Typecheck",
+      "icon": "lint",
+      "command": "bun run typecheck"
+    },
+    {
+      "name": "Build",
+      "icon": "build",
+      "command": "bun run build"
+    }
+  ]
+}
