@@ -1,9 +1,10 @@
 /**
  * Region names on the plate: one quiet label per top-level drawer, pinned to the region.
  *
- * Each label sits on the region's own stars (the member nearest the region's centroid, so it
- * lands on a crescent arm rather than in the empty middle of its curve) and follows the morph.
- * Hovering one lights its members and its outline; clicking opens the drawer. A label that would
+ * Each label sits on its supercluster's own stars (the member nearest the region's centroid, so
+ * it lands on a cluster rather than in the void between them; see GalaxyEngine.regionAnchor)
+ * and follows the morph.
+ * Hovering one lights its members and its filaments; clicking opens the drawer. A label that would
  * collide with a larger region's label, or with the plate chrome, steps aside for the frame. One
  * that a specimen label or its leader could not avoid moves below or beside its star, and steps
  * aside only when those spots are taken too (see FRAME_ORDER). With a drawer open, the other
@@ -11,7 +12,7 @@
  *
  * Every name carries a halo in the plate's own color, as a map knocks a road out from under a
  * town name. The names sit on their region's stars by design, and without it a star landed on
- * the "3" of "packages 349" and contour lines ran through the letters.
+ * the "3" of "packages 349" and lanes ran through the letters.
  */
 
 import { useEffect, useMemo, useRef } from "react";
@@ -46,33 +47,6 @@ export function touchedBySpecimens(r: PlateRect, labels: readonly PlateRect[], l
   return false;
 }
 
-/** The member nearest the centroid of the region's positions in one layout. */
-function anchorOf(pos: Float32Array, files: Int32Array): number {
-  let cx = 0;
-  let cy = 0;
-  let cz = 0;
-  for (let k = 0; k < files.length; k++) {
-    const i = files[k]! * 3;
-    cx += pos[i]!;
-    cy += pos[i + 1]!;
-    cz += pos[i + 2]!;
-  }
-  cx /= files.length;
-  cy /= files.length;
-  cz /= files.length;
-  let best = files[0]!;
-  let bestD = Infinity;
-  for (let k = 0; k < files.length; k++) {
-    const i = files[k]! * 3;
-    const d = (pos[i]! - cx) ** 2 + (pos[i + 1]! - cy) ** 2 + (pos[i + 2]! - cz) ** 2;
-    if (d < bestD) {
-      bestD = d;
-      best = files[k]!;
-    }
-  }
-  return best;
-}
-
 export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
   const focusDir = useViewer((s) => s.focusDir);
   const selection = useViewer((s) => s.selection);
@@ -86,13 +60,7 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
     focusDir !== null && focusDir !== 0 ? focusRegion : selection?.kind === "dir" && selection.id !== 0 ? regionOfDir(engine, selection.id) : -1;
   const quiet = selection?.kind === "symbol";
 
-  const regions = useMemo(
-    () =>
-      engine.regions
-        .filter((r) => r.files.length >= 2)
-        .map((r) => ({ region: r, tree: anchorOf(engine.tree, r.files), graph: anchorOf(engine.graph, r.files) })),
-    [engine],
-  );
+  const regions = useMemo(() => engine.regions.filter((r) => r.files.length >= 2).map((r) => ({ region: r })), [engine]);
   const els = useRef(new Map<number, HTMLButtonElement>());
   const wrapper = useRef<HTMLDivElement>(null);
   const sizes = useRef(new Map<number, { w: number; h: number }>());
@@ -106,7 +74,6 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
 
   useEffect(() => {
     const a = new THREE.Vector3();
-    const b = new THREE.Vector3();
     const container = wrapper.current?.parentElement ?? null;
     let chrome: Placed[] = [];
     let age = 0;
@@ -138,7 +105,7 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
         } else if (!entry.focused) entry.el.style.visibility = "hidden";
       }
     }, FRAME_ORDER.YIELD);
-    const placeOff = engine.onFrame(({ camera, width, height, morph }) => {
+    const placeOff = engine.onFrame(({ camera, width, height }) => {
       W = width;
       H = height;
       if (age-- <= 0 && container) {
@@ -151,12 +118,10 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
       }
       const placed: RegionLabelRect[] = [];
       shown.length = 0;
-      for (const { region, tree, graph } of regions) {
+      for (const { region } of regions) {
         const el = els.current.get(region.index);
         if (!el) continue;
-        engine.filePos(tree, a, 0);
-        engine.filePos(graph, b, 1);
-        a.lerp(b, morph).applyMatrix4(camera.matrixWorldInverse);
+        engine.regionAnchor(region.index, a).applyMatrix4(camera.matrixWorldInverse);
         const behind = a.z >= 0;
         a.applyMatrix4(camera.projectionMatrix);
         const sx = (a.x + 1) * 0.5 * W;

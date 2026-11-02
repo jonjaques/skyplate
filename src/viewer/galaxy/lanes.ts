@@ -1,9 +1,10 @@
 /**
  * Geometry for lanes: import edges and symbol arcs, built as one LineSegments per group.
  *
- * Each lane carries both layouts' endpoints so it follows the tree/graph morph in the vertex
- * shader, plus t (0 at the importer or referencing file, 1 at the dependency or definition),
- * which the fragment shader turns into direction: brightness, drifting dashes, pulses.
+ * Each lane carries the engine's from- and to-slot endpoints so it follows the morph in the
+ * vertex shader (and is rebuilt whenever the engine retargets), plus t (0 at the importer or
+ * referencing file, 1 at the dependency or definition), which the fragment shader turns into
+ * direction: brightness, drifting dashes, pulses.
  */
 
 import * as THREE from "three";
@@ -47,19 +48,52 @@ export function selectionLanes(model: Model, file: number): SelectionLaneSet {
   return { imports, importers, hiddenImporters: all.length - importers.length, totalImporters: all.length };
 }
 
-/** How far a symbol's reference arcs bow off the disc, per unit of span (see Lane.lift). */
+/** How far a symbol's reference arcs bow, per unit of span (see Lane.lift and bowNormal). */
 export const ARC_LIFT = 0.32;
 /** Arcs drawn per symbol: past a few hundred they fog the stars they connect. */
 export const ARC_CAP = 600;
 
+/**
+ * The direction a curved lane bows: world up (+z, the camera's up), less its component along the
+ * chord. In the disc this replaced, arcs simply rose along +z off the plane. A web has no plane,
+ * and straight +z failed for a chord that is itself nearly vertical (the control point slid
+ * along the line and the arc came out straight). Bowing toward up-perpendicular keeps every
+ * arc a visible curve, keeps a symbol's callers rising over the web as a canopy instead of
+ * threading through the knots between them, and keeps "arcs go up on the plate" true from the
+ * oblique views the camera uses, which the label placement relies on (the definition's tag hangs
+ * below its star). A near-vertical chord bows outward, away from the web's center, instead.
+ */
+export function bowNormal(a: THREE.Vector3, b: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const dz = b.z - a.z;
+  const len = Math.hypot(dx, dy, dz);
+  if (len < 1e-9) return out.set(0, 0, 1);
+  const cz = dz / len;
+  if (Math.abs(cz) < 0.94) {
+    // up − (up·ĉ)ĉ
+    out.set((-cz * dx) / len, (-cz * dy) / len, 1 - cz * cz);
+  } else {
+    // Outward from the center at the chord's midpoint, made perpendicular to the chord.
+    out.set((a.x + b.x) / 2, (a.y + b.y) / 2, 0);
+    if (out.lengthSq() < 1e-9) out.set(1, 0, 0);
+    out.normalize();
+    const along = (out.x * dx + out.y * dy + out.z * dz) / len;
+    out.set(out.x - (along * dx) / len, out.y - (along * dy) / len, out.z - (along * dz) / len);
+  }
+  return out.normalize();
+}
+
+const apexNormal = new THREE.Vector3();
 /**
  * Where a lane with `lift` peaks: a quadratic bezier's apex sits halfway to its control point,
  * so framing a symbol's neighborhood can include the arcs, not just their ends.
  */
 export function laneApex(a: THREE.Vector3, b: THREE.Vector3, lift: number, out: THREE.Vector3): THREE.Vector3 {
   const d = a.distanceTo(b);
+  bowNormal(a, b, apexNormal);
   out.addVectors(a, b).multiplyScalar(0.5);
-  out.z += d * lift * 0.5;
+  out.addScaledVector(apexNormal, d * lift * 0.5);
   return out;
 }
 
@@ -69,7 +103,7 @@ export interface Lane {
   style: number;
   /** 0-1 strength (call count, log-scaled). */
   weight: number;
-  /** Lift the lane off the disc as a curve: 0 is straight, positive bows up, negative down. */
+  /** Bow the lane into a curve (see bowNormal): 0 is straight, positive bows up, negative down. */
   lift: number;
   /** Overall strength multiplier, 1 when omitted (TEST_GAIN for a test file's arc). */
   gain?: number;
@@ -78,7 +112,8 @@ export interface Lane {
 /** Segments per curved lane: smooth at plate scale, cheap at hundreds of arcs. */
 const ARC_STEPS = 22;
 
-export function buildLaneGeometry(tree: Float32Array, graph: Float32Array, lanes: readonly Lane[]): THREE.BufferGeometry {
+/** Lanes between files, with both of the engine's slots (`from`, `to`) as endpoints. */
+export function buildLaneGeometry(from: Float32Array, to: Float32Array, lanes: readonly Lane[]): THREE.BufferGeometry {
   let segs = 0;
   for (const l of lanes) segs += l.lift === 0 ? 1 : ARC_STEPS;
   const pos = new Float32Array(segs * 6);
@@ -98,10 +133,12 @@ export function buildLaneGeometry(tree: Float32Array, graph: Float32Array, lanes
   const gc = new THREE.Vector3();
   const p = new THREE.Vector3();
   const gp = new THREE.Vector3();
-  const control = (from: THREE.Vector3, to: THREE.Vector3, lift: number, out: THREE.Vector3) => {
-    const d = from.distanceTo(to);
-    out.addVectors(from, to).multiplyScalar(0.5);
-    out.z += d * lift;
+  const nrm = new THREE.Vector3();
+  const control = (p0: THREE.Vector3, p2: THREE.Vector3, lift: number, out: THREE.Vector3) => {
+    const d = p0.distanceTo(p2);
+    bowNormal(p0, p2, nrm);
+    out.addVectors(p0, p2).multiplyScalar(0.5);
+    out.addScaledVector(nrm, d * lift);
     return out;
   };
   const bez = (p0: THREE.Vector3, p1: THREE.Vector3, p2: THREE.Vector3, t: number, out: THREE.Vector3) => {
@@ -127,10 +164,10 @@ export function buildLaneGeometry(tree: Float32Array, graph: Float32Array, lanes
     v++;
   };
   for (const l of lanes) {
-    a.fromArray(tree, l.from * 3);
-    b.fromArray(tree, l.to * 3);
-    ga.fromArray(graph, l.from * 3);
-    gb.fromArray(graph, l.to * 3);
+    a.fromArray(from, l.from * 3);
+    b.fromArray(from, l.to * 3);
+    ga.fromArray(to, l.from * 3);
+    gb.fromArray(to, l.to * 3);
     const length = Math.max(a.distanceTo(b), ga.distanceTo(gb)) * (l.lift === 0 ? 1 : 1 + Math.abs(l.lift) * 0.6);
     if (l.lift === 0) {
       put(a, ga, 0, l, length);
@@ -148,7 +185,7 @@ export function buildLaneGeometry(tree: Float32Array, graph: Float32Array, lanes
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-  g.setAttribute("aGraph", new THREE.BufferAttribute(gpos, 3));
+  g.setAttribute("aTo", new THREE.BufferAttribute(gpos, 3));
   g.setAttribute("aT", new THREE.BufferAttribute(tAttr, 1));
   g.setAttribute("aStyle", new THREE.BufferAttribute(style, 1));
   g.setAttribute("aWeight", new THREE.BufferAttribute(weight, 1));

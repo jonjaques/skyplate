@@ -24,6 +24,7 @@ Bun is the runtime, package manager and bundler here (this project began from
 ```
 bin/starchart.ts          CLI entry → src/cli/ (args, progress, serve)
 src/shared/schema.ts      THE contract between analyzer and viewer (Report, CodeSymbols…)
+src/shared/web.ts         the cosmic web layout (pure; both sides import it, see below)
 src/core/contracts.ts     function types each analyzer module exports
 src/core/                 analyzer: walk, languages/, metrics, facts, imports/, graph, git/,
                           ts/ (TypeScript 7 compiler API), stats, findings, layout, site,
@@ -57,6 +58,13 @@ src/index.ts              dev server
   reads Node-internal pipe handles that Bun does not have.
 - **Never write into an analyzed project.** The CLI refuses to replace a folder that isn't a
   starchart report, or the project itself (`site.ts`).
+- **The web is computed, not shipped.** The galaxy's default layout (`src/shared/web.ts`) runs
+  in the viewer, once per gravity the reader picks, and in the analyzer only to anchor the
+  import-graph layout (`src/core/layout.ts`), which is shipped. Keep `computeWeb` pure and
+  deterministic (no DOM, no three.js, no `Math.random`, sorts with id tie-breaks) and inside its
+  main-thread budget (`test/web.test.ts`: 150 ms at 20k files, 400 ms at 50k). The truth rule:
+  no layout choice, gravity included, moves a file out of its directory's neighborhood; bridge
+  files leaning along a filament are the one bounded exception.
 
 ## Visual world
 

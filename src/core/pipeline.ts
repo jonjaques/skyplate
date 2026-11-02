@@ -757,13 +757,15 @@ export async function analyzeProject(
     const layoutInput: LayoutInput = {
       fileCount: n,
       fileDir,
-      lines: files.map((f) => f.lines),
       dirParent: dirs.map((d) => d.parent),
-      dirDepth: dirs.map((d) => d.depth),
       dirDirs: dirs.map((d) => d.dirs),
       dirFiles: dirs.map((d) => d.files),
       from: codeFrom,
       to: codeTo,
+      // The default web's gravity reads these, so the graph's anchor matches the web the
+      // viewer computes from the same report.
+      fanIn: files.map((f) => f.fanIn),
+      rank: files.map((f) => f.rank),
     };
     const layoutP = pool.run({ type: "layout", input: layoutInput }).then((res: WorkerResponse): Layouts => {
       if (res.type !== "layout") throw new Error("analysis worker answered the layout job with " + res.type);

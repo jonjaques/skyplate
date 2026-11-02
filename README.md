@@ -4,6 +4,12 @@ Point it at any project and get a static report folder: a 3D galaxy map of every
 statistics dashboard, a source reader, and TypeScript code intelligence where picking a
 function lights up every file that calls it.
 
+The galaxy is a cosmic web of the directory tree: directories are clusters of stars nested
+inside their parents, strung together by filaments that stand for the imports between them.
+A Gravity control picks what pulls files to the center of their clusters (dependencies,
+complexity, hotspots, churn, recent change or size), and the Imports view rearranges every
+file by the import graph alone.
+
 ```sh
 bun install
 bun run build                          # build the viewer template once (dist/viewer)

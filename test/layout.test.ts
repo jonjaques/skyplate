@@ -1,14 +1,14 @@
 /**
- * Galaxy and graph layout (src/core/layout.ts): deterministic, finite, never stacks two files
- * on one point, keeps directory geometry honest, and stays inside the runtime budget.
+ * The import-graph layout (src/core/layout.ts): deterministic, finite, fitted to the default
+ * web's radius, anchored to each region's side of the web so the Web ↔ Imports morph stays
+ * legible, and inside the analyzer's runtime budget.
  *
- * Inputs are synthetic trees from a seeded generator, so each case is reproducible and the
- * shapes cover what real repositories throw at the layout: a few huge regions, many tiny ones,
- * deep chains, flat directories of hundreds of files, root-only projects, no imports at all.
+ * Inputs are synthetic trees from a seeded generator, so each case is reproducible.
  */
 
 import { describe, expect, test } from "bun:test";
-import { computeLayout, type LayoutInput } from "../src/core/layout";
+import { computeLayout, webInputOf, type LayoutInput } from "../src/core/layout";
+import { computeWeb } from "../src/shared/web";
 
 function prng(seed: number): () => number {
   let a = seed >>> 0;
@@ -21,56 +21,40 @@ function prng(seed: number): () => number {
   };
 }
 
-interface Shape {
-  files: number;
-  dirs: number;
-  /** Extra weight on the first top-level directories, so a few regions dominate. */
-  skew?: number;
-  /** Code edges per file. */
-  edgeRate?: number;
-  /** Probability a file lands in the root directory. */
-  rootShare?: number;
-  seed?: number;
-}
-
-function synthetic({ files, dirs, skew = 2, edgeRate = 1.5, rootShare = 0.01, seed = 1 }: Shape): LayoutInput {
+function synthetic({ files, dirs, edgeRate = 1.5, seed = 1 }: { files: number; dirs: number; edgeRate?: number; seed?: number }): LayoutInput {
   const rand = prng(seed);
   const dirParent = [-1];
-  const dirDepth = [0];
   const dirDirs: number[][] = [[]];
   const dirFiles: number[][] = [[]];
   for (let d = 1; d < dirs; d++) {
-    // Early directories hang off the root; later ones attach anywhere, preferring recent ones,
-    // which grows a few deep chains alongside a broad top level.
     const parent = d < Math.min(12, dirs) ? 0 : Math.floor(Math.pow(rand(), 0.7) * d);
     dirParent.push(parent);
-    dirDepth.push(dirDepth[parent]! + 1);
     dirDirs.push([]);
     dirFiles.push([]);
     dirDirs[parent]!.push(d);
   }
   const fileDir: number[] = [];
-  const lines: number[] = [];
   for (let f = 0; f < files; f++) {
-    const d = rand() < rootShare || dirs === 1 ? 0 : 1 + Math.floor(Math.pow(rand(), skew) * (dirs - 1));
+    const d = rand() < 0.01 || dirs === 1 ? 0 : 1 + Math.floor(Math.pow(rand(), 2) * (dirs - 1));
     fileDir.push(d);
     dirFiles[d]!.push(f);
-    lines.push(rand() < 0.05 ? 0 : Math.floor(Math.exp(rand() * 7)));
   }
   const seen = new Set<number>();
   const from: number[] = [];
   const to: number[] = [];
-  const edges = Math.floor(files * edgeRate);
-  for (let e = 0; e < edges && files > 1; e++) {
+  for (let e = 0; e < Math.floor(files * edgeRate) && files > 1; e++) {
+    // Imports mostly stay inside their region, like real code, with hubs anywhere.
     const a = Math.floor(rand() * files);
-    // Imports favor a small set of hubs, like real code.
-    const b = Math.floor(Math.pow(rand(), 3) * files);
+    const b = rand() < 0.7 ? dirFiles[fileDir[a]!]![Math.floor(rand() * dirFiles[fileDir[a]!]!.length)]! : Math.floor(Math.pow(rand(), 3) * files);
     if (a === b || seen.has(a * files + b)) continue;
     seen.add(a * files + b);
     from.push(a);
     to.push(b);
   }
-  return { fileCount: files, fileDir, lines, dirParent, dirDepth, dirDirs, dirFiles, from, to };
+  const fanIn = new Array<number>(files).fill(0);
+  for (const t of to) fanIn[t]!++;
+  const max = Math.max(1, ...fanIn);
+  return { fileCount: files, fileDir, dirParent, dirDirs, dirFiles, from, to, fanIn, rank: fanIn.map((x) => x / max) };
 }
 
 function expectFinite(values: number[], what: string) {
@@ -78,196 +62,81 @@ function expectFinite(values: number[], what: string) {
   expect(bad, `${what}[${bad}] = ${values[bad]}`).toBe(-1);
 }
 
-/** Pairs of files closer than `eps` (a spatial hash, so 20k files stay cheap). */
-function stackedPairs(pos: number[], eps = 0.05): [number, number][] {
-  const n = pos.length / 3;
-  const cell = 1;
-  const grid = new Map<string, number[]>();
-  const pairs: [number, number][] = [];
-  for (let i = 0; i < n; i++) {
-    const cx = Math.floor(pos[i * 3]! / cell);
-    const cy = Math.floor(pos[i * 3 + 1]! / cell);
-    const cz = Math.floor(pos[i * 3 + 2]! / cell);
-    for (let dx = -1; dx <= 1; dx++)
-      for (let dy = -1; dy <= 1; dy++)
-        for (let dz = -1; dz <= 1; dz++) {
-          for (const j of grid.get(`${cx + dx},${cy + dy},${cz + dz}`) ?? []) {
-            const d = Math.hypot(pos[i * 3]! - pos[j * 3]!, pos[i * 3 + 1]! - pos[j * 3 + 1]!, pos[i * 3 + 2]! - pos[j * 3 + 2]!);
-            if (d < eps) pairs.push([j, i]);
-          }
-        }
-    const key = `${cx},${cy},${cz}`;
-    (grid.get(key) ?? grid.set(key, []).get(key)!).push(i);
-  }
-  return pairs;
-}
-
 describe("computeLayout", () => {
   const medium = synthetic({ files: 3000, dirs: 400, seed: 7 });
+  const layout = computeLayout(medium);
 
   test("is deterministic across runs", () => {
-    const a = computeLayout(medium);
-    const b = computeLayout(synthetic({ files: 3000, dirs: 400, seed: 7 }));
-    expect(b).toEqual(a);
+    expect(computeLayout(synthetic({ files: 3000, dirs: 400, seed: 7 }))).toEqual(layout);
   });
 
-  test("every number is finite and the arrays match the counts", () => {
-    const layout = computeLayout(medium);
-    expect(layout.tree.length).toBe(medium.fileCount * 3);
+  test("every number is finite and the array matches the file count", () => {
     expect(layout.graph.length).toBe(medium.fileCount * 3);
-    expect(layout.dirCenters.length).toBe(medium.dirParent.length * 3);
-    expect(layout.dirRadius.length).toBe(medium.dirParent.length);
-    expectFinite(layout.tree, "tree");
     expectFinite(layout.graph, "graph");
-    expectFinite(layout.dirCenters, "dirCenters");
-    expectFinite(layout.dirRadius, "dirRadius");
-    expect(layout.radius.tree).toBeGreaterThan(0);
+    expect(layout.radius).toBeGreaterThan(0);
   });
 
-  test("never stacks two files on one point in the tree layout", () => {
-    const layout = computeLayout(medium);
-    expect(stackedPairs(layout.tree)).toEqual([]);
+  test("the graph shares the default web's radius, so framing holds across the morph", () => {
+    const web = computeWeb(webInputOf(medium));
+    expect(Math.abs(layout.radius - web.radius)).toBeLessThan(web.radius * 0.01);
   });
 
-  test("the graph layout shares the tree's overall radius", () => {
-    const layout = computeLayout(medium);
-    expect(Math.abs(layout.radius.graph - layout.radius.tree)).toBeLessThan(layout.radius.tree * 0.01);
-  });
-
-  test("a directory's sphere contains every file beneath it", () => {
-    const layout = computeLayout(medium);
-    const n = medium.fileCount;
-    for (let f = 0; f < n; f++) {
-      for (let d = medium.fileDir[f]!; d >= 0; d = medium.dirParent[d]!) {
-        const dist = Math.hypot(
-          layout.tree[f * 3]! - layout.dirCenters[d * 3]!,
-          layout.tree[f * 3 + 1]! - layout.dirCenters[d * 3 + 1]!,
-          layout.tree[f * 3 + 2]! - layout.dirCenters[d * 3 + 2]!,
-        );
-        if (dist > layout.dirRadius[d]! + 0.05) throw new Error(`file ${f} lies ${dist} from dir ${d} (radius ${layout.dirRadius[d]})`);
-      }
-    }
-  });
-
-  test("top-level regions do not overlap each other's arms", () => {
-    // Every arm lives in its own spiral sector, so a region's files sit closer to their own
-    // region's center than the nearest point of any other region usually does. Checked loosely:
-    // the share of files whose nearest neighbor (in the plane) belongs to another region stays
-    // small, which fails if arms are interleaved or stacked.
-    const input = synthetic({ files: 2000, dirs: 200, seed: 11, rootShare: 0 });
-    const layout = computeLayout(input);
+  test("each region's import cluster lands on its own side of the web", () => {
+    // The anchor is weak, but it should orient every sizeable region: the direction from the
+    // center to its files' centroid agrees between the web and the graph.
+    const web = computeWeb(webInputOf(medium));
     const regionOf = (f: number) => {
-      let d = input.fileDir[f]!;
-      while (input.dirParent[d]! > 0) d = input.dirParent[d]!;
+      let d = medium.fileDir[f]!;
+      while (d > 0 && medium.dirParent[d]! > 0) d = medium.dirParent[d]!;
       return d;
     };
-    let foreign = 0;
-    for (let i = 0; i < input.fileCount; i += 7) {
-      let best = Infinity;
-      let who = -1;
-      for (let j = 0; j < input.fileCount; j++) {
-        if (j === i) continue;
-        const d = Math.hypot(layout.tree[i * 3]! - layout.tree[j * 3]!, layout.tree[i * 3 + 1]! - layout.tree[j * 3 + 1]!);
-        if (d < best) {
-          best = d;
-          who = j;
-        }
+    const sums = new Map<number, { w: number[]; g: number[]; n: number }>();
+    for (let f = 0; f < medium.fileCount; f++) {
+      const r = regionOf(f);
+      if (r === 0) continue;
+      const s = sums.get(r) ?? { w: [0, 0, 0], g: [0, 0, 0], n: 0 };
+      for (let j = 0; j < 3; j++) {
+        s.w[j]! += web.positions[f * 3 + j]!;
+        s.g[j]! += layout.graph[f * 3 + j]!;
       }
-      if (regionOf(who) !== regionOf(i)) foreign++;
+      s.n++;
+      sums.set(r, s);
     }
-    expect(foreign / Math.ceil(input.fileCount / 7)).toBeLessThan(0.05);
+    let agree = 0;
+    let total = 0;
+    for (const s of sums.values()) {
+      if (s.n < 100) continue;
+      const dot = s.w[0]! * s.g[0]! + s.w[1]! * s.g[1]! + s.w[2]! * s.g[2]!;
+      total++;
+      if (dot > 0) agree++;
+    }
+    expect(total).toBeGreaterThan(2);
+    expect(agree / total).toBeGreaterThan(0.7);
   });
 
-  test("small regions and root files form the core, inside every arm", () => {
-    // Top-level directories too small to be arms are packed around the root files at the
-    // center (the bright core), so each of their files sits nearer the center than the
-    // typical file of any arm, and each small region stays one contiguous clump.
-    const input = synthetic({ files: 2500, dirs: 300, seed: 17, rootShare: 0.02 });
-    // Add a few tiny top-level directories, the .github / scripts kind.
-    for (let k = 0; k < 4; k++) {
-      const d = input.dirParent.length;
-      input.dirParent.push(0);
-      input.dirDepth.push(1);
-      input.dirDirs.push([]);
-      input.dirFiles.push([]);
-      input.dirDirs[0]!.push(d);
-      for (let j = 0; j < 3 + k; j++) {
-        const f = input.fileCount++;
-        input.fileDir.push(d);
-        input.lines.push(40 + j);
-        input.dirFiles[d]!.push(f);
-      }
-    }
-    const layout = computeLayout(input);
-    expectFinite(layout.tree, "tree");
-    const radial = (f: number) => Math.hypot(layout.tree[f * 3]!, layout.tree[f * 3 + 1]!);
-    const total = (d: number): number => input.dirFiles[d]!.length + input.dirDirs[d]!.reduce((s, c) => s + total(c), 0);
-    const tiny = input.dirDirs[0]!.filter((d) => total(d) > 0 && total(d) < 0.025 * input.fileCount);
-    const big = input.dirDirs[0]!.filter((d) => total(d) >= 0.025 * input.fileCount);
-    expect(tiny.length).toBeGreaterThan(0);
-    const filesOf = (d: number): number[] => [...input.dirFiles[d]!, ...input.dirDirs[d]!.flatMap(filesOf)];
-    const median = (xs: number[]) => xs.sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
-    const armMedian = Math.min(...big.map((d) => median(filesOf(d).map(radial))));
-    for (const d of tiny) for (const f of filesOf(d)) expect(radial(f)).toBeLessThan(armMedian);
-    for (const f of input.dirFiles[0]!) expect(radial(f)).toBeLessThan(armMedian);
-  });
+  test("handles empty, single-file and edgeless projects", () => {
+    const empty = computeLayout({ fileCount: 0, fileDir: [], dirParent: [-1], dirDirs: [[]], dirFiles: [[]], from: [], to: [], fanIn: [], rank: [] });
+    expect(empty.graph).toEqual([]);
+    expect(empty.radius).toBe(0);
 
-  test("handles empty, single-file, root-only and edgeless projects", () => {
-    const empty = computeLayout({ fileCount: 0, fileDir: [], lines: [], dirParent: [-1], dirDepth: [0], dirDirs: [[]], dirFiles: [[]], from: [], to: [] });
-    expect(empty.tree).toEqual([]);
-    expect(empty.radius.tree).toBe(0);
+    const one = computeLayout({ fileCount: 1, fileDir: [0], dirParent: [-1], dirDirs: [[]], dirFiles: [[0]], from: [], to: [], fanIn: [0], rank: [0] });
+    expectFinite(one.graph, "graph");
 
-    const one = computeLayout({ fileCount: 1, fileDir: [0], lines: [10], dirParent: [-1], dirDepth: [0], dirDirs: [[]], dirFiles: [[0]], from: [], to: [] });
-    expectFinite(one.tree, "tree");
-    expectFinite(one.dirCenters, "dirCenters");
-
-    const rootOnly = synthetic({ files: 300, dirs: 1, seed: 3 });
-    const r = computeLayout(rootOnly);
-    expectFinite(r.tree, "tree");
-    expect(stackedPairs(r.tree)).toEqual([]);
-
+    // With no imports there is nothing to lay out by: the graph view is the web view.
     const edgeless = synthetic({ files: 500, dirs: 60, edgeRate: 0, seed: 5 });
     const e = computeLayout(edgeless);
+    const web = computeWeb(webInputOf(edgeless));
     expectFinite(e.graph, "graph");
-    // With no imports there is nothing to lay out by: the graph view is the tree view.
-    expect(e.graph).toEqual(e.tree);
-  });
-
-  test("a single dominant region still yields several arms and a deep chain stays finite", () => {
-    // One top-level directory holding everything, three levels of subdirectories under it.
-    const dirParent = [-1, 0];
-    const dirDepth = [0, 1];
-    const dirDirs: number[][] = [[1], []];
-    const dirFiles: number[][] = [[], []];
-    for (let d = 2; d < 40; d++) {
-      const parent = d < 8 ? 1 : 2 + ((d * 7) % 6);
-      dirParent.push(parent);
-      dirDepth.push(dirDepth[parent]! + 1);
-      dirDirs[parent]!.push(d);
-      dirDirs.push([]);
-      dirFiles.push([]);
-    }
-    const fileDir: number[] = [];
-    for (let f = 0; f < 800; f++) {
-      const d = 1 + (f % 39);
-      fileDir.push(d);
-      dirFiles[d]!.push(f);
-    }
-    const input: LayoutInput = { fileCount: 800, fileDir, lines: fileDir.map((d) => 20 + d), dirParent, dirDepth, dirDirs, dirFiles, from: [], to: [] };
-    const layout = computeLayout(input);
-    expectFinite(layout.tree, "tree");
-    expect(stackedPairs(layout.tree)).toEqual([]);
+    for (let i = 0; i < e.graph.length; i++) expect(Math.abs(e.graph[i]! - web.positions[i]!)).toBeLessThan(0.006);
   });
 
   test("stays inside the runtime budget at 20k files", () => {
     const big = synthetic({ files: 20_000, dirs: 2500, seed: 13 });
     const t0 = performance.now();
-    const layout = computeLayout(big);
+    const out = computeLayout(big);
     const ms = performance.now() - t0;
-    expectFinite(layout.tree, "tree");
-    expectFinite(layout.graph, "graph");
-    expect(stackedPairs(layout.tree)).toEqual([]);
-    // Both layouts together; the budget the analyzer's layout worker is designed around.
+    expectFinite(out.graph, "graph");
+    // The budget the analyzer's layout worker is designed around (the web is ~50 ms of it).
     expect(ms).toBeLessThan(6000);
   }, 20_000);
 });

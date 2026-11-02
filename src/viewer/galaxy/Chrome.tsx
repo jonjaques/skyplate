@@ -1,6 +1,6 @@
 /**
  * Plate chrome: the drawer title, the filter chip, the color legend, the symbol-mode legend,
- * status notes and the compact controls (layout, lanes, reset view).
+ * status notes and the compact controls (layout, gravity, lanes, reset view).
  *
  * All of it is plate-styled: small, plate-ink text, plate-rule hairlines. The text sits on the
  * plate's own color where stars or lanes can pass behind it (the controls, the legend inset,
@@ -8,9 +8,10 @@
  * there. Every element carries data-plate-chrome, which the label overlays read to keep clear.
  */
 
-import { AlertCircle, LoaderCircle, Maximize2, Spline, X } from "lucide-react";
+import { AlertCircle, LoaderCircle, Maximize2, Orbit, Spline, X } from "lucide-react";
 import { useMemo } from "react";
 import { CATEGORY_GROUP, REF_KINDS, type Category, type CategoryGroup, type CodeSymbols, type RefKind } from "../../shared/schema";
+import { GRAVITIES, GRAVITY_NEEDS_GIT, type Gravity } from "../../shared/web";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
@@ -25,6 +26,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/toolti
 import { CATEGORY_GROUPS, CATEGORY_GROUP_LABEL, HOLOTYPE, categoryGroupColor, sequentialColor, seriesColor } from "../lib/colors";
 import { formatInt, plural } from "../lib/format";
 import { cn } from "../lib/utils";
+import { GRAVITY_HINT, GRAVITY_LABEL } from "../shell/labels";
 import { useViewer, type ColorBy, type EdgeMode, type Filters, type LayoutMode, type SizeBy } from "../state/store";
 import { isNarrowed, passesFilters } from "./encode";
 import type { GalaxyEngine } from "./engine";
@@ -70,13 +72,13 @@ export function PlateTitle({ engine, compact }: { engine: GalaxyEngine; compact:
       data-plate-inset="top"
       className={cn(
         "pointer-events-none absolute z-20 truncate font-semibold text-plate-ink [font-stretch:85%]",
-        // The width left beside the controls in the top-right corner (about 240px on the full
+        // The width left beside the controls in the top-right corner (about 330px on the full
         // plate, one 28px button on the compact one). A percentage cap ran the title under the
-        // Tree/Imports toggle on plates narrower than about 700px. On a phone-width plate
-        // there is no room beside them at all, so the title drops below them instead.
+        // Web/Imports toggle on plates narrower than about 700px. On a narrow plate there is
+        // no room beside them at all, so the title drops below them instead.
         compact
           ? "top-2.5 left-3 max-w-[calc(100%-4rem)] text-[15px]"
-          : "top-[18px] left-6 max-w-[calc(100%-288px)] text-2xl @max-[560px]:top-[58px] @max-[560px]:max-w-[calc(100%-3rem)] @max-[560px]:text-xl",
+          : "top-[18px] left-6 max-w-[calc(100%-380px)] text-2xl @max-[640px]:top-[58px] @max-[640px]:max-w-[calc(100%-3rem)] @max-[640px]:text-xl",
       )}
     >
       {name} <span className="text-plate-muted">·</span>{" "}
@@ -123,7 +125,7 @@ export function PlateFilterChip({ engine, compact }: { engine: GalaxyEngine; com
       data-plate-inset="top"
       className={cn(
         "absolute z-20 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-sm border border-plate-rule bg-plate py-0.5 pr-0.5 pl-2 text-xs text-plate-ink",
-        compact ? "top-10 left-3" : "top-[58px] left-6 @max-[560px]:top-[92px]",
+        compact ? "top-10 left-3" : "top-[58px] left-6 @max-[640px]:top-[92px]",
       )}
     >
       <span className="truncate">{describeFilters(engine, filters)}</span>
@@ -252,6 +254,9 @@ export function PlateLegend({
 
   const fileLanes = !compact && selection?.kind === "file" && edges !== "none" ? selectionLanes(model, selection.id) : null;
   const showHolotypeKey = !compact && model.holotypes.size > 0 && !scene;
+  const layout = useViewer((s) => s.layout);
+  const gravity = useViewer((s) => s.gravity);
+  const strands = engine.filaments.a.length;
 
   return (
     <div
@@ -311,7 +316,29 @@ export function PlateLegend({
           <span>Star size: {SIZE_LABEL[sizeBy]}, square-root scaled</span>
         </span>
       )}
+      {!compact && layout === "web" && !scene && (
+        <span className="flex flex-col gap-0.5 text-[11px] text-plate-muted/90">
+          <span>
+            <span className="text-plate-ink">Gravity: {GRAVITY_LABEL[gravity].toLowerCase()}.</span> {GRAVITY_MEANING[gravity]}
+          </span>
+          {strands > 0 && (
+            <span className="flex items-center gap-1.5">
+              <StrandSample />
+              Strands: imports between clusters, brighter for more
+            </span>
+          )}
+        </span>
+      )}
     </div>
+  );
+}
+
+/** The legend's sample of a filament: a faint, gently bowed hairline. */
+function StrandSample() {
+  return (
+    <svg width="26" height="8" viewBox="0 0 26 8" className="shrink-0" aria-hidden="true">
+      <path d="M1 6 Q13 0 25 5" fill="none" stroke={LANE_INK} strokeOpacity="0.45" />
+    </svg>
   );
 }
 
@@ -395,8 +422,8 @@ function LineSample({ kind }: { kind: "call" | "other" | "callee" | "implementat
 
 /**
  * The key for a selected symbol's neighborhood. It lives in the legend slot at the plate's foot
- * rather than under the title: up there it sat on top of the arcs, which rise off the disc
- * toward the top of the plate, and the framing keeps the foot clear anyway.
+ * rather than under the title: up there it sat on top of the arcs, which bow toward the top of
+ * the plate (see bowNormal), and the framing keeps the foot clear anyway.
  */
 function SymbolKey({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene }) {
   const symbols = useViewer((s) => s.symbols);
@@ -567,12 +594,25 @@ const plateToggle =
 
 const EDGE_LABEL: Record<EdgeMode, string> = { none: "No lanes", selection: "Selected file's lanes", all: "Every import, faintly" };
 
+/** The legend's reading of the current gravity, after "Gravity: <mode>." */
+const GRAVITY_MEANING: Record<Gravity, string> = {
+  dependencies: "Files many others import sink to their clump's core; heavily imported groups draw to the heart of their cluster.",
+  complexity: "The most complex files sink to their clump's core; complex groups draw to the heart of their cluster.",
+  hotspots: "Complex, often-changed files sink to their clump's core; hot groups draw to the heart of their cluster.",
+  churn: "The most-committed files sink to their clump's core; busy groups draw to the heart of their cluster.",
+  recent: "Recently changed files sink to their clump's core; active groups draw to the heart of their cluster.",
+  size: "The largest files sink to their clump's core; large groups draw to the heart of their cluster.",
+};
+
 export function PlateControls({ engine, compact }: { engine: GalaxyEngine; compact: boolean }) {
   const layout = useViewer((s) => s.layout);
   const setLayout = useViewer((s) => s.setLayout);
+  const gravity = useViewer((s) => s.gravity);
+  const setGravity = useViewer((s) => s.setGravity);
   const edges = useViewer((s) => s.edges);
   const setEdges = useViewer((s) => s.setEdges);
   const hasImports = engine.model.report.edges.from.length > 0;
+  const hasGit = !!engine.model.report.git;
 
   const reset = (
     <Tooltip>
@@ -600,7 +640,7 @@ export function PlateControls({ engine, compact }: { engine: GalaxyEngine; compa
 
   return (
     // bg-plate: zoomed in on a hub, stars pass behind the corner and the unfilled buttons
-    // read as "Tree" written over a star field. The plate's own color occludes them without
+    // read as "Web" written over a star field. The plate's own color occludes them without
     // drawing a panel, since it is the color already there.
     <div data-plate-chrome data-plate-inset="top" className="absolute top-4 right-4 z-20 flex items-center gap-2 rounded-sm bg-plate">
       <ToggleGroup
@@ -610,9 +650,16 @@ export function PlateControls({ engine, compact }: { engine: GalaxyEngine; compa
         aria-label="Arrange stars by"
         className="rounded-sm"
       >
-        <ToggleGroupItem value="tree" className={cn(plateToggle, "rounded-l-sm")} aria-label="Arrange by directory tree">
-          Tree
-        </ToggleGroupItem>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <ToggleGroupItem value="web" className={cn(plateToggle, "rounded-l-sm")} aria-label="Arrange as a web of the directory tree">
+                Web
+              </ToggleGroupItem>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">Directories as clusters, strung together by their imports</TooltipContent>
+        </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
             {/* The span keeps the tooltip reachable when the item is disabled. */}
@@ -632,6 +679,46 @@ export function PlateControls({ engine, compact }: { engine: GalaxyEngine; compa
           </TooltipContent>
         </Tooltip>
       </ToggleGroup>
+
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {/* The span keeps the tooltip reachable while the trigger is disabled. */}
+            <span className="inline-flex">
+              <DropdownMenuTrigger asChild disabled={layout !== "web"}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1.5 border border-plate-rule px-2.5 text-xs font-semibold text-plate-muted [font-stretch:85%] hover:bg-plate-ink/10 hover:text-plate-ink disabled:opacity-45"
+                  aria-label={`Gravity: ${GRAVITY_LABEL[gravity]}`}
+                >
+                  <Orbit className="size-3.5" aria-hidden="true" />
+                  Gravity
+                </Button>
+              </DropdownMenuTrigger>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {layout === "web"
+              ? `What has mass: ${GRAVITY_LABEL[gravity].toLowerCase()}`
+              : "Gravity shapes the web; the import graph places files by their imports alone"}
+          </TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="end" className="w-64">
+          <DropdownMenuLabel className="text-xs text-muted-foreground">What has mass in the web</DropdownMenuLabel>
+          <DropdownMenuRadioGroup value={gravity} onValueChange={(v) => setGravity(v as Gravity)}>
+            {GRAVITIES.map((g) => {
+              const needsGit = GRAVITY_NEEDS_GIT.has(g) && !hasGit;
+              return (
+                <DropdownMenuRadioItem key={g} value={g} disabled={needsGit} className="flex-col items-start gap-0">
+                  <span>{GRAVITY_LABEL[g]}</span>
+                  <span className="text-xs text-muted-foreground">{needsGit ? "Needs git history, which this report lacks" : GRAVITY_HINT[g]}</span>
+                </DropdownMenuRadioItem>
+              );
+            })}
+          </DropdownMenuRadioGroup>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <DropdownMenu>
         <Tooltip>

@@ -60,13 +60,13 @@ describe("validateReport", () => {
   });
 
   test("NaN and Infinity are refused anywhere", () => {
-    expect(errorsOf((r) => (r.layout.tree[4] = Number.NaN)).some((e) => e.includes("non-finite number NaN at report.layout.tree[4]"))).toBe(true);
+    expect(errorsOf((r) => (r.layout.graph[4] = Number.NaN)).some((e) => e.includes("non-finite number NaN at report.layout.graph[4]"))).toBe(true);
     expect(errorsOf((r) => (r.stats.linesPerFile.mean = Infinity)).some((e) => e.includes("non-finite"))).toBe(true);
   });
 
-  test("layout arrays must match the file and directory counts", () => {
+  test("the layout must match the file count and carry a radius", () => {
     expect(errorsOf((r) => r.layout.graph.pop()).some((e) => e.includes("layout.graph"))).toBe(true);
-    expect(errorsOf((r) => r.layout.dirRadius.push(1)).some((e) => e.includes("layout.dirRadius"))).toBe(true);
+    expect(errorsOf((r) => (r.layout.radius = -1)).some((e) => e.includes("layout.radius"))).toBe(true);
   });
 
   test("edges must be in range, non-self and distinct", () => {

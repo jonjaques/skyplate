@@ -1,6 +1,7 @@
 /**
- * The galaxy plate: every file a star on dark glass, placed by the directory tree or the import
- * graph, colored and sized by the store's encodings, with specimen labels pinned on top.
+ * The galaxy plate: every file a star on dark glass, placed in the cosmic web of the directory
+ * tree or by the import graph, colored and sized by the store's encodings, with specimen labels
+ * pinned on top.
  *
  *   <GalaxyView />          the Galaxy tab's plate: full chrome, region labels, scrubber
  *   <GalaxyView compact />  beside the source reader: title, reset, labels for the selection
@@ -52,13 +53,19 @@ export function GalaxyView({ compact = false }: { compact?: boolean }) {
 }
 
 function Plate({ model, compact }: { model: Model; compact: boolean }) {
-  const engine = useMemo(() => new GalaxyEngine(model), [model]);
+  // Built on the layout the store already holds, so a link to the import graph (or a gravity)
+  // opens there instead of morphing to it on arrival.
+  const engine = useMemo(() => {
+    const s = useViewer.getState();
+    return new GalaxyEngine(model, { layout: s.layout, gravity: s.gravity });
+  }, [model]);
   useEffect(() => () => engine.dispose(), [engine]);
   const container = useRef<HTMLDivElement>(null);
 
   const colorBy = useViewer((s) => s.colorBy);
   const sizeBy = useViewer((s) => s.sizeBy);
   const layout = useViewer((s) => s.layout);
+  const gravity = useViewer((s) => s.gravity);
   const focusDir = useViewer((s) => s.focusDir);
   const filters = useViewer((s) => s.filters);
   const selection = useViewer((s) => s.selection);
@@ -113,17 +120,17 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
     encodeSizes(model, sizeBy, engine.size);
     engine.touch("aSize");
   }, [engine, model, sizeBy]);
-  const firstLayout = useRef(true);
   useEffect(() => {
-    engine.morphTarget = layout === "graph" ? 1 : 0;
-    // A layout switch moves every star, so the camera re-frames whatever the reader is looking
-    // at (the selection, the open drawer, or the whole collection) as one move with the morph.
-    // Staying put would leave it aimed at where the subject used to be.
-    if (!firstLayout.current) frameSubject(true);
-    firstLayout.current = false;
+    const moved = engine.version;
+    engine.setTarget(layout, gravity);
+    // A layout or gravity switch moves every star, so the camera re-frames whatever the reader
+    // is looking at (the selection, the open drawer, or the whole collection) as one move with
+    // the morph. Staying put would leave it aimed at where the subject used to be. A gravity
+    // change while the graph is showing moves nothing, and frames nothing.
+    if (engine.version !== moved) frameSubject(true);
     engine.invalidate();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [engine, layout]);
+  }, [engine, layout, gravity]);
   useEffect(() => engine.setTime(time), [engine, time]);
 
   // ── Symbols: load on demand, build the neighborhood once both tables are in ──
@@ -218,9 +225,9 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
     const b = new THREE.Vector3();
     const apex = new THREE.Vector3();
     const extra: number[] = [];
-    engine.filePos(s.defFile, b, engine.morphTarget);
+    engine.filePos(s.defFile, b, 1);
     for (const arc of [...s.arcs, ...s.dispatch].slice(0, ARC_CAP)) {
-      laneApex(engine.filePos(arc.file, a, engine.morphTarget), b, ARC_LIFT, apex);
+      laneApex(engine.filePos(arc.file, a, 1), b, ARC_LIFT, apex);
       extra.push(apex.x, apex.y, apex.z);
     }
     engine.fly(s.frame, engine.radius * 0.12, extra, animate);
@@ -387,6 +394,7 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   };
 
   const R = engine.radius;
+  const start = engine.homeDirection.clone().multiplyScalar(R * 2.6);
   const hasHistory = !compact && !!model.report.git && model.report.git.weekly.length >= 2;
   return (
     <div
@@ -410,7 +418,7 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
         frameloop="demand"
         flat
         gl={{ antialias: true, powerPreference: "high-performance" }}
-        camera={{ fov: 40, near: R * 0.002, far: R * 40, up: [0, 0, 1], position: [0, -R * 1.45, R * 1.25] }}
+        camera={{ fov: 40, near: R * 0.002, far: R * 40, up: [0, 0, 1], position: [start.x, start.y, start.z] }}
         onCreated={({ gl }) => gl.setClearColor(new THREE.Color(PLATE), 1)}
       >
         <Scene engine={engine} symbolScene={scene} />

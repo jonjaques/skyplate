@@ -14,7 +14,12 @@
  * - Optional sections are omitted, not nulled, when their input is missing (no git, --no-source).
  */
 
-export const SCHEMA_VERSION = 1 as const;
+/**
+ * Bumped when the report's shape changes. 2: Layouts lost the barred-spiral tree (`tree`,
+ * `dirCenters`, `dirRadius`) when the viewer began computing the cosmic web itself, and
+ * `radius` became the graph's alone.
+ */
+export const SCHEMA_VERSION = 2 as const;
 
 // ─── Classification ──────────────────────────────────────────────────────────────────────────
 
@@ -462,19 +467,25 @@ export interface Finding {
 
 // ─── Layout (written by the analyzer, read by the 3D view) ────────────────────────────────────
 
+/**
+ * The galaxy's default layout, the cosmic web of the directory tree, is not shipped: the viewer
+ * computes it from the tables above (src/shared/web.ts) for whichever gravity the reader picks,
+ * which costs a few milliseconds and would cost every report several bytes per file to carry.
+ * The import-graph layout is shipped, because a force simulation over 20k nodes is seconds of
+ * work the browser should not redo on every open.
+ */
 export interface Layouts {
   /**
-   * Galaxy layout from the directory tree: [x, y, z] per file id, stride 3. Units are arbitrary
-   * world units; the viewer frames the bounding sphere.
+   * Force layout from the import graph: [x, y, z] per file id, stride 3, in the web's world
+   * units. Each file is weakly anchored toward its direction in the default web, so the
+   * Web ↔ Imports morph keeps every region on its own side.
    */
-  tree: number[];
-  /** Force layout from the import graph, same stride and file order. */
   graph: number[];
-  /** Directory centers in the tree layout, stride 3, by dir id, plus radius per dir. */
-  dirCenters: number[];
-  dirRadius: number[];
-  /** Bounding radius of each layout, for camera framing. */
-  radius: { tree: number; graph: number };
+  /**
+   * Bounding radius of `graph`. The analyzer scales the graph to the default web's radius, so
+   * the camera framing holds across the morph.
+   */
+  radius: number;
 }
 
 // ─── Source chunks ───────────────────────────────────────────────────────────────────────────

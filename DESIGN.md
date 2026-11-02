@@ -393,8 +393,15 @@ The plate's signature. Three forms of label stock, all positioned by the plate a
 
 Labels fade in over 150ms and avoid each other, the plate chrome, region names and the lanes they describe.
 
+### The web
+The plate's default arrangement is a cosmic web of the directory tree (`src/shared/web.ts`, computed in the viewer). Top-level directories are superclusters, their children clusters, and so on down; each directory's own files are one clump (a dense core, a sparse halo, a slightly flattened and turned ellipsoid), with its subdirectories orbiting it as satellite clumps, so every directory is one neighborhood and nesting reads as nesting. Gaps widen up the hierarchy: galaxies in a group nearly touch, superclusters sit apart across voids. It is real 3D, seen from a low oblique angle broadside to its widest spread.
+- **Filaments:** faint, gently bowed hairlines in lane ink, additive, one draw call. Each strand aggregates the imports between two clusters (brighter for more, by log coupling) and attaches to the files that carry them. The skeleton is the maximum spanning forest plus each cluster's strongest one or two further links; a cluster with no imports floats alone. Strands of the hovered, selected or open group come up while the rest step back.
+- **Bridge files:** a file whose imports mostly cross along one strand leans out along it, at most about a third of the way, so strands carry real stars.
+- **Gravity:** a plate control chooses what has mass (dependencies, complexity, hotspots, churn, recent change, size). The heaviest files sink to their clump's core, heavier groups draw toward the heart of their cluster, heavy clumps are denser. Star size and color never change with gravity. Each change morphs from wherever the stars are, on the damped curve; reduced motion snaps.
+- **Symbol arcs** bow toward the camera's up, perpendicular to their chord, so a function's callers rise over the web as a canopy rather than threading through the knots between them.
+
 ### Plate chrome
-The plate title (display type in plate ink), the Tree/Imports toggle and Lanes control, and a legend inset: solid plate fill with a plate-rule hairline and 1px corners, swatch-led entries that isolate a language on click, plus the holotype key. The history scrubber runs along the plate's bottom.
+The plate title (display type in plate ink), the Web/Imports toggle, the Gravity menu (each mode with a one-line description; disabled, with a tooltip saying why, in the Imports layout and for history modes without git) and the Lanes control, and a legend inset: solid plate fill with a plate-rule hairline and 1px corners, swatch-led entries that isolate a language on click, the holotype key, one line stating the current gravity, and one line keying the strands. The history scrubber runs along the plate's bottom.
 
 ## Do's and Don'ts
 

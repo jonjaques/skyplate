@@ -4,6 +4,7 @@
  */
 
 import { SymbolFlag, type Severity, type SymbolKind } from "../../shared/schema";
+import type { Gravity } from "../../shared/web";
 import type { ColorBy, SizeBy } from "../state/store";
 
 export const SYMBOL_KIND_LABEL: Record<SymbolKind, string> = {
@@ -113,3 +114,23 @@ export function formatGenerated(iso: string, timeZone?: string): string {
 
 /** Modes that read git history; disabled when the report has none. */
 export const NEEDS_GIT = new Set<ColorBy | SizeBy>(["churn", "age", "ownership", "hotspot", "commits"]);
+
+/** Gravity modes as the menu, the legend and the command palette name them. */
+export const GRAVITY_LABEL: Record<Gravity, string> = {
+  dependencies: "Dependencies",
+  complexity: "Complexity",
+  hotspots: "Hotspots",
+  churn: "Churn",
+  recent: "Recent change",
+  size: "Size",
+};
+
+/** One line per mode: what makes a file heavy. The menu shows it under the name. */
+export const GRAVITY_HINT: Record<Gravity, string> = {
+  dependencies: "Files many others import are heaviest",
+  complexity: "The most complex files are heaviest",
+  hotspots: "Complex files that change often are heaviest",
+  churn: "The most-committed files are heaviest",
+  recent: "The most recently changed files are heaviest",
+  size: "The files with the most code are heaviest",
+};

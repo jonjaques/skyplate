@@ -309,8 +309,9 @@ export function SpecimenLabels({
         const { w, h } = size;
         const candidates: [number, number, number][] = []; // x, y, preference cost
         if (spec.form === "tag") {
-          // Arcs rise off the disc (+z), which is up on the plate from every default view, so
-          // the definition's tag hangs below its star, clear of the fan it describes.
+          // Arcs bow toward world up (see bowNormal), which is up on the plate from every
+          // default view, so the definition's tag hangs below its star, clear of the fan it
+          // describes.
           candidates.push(
             [a.x - w / 2, a.y + 22, 0],
             [a.x + 16, a.y + 16, 0.5],
@@ -338,7 +339,7 @@ export function SpecimenLabels({
         }
         // Hard costs (off the plate, over another label, over the chrome, over another pinned
         // star, over its own star) dominate. Region names, covered stars and crossed lanes are
-        // soft, so a label prefers the dark lanes between arms but still lands somewhere when
+        // soft, so a label prefers the voids between clusters but still lands somewhere when
         // the whole plate is busy; a region name it cannot avoid steps aside instead.
         const hard = (ci: number): number => {
           const [x, y] = candidates[ci]!;

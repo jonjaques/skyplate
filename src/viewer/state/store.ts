@@ -12,6 +12,7 @@
 
 import { create } from "zustand";
 import type { Category, CodeSymbols, Report } from "../../shared/schema";
+import { DEFAULT_GRAVITY, type Gravity } from "../../shared/web";
 import { buildModel, type Model } from "../model/indices";
 import { buildSymbolModel, type SymbolModel } from "../model/symbols";
 
@@ -35,7 +36,9 @@ export type ColorBy =
   | "rank"; //      sequential: PageRank
 
 export type SizeBy = "lines" | "bytes" | "complexity" | "commits" | "rank";
-export type LayoutMode = "tree" | "graph";
+/** "web": the cosmic web of the directory tree (src/shared/web.ts); "graph": the import-graph force layout. */
+export type LayoutMode = "web" | "graph";
+export type { Gravity };
 export type EdgeMode = "none" | "selection" | "all";
 export type ThemePref = "system" | "light" | "dark";
 
@@ -70,6 +73,8 @@ interface ViewerState {
   colorBy: ColorBy;
   sizeBy: SizeBy;
   layout: LayoutMode;
+  /** What has mass in the web layout (ignored by the import graph). */
+  gravity: Gravity;
   edges: EdgeMode;
   /** History scrubber position (unix seconds); null means HEAD, the present. */
   time: number | null;
@@ -87,6 +92,7 @@ interface ViewerState {
   setColorBy(mode: ColorBy): void;
   setSizeBy(mode: SizeBy): void;
   setLayout(mode: LayoutMode): void;
+  setGravity(gravity: Gravity): void;
   setEdges(mode: EdgeMode): void;
   setTime(time: number | null): void;
   setFilters(patch: Partial<Filters>): void;
@@ -108,7 +114,8 @@ export const useViewer = create<ViewerState>((set, get) => ({
   focusDir: null,
   colorBy: "language",
   sizeBy: "lines",
-  layout: "tree",
+  layout: "web",
+  gravity: DEFAULT_GRAVITY,
   edges: "selection",
   time: null,
   filters: { languages: null, categories: null, hideGenerated: false, hideVendored: true },
@@ -148,6 +155,9 @@ export const useViewer = create<ViewerState>((set, get) => ({
   },
   setLayout(layout) {
     set({ layout });
+  },
+  setGravity(gravity) {
+    set({ gravity });
   },
   setEdges(edges) {
     set({ edges });

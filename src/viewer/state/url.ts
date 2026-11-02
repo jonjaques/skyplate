@@ -7,6 +7,7 @@
  *   #tab=source&file=src/server/index.ts&line=120
  *   #sym=createServer@src/node/server/index.ts:412
  *   #dir=packages/vite&color=hotspot&size=commits&layout=graph
+ *   #gravity=hotspots
  *   #tab=explorer&lang=typescript&generated=hide
  *
  * References are paths, names and emails, never report ids: ids are positions in one report's
@@ -23,13 +24,31 @@
  */
 
 import { CATEGORY_GROUP, type Category, type Report } from "../../shared/schema";
+import { DEFAULT_GRAVITY, GRAVITIES, GRAVITY_NEEDS_GIT, type Gravity } from "../../shared/web";
 import { ensureSymbols } from "./loaders";
 import { useViewer, type ColorBy, type Filters, type LayoutMode, type SizeBy, type Tab, type Target } from "./store";
 
 const TABS: Tab[] = ["galaxy", "charts", "explorer", "source", "findings"];
 const COLOR_MODES: ColorBy[] = ["language", "category", "churn", "age", "complexity", "ownership", "hotspot", "rank"];
 const SIZE_MODES: SizeBy[] = ["lines", "bytes", "complexity", "commits", "rank"];
-const LAYOUTS: LayoutMode[] = ["tree", "graph"];
+const LAYOUTS: LayoutMode[] = ["web", "graph"];
+
+/**
+ * The layout param, with links written before the cosmic web: "tree" named the barred spiral
+ * it replaced, and the web is that view's successor (the directory tree, laid out in 3D), so an
+ * old link opens on it rather than falling back to whatever the reader had.
+ */
+export function readLayout(raw: string | undefined): LayoutMode | undefined {
+  if (raw === "tree") return "web";
+  return raw && (LAYOUTS as string[]).includes(raw) ? (raw as LayoutMode) : undefined;
+}
+
+/** The gravity param, or undefined when it is missing, unknown, or needs history the report lacks. */
+export function readGravity(raw: string | undefined, hasGit: boolean): Gravity | undefined {
+  if (!raw || !(GRAVITIES as string[]).includes(raw)) return undefined;
+  const g = raw as Gravity;
+  return GRAVITY_NEEDS_GIT.has(g) && !hasGit ? undefined : g;
+}
 const CATEGORIES = Object.keys(CATEGORY_GROUP) as Category[];
 
 /** encodeURIComponent, but leave the characters paths and symbol refs are made of readable. */
@@ -228,9 +247,12 @@ function applyHashParams(hash: string, full: boolean): void {
   const size = p.get("size") as SizeBy | undefined;
   if (size && SIZE_MODES.includes(size)) s.setSizeBy(size);
   else if (full) s.setSizeBy("lines");
-  const layout = p.get("layout") as LayoutMode | undefined;
-  if (layout && LAYOUTS.includes(layout)) s.setLayout(layout);
-  else if (full) s.setLayout("tree");
+  const layout = readLayout(p.get("layout"));
+  if (layout) s.setLayout(layout);
+  else if (full) s.setLayout("web");
+  const gravity = readGravity(p.get("gravity"), !!report.git);
+  if (gravity) s.setGravity(gravity);
+  else if (full) s.setGravity(DEFAULT_GRAVITY);
   const filters = readFilters(p, new Set(report.languages.map((l) => l.id)), full);
   if (Object.keys(filters).length > 0) s.setFilters(filters);
 
@@ -322,7 +344,8 @@ function buildHash(): string {
   }
   if (s.colorBy !== "language") parts.push(`color=${s.colorBy}`);
   if (s.sizeBy !== "lines") parts.push(`size=${s.sizeBy}`);
-  if (s.layout !== "tree") parts.push(`layout=${s.layout}`);
+  if (s.layout !== "web") parts.push(`layout=${s.layout}`);
+  if (s.gravity !== DEFAULT_GRAVITY) parts.push(`gravity=${s.gravity}`);
   parts.push(...filterParams(s.filters));
   return parts.join("&");
 }
@@ -355,6 +378,7 @@ export function startUrlSync(): () => void {
       state.colorBy === prev.colorBy &&
       state.sizeBy === prev.sizeBy &&
       state.layout === prev.layout &&
+      state.gravity === prev.gravity &&
       state.filters === prev.filters &&
       state.symbols === prev.symbols
     ) {

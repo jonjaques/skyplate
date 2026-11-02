@@ -1,6 +1,6 @@
 /**
  * The command palette (⌘K, Ctrl+K or "/"): find any file, directory, symbol or author, and run
- * the view actions (color by, size by, layout, theme, tabs, about).
+ * the view actions (color by, size by, layout, gravity, theme, tabs, about).
  *
  * Built from shadcn's Dialog and Command rather than its CommandDialog wrapper because that
  * wrapper cannot turn cmdk's own filtering off, and cmdk re-scores and re-sorts everything it
@@ -18,6 +18,7 @@ import {
   Monitor,
   Moon,
   Network,
+  Orbit,
   Palette,
   Ruler,
   Sun,
@@ -30,7 +31,8 @@ import { formatInt, plural } from "../lib/format";
 import { ensureSymbols } from "../state/loaders";
 import { pushNextView } from "../state/url";
 import { useViewer, type ColorBy, type SizeBy, type Tab } from "../state/store";
-import { COLOR_BY_LABEL, NEEDS_GIT, SIZE_BY_LABEL, SYMBOL_KIND_LABEL } from "./labels";
+import { GRAVITIES, GRAVITY_NEEDS_GIT } from "../../shared/web";
+import { COLOR_BY_LABEL, GRAVITY_HINT, GRAVITY_LABEL, NEEDS_GIT, SIZE_BY_LABEL, SYMBOL_KIND_LABEL } from "./labels";
 import { focusDrawer, openSymbolDefinition, show } from "./navigate";
 import { LanguageSwatch } from "./parts";
 import { queryTerms, rankScored, searchable, type Searchable } from "./search";
@@ -358,6 +360,7 @@ function useActions(close: () => void): Action[] {
   const colorBy = useViewer((s) => s.colorBy);
   const sizeBy = useViewer((s) => s.sizeBy);
   const layout = useViewer((s) => s.layout);
+  const gravity = useViewer((s) => s.gravity);
   const theme = useViewer((s) => s.theme);
   return useMemo(() => {
     const s = () => useViewer.getState();
@@ -383,6 +386,18 @@ function useActions(close: () => void): Action[] {
         run: done(() => s().setSizeBy(m)),
         disabled: !hasGit && NEEDS_GIT.has(m),
       }));
+    // Gravity shapes the web only, so picking one from the import graph switches to the web: a
+    // command that changed nothing on screen would read as broken.
+    const gravities = GRAVITIES.filter((g) => g !== gravity || layout !== "web").map<Action>((g) => ({
+      id: `gravity-${g}`,
+      label: `Gravity: ${GRAVITY_LABEL[g].toLowerCase()} (${GRAVITY_HINT[g].toLowerCase()})`,
+      icon: <Orbit />,
+      run: done(() => {
+        s().setGravity(g);
+        s().setLayout("web");
+      }),
+      disabled: !hasGit && GRAVITY_NEEDS_GIT.has(g),
+    }));
     const tabs = TAB_ORDER.map<Action>((t) => ({
       id: `tab-${t.id}`,
       label: `Go to ${t.label}`,
@@ -401,15 +416,16 @@ function useActions(close: () => void): Action[] {
     return [
       {
         id: "layout",
-        label: layout === "tree" ? "Lay out by import graph" : "Lay out by directory tree",
+        label: layout === "web" ? "Lay out by import graph" : "Lay out as a web of directories",
         icon: <Network />,
-        run: done(() => s().setLayout(layout === "tree" ? "graph" : "tree")),
+        run: done(() => s().setLayout(layout === "web" ? "graph" : "web")),
       },
+      ...gravities,
       ...colors,
       ...sizes,
       ...tabs,
       ...themes,
       { id: "about", label: "About this report", icon: <Info />, run: done(() => useShell.getState().setAboutOpen(true)) },
     ];
-  }, [hasGit, colorBy, sizeBy, layout, theme, close]);
+  }, [hasGit, colorBy, sizeBy, layout, gravity, theme, close]);
 }

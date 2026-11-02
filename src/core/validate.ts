@@ -192,10 +192,8 @@ export function validateReport(report: Report, symbols?: CodeSymbols): string[] 
 
   // ── Layout ──
   const lay = report.layout;
-  if (lay.tree.length !== nf * 3) fail("layout", `layout.tree has ${lay.tree.length} numbers, expected ${nf * 3}`);
   if (lay.graph.length !== nf * 3) fail("layout", `layout.graph has ${lay.graph.length} numbers, expected ${nf * 3}`);
-  if (lay.dirCenters.length !== nd * 3) fail("layout", `layout.dirCenters has ${lay.dirCenters.length} numbers, expected ${nd * 3}`);
-  if (lay.dirRadius.length !== nd) fail("layout", `layout.dirRadius has ${lay.dirRadius.length} entries, expected ${nd}`);
+  if (!(lay.radius >= 0)) fail("layout", `layout.radius is ${lay.radius}, expected a non-negative number`);
 
   // ── Git ──
   const git = report.git;

@@ -1,24 +1,27 @@
 /**
- * Everything inside the Canvas: the frame bridge, camera, region outlines, lanes, symbol arcs,
- * the stars themselves and a selected file's moons.
+ * Everything inside the Canvas: the frame bridge, camera, the web's filaments, lanes, symbol
+ * arcs, the stars themselves and a selected file's moons.
  *
- * Draw calls, back to front: region outlines (one per region and layout), every-edge lanes
- * (one), selection lanes (one), symbol arcs (one), the definition knockout (one), stars (one),
- * moons (one). Geometry is built
- * when the thing it draws changes (a new selection, a new symbol), never per frame; per-frame
- * work is uniforms and the handful of moon positions.
+ * Draw calls, back to front: filaments (one), every-edge lanes (one), selection lanes (one),
+ * symbol arcs (one), the definition knockout (one), stars (one), moons (one). Geometry is built
+ * when the thing it draws changes (a new selection, a new symbol, a retarget of the layout),
+ * never per frame; per-frame work is uniforms and the handful of moon positions.
+ *
+ * The disc-plane region outlines that used to sit under the stars are gone with the spiral: a
+ * marching-squares contour traced in one plane is meaningless around 3D clusters seen from an
+ * oblique camera. Group envelopes traced in screen space replace them.
  */
 
 import { CameraControls } from "@react-three/drei";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import * as THREE from "three";
 import { PLATE } from "../lib/colors";
-import { useViewer } from "../state/store";
-import { traceContour } from "./contour";
-import { regionOfDir, type GalaxyEngine } from "./engine";
-import { ARC_CAP, ARC_LIFT, LANE_STYLE, TEST_GAIN, buildLaneGeometry, makeLaneMaterial, selectionLanes, type Lane } from "./lanes";
-import { KNOCKOUT_FRAGMENT, KNOCKOUT_VERTEX, MOON_FRAGMENT, MOON_VERTEX } from "./shaders";
+import { useHover, useViewer } from "../state/store";
+import type { GalaxyEngine } from "./engine";
+import { ARC_CAP, ARC_LIFT, LANE_INK, LANE_STYLE, TEST_GAIN, buildLaneGeometry, makeLaneMaterial, selectionLanes, type Lane } from "./lanes";
+import { buildFilamentGeometry, filamentRanges } from "./filaments";
+import { FILAMENT_FRAGMENT, FILAMENT_VERTEX, KNOCKOUT_FRAGMENT, KNOCKOUT_VERTEX, MOON_FRAGMENT, MOON_VERTEX } from "./shaders";
 import { weightOf, type SymbolScene } from "./symbolScene";
 
 export function Scene({ engine, symbolScene }: { engine: GalaxyEngine; symbolScene: SymbolScene | null }) {
@@ -26,7 +29,7 @@ export function Scene({ engine, symbolScene }: { engine: GalaxyEngine; symbolSce
     <>
       <FrameBridge engine={engine} />
       <CameraRig engine={engine} />
-      <RegionOutlines engine={engine} />
+      <Filaments engine={engine} />
       <AllLanes engine={engine} />
       <SelectionLanes engine={engine} />
       <SymbolArcs engine={engine} scene={symbolScene} />
@@ -90,69 +93,67 @@ function CameraRig({ engine }: { engine: GalaxyEngine }) {
   );
 }
 
-// ─── Region outlines ─────────────────────────────────────────────────────────────────────────
+// ─── Filaments ───────────────────────────────────────────────────────────────────────────────
 
-const OUTLINE = new THREE.Color("#7f96b4");
-
-function RegionOutlines({ engine }: { engine: GalaxyEngine }) {
-  const group = useMemo(() => new THREE.Group(), []);
-  const lines = useRef<{ tree: THREE.LineSegments; graph: THREE.LineSegments; region: number }[]>([]);
-  const focusDir = useViewer((s) => s.focusDir);
-  const focusRegion = focusDir === null ? -1 : regionOfDir(engine, focusDir);
-
-  useEffect(() => {
-    // Tracing runs after first paint: the stars come first, outlines a beat later.
-    let cancelled = false;
-    const id = window.setTimeout(() => {
-      if (cancelled) return;
-      const cell = engine.radius / 75;
-      for (const region of engine.regions) {
-        if (region.files.length < 3) continue;
-        const make = (pos: Float32Array) => {
-          const seg = traceContour({ pos, files: region.files, cell });
-          const g = new THREE.BufferGeometry();
-          g.setAttribute("position", new THREE.BufferAttribute(seg, 3));
-          const m = new THREE.LineBasicMaterial({ color: OUTLINE, transparent: true, opacity: 0, depthWrite: false, depthTest: false });
-          const l = new THREE.LineSegments(g, m);
-          l.frustumCulled = false;
-          l.renderOrder = 1;
-          group.add(l);
-          return l;
-        };
-        lines.current.push({ tree: make(engine.tree), graph: make(engine.graph), region: region.index });
-      }
-      engine.invalidate();
-    }, 60);
-    return () => {
-      cancelled = true;
-      window.clearTimeout(id);
-      for (const l of lines.current) {
-        for (const s of [l.tree, l.graph]) {
-          s.geometry.dispose();
-          (s.material as THREE.Material).dispose();
-          group.remove(s);
-        }
-      }
-      lines.current = [];
-    };
-  }, [engine, group]);
-
-  useFrame(() => {
-    const hover = engine.material.uniforms.uHoverRegion!.value as number;
-    const m = engine.morph;
-    for (const l of lines.current) {
-      // Outlines are a whisper at rest (eleven of them at once is already a lot of line) and
-      // speak up for the region under the pointer or the open drawer.
-      const lit = l.region === hover ? 0.7 : l.region === focusRegion ? 0.45 : hover >= 0 || focusRegion >= 0 ? 0.06 : 0.13;
-      (l.tree.material as THREE.LineBasicMaterial).opacity = lit * (1 - m);
-      (l.graph.material as THREE.LineBasicMaterial).opacity = lit * m;
-      l.tree.visible = m < 0.999;
-      l.graph.visible = m > 0.001;
-    }
-  });
-  return <primitive object={group} />;
+/** Re-render on every retarget of the engine's layout slots (layout or gravity changes). */
+export function useLayoutVersion(engine: GalaxyEngine): number {
+  return useSyncExternalStore(
+    (cb) => engine.onRetarget(cb),
+    () => engine.version,
+  );
 }
 
+/**
+ * The web's strands between coupled clusters, one draw call. Rebuilt on every retarget (from
+ * the slots' cluster centers), never per frame; the hovered, selected and open group reach the
+ * shader as depth-first file ranges, so lighting a group's strands uploads nothing.
+ */
+function Filaments({ engine }: { engine: GalaxyEngine }) {
+  const version = useLayoutVersion(engine);
+  const selection = useViewer((s) => s.selection);
+  const focusDir = useViewer((s) => s.focusDir);
+  const hover = useHover((s) => s.hover);
+  const material = useMemo(
+    () =>
+      new THREE.ShaderMaterial({
+        vertexShader: FILAMENT_VERTEX,
+        fragmentShader: FILAMENT_FRAGMENT,
+        transparent: true,
+        depthWrite: false,
+        depthTest: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: {
+          uMorph: { value: 1 },
+          uInk: { value: new THREE.Color(LANE_INK) },
+          uOpacity: { value: 1 },
+          uAnyHot: { value: 0 },
+          uHot: { value: new THREE.Vector2(-1, -1) },
+          uSel: { value: new THREE.Vector2(-1, -1) },
+          uFocus: { value: new THREE.Vector2(-1, -1) },
+        },
+      }),
+    [],
+  );
+  useEffect(() => () => material.dispose(), [material]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const built = useMemo(() => buildFilamentGeometry(engine), [engine, version]);
+  useEffect(() => () => built?.geometry.dispose(), [built]);
+  useEffect(() => {
+    const u = material.uniforms;
+    const r = filamentRanges(engine, { hover, selection, focusDir });
+    (u.uHot!.value as THREE.Vector2).set(r.hover[0], r.hover[1]);
+    (u.uSel!.value as THREE.Vector2).set(r.selection[0], r.selection[1]);
+    (u.uFocus!.value as THREE.Vector2).set(r.focus[0], r.focus[1]);
+    u.uAnyHot!.value = r.any ? 1 : 0;
+    engine.invalidate();
+  }, [engine, material, hover, selection, focusDir]);
+  useFrame(() => {
+    material.uniforms.uMorph!.value = engine.morph;
+    material.uniforms.uOpacity!.value = engine.webness * (built?.gain ?? 1);
+  });
+  if (!built) return null;
+  return <lineSegments geometry={built.geometry} material={material} frustumCulled={false} renderOrder={1} />;
+}
 
 // ─── Lanes ───────────────────────────────────────────────────────────────────────────────────
 
@@ -174,6 +175,7 @@ function LaneObject({ geometry, material, order }: { geometry: THREE.BufferGeome
 /** Every code edge, very faint, in one draw call (edges mode "all"). */
 function AllLanes({ engine }: { engine: GalaxyEngine }) {
   const mode = useViewer((s) => s.edges);
+  const version = useLayoutVersion(engine);
   const material = useMemo(() => makeLaneMaterial(1), []);
   useLaneSync(engine, material);
   const geometry = useMemo(() => {
@@ -188,8 +190,9 @@ function AllLanes({ engine }: { engine: GalaxyEngine }) {
     // hundred edges became a white web over the stars at a few thousand. Opacity falls with
     // the square root of the count; hubs, where many lanes meet, still come up brighter.
     material.uniforms.uOpacity!.value = Math.min(1, Math.sqrt(500 / Math.max(1, lanes.length)));
-    return buildLaneGeometry(engine.tree, engine.graph, lanes);
-  }, [engine, mode, material]);
+    return buildLaneGeometry(engine.from, engine.to, lanes);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, mode, material, version]);
   useEffect(() => engine.invalidate(), [engine, geometry]);
   return <LaneObject geometry={geometry} material={material} order={2} />;
 }
@@ -197,6 +200,7 @@ function AllLanes({ engine }: { engine: GalaxyEngine }) {
 /** The selected file's imports and importers. */
 function SelectionLanes({ engine }: { engine: GalaxyEngine }) {
   const mode = useViewer((s) => s.edges);
+  const version = useLayoutVersion(engine);
   const selection = useViewer((s) => s.selection);
   const material = useMemo(() => makeLaneMaterial(1), []);
   useLaneSync(engine, material);
@@ -211,8 +215,9 @@ function SelectionLanes({ engine }: { engine: GalaxyEngine }) {
     // Lanes add up where they meet (the blend is additive), so many lanes into one hub burned
     // a white knot over the selected star. The same square-root falloff the every-edge view uses.
     material.uniforms.uOpacity!.value = Math.min(1, Math.sqrt(40 / Math.max(1, lanes.length)));
-    return lanes.length > 0 ? buildLaneGeometry(engine.tree, engine.graph, lanes) : null;
-  }, [engine, mode, fileId, material]);
+    return lanes.length > 0 ? buildLaneGeometry(engine.from, engine.to, lanes) : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, mode, fileId, material, version]);
   useEffect(() => {
     if (geometry) engine.animating.add("lanes");
     else engine.animating.delete("lanes");
@@ -231,6 +236,7 @@ function SelectionLanes({ engine }: { engine: GalaxyEngine }) {
  */
 function SymbolArcs({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScene | null }) {
   const material = useMemo(() => makeLaneMaterial(1), []);
+  const version = useLayoutVersion(engine);
   useLaneSync(engine, material);
   const geometry = useMemo(() => {
     if (!scene) return null;
@@ -253,8 +259,9 @@ function SymbolArcs({ engine, scene }: { engine: GalaxyEngine; scene: SymbolScen
       lanes.push({ from: d.file, to: scene.defFile, style: LANE_STYLE.dispatch, weight, lift: ARC_LIFT, gain: d.test ? TEST_GAIN : 1 });
     }
     for (const c of scene.callees.slice(0, 120)) lanes.push({ from: scene.defFile, to: c.file, style: LANE_STYLE.callee, weight: 0.3, lift: -0.22 });
-    return lanes.length > 0 ? buildLaneGeometry(engine.tree, engine.graph, lanes) : null;
-  }, [engine, scene]);
+    return lanes.length > 0 ? buildLaneGeometry(engine.from, engine.to, lanes) : null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [engine, scene, version]);
   useEffect(() => {
     if (scene) engine.animating.add("symbol");
     else engine.animating.delete("symbol");

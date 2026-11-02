@@ -1,9 +1,11 @@
 /**
- * GLSL for the plate. Four programs, each one draw call:
+ * GLSL for the plate. Five programs, each one draw call:
  *
  *   stars  every file as a point sprite: soft core + faint halo, holotype and selection rings,
- *          morph between tree and graph positions, history fade and flash (on the core only),
- *          region hover
+ *          morph between the engine's from and to slots, history fade and flash (on the core
+ *          only), region hover
+ *   filaments  the web's strands between coupled clusters: faint, additive, brighter for more
+ *          coupling and for the hovered, selected or open group
  *   lanes  import edges and symbol arcs as hairlines whose brightness travels toward the
  *          dependency (or the definition), so direction reads without arrowheads
  *   moons  a selected file's declared symbols, orbiting it
@@ -35,7 +37,7 @@ uniform float uClock;       // seconds, for breathing and ripples
 uniform float uRippleStart; // uClock when the current symbol was picked, -1 for none
 uniform float uMotion;      // 0 under prefers-reduced-motion
 
-attribute vec3 aGraph;
+attribute vec3 aTo;         // the slot the morph is heading to (position is where it started)
 attribute vec3 aColor;
 attribute float aSize;
 attribute float aEmph;
@@ -55,7 +57,7 @@ varying float vGhost;       // 1 for a selected file not yet created at the scru
 varying float vFlash;
 
 void main() {
-  vec3 p = mix(position, aGraph, uMorph);
+  vec3 p = mix(position, aTo, uMorph);
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
 
@@ -86,7 +88,7 @@ void main() {
   px = clamp(px, uMinPx, uMaxPx);
 
   // The sprite is larger than the star so its halo has room to spread: a halo clipped at the
-  // core's edge never overlaps a neighbor's, and dense arms then read as scattered dots
+  // core's edge never overlaps a neighbor's, and dense clumps then read as scattered dots
   // instead of glowing where files crowd. Rings need more room still.
   float mark = aMark;
   if (isSel > 0.5 && mark < 1.5) mark = max(mark, 3.0);
@@ -100,7 +102,7 @@ void main() {
   vGhost = isSel * step(visible, 0.999);
   gl_PointSize = max(sprite * visible, vGhost * uMinPx * 15.0);
   vCore = px / sprite;
-  // The halo is what makes a 2 px star findable and a dense arm glow. A star seen up close is
+  // The halo is what makes a 2 px star findable and a dense clump glow. A star seen up close is
   // already a disc; at full strength its halo blew out everything near the camera into a
   // white fog, so it fades as the star grows (uMinPx / 1.6 is the device pixel ratio).
   vHalo = clamp(14.0 * (uMinPx / 1.6) / max(px, 1.0), 0.15, 1.0);
@@ -170,7 +172,61 @@ void main() {
 `;
 
 /**
- * Lanes: line segments with tree and graph endpoints (they follow the morph), a parameter t
+ * Filaments: one LineSegments for the whole web, each strand sampled along its Bézier with both
+ * slots' positions (it follows the morph like the stars). Brightness grows with log coupling
+ * (aWeight); a strand whose cluster overlaps the hovered, selected or open group (ranges in the
+ * model's depth-first file order, compared as [lo, hi) intervals, so a group at any depth finds
+ * its strands without an attribute upload) comes up. The strand fades toward its ends, where it
+ * would otherwise draw a bright knot inside the cluster it attaches to, and with the web's share
+ * of the plate as it morphs to the import graph, which has no clusters to string together.
+ */
+export const FILAMENT_VERTEX = /* glsl */ `
+uniform float uMorph;
+attribute vec3 aTo;
+attribute float aT;
+attribute float aWeight;
+attribute vec4 aRange;      // cluster a's [lo, hi) and cluster b's [lo, hi), in depth-first file order
+varying float vT;
+varying float vWeight;
+varying float vHot;
+uniform vec2 uHot;          // hovered group's range, (-1, -1) for none
+uniform vec2 uSel;          // selected group's range
+uniform vec2 uFocus;        // the open drawer's range
+float overlaps(vec2 r, vec2 g) {
+  return step(g.x, r.y - 0.5) * step(r.x, g.y - 0.5);
+}
+float touches(vec2 g) {
+  return max(overlaps(aRange.xy, g), overlaps(aRange.zw, g));
+}
+void main() {
+  vec3 p = mix(position, aTo, uMorph);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  vT = aT;
+  vWeight = aWeight;
+  vHot = max(touches(uHot), max(touches(uSel) * 0.8, touches(uFocus) * 0.6));
+}
+`;
+
+export const FILAMENT_FRAGMENT = /* glsl */ `
+uniform vec3 uInk;
+uniform float uOpacity;     // overall strength: the web's share of the plate, and a count falloff
+uniform float uAnyHot;      // 1 while some group is hovered, selected or open
+varying float vT;
+varying float vWeight;
+varying float vHot;
+void main() {
+  // Fade into each end so a strand meets its cluster as a haze, not a bright joint.
+  float ends = smoothstep(0.0, 0.18, vT) * smoothstep(1.0, 0.82, vT);
+  float base = 0.05 + 0.2 * vWeight;
+  // With a group lit, the rest of the web steps back so its strands read.
+  float a = mix(base * (1.0 - 0.45 * uAnyHot), 0.16 + 0.42 * vWeight, vHot) * ends * uOpacity;
+  if (a <= 0.002) discard;
+  gl_FragColor = vec4(uInk * a, 1.0);
+}
+`;
+
+/**
+ * Lanes: line segments with from- and to-slot endpoints (they follow the morph), a parameter t
  * from 0 at the importer / referencing file to 1 at the dependency / definition, and a style:
  *   0 import lane      brightness grows toward the importer end; dashes drift toward the dependency
  *   1 call arc         solid, pulses of light travel toward the definition
@@ -188,7 +244,7 @@ void main() {
  */
 export const LANE_VERTEX = /* glsl */ `
 uniform float uMorph;
-attribute vec3 aGraph;
+attribute vec3 aTo;
 attribute float aT;
 attribute float aStyle;
 attribute float aWeight;
@@ -200,7 +256,7 @@ varying float vWeight;
 varying float vLen;
 varying float vGain;
 void main() {
-  vec3 p = mix(position, aGraph, uMorph);
+  vec3 p = mix(position, aTo, uMorph);
   gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
   vT = aT;
   vStyle = aStyle;

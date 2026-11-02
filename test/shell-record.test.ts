@@ -9,7 +9,7 @@ import { REF_KINDS, type CodeSymbols, type FileRecord } from "../src/shared/sche
 import { hostUsesOf } from "../src/viewer/model/symbols";
 import { callEdges, describeFilters, filtering, NO_FILTERS, partitionByCall, partitionTypeRefs, passes } from "../src/viewer/shell/derived";
 import { formatGenerated, generatedParts } from "../src/viewer/shell/labels";
-import { DEFAULT_FILTERS, filterParams, parseHash, readFilters } from "../src/viewer/state/url";
+import { DEFAULT_FILTERS, filterParams, parseHash, readFilters, readGravity, readLayout } from "../src/viewer/state/url";
 import type { Filters } from "../src/viewer/state/store";
 
 const K = Object.fromEntries(REF_KINDS.map((k, i) => [k, i])) as Record<(typeof REF_KINDS)[number], number>;
@@ -125,6 +125,24 @@ describe("filters in the URL", () => {
       categories: new Set(["code"]),
     });
     expect(readFilters(parseHash("#lang=cobol&cat=nonsense"), ids, false)).toEqual({ languages: null, categories: null });
+  });
+});
+
+describe("layout and gravity in the URL", () => {
+  test("a link written before the cosmic web (layout=tree) opens on the web", () => {
+    expect(readLayout("tree")).toBe("web");
+    expect(readLayout("web")).toBe("web");
+    expect(readLayout("graph")).toBe("graph");
+    expect(readLayout("spiral")).toBeUndefined();
+    expect(readLayout(undefined)).toBeUndefined();
+  });
+
+  test("gravity reads back known modes, and refuses history modes on a report without git", () => {
+    expect(readGravity("complexity", false)).toBe("complexity");
+    expect(readGravity("churn", true)).toBe("churn");
+    expect(readGravity("churn", false)).toBeUndefined();
+    expect(readGravity("hotspots", false)).toBeUndefined();
+    expect(readGravity("mass", true)).toBeUndefined();
   });
 });
 

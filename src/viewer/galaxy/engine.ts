@@ -8,6 +8,12 @@
  * region labels) subscribes to, so labels move with the camera through refs and transforms
  * instead of a React render per frame.
  *
+ * Layouts are two slots, `from` and `to`, that the star shader mixes by `morph` (0 → 1). Every
+ * change of layout or gravity bakes the current mix into `from` and loads the new target into
+ * `to`, so a change made mid-flight starts from where the stars actually are instead of
+ * snapping back to a fixed pair. Webs are computed here (src/shared/web.ts), once per gravity,
+ * and cached; the import graph ships in the report.
+ *
  * Why a class and not hooks: the per-frame path (morph, uniforms, picking, label placement)
  * must not allocate or go through React. A plain object with typed arrays does that, and the
  * React components become thin wiring around it.
@@ -16,8 +22,10 @@
 import * as THREE from "three";
 import type { CameraControls } from "@react-three/drei";
 import type { Model } from "../model/indices";
-import { filesUnder } from "../model/indices";
 import { HOLOTYPE } from "../lib/colors";
+import { filesUnder } from "../model/indices";
+import type { LayoutMode } from "../state/store";
+import { computeWeb, DEFAULT_GRAVITY, STAR_SPACING, webInputFromReport, type Gravity, type Web, type WebClusters, type WebFilaments, type WebInput } from "../../shared/web";
 import { STAR_FRAGMENT, STAR_VERTEX } from "./shaders";
 import { buildFacts, type Facts } from "./facts";
 
@@ -97,14 +105,159 @@ export function flashScale(touched: number): number {
   return touched <= FLASH_BUDGET ? 1 : Math.max(FLASH_FLOOR, Math.sqrt(FLASH_BUDGET / touched));
 }
 
-/** The default three-quarter view: from below the disc's south edge, ~40° above its plane. */
-const HOME_DIRECTION = new THREE.Vector3(0, -1.45, 1.25).normalize();
+/**
+ * Home elevation above the horizontal. A web has no plane to look down on, and from high up its
+ * nearer clusters hide the ones behind them; a low oblique angle shows the most knots side by
+ * side and still gives each one some depth.
+ */
+const HOME_ELEVATION = THREE.MathUtils.degToRad(24);
 const WORLD_UP = new THREE.Vector3(0, 0, 1);
+
+/** One layout's geometry, as the slots hold it. */
+interface Slot {
+  layout: LayoutMode;
+  gravity: Gravity;
+  positions: Float32Array;
+  /** Per directory: sphere center (stride 3) and radius. */
+  dirCenter: Float32Array;
+  dirRadius: Float32Array;
+  /** Region label anchors, stride 3 (see regionAnchor). */
+  anchors: Float32Array;
+  /** Filament Béziers, stride 9, in the default web's strand order (see filaments.ts). */
+  curves: Float32Array;
+}
 
 const SECONDS_PER_DAY = 86400;
 /** Morph time constant (s). Exponential approach: damped, no overshoot, ~0.8 s to settle. */
 const MORPH_TAU = 0.2;
 const PICK_CELL = 24;
+
+/**
+ * The home camera direction (target → camera) for a web: the horizontal bearing that sees the
+ * web broadside (perpendicular to its widest horizontal spread, from a principal-axis fit), at
+ * HOME_ELEVATION. Computed once from the default web, so a gravity switch never swings the
+ * camera; the plate is wider than it is tall, and a web seen end-on stacked its superclusters
+ * behind one another.
+ */
+function homeDirectionOf(pos: Float32Array): THREE.Vector3 {
+  const n = pos.length / 3;
+  let mx = 0;
+  let my = 0;
+  for (let i = 0; i < n; i++) {
+    mx += pos[i * 3]!;
+    my += pos[i * 3 + 1]!;
+  }
+  mx /= Math.max(1, n);
+  my /= Math.max(1, n);
+  let sxx = 0;
+  let syy = 0;
+  let sxy = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = pos[i * 3]! - mx;
+    const dy = pos[i * 3 + 1]! - my;
+    sxx += dx * dx;
+    syy += dy * dy;
+    sxy += dx * dy;
+  }
+  // Major axis angle of the horizontal spread; the camera sits on the minor axis, south of it.
+  const major = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+  let ax = -Math.sin(major);
+  let ay = Math.cos(major);
+  if (ay > 0) {
+    ax = -ax;
+    ay = -ay;
+  }
+  const c = Math.cos(HOME_ELEVATION);
+  return new THREE.Vector3(ax * c, ay * c, Math.sin(HOME_ELEVATION)).normalize();
+}
+
+/** Directory spheres from placed files: the centroid of each subtree and its farthest file. */
+function dirSpheres(model: Model, pos: Float32Array): { centers: Float32Array; radii: Float32Array } {
+  const dirs = model.report.dirs;
+  const D = dirs.length;
+  const centers = new Float32Array(D * 3);
+  const radii = new Float32Array(D);
+  for (let d = 0; d < D; d++) {
+    const files = filesUnder(model, d);
+    if (files.length === 0) continue;
+    let cx = 0;
+    let cy = 0;
+    let cz = 0;
+    for (let k = 0; k < files.length; k++) {
+      const i = files[k]! * 3;
+      cx += pos[i]!;
+      cy += pos[i + 1]!;
+      cz += pos[i + 2]!;
+    }
+    cx /= files.length;
+    cy /= files.length;
+    cz /= files.length;
+    let r = 0;
+    for (let k = 0; k < files.length; k++) {
+      const i = files[k]! * 3;
+      r = Math.max(r, Math.hypot(pos[i]! - cx, pos[i + 1]! - cy, pos[i + 2]! - cz));
+    }
+    centers[d * 3] = cx;
+    centers[d * 3 + 1] = cy;
+    centers[d * 3 + 2] = cz;
+    radii[d] = r;
+  }
+  return { centers, radii };
+}
+
+/**
+ * The strands in the import-graph layout: straight, between the clusters' centroids there. They
+ * fade out as the morph reaches the graph (the graph has no clusters to string together), but
+ * travelling with their clusters keeps them from hanging in space while the stars leave.
+ */
+function graphCurves(web: Web, pos: Float32Array): Float32Array {
+  const C = web.clusters.dir.length;
+  const sum = new Float64Array(C * 3);
+  const count = new Float64Array(C);
+  for (let f = 0; f < web.fileCluster.length; f++) {
+    const k = web.fileCluster[f]!;
+    for (let j = 0; j < 3; j++) sum[k * 3 + j] = sum[k * 3 + j]! + pos[f * 3 + j]!;
+    count[k]!++;
+  }
+  const fil = web.filaments;
+  const out = new Float32Array(fil.a.length * 9);
+  for (let i = 0; i < fil.a.length; i++) {
+    const a = fil.a[i]!;
+    const b = fil.b[i]!;
+    for (let j = 0; j < 3; j++) {
+      const pa = sum[a * 3 + j]! / Math.max(1, count[a]!);
+      const pb = sum[b * 3 + j]! / Math.max(1, count[b]!);
+      out[i * 9 + j] = pa;
+      out[i * 9 + 3 + j] = (pa + pb) / 2;
+      out[i * 9 + 6 + j] = pb;
+    }
+  }
+  return out;
+}
+
+/**
+ * Webs and their input per loaded model, shared by every engine on it: the Galaxy tab's plate
+ * and the Source tab's side plate each mount an engine, and without this each recomputed every
+ * web it showed (up to ~70 ms apiece at 50k files).
+ */
+const webCache = new WeakMap<Model, { input: WebInput; webs: Map<Gravity, Web> }>();
+
+function webStore(model: Model): { input: WebInput; webs: Map<Gravity, Web> } {
+  let c = webCache.get(model);
+  if (!c) webCache.set(model, (c = { input: webInputFromReport(model.report), webs: new Map() }));
+  return c;
+}
+
+function cloneSlot(s: Slot): Slot {
+  return {
+    ...s,
+    positions: Float32Array.from(s.positions),
+    dirCenter: Float32Array.from(s.dirCenter),
+    dirRadius: Float32Array.from(s.dirRadius),
+    anchors: Float32Array.from(s.anchors),
+    curves: Float32Array.from(s.curves),
+  };
+}
 
 export class GalaxyEngine {
   readonly model: Model;
@@ -112,8 +265,9 @@ export class GalaxyEngine {
   readonly radius: number;
   readonly facts: Facts;
 
-  readonly tree: Float32Array;
-  readonly graph: Float32Array;
+  /** Star positions the shader mixes: `from` at morph 0, `to` at morph 1 (attributes position, aTo). */
+  readonly from: Float32Array;
+  readonly to: Float32Array;
   readonly color: Float32Array;
   readonly size: Float32Array;
   readonly emph: Float32Array;
@@ -132,8 +286,13 @@ export class GalaxyEngine {
   /** Days since the first commit for unix time `t`. */
   readonly dayOf: (t: number) => number;
 
-  morph = 0;
-  morphTarget = 0;
+  /** Progress from the `from` slot to the `to` slot, 0 → 1. */
+  morph = 1;
+  /** The layout and gravity the `to` slot holds. */
+  layout: LayoutMode;
+  gravity: Gravity;
+  /** Bumped on every retarget; geometry built from the slots (lanes, filaments) rebuilds on it. */
+  version = 0;
   clock = 0;
   reducedMotion = false;
   /** Set while something animates on its own (pulses, breathing, playback), to keep frames coming. */
@@ -173,7 +332,18 @@ export class GalaxyEngine {
   hoverMoon = -1;
 
   private listeners: { fn: FrameListener; order: number }[] = [];
+  private retargetListeners = new Set<() => void>();
   private holotypeMarks: Float32Array;
+  readonly webInput: WebInput;
+  private webs: Map<Gravity, Web>;
+  private graphSlot: Slot | null = null;
+  private fromSlot: Slot;
+  private toSlot: Slot;
+  /** How much of each slot is the web (1) or the graph (0), for fading the filaments. */
+  webFrom = 1;
+  webTo = 1;
+  /** Camera direction (target → camera) for the whole collection, fixed from the default web. */
+  readonly homeDirection: THREE.Vector3;
 
   // Picking cache: screen positions at the last projection, bucketed into a grid.
   private sx: Float32Array;
@@ -190,15 +360,28 @@ export class GalaxyEngine {
   private lastMatrix = new Float32Array(16);
   private projMorph = -1;
 
-  constructor(model: Model) {
+  constructor(model: Model, initial: { layout: LayoutMode; gravity: Gravity } = { layout: "web", gravity: DEFAULT_GRAVITY }) {
     this.model = model;
     const report = model.report;
     const n = (this.n = model.fileCount);
-    this.radius = Math.max(report.layout.radius.tree, report.layout.radius.graph, 1);
     this.facts = buildFacts(model);
+    const store = webStore(model);
+    this.webInput = store.input;
+    this.webs = store.webs;
+    // Sizes, the camera's reach and the shared bounding sphere come from the default web and the
+    // graph (which the analyzer fitted to it), not from the current gravity: a gravity switch
+    // would otherwise resize every star.
+    const base = this.web(DEFAULT_GRAVITY);
+    this.radius = Math.max(base.radius, report.layout.radius, 1);
+    this.homeDirection = homeDirectionOf(base.positions);
 
-    this.tree = Float32Array.from(report.layout.tree);
-    this.graph = Float32Array.from(report.layout.graph);
+    this.layout = initial.layout;
+    this.gravity = initial.gravity;
+    this.toSlot = this.slotOf(initial.layout, initial.gravity);
+    this.fromSlot = cloneSlot(this.toSlot);
+    this.webFrom = this.webTo = initial.layout === "web" ? 1 : 0;
+    this.from = this.fromSlot.positions;
+    this.to = this.toSlot.positions;
     this.color = new Float32Array(n * 3);
     this.size = new Float32Array(n);
     this.emph = new Float32Array(n).fill(1);
@@ -234,10 +417,13 @@ export class GalaxyEngine {
     this.holotypeMarks = new Float32Array(n);
     for (const f of model.holotypes) this.holotypeMarks[f] = 1;
     this.mark.set(this.holotypeMarks);
+    // Region anchors need the regions, which need the model; fill both slots' now.
+    this.fromSlot.anchors = this.anchorsOf(this.fromSlot.positions);
+    this.toSlot.anchors = Float32Array.from(this.fromSlot.anchors);
 
     const g = (this.geometry = new THREE.BufferGeometry());
-    g.setAttribute("position", new THREE.BufferAttribute(this.tree, 3));
-    g.setAttribute("aGraph", new THREE.BufferAttribute(this.graph, 3));
+    g.setAttribute("position", new THREE.BufferAttribute(this.from, 3).setUsage(THREE.DynamicDrawUsage));
+    g.setAttribute("aTo", new THREE.BufferAttribute(this.to, 3).setUsage(THREE.DynamicDrawUsage));
     g.setAttribute("aColor", new THREE.BufferAttribute(this.color, 3).setUsage(THREE.DynamicDrawUsage));
     g.setAttribute("aSize", new THREE.BufferAttribute(this.size, 1).setUsage(THREE.DynamicDrawUsage));
     g.setAttribute("aEmph", new THREE.BufferAttribute(this.emph, 1).setUsage(THREE.DynamicDrawUsage));
@@ -246,11 +432,10 @@ export class GalaxyEngine {
     g.setAttribute("aFlash", new THREE.BufferAttribute(this.flash, 1).setUsage(THREE.DynamicDrawUsage));
     g.setAttribute("aRegion", new THREE.BufferAttribute(this.regionOf, 1));
     g.setAttribute("aDepth", new THREE.BufferAttribute(this.depth, 1).setUsage(THREE.DynamicDrawUsage));
-    // Both layouts share one bounding sphere; frustum culling must not drop the whole cloud
-    // mid-morph because the sphere was computed from the tree positions alone.
-    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), this.radius * 1.2);
+    // Every layout shares one bounding sphere; frustum culling must not drop the whole cloud
+    // mid-morph because the sphere was computed from one slot's positions alone.
+    g.boundingSphere = new THREE.Sphere(new THREE.Vector3(), this.radius * 1.3);
 
-    const R = this.radius;
     this.material = new THREE.ShaderMaterial({
       vertexShader: STAR_VERTEX,
       fragmentShader: STAR_FRAGMENT,
@@ -259,12 +444,14 @@ export class GalaxyEngine {
       depthTest: false,
       blending: THREE.AdditiveBlending,
       uniforms: {
-        uMorph: { value: 0 },
+        uMorph: { value: 1 },
         uSizeScale: { value: 1000 },
-        // Star sizes as fractions of the galaxy radius: framed whole, the smallest file is a
-        // ~2 px point and the largest ~12 px, and zooming in grows them like real distance.
-        uBaseSize: { value: R * 0.0046 },
-        uSizeRange: { value: R * 0.021 },
+        // Star sizes in units of the spacing between neighbors in a clump (see STAR_SPACING):
+        // the smallest file is a third of a gap wide and the largest about one and a half, so a
+        // clump resolves into stars when zoomed in, and zooming grows them like real distance.
+        // Sized from the radius instead, a web's voids made every star too wide for its clump.
+        uBaseSize: { value: STAR_SPACING * 0.34 },
+        uSizeRange: { value: STAR_SPACING * 1.5 },
         uMinPx: { value: 1.6 },
         uMaxPx: { value: 40 },
         uHover: { value: -1 },
@@ -290,6 +477,181 @@ export class GalaxyEngine {
     this.geometry.dispose();
     this.material.dispose();
     this.listeners = [];
+    this.retargetListeners.clear();
+  }
+
+  // ─── Layouts ───────────────────────────────────────────────────────────────────────────────
+
+  /** The web for a gravity, computed on first use and cached (a few ms to ~70 ms at 50k files). */
+  web(gravity: Gravity): Web {
+    let w = this.webs.get(gravity);
+    if (!w) this.webs.set(gravity, (w = computeWeb(this.webInput, gravity)));
+    return w;
+  }
+
+  /** The web the layout is heading to, or null while the import graph is the target. */
+  get targetWeb(): Web | null {
+    return this.layout === "web" ? this.web(this.gravity) : null;
+  }
+
+  /** The web's strands (shared by every gravity: they depend on import coupling alone). */
+  get filaments(): WebFilaments {
+    return this.web(DEFAULT_GRAVITY).filaments;
+  }
+
+  /** The web's clusters, the nodes the filaments join, and the cluster of each file. */
+  get clusters(): WebClusters {
+    return this.web(DEFAULT_GRAVITY).clusters;
+  }
+
+  get fileCluster(): Int32Array {
+    return this.web(DEFAULT_GRAVITY).fileCluster;
+  }
+
+  /** Filament curves in one slot, stride 9. */
+  curves(slot: "from" | "to"): Float32Array {
+    return slot === "from" ? this.fromSlot.curves : this.toSlot.curves;
+  }
+
+  private slotOf(layout: LayoutMode, gravity: Gravity): Slot {
+    if (layout === "web") {
+      const w = this.web(gravity);
+      return {
+        layout,
+        gravity,
+        positions: Float32Array.from(w.positions),
+        dirCenter: w.dirCenter,
+        dirRadius: w.dirRadius,
+        anchors: new Float32Array(0),
+        curves: w.filaments.curve,
+      };
+    }
+    if (!this.graphSlot) {
+      const positions = Float32Array.from(this.model.report.layout.graph);
+      const { centers, radii } = dirSpheres(this.model, positions);
+      this.graphSlot = { layout, gravity, positions, dirCenter: centers, dirRadius: radii, anchors: new Float32Array(0), curves: graphCurves(this.web(DEFAULT_GRAVITY), positions) };
+    }
+    return { ...this.graphSlot, gravity, positions: Float32Array.from(this.graphSlot.positions) };
+  }
+
+  /**
+   * Head for a layout (and, in the web, a gravity). The current mix is baked into `from`, so the
+   * morph starts wherever the stars are, even mid-flight. Reduced motion snaps.
+   */
+  setTarget(layout: LayoutMode, gravity: Gravity): void {
+    if (layout === this.layout && (layout === "graph" || gravity === this.gravity)) {
+      this.gravity = gravity;
+      return;
+    }
+    const k = this.morph;
+    const f = this.fromSlot;
+    const t = this.toSlot;
+    const mix = (a: Float32Array, b: Float32Array) => {
+      for (let i = 0; i < a.length; i++) a[i] = a[i]! + (b[i]! - a[i]!) * k;
+    };
+    mix(this.from, this.to);
+    // The slots' directory arrays may be shared with a cached web; mix into fresh copies.
+    const dirCenter = Float32Array.from(f.dirCenter);
+    const dirRadius = Float32Array.from(f.dirRadius);
+    const curves = Float32Array.from(f.curves);
+    mix(dirCenter, t.dirCenter);
+    mix(dirRadius, t.dirRadius);
+    mix(curves, t.curves);
+    mix(f.anchors, t.anchors);
+    this.fromSlot = { ...f, dirCenter, dirRadius, curves };
+    this.webFrom = this.webFrom + (this.webTo - this.webFrom) * k;
+
+    const next = this.slotOf(layout, gravity);
+    this.to.set(next.positions);
+    next.positions = this.to;
+    next.anchors = this.anchorsOf(this.to);
+    this.toSlot = next;
+    this.layout = layout;
+    this.gravity = gravity;
+    this.webTo = layout === "web" ? 1 : 0;
+    this.morph = this.reducedMotion ? 1 : 0;
+    this.material.uniforms.uMorph!.value = this.morph;
+    (this.geometry.getAttribute("position") as THREE.BufferAttribute).needsUpdate = true;
+    (this.geometry.getAttribute("aTo") as THREE.BufferAttribute).needsUpdate = true;
+    this.projMorph = -1;
+    this.version++;
+    for (const l of this.retargetListeners) l();
+    this.invalidate();
+  }
+
+  /** Called after every retarget (useSyncExternalStore-shaped: returns the unsubscribe). */
+  onRetarget(listener: () => void): () => void {
+    this.retargetListeners.add(listener);
+    return () => this.retargetListeners.delete(listener);
+  }
+
+  /**
+   * A directory's sphere at the current morph (or `at` = 1 for where it is heading): writes the
+   * center, returns the radius. In the web it is the subtree's measured sphere; in the import
+   * graph, the centroid of its files and the farthest of them.
+   */
+  dirSphere(dir: number, out: THREE.Vector3, at = this.morph): number {
+    const a = this.fromSlot;
+    const b = this.toSlot;
+    const k = dir * 3;
+    out.set(
+      a.dirCenter[k]! + (b.dirCenter[k]! - a.dirCenter[k]!) * at,
+      a.dirCenter[k + 1]! + (b.dirCenter[k + 1]! - a.dirCenter[k + 1]!) * at,
+      a.dirCenter[k + 2]! + (b.dirCenter[k + 2]! - a.dirCenter[k + 2]!) * at,
+    );
+    return a.dirRadius[dir]! + (b.dirRadius[dir]! - a.dirRadius[dir]!) * at;
+  }
+
+  /** Where a region's name is pinned at the current morph (see anchorsOf). */
+  regionAnchor(region: number, out: THREE.Vector3, at = this.morph): THREE.Vector3 {
+    const a = this.fromSlot.anchors;
+    const b = this.toSlot.anchors;
+    const k = region * 3;
+    return out.set(a[k]! + (b[k]! - a[k]!) * at, a[k + 1]! + (b[k + 1]! - a[k + 1]!) * at, a[k + 2]! + (b[k + 2]! - a[k + 2]!) * at);
+  }
+
+  /** How much of the plate is the web right now (1) rather than the import graph (0). */
+  get webness(): number {
+    return this.webFrom + (this.webTo - this.webFrom) * this.morph;
+  }
+
+  /**
+   * Each region's label anchor in one layout: the member nearest the centroid of its files. A
+   * supercluster's centroid often falls in the void between its clusters, and a name floating
+   * there pointed at nothing; pinned to a member, it sits on the supercluster's own stars.
+   */
+  private anchorsOf(pos: Float32Array): Float32Array {
+    const out = new Float32Array(this.regions.length * 3);
+    for (const r of this.regions) {
+      const files = r.files;
+      if (files.length === 0) continue;
+      let cx = 0;
+      let cy = 0;
+      let cz = 0;
+      for (let k = 0; k < files.length; k++) {
+        const i = files[k]! * 3;
+        cx += pos[i]!;
+        cy += pos[i + 1]!;
+        cz += pos[i + 2]!;
+      }
+      cx /= files.length;
+      cy /= files.length;
+      cz /= files.length;
+      let best = files[0]!;
+      let bestD = Infinity;
+      for (let k = 0; k < files.length; k++) {
+        const i = files[k]! * 3;
+        const d = (pos[i]! - cx) ** 2 + (pos[i + 1]! - cy) ** 2 + (pos[i + 2]! - cz) ** 2;
+        if (d < bestD) {
+          bestD = d;
+          best = files[k]!;
+        }
+      }
+      out[r.index * 3] = pos[best * 3]!;
+      out[r.index * 3 + 1] = pos[best * 3 + 1]!;
+      out[r.index * 3 + 2] = pos[best * 3 + 2]!;
+    }
+    return out;
   }
 
   // ─── Attribute updates (in place; flagged for upload) ──────────────────────────────────────
@@ -355,12 +717,12 @@ export class GalaxyEngine {
 
   // ─── Positions ─────────────────────────────────────────────────────────────────────────────
 
-  /** A file's position at the current morph. */
+  /** A file's position at the current morph, or at `morph` = 1 for where it is heading. */
   filePos(i: number, out: THREE.Vector3, morph = this.morph): THREE.Vector3 {
-    const t = this.tree;
-    const g = this.graph;
+    const a = this.from;
+    const b = this.to;
     const k = i * 3;
-    return out.set(t[k]! + (g[k]! - t[k]!) * morph, t[k + 1]! + (g[k + 1]! - t[k + 1]!) * morph, t[k + 2]! + (g[k + 2]! - t[k + 2]!) * morph);
+    return out.set(a[k]! + (b[k]! - a[k]!) * morph, a[k + 1]! + (b[k + 1]! - a[k + 1]!) * morph, a[k + 2]! + (b[k + 2]! - a[k + 2]!) * morph);
   }
 
   /** Bounding sphere of a set of files at the layout the morph is heading to. */
@@ -368,10 +730,10 @@ export class GalaxyEngine {
     const v = new THREE.Vector3();
     const c = new THREE.Vector3();
     if (files.length === 0) return new THREE.Sphere(c, this.radius);
-    for (let k = 0; k < files.length; k++) c.add(this.filePos(files[k]!, v, this.morphTarget));
+    for (let k = 0; k < files.length; k++) c.add(this.filePos(files[k]!, v, 1));
     c.multiplyScalar(1 / files.length);
     let r = 0;
-    for (let k = 0; k < files.length; k++) r = Math.max(r, this.filePos(files[k]!, v, this.morphTarget).distanceTo(c));
+    for (let k = 0; k < files.length; k++) r = Math.max(r, this.filePos(files[k]!, v, 1).distanceTo(c));
     return new THREE.Sphere(c, Math.max(r * 1.08, minRadius));
   }
 
@@ -382,9 +744,10 @@ export class GalaxyEngine {
    * `direction` (unit, target → camera). Returns where the camera should look and from how far,
    * plus the focal offset that moves the picture clear of the chrome.
    *
-   * camera-controls' fitToSphere was used first. A sphere is the wrong shape for a tilted disc:
-   * the disc projects as a wide ellipse, so a sphere fitted to the plate's height left a third
-   * of the width empty, and it ignored the title and scrubber, which sat on top of stars.
+   * camera-controls' fitToSphere was used first. A sphere is the wrong shape for most subjects:
+   * a cluster strung along a filament projects as a long ellipse, so a sphere fitted to the
+   * plate's height left a third of the width empty, and it ignored the title and scrubber,
+   * which sat on top of stars.
    * Instead this fits the files' actual projected extent: a binary search on distance (the
    * projection is perspective, so near and far files scale differently), with the target moved
    * to the middle of what is visible so orbiting pivots around the picture, not beside it.
@@ -416,7 +779,7 @@ export class GalaxyEngine {
     const pts: number[] = [];
     const v = new THREE.Vector3();
     for (let k = 0; k < count; k += stride) {
-      this.filePos(files ? files[k]! : k, v, this.morphTarget);
+      this.filePos(files ? files[k]! : k, v, 1);
       pts.push(v.x, v.y, v.z);
     }
     // Points that are not files but must be in view too (the apexes of a symbol's arcs).
@@ -447,9 +810,9 @@ export class GalaxyEngine {
         if (w <= D * 0.02) return null; // behind or at the lens: too close
         const sx = (dx * right.x + dy * right.y + dz * right.z) / (w * tanH);
         const sy = (dx * up.x + dy * up.y + dz * up.z) / (w * tanV);
-        // Each point is a disc of radius `pad`: the region outlines run about four contour
-        // cells outside the stars, and fitting the stars alone clipped them at both edges of a
-        // phone-width plate.
+        // Each point is a disc of radius `pad`: a star's halo (and a group's envelope around
+        // its members) runs outside the star itself, and fitting the stars alone clipped both at
+        // the edges of a phone-width plate.
         const px = pad / (w * tanH);
         const py = pad / (w * tanV);
         if (sx - px < ax) ax = sx - px;
@@ -501,15 +864,16 @@ export class GalaxyEngine {
     this.invalidate();
   }
 
-  /** World margin around stars that keeps their region outlines in frame (contour.ts pads ~4 cells of R/75). */
+  /** World margin around stars that keeps their halos (and a group's envelope) in frame. */
   get outlinePad(): number {
-    return this.radius * 0.055;
+    return this.radius * 0.035;
   }
 
-  /** Frame the whole collection from the default three-quarter view. */
+  /** Frame the whole collection from the home direction. */
   home(animate: boolean): void {
     if (!this.controls) return;
-    this.applyPose(this.framePose(null, HOME_DIRECTION, this.radius * 0.1, [], this.outlinePad), HOME_DIRECTION, animate);
+    const dir = this.homeDirection;
+    this.applyPose(this.framePose(null, dir, this.radius * 0.1, [], this.outlinePad), dir, animate);
     this.atHome = true;
   }
 
@@ -522,7 +886,7 @@ export class GalaxyEngine {
     const t = new THREE.Vector3();
     c.getTarget(t);
     dir.sub(t);
-    if (dir.lengthSq() < 1e-9) dir.copy(HOME_DIRECTION);
+    if (dir.lengthSq() < 1e-9) dir.copy(this.homeDirection);
     dir.normalize();
     this.applyPose(this.framePose(files, dir, minRadius, extra, pad), dir, animate);
     this.atHome = false;
@@ -554,11 +918,11 @@ export class GalaxyEngine {
     if (resized && this.atHome) this.home(false);
     this.clock += Math.min(delta, 0.1);
 
-    if (this.morph !== this.morphTarget) {
-      if (this.reducedMotion) this.morph = this.morphTarget;
+    if (this.morph !== 1) {
+      if (this.reducedMotion) this.morph = 1;
       else {
-        this.morph += (this.morphTarget - this.morph) * (1 - Math.exp(-Math.min(delta, 0.1) / MORPH_TAU));
-        if (Math.abs(this.morphTarget - this.morph) < 0.002) this.morph = this.morphTarget;
+        this.morph += (1 - this.morph) * (1 - Math.exp(-Math.min(delta, 0.1) / MORPH_TAU));
+        if (1 - this.morph < 0.002) this.morph = 1;
       }
     }
     const u = this.material.uniforms;
@@ -574,7 +938,7 @@ export class GalaxyEngine {
     const info: FrameInfo = { camera, width, height, clock: this.clock, morph: this.morph };
     for (const l of this.listeners) l.fn(info);
 
-    if (this.morph !== this.morphTarget || this.animating.size > 0) this.invalidate();
+    if (this.morph !== 1 || this.animating.size > 0) this.invalidate();
   }
 
   // ─── Picking ───────────────────────────────────────────────────────────────────────────────
@@ -599,8 +963,8 @@ export class GalaxyEngine {
     const W = this.width;
     const H = this.height;
     const n = this.n;
-    const t = this.tree;
-    const g = this.graph;
+    const t = this.from;
+    const g = this.to;
     const k = this.morph;
     const u = this.material.uniforms;
     const fov = THREE.MathUtils.degToRad(camera.fov);

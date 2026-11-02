@@ -5,6 +5,7 @@
  *   ?compact=1        the Source tab's small plate
  *   ?color=churn      store.colorBy        ?size=commits   store.sizeBy
  *   ?layout=graph     store.layout         ?edges=all      store.edges
+ *   ?gravity=churn    store.gravity
  *   ?symbol=name      select a symbol by name (loads the tables)
  *   ?file=path        select a file        ?focus=path     open a drawer
  *   ?time=0.5         scrubber at that fraction of history
@@ -15,7 +16,7 @@ import { createRoot } from "react-dom/client";
 import { TooltipProvider } from "../../components/ui/tooltip";
 import { loadReport } from "../../data/load";
 import { ensureSymbols } from "../../state/loaders";
-import { useViewer, type ColorBy, type EdgeMode, type LayoutMode, type SizeBy } from "../../state/store";
+import { useViewer, type ColorBy, type EdgeMode, type Gravity, type LayoutMode, type SizeBy } from "../../state/store";
 import "../../styles.css";
 import { GalaxyView } from "../GalaxyView";
 
@@ -29,6 +30,7 @@ async function boot() {
   if (q.get("color")) s.setColorBy(q.get("color") as ColorBy);
   if (q.get("size")) s.setSizeBy(q.get("size") as SizeBy);
   if (q.get("layout")) s.setLayout(q.get("layout") as LayoutMode);
+  if (q.get("gravity")) s.setGravity(q.get("gravity") as Gravity);
   if (q.get("edges")) s.setEdges(q.get("edges") as EdgeMode);
   const model = useViewer.getState().model!;
   if (q.get("focus")) {
