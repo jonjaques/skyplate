@@ -85,6 +85,9 @@ export const HOVER_TUNING: HoverTuning = {
   stopMs: 50,
 };
 
+/** One frame at 60 Hz (ms): the interval assumed for the first movement after a rest. */
+const FRAME_MS = 1000 / 60;
+
 /** The committed star's pick radius grows by this factor: slipping a little off it keeps it. */
 export const STICKY_RADIUS = 1.5;
 /**
@@ -118,6 +121,8 @@ export class HoverIntent<T> {
   private lastT = Number.NEGATIVE_INFINITY;
   /** Smoothed pointer speed at lastT, px/ms. */
   private speed = 0;
+  /** The last sample's own speed (displacement over its interval), px/ms. */
+  private inst = 0;
   /** When the pointer left the committed target, or -1 while it is on it. */
   private lostAt = -1;
   /** The plate stays warm until this time after a hover ends. */
@@ -153,11 +158,19 @@ export class HoverIntent<T> {
       return null;
     }
     const dt = s.t - this.lastT;
-    if (!Number.isFinite(dt) || dt > this.tune.speedTauMs * 8) {
-      // First sample, or the first after a long rest: there is no recent motion to smooth.
-      this.speed = 0;
+    if (!Number.isFinite(dt)) {
+      // The first sample: no motion to measure yet.
+      this.speed = this.inst = 0;
+    } else if (dt > this.tune.speedTauMs * 8) {
+      // The first sample after a rest. A still mouse sends nothing, so this displacement is the
+      // first frame of a new movement, and it seeds the estimate. Reset to zero instead, the
+      // smoothed speed needed three frames to pass slowPxPerMs, and a 0.5-0.6 px/ms sweep that
+      // began on an open card handed it to the next star it crossed, which flashed for 200 ms
+      // (measured, on the plate and with a fake clock).
+      this.speed = this.inst = Math.hypot(s.x - this.lastX, s.y - this.lastY) / FRAME_MS;
     } else if (dt > 0) {
       const v = Math.hypot(s.x - this.lastX, s.y - this.lastY) / dt;
+      this.inst = v;
       this.speed += (v - this.speed) * (1 - Math.exp(-dt / this.tune.speedTauMs));
     }
     this.lastX = s.x;
@@ -189,7 +202,7 @@ export class HoverIntent<T> {
     this.committedTarget = null;
     this.candidateTarget = null;
     this.lostAt = -1;
-    this.speed = 0;
+    this.speed = this.inst = 0;
     this.lastT = Number.NEGATIVE_INFINITY;
   }
 
@@ -210,7 +223,7 @@ export class HoverIntent<T> {
       const warmEnd = this.committedTarget !== null ? Number.POSITIVE_INFINITY : this.warmUntil;
       const quick = this.since + this.tune.warmDwellMs;
       const dwellDone = quick < warmEnd ? quick : this.since + this.tune.dwellMs;
-      const settle = this.speed <= this.tune.slowPxPerMs ? this.lastT : this.lastT + this.tune.stopMs;
+      const settle = this.motion() <= this.tune.slowPxPerMs ? this.lastT : this.lastT + this.tune.stopMs;
       next = Math.max(dwellDone, settle, this.yieldsAt(c));
     }
     if (this.committedTarget !== null && this.lostAt >= 0) next = Math.min(next, this.lostAt + this.tune.leaveGraceMs);
@@ -218,14 +231,24 @@ export class HoverIntent<T> {
   }
 
   /**
-   * Speed at time t: the smoothed speed of the last sample, or 0 once no sample has come for
-   * stopMs. It does not decay in between. Samples arrive once a frame while the pointer moves,
-   * and a decaying estimate checked between two of them read a steady 0.6 px/ms sweep as slow
-   * enough to commit (measured on the plate: a group committed 97 ms into a sweep).
+   * Speed at time t: the last sample's motion, or 0 once no sample has come for stopMs. It does
+   * not decay in between. Samples arrive once a frame while the pointer moves, and a decaying
+   * estimate checked between two of them read a steady 0.6 px/ms sweep as slow enough to commit
+   * (measured on the plate: a group committed 97 ms into a sweep).
    */
   speedAt(t: number): number {
     if (!Number.isFinite(this.lastT) || t - this.lastT >= this.tune.stopMs) return 0;
-    return this.speed;
+    return this.motion();
+  }
+
+  /**
+   * The last sample's motion: the faster of its own speed and the smoothed one. The smoothing
+   * rides out a jerky frame while the pointer decelerates into a target, where the smoothed value
+   * is the higher; but it lags an accelerating sweep, and lagging is what let the first frames of
+   * a sweep read as slow. The pointer is slow only when both say so.
+   */
+  private motion(): number {
+    return Math.max(this.inst, this.speed);
   }
 
   /** When a lower-ranked candidate may take over from the committed target (0: any time). */

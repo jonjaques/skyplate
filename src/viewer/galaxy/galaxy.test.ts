@@ -18,7 +18,7 @@ import type { Filters } from "../state/store";
 import { DIM, encodeEmphasis } from "./encode";
 import { flashScale } from "./engine";
 import { regionCost, segmentHitsRect } from "./Labels";
-import { touchedBySpecimens } from "./RegionLabels";
+import { touchedBySpecimens, yieldName, type ShownName } from "./RegionLabels";
 import { columnPath } from "./Scrubber";
 import { buildSymbolScene, describeRelation, reachPhrase } from "./symbolScene";
 
@@ -356,6 +356,20 @@ describe("region names as label obstacles", () => {
     // A leader starting on a star under the name counts: the name sits on the pinned star.
     expect(touchedBySpecimens(name, [], [130, 108, 300, 300])).toBe(true);
     expect(touchedBySpecimens(name, [{ x: 200, y: 100, w: 40, h: 20 }], [180, 60, 180, 140])).toBe(false);
+  });
+  test("a group's name tag over a region name touches it too", () => {
+    expect(touchedBySpecimens(name, [], [], [{ x: 130, y: 95, w: 50, h: 18 }])).toBe(true);
+  });
+  test("the name under the pointer stays put, even when its own holotype's card covers it", () => {
+    // inertialref's landing view: hovering apps re-laid its holotype card over the "apps" name,
+    // the name stepped aside out from under the pointer, lost the hover, and came back, 30 times
+    // a second. Held, it stays where the pointer found it and the card goes around it.
+    const below = { x: 100, y: 130, w: 60, h: 16 };
+    const entry = (held: boolean, focused = false): ShownName => ({ r: name, alts: [below], focused, held });
+    expect(yieldName(entry(true), () => true)).toBe("stay");
+    expect(yieldName(entry(false), () => true)).toBe(below);
+    expect(yieldName(entry(false), () => false)).toBe("hide");
+    expect(yieldName(entry(false, true), () => false)).toBe("stay");
   });
 });
 

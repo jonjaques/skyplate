@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import { computeWeb, gravityMass, type Web, type WebInput } from "../src/shared/web";
+import { computeWeb, GRAVITIES, gravityMass, type Web, type WebInput } from "../src/shared/web";
 
 function prng(seed: number): () => number {
   let a = seed >>> 0;
@@ -259,14 +259,29 @@ describe("computeWeb", () => {
     expect(det / (tr / 3) ** 3).toBeGreaterThan(0.1);
   });
 
-  test("truth rule: a directory's files are one neighborhood, at every level", () => {
+  // Every gravity, not only the default: gravity moves files inward and outward, and the truth
+  // rule says no choice of it may move a file out of its directory's neighborhood.
+  const webs = new Map<string, Web>(GRAVITIES.map((g) => [g, g === "dependencies" ? web : computeWeb(medium, g)]));
+
+  test("truth rule: a directory's files are one neighborhood, at every level, under every gravity", () => {
     // A file's nearest neighbor is almost always under the same supercluster, and under the
     // same cluster; interleaved or stacked regions fail this.
-    expect(foreignNeighbors(medium, web, 1)).toBeLessThan(0.03);
-    expect(foreignNeighbors(medium, web, 2)).toBeLessThan(0.06);
+    for (const [g, w] of webs) {
+      const at1 = foreignNeighbors(medium, w, 1);
+      const at2 = foreignNeighbors(medium, w, 2);
+      if (at1 >= 0.03 || at2 >= 0.06) throw new Error(`${g}: foreign nearest neighbors ${at1} at depth 1, ${at2} at depth 2`);
+    }
   });
 
-  test("truth rule: sibling directories' spheres stay apart", () => {
+  test("truth rule: sibling directories' spheres stay apart, under every gravity", () => {
+    for (const [g, w] of webs) {
+      const share = nestedSiblings(w);
+      if (share >= 0.02) throw new Error(`${g}: ${share} of sibling pairs nested`);
+    }
+  });
+
+  /** Share of sibling pairs (four or more files each) where one's sphere sits inside the other's. */
+  function nestedSiblings(web: Web): number {
     // Spheres from each child's non-bridge files (centroid, farthest file): siblings may touch
     // where their clumps' halos meet, but never sit inside one another.
     const n = medium.fileCount;
@@ -300,8 +315,8 @@ describe("computeWeb", () => {
         }
     }
     expect(pairs).toBeGreaterThan(50);
-    expect(nested / pairs).toBeLessThan(0.02);
-  });
+    return nested / pairs;
+  }
 
   test("a directory's sphere contains every file beneath it", () => {
     for (let f = 0; f < medium.fileCount; f++) {
@@ -343,6 +358,35 @@ describe("computeWeb", () => {
       expect(best).toBeLessThanOrEqual(1e-3);
     }
     expect(leaning).toBeGreaterThan(0);
+  });
+
+  test("a bridge file stays within a few of its own directory's radii of that directory's other stars", () => {
+    // The lean's absolute bound. A share of the strand alone let vite's playground/legacy configs
+    // lean 300 units into the void, and the bound above (projection along the strand) could not
+    // catch it: the strand is long, so 0.4 of it is far. A directory here is its whole subtree,
+    // the neighborhood the truth rule speaks of.
+    const n = medium.fileCount;
+    const D = medium.dirParent.length;
+    for (const [g, w] of webs) {
+      const p = w.positions;
+      const members: number[][] = Array.from({ length: D }, () => []);
+      for (let f = 0; f < n; f++) for (let d = medium.fileDir[f]!; d >= 0; d = medium.dirParent[d]!) members[d]!.push(f);
+      let checked = 0;
+      for (let d = 0; d < D; d++) {
+        const still = members[d]!.filter((f) => w.lean[f] === 0);
+        if (still.length === 0) continue;
+        const c = [0, 0, 0];
+        for (const f of still) for (let j = 0; j < 3; j++) c[j]! += p[f * 3 + j]! / still.length;
+        const r = Math.max(10, ...still.map((f) => dist(p, f, c)));
+        for (const f of medium.dirFiles[d]!) {
+          if (w.lean[f] === 0) continue;
+          const near = Math.min(...still.map((o) => Math.hypot(p[f * 3]! - p[o * 3]!, p[f * 3 + 1]! - p[o * 3 + 1]!, p[f * 3 + 2]! - p[o * 3 + 2]!)));
+          if (near > 4 * r) throw new Error(`${g}: bridge file ${f} sits ${near.toFixed(1)} from its directory's nearest other star (radius ${r.toFixed(1)})`);
+          checked++;
+        }
+      }
+      expect(checked).toBeGreaterThan(50);
+    }
   });
 
   test("files with fewer than two cross-cluster edges never lean", () => {
@@ -596,6 +640,27 @@ describe("computeWeb", () => {
       for (let j = 0; j < 3; j++) expect(w.dirCenter[d * 3 + j]).toBeCloseTo(w.dirCenter[18 + j]!, 4);
     }
   });
+
+  test("thousands of sibling directories are laid out in linear time", () => {
+    // One parent with 10,000 one-file children (a DefinitelyTyped-like fan-out). The collision
+    // sweep this replaced was quadratic in siblings: 780 ms here, 2.7 s at 20,000 (measured).
+    const spec: [number, number][] = [
+      [-1, 3],
+      [0, 0],
+    ];
+    for (let k = 0; k < 10_000; k++) spec.push([1, 1]);
+    const input = tree(spec);
+    let best = Infinity;
+    let w: Web | null = null;
+    for (let run = 0; run < 2; run++) {
+      const t0 = performance.now();
+      w = computeWeb(input);
+      best = Math.min(best, performance.now() - t0);
+    }
+    expectFinite(w!.positions, "positions");
+    expect(stackedPairs(w!.positions)).toBe(0);
+    expect(best).toBeLessThan(300);
+  }, 30_000);
 
   test("stays inside the viewer's main-thread budget at 20k and 50k files", () => {
     for (const [files, dirs, budget] of [

@@ -25,13 +25,14 @@ Bun is the runtime, package manager and bundler here (this project began from
 bin/starchart.ts          CLI entry → src/cli/ (args, progress, serve)
 src/shared/schema.ts      THE contract between analyzer and viewer (Report, CodeSymbols…)
 src/shared/web.ts         the cosmic web layout (pure; both sides import it, see below)
+src/shared/dmath.ts       sin, cos, atan2, roots from + − × ÷ and sqrt: the same bits in every engine
 src/core/contracts.ts     function types each analyzer module exports
 src/core/                 analyzer: walk, languages/, metrics, facts, imports/, graph, git/,
                           ts/ (TypeScript 7 compiler API), stats, findings, layout, site,
                           pipeline (orchestrates), worker + pool (per-file analysis), validate
 src/viewer/               React app: state/ (zustand store, loaders, URL), model/ (derived
-                          indexes), galaxy/ (engine, shaders, hoverIntent, groups: hulls,
-                          picking, levels), charts/ (+ kit/), shell/ (+ record/), source/,
+                          indexes), galaxy/ (engine, shaders, hoverIntent, clicks, groups:
+                          hulls, picking, levels), charts/ (+ kit/), shell/ (+ record/), source/,
                           components/ui (shadcn), lib/ (format, colors, cn)
 build.ts                  viewer production build (see "file:// rules")
 src/index.ts              dev server
@@ -63,16 +64,25 @@ src/index.ts              dev server
   in the viewer, once per gravity the reader picks, and in the analyzer only to anchor the
   import-graph layout (`src/core/layout.ts`), which is shipped. Keep `computeWeb` pure and
   deterministic (no DOM, no three.js, no `Math.random`, sorts with id tie-breaks) and inside its
-  main-thread budget (`test/web.test.ts`: 150 ms at 20k files, 400 ms at 50k). The truth rule:
-  no layout choice, gravity included, moves a file out of its directory's neighborhood; bridge
-  files leaning along a filament are the one bounded exception.
+  main-thread budget (`test/web.test.ts`: 150 ms at 20k files, 400 ms at 50k, 300 ms for 10,000
+  sibling directories under one parent). Deterministic means across engines too: Safari (JSC)
+  and Chrome (V8) must lay out the same web, so the layout uses `dmath.ts` and plain arithmetic,
+  never `Math.sin`, `cos`, `atan2`, `acos`, `cbrt`, `pow` or `hypot`, which engines round
+  differently (check: hash `computeWeb` output under node and under Bun). The truth rule: no
+  layout choice, gravity included, moves a file out of its directory's neighborhood; bridge
+  files leaning along a filament are the one exception, bounded both as a share of the strand
+  and in radii of their own directory.
 - **Hover goes through intent; hover never uploads.** The plate picks on every pointer sample
   (moon, then star, then the deepest group whose envelope holds the pointer, `engine.pick` /
   `pickGroup`) but only commits to the hover store when `galaxy/hoverIntent.ts` says the pointer
   settled. That module is pure and clock-injected; tune its constants there, with the reasons
   beside them, and keep `hoverIntent.test.ts` passing. A hovered star or group reaches the
   shader as uniforms (`uHover`, `uReticle`, and `uHotRange`, a depth-first file range tested
-  against the `aOrder` attribute): a per-hover attribute rewrite is a regression.
+  against the `aOrder` attribute): a per-hover attribute rewrite is a regression. Region names
+  drawn on the plate go through the same intent (GalaxyView reads `data-region-dir`), and the
+  name under the pointer must not move. Clicks go through `galaxy/clicks.ts`: only a press that
+  began on the canvas with no menu open can select (Radix menus leave the canvas live under
+  them), and a double-click acts on what its first click hit.
 - **New per-frame work does not allocate.** Frame listeners (`engine.onFrame`) and what they
   call reuse buffers and recompute only when the camera, morph or subject changed (see
   `Envelopes.tsx`, which draws on a 2D canvas because an SVG path string was garbage every

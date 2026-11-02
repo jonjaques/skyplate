@@ -235,6 +235,38 @@ describe("hover intent", () => {
     expect(intent.committed).toBe(100);
   });
 
+  test("a 0.5-0.8 px/ms sweep that starts from an open card hands it to no other star", () => {
+    // A real mouse sends nothing while it rests, so the sweep's first sample comes after a long
+    // gap. The speed estimate used to restart from zero there, read the sweep's first frames as
+    // slow, and handed the card to the next star crossed, which flashed for 200 ms.
+    for (const speed of [0.5, 0.6, 0.8]) {
+      for (const restSamples of [false, true]) {
+        const pick = picker(14, 30);
+        const intent = new HoverIntent<number>((a, b) => a === b);
+        const path: { x: number; y: number; t: number }[] = [{ x: 0, y: 0, t: 0 }];
+        if (restSamples) for (let t = 16; t <= 1000; t += 16) path.push({ x: 0, y: 0, t });
+        for (let t = 1016; (t - 1000) * speed < 300; t += 16) path.push({ x: (t - 1000) * speed, y: 0, t });
+        // Only while it moves: where it stops at the end, it rightly commits that star.
+        const targets = drive(intent, pick, path).commits.map((c) => c.target);
+        if (JSON.stringify(targets) !== JSON.stringify([0, null])) throw new Error(`${speed} px/ms (rest samples: ${restSamples}): ${JSON.stringify(targets)}`);
+      }
+    }
+  });
+
+  test("a 2 px jitter across the midpoint of stars 4.5 px apart keeps the card, at 60 Hz", () => {
+    // Every other frame lands within half a pixel of the neighbor; it never holds the pointer
+    // for the warm dwell, so the card stays put.
+    const pick = picker(4.5, 2);
+    const intent = new HoverIntent<number>((a, b) => a === b);
+    drive(intent, pick, hold(1, 0, 200));
+    expect(intent.committed).toBe(0);
+    const jitter: { x: number; y: number; t: number }[] = [];
+    for (let k = 0; k < 60; k++) jitter.push({ x: k % 2 === 0 ? 0.25 : 4.25, y: 0, t: 216 + k * 16 });
+    const run = drive(intent, pick, jitter);
+    expect(run.commits).toEqual([]);
+    expect(intent.committed).toBe(0);
+  });
+
   test("touch and pen never hover", () => {
     const pick = picker(30, 3);
     for (const pointer of ["touch", "pen"] as const) {

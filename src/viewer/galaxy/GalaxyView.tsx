@@ -20,6 +20,7 @@ import { filesUnder, neighbors, type Model } from "../model/indices";
 import { ensureSymbols } from "../state/loaders";
 import { sameTarget, useHover, useViewer, type Target } from "../state/store";
 import { PlateControls, PlateCrumbs, PlateFilterChip, PlateLegend, PlateStatus, PlateTitle, type LegendPreview } from "./Chrome";
+import { PlateClicks } from "./clicks";
 import { encodeColors, encodeEmphasis, encodeSizes } from "./encode";
 import { GalaxyEngine } from "./engine";
 import { GroupEnvelopes } from "./Envelopes";
@@ -186,7 +187,7 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   // A hovered file is one uniform, a hovered group its depth-first range: no attribute uploads.
   useEffect(() => {
     engine.uniform("uHover", hover?.kind === "file" ? hover.id : -1);
-    const [lo, hi] = hover?.kind === "dir" ? engine.dirRange(hover.id) : [-1, -1];
+    const [lo, hi] = hover?.kind === "dir" ? engine.hoverRange(hover.id) : [-1, -1];
     engine.setHotRange(lo, hi);
   }, [engine, hover]);
 
@@ -211,11 +212,11 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
     else engine.home(animate);
   };
   /** Frame what the reader is looking at: the selection, else the open drawer, else everything. */
-  function frameSubject(animate: boolean) {
+  function frameSubject(animate: boolean, everything: "home" | "here" = "here") {
     const s = useViewer.getState();
     if (s.selection) frameSelection(s.selection, animate);
     else if (s.focusDir !== null && s.focusDir !== 0) engine.fly(filesUnder(model, s.focusDir), undefined, [], animate, engine.outlinePad);
-    else if (engine.atHome || !engine.controls) engine.home(animate);
+    else if (everything === "home" || engine.atHome || !engine.controls) engine.home(animate);
     else engine.fly(model.fileOrder, undefined, [], animate);
   }
   // The camera rig asks for this once its controls exist. A shared link (or a selection made
@@ -273,7 +274,13 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
         const s = useViewer.getState();
         if (s.selection) {
           plateSelection.current = null;
-          select(walkUp(model.report, s.symbols, s.selection));
+          const up = walkUp(model.report, s.symbols, s.selection);
+          select(up);
+          // The last step (a supercluster, a root file) is "nothing": the open drawer, or the
+          // whole web as the project crumb gives it. The selection effect frames each level on
+          // the way up but has nothing to frame at the top, and the camera stayed zoomed on the
+          // supercluster.
+          if (!up) frameSubject(true, "home");
         } else if (s.focusDir !== null) focus(null);
       } else if (e.key === "f" || e.key === "F") frameSelection(useViewer.getState().selection);
     };
@@ -331,11 +338,12 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   // the star, both uniforms. The card, the envelope, the lit lanes and the dimming wait for hover
   // intent (hoverIntent.ts), which commits only once the pointer settles; committed on every
   // pick, a sweep across a dense cluster flashed a dozen cards in half a second.
-  const down = useRef<{ x: number; y: number; t: number } | null>(null);
+  const clicks = useMemo(() => new PlateClicks<PlateHit>(), []);
   const hoverFrame = useRef(0);
-  const lastPoint = useRef<{ x: number; y: number; t: number; pointer: PointerKind }>({ x: 0, y: 0, t: 0, pointer: "mouse" });
+  const lastPoint = useRef<{ x: number; y: number; t: number; pointer: PointerKind; name: number }>({ x: 0, y: 0, t: 0, pointer: "mouse", name: -1 });
   const [moonHover, setMoonHover] = useState(-1);
-  // Stars and moons outrank groups: a group waits out a star's grace before taking over.
+  // Stars, moons and region names outrank groups: a group waits out a star's grace before
+  // taking over. A name is a deliberate target, so it ranks with the stars.
   const intent = useMemo(() => new HoverIntent<PlateHit>(sameHit, HOVER_TUNING, (h) => (h.kind === "dir" ? 0 : 1)), []);
   /** What the plate last put in the hover store, so it only ever takes back its own hover. */
   const plateWrote = useRef<Target | null>(null);
@@ -384,6 +392,13 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
     return { x: e.clientX - r.left, y: e.clientY - r.top };
   };
   const onCanvas = (e: { target: EventTarget }) => (e.target as HTMLElement).tagName === "CANVAS";
+  /** The region name (its directory id) under an event, or -1. */
+  const nameAt = (e: { target: EventTarget }) => {
+    const el = (e.target as HTMLElement).closest?.<HTMLElement>("[data-region-dir]");
+    return el ? Number(el.dataset.regionDir) : -1;
+  };
+  /** A menu or dialog is open over the plate (a press now is the click that dismisses it). */
+  const overlayOpen = () => !!document.querySelector("[role=menu][data-state=open], [role=dialog][data-state=open]");
 
   /** What a plate point holds, by precedence: a moon, a star, the deepest group, or nothing. */
   const pickAt = (x: number, y: number): PlateHit | null => {
@@ -403,7 +418,7 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
       setMoonHover(moon);
       engine.invalidate();
     }
-    const next: Target | null = c && c.kind !== "moon" ? { kind: c.kind, id: c.id } : null;
+    const next: Target | null = c && c.kind !== "moon" ? { kind: c.kind === "file" ? "file" : "dir", id: c.id } : null;
     const current = useHover.getState().hover;
     if (sameTarget(next, current)) return;
     // Letting go clears only the plate's own hover, never a row the reader is pointing at in
@@ -436,15 +451,21 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
 
   const onPointerMove = (e: ReactPointerEvent) => {
     if (e.buttons !== 0) return;
-    if (!onCanvas(e)) return pointerOff();
-    lastPoint.current = { ...local(e), t: e.timeStamp, pointer: e.pointerType === "mouse" ? "mouse" : e.pointerType === "pen" ? "pen" : "touch" };
+    // Region names sit on the plate, in the path of every sweep, so they go through the same
+    // intent as the stars. Hovered at once on pointerenter (as they were), a sweep that crossed
+    // one flashed its group; and when the hover moved the specimen labels and the name stepped
+    // aside for them, out from under the pointer, its pointerleave cleared the hover, the labels
+    // moved back, and the name strobed at 30 Hz.
+    const name = nameAt(e);
+    if (!onCanvas(e) && name < 0) return pointerOff();
+    lastPoint.current = { ...local(e), t: e.timeStamp, pointer: e.pointerType === "mouse" ? "mouse" : e.pointerType === "pen" ? "pen" : "touch", name };
     if (hoverFrame.current) return;
     hoverFrame.current = requestAnimationFrame(() => {
       hoverFrame.current = 0;
       const p = lastPoint.current;
       // The pointer takes over from the arrow keys.
       cursor.current = -1;
-      const hit = p.pointer === "mouse" ? pickAt(p.x, p.y) : null;
+      const hit: PlateHit | null = p.pointer !== "mouse" ? null : p.name >= 0 ? { kind: "name", id: p.name } : pickAt(p.x, p.y);
       engine.uniform("uReticle", hit?.kind === "file" ? hit.id : -1);
       engine.pointerMoon = hit?.kind === "moon" ? hit.id : -1;
       if (container.current) container.current.style.cursor = hit ? "pointer" : "";
@@ -453,21 +474,22 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
     });
   };
   const onPointerLeave = () => pointerOff();
+  // Clicks (clicks.ts): only a press that began on the stars, with no menu open, can select; and
+  // the second press of a double-click leaves the first click's selection alone.
   const onPointerDown = (e: ReactPointerEvent) => {
-    down.current = { ...local(e), t: performance.now() };
+    const p = local(e);
+    clicks.press(p.x, p.y, performance.now(), onCanvas(e) && !overlayOpen());
     // An orbit drag is about to move the stars out from under the reticle.
     engine.uniform("uReticle", -1);
   };
   const onPointerUp = (e: ReactPointerEvent) => {
-    const d = down.current;
-    down.current = null;
-    if (!d || !onCanvas(e) || e.button !== 0) return;
     const p = local(e);
-    // A click, not the end of an orbit drag.
-    if (Math.hypot(p.x - d.x, p.y - d.y) > 5 || performance.now() - d.t > 500) return;
+    const now = performance.now();
+    if (clicks.release(p.x, p.y, now, onCanvas(e), e.button === 0) !== "click") return;
     // The same precedence as hover, with the committed hover sticky: a click lands on the star
     // whose card is showing. On touch and pen there is no hover, and a tap selects.
     const hit = pickAt(p.x, p.y);
+    clicks.clicked(p.x, p.y, now, hit);
     if (hit?.kind === "moon") {
       select({ kind: "symbol", id: engine.moonSymbols[hit.id]! });
       return;
@@ -488,7 +510,9 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   const onDoubleClick = (e: React.MouseEvent) => {
     if (!onCanvas(e)) return;
     const p = local(e);
-    const hit = pickAt(p.x, p.y);
+    // What the first click picked, before its camera flight moved the stars under the pointer.
+    const first = clicks.doubleHit(p.x, p.y, performance.now());
+    const hit = first !== undefined ? first : pickAt(p.x, p.y);
     if (hit?.kind === "file") {
       const top = model.topDir[hit.id]!;
       if (top > 0) focus(top);
@@ -551,8 +575,11 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
   );
 }
 
-/** What a plate point can hold. Moon ids index engine.moonSymbols; the rest are report ids. */
-type PlateHit = { kind: "file" | "dir" | "moon"; id: number };
+/**
+ * What a plate point can hold. Moon ids index engine.moonSymbols; the rest are report ids. A
+ * "name" is a region name drawn on the plate, a directory like a "dir" but picked from the DOM.
+ */
+type PlateHit = { kind: "file" | "dir" | "moon" | "name"; id: number };
 
 function sameHit(a: PlateHit, b: PlateHit): boolean {
   return a.kind === b.kind && a.id === b.id;

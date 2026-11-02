@@ -83,7 +83,8 @@ const NONE: [number, number] = [-1, -1];
 
 /**
  * The file ranges whose strands light up: the hovered group, the selected group (or a selected
- * file's cluster), and the open drawer. The root is never one: its range is everything.
+ * file's cluster), and the open drawer. Selected or open, the root is never one (its range is
+ * everything); hovered, it is the root's own files (engine.hoverRange).
  */
 export function filamentRanges(
   engine: GalaxyEngine,
@@ -91,7 +92,7 @@ export function filamentRanges(
 ): { hover: [number, number]; selection: [number, number]; focus: [number, number]; any: boolean } {
   const m = engine.model;
   const dirRange = (d: number): [number, number] => (d > 0 ? [m.dirStart[d]!, m.dirEnd[d]!] : NONE);
-  const h = hover?.kind === "dir" ? dirRange(hover.id) : NONE;
+  const h = hover?.kind === "dir" ? engine.hoverRange(hover.id) : NONE;
   let sel = NONE;
   if (selection?.kind === "dir") sel = dirRange(selection.id);
   else if (selection?.kind === "file") {

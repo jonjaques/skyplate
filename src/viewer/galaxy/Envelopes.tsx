@@ -12,15 +12,24 @@
  * camera, the morph, the plate's size, the scrubber or a group changes; any other frame touches
  * nothing. An SVG path was tried first, but its `d` string was a few kilobytes of garbage on
  * every frame of an orbit; the canvas takes the same moveTo/lineTo/arc calls with plain numbers,
- * and the hull lands in buffers allocated once (engine.envelope), so redrawing allocates nothing.
+ * and the hull lands in buffers allocated once (engine.envelope). What a redraw still allocates
+ * is the browser's own boxing of numbers passed to the canvas, about 2 KB a frame while the
+ * camera turns (measured with a heap sampling profile); nothing here adds to it.
+ *
+ * A tag takes the first free spot around its hull (above its highest point, below its lowest,
+ * beside its rightmost or leftmost), free meaning clear of the other tag and of region names.
+ * Pinned to the top alone, a hovered subgroup's tag landed on the "apps 731" name ("apps
+ * 731ler 173") and on the selected group's own tag. When no spot is clear of names, the names it
+ * covers step aside for the frame (RegionLabels' yield pass reads engine.groupTagRects).
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type * as THREE from "three";
 import { formatInt } from "../lib/format";
 import { cn } from "../lib/utils";
 import { useHover, useViewer } from "../state/store";
-import { FRAME_ORDER, type GalaxyEngine, type RegionLabelRect } from "./engine";
+import { FRAME_ORDER, type GalaxyEngine, type PlateRect, type RegionLabelRect } from "./engine";
+import { overlaps } from "./Labels";
 import { groupLabel, HULL_FLOATS, traceEnvelope } from "./groups";
 import { HALO } from "./RegionLabels";
 
@@ -36,9 +45,15 @@ const SOLID: number[] = [];
 export function GroupEnvelopes({ engine }: { engine: GalaxyEngine }) {
   const hover = useHover((s) => s.hover);
   const selection = useViewer((s) => s.selection);
+  const time = useViewer((s) => s.time);
   const dirs = engine.model.report.dirs;
   const selDir = selection?.kind === "dir" && selection.id > 0 ? selection.id : -1;
   const hovDir = hover?.kind === "dir" && hover.id > 0 && hover.id !== selDir ? hover.id : -1;
+  // A tag counts the stars its envelope outlines: with the scrubber in the past, the files that
+  // existed then, as the title does (the hull already leaves out the rest).
+  const count = (dir: number) => (dir < 0 ? 0 : engine.presentIn(engine.model.dirStart[dir]!, engine.model.dirEnd[dir]!, time));
+  const selCount = useMemo(() => count(selDir), [engine, selDir, time]); // eslint-disable-line react-hooks/exhaustive-deps
+  const hovCount = useMemo(() => count(hovDir), [engine, hovDir, time]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const canvas = useRef<HTMLCanvasElement>(null);
   const selTag = useRef<HTMLDivElement>(null);
@@ -58,8 +73,9 @@ export function GroupEnvelopes({ engine }: { engine: GalaxyEngine }) {
       pad: 0,
       tagShown: false,
       rect: { x: 0, y: 0, w: tag?.offsetWidth ?? 0, h: tag?.offsetHeight ?? 0, dir } as RegionLabelRect,
-      // Tags change size only when their group does, which re-runs this effect: measured once
-      // here, not on every frame the camera turns.
+      // Tags change size only when their group or its count does, which re-runs this effect:
+      // measured once here, not on every frame the camera turns.
+      spots: [0, 1, 2, 3].map(() => ({ x: 0, y: 0, w: tag?.offsetWidth ?? 0, h: tag?.offsetHeight ?? 0 }) as PlateRect),
     });
     // The selected outline is drawn last, so it reads on top where the two cross.
     const slots = [slot(hovDir, hovTag.current, INK_HOVER, DASH), slot(selDir, selTag.current, INK_SELECTED, SOLID)];
@@ -67,6 +83,62 @@ export function GroupEnvelopes({ engine }: { engine: GalaxyEngine }) {
     const tags: RegionLabelRect[] = [];
     let dpr = 0;
     let drawn = false;
+
+    /**
+     * Put a slot's tag on the first spot around its hull that is clear of `other` (a tag already
+     * placed) and of the region names, or failing that the one that covers the fewest names; never
+     * one over the other tag while a spot clear of it exists. The spots: above the highest point
+     * (where it reads as the group's title and stays off the stars inside), below the lowest,
+     * beside the rightmost and the leftmost.
+     */
+    const placeTag = (s: (typeof slots)[number], other: PlateRect | null, W: number, H: number) => {
+      if (s.dir < 0) return;
+      const { w, h } = s.rect;
+      if (s.count === 0) {
+        s.rect.x = W / 2 - w / 2;
+        s.rect.y = H / 2 - h / 2;
+        return;
+      }
+      let top = 0;
+      let bottom = 0;
+      let right = 0;
+      let left = 0;
+      for (let i = 1; i < s.count; i++) {
+        const y = s.hull[i * 2 + 1]!;
+        const x = s.hull[i * 2]!;
+        if (y < s.hull[top * 2 + 1]!) top = i;
+        if (y > s.hull[bottom * 2 + 1]!) bottom = i;
+        if (x > s.hull[right * 2]!) right = i;
+        if (x < s.hull[left * 2]!) left = i;
+      }
+      const [a, b, c, d] = s.spots as [PlateRect, PlateRect, PlateRect, PlateRect];
+      a.x = s.hull[top * 2]! - w / 2;
+      a.y = s.hull[top * 2 + 1]! - s.pad - h - TAG_GAP;
+      b.x = s.hull[bottom * 2]! - w / 2;
+      b.y = s.hull[bottom * 2 + 1]! + s.pad + TAG_GAP;
+      c.x = s.hull[right * 2]! + s.pad + TAG_GAP;
+      c.y = s.hull[right * 2 + 1]! - h / 2;
+      d.x = s.hull[left * 2]! - s.pad - TAG_GAP - w;
+      d.y = s.hull[left * 2 + 1]! - h / 2;
+      let best: PlateRect = a;
+      let bestCost = Number.POSITIVE_INFINITY;
+      const names = engine.regionLabelRects;
+      for (let k = 0; k < s.spots.length; k++) {
+        const r = s.spots[k]!;
+        r.x = Math.max(4, Math.min(W - w - 4, r.x));
+        r.y = Math.max(4, Math.min(H - h - 4, r.y));
+        let cost = other && overlaps(r, other, 4) ? 1000 : 0;
+        for (let i = 0; i < names.length; i++) if (names[i]!.dir !== s.dir && overlaps(r, names[i]!, 3)) cost += 10;
+        if (cost < bestCost) {
+          bestCost = cost;
+          best = r;
+        }
+        if (cost === 0) break;
+      }
+      s.rect.x = best.x;
+      s.rect.y = best.y;
+      if (s.tag) s.tag.style.transform = `translate3d(${Math.round(s.rect.x)}px, ${Math.round(s.rect.y)}px, 0)`;
+    };
 
     /** Did anything the outlines depend on change since the last draw? Records it if so. */
     const changed = (camera: THREE.Camera, W: number, H: number, morph: number, web: number) => {
@@ -115,15 +187,10 @@ export function GroupEnvelopes({ engine }: { engine: GalaxyEngine }) {
           ctx.beginPath();
           traceEnvelope(s.hull, s.count, s.pad, ctx);
           ctx.stroke();
-          // The tag sits over the envelope's highest point, where it reads as the group's title
-          // and stays off the stars inside.
-          let top = 0;
-          for (let i = 1; i < s.count; i++) if (s.hull[i * 2 + 1]! < s.hull[top * 2 + 1]!) top = i;
-          const { w, h } = s.rect;
-          s.rect.x = Math.max(4, Math.min(W - w - 4, (s.count > 0 ? s.hull[top * 2]! : W / 2) - w / 2));
-          s.rect.y = Math.max(4, Math.min(H - h - 4, (s.count > 0 ? s.hull[top * 2 + 1]! - s.pad : H / 2) - h - TAG_GAP));
-          if (s.tag) s.tag.style.transform = `translate3d(${Math.round(s.rect.x)}px, ${Math.round(s.rect.y)}px, 0)`;
         }
+        // Tags, the selected one first: it is the pin, and the hovered one goes around it.
+        placeTag(slots[1]!, null, W, H);
+        placeTag(slots[0]!, slots[1]!.dir >= 0 && slots[1]!.count > 0 ? slots[1]!.rect : null, W, H);
         drawn = true;
       } else if ((!any || web < 0.05) && drawn) {
         ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -149,9 +216,9 @@ export function GroupEnvelopes({ engine }: { engine: GalaxyEngine }) {
       ctx.clearRect(0, 0, cv.width, cv.height);
       engine.groupTagRects = [];
     };
-  }, [engine, selDir, hovDir]);
+  }, [engine, selDir, hovDir, selCount, hovCount]);
 
-  const tagFor = (dir: number, ref: React.RefObject<HTMLDivElement | null>, strong: boolean) =>
+  const tagFor = (dir: number, n: number, ref: React.RefObject<HTMLDivElement | null>, strong: boolean) =>
     dir < 0 ? null : (
       <div
         ref={ref}
@@ -164,7 +231,7 @@ export function GroupEnvelopes({ engine }: { engine: GalaxyEngine }) {
       >
         {groupLabel(dirs, dir)}
         <span className="figures font-mono text-[10.5px] font-normal text-[color-mix(in_srgb,currentColor_80%,transparent)]">
-          {formatInt(dirs[dir]!.totalFiles)}
+          {formatInt(n)}
         </span>
       </div>
     );
@@ -172,8 +239,8 @@ export function GroupEnvelopes({ engine }: { engine: GalaxyEngine }) {
   return (
     <div className="pointer-events-none absolute inset-0 z-[4] overflow-hidden" aria-hidden="true">
       <canvas ref={canvas} className="absolute inset-0 h-full w-full" />
-      {tagFor(selDir, selTag, true)}
-      {tagFor(hovDir, hovTag, false)}
+      {tagFor(selDir, selCount, selTag, true)}
+      {tagFor(hovDir, hovCount, hovTag, false)}
     </div>
   );
 }

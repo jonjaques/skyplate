@@ -29,6 +29,7 @@ uniform float uSizeScale;   // device px per world unit at distance 1
 uniform float uBaseSize;    // world size of the smallest star
 uniform float uSizeRange;   // world size added at size 1
 uniform float uMinPx;
+uniform float uFloorRange;  // device px the size floor adds at size 1 (see FLOOR_RANGE_PX)
 uniform float uMaxPx;
 uniform float uHover;       // the committed hover's file id (it has a card), -1 for none
 uniform float uReticle;     // the star under the pointer right now, committed or not, -1 for none
@@ -90,6 +91,10 @@ void main() {
 
   float world = uBaseSize + aSize * uSizeRange;
   float px = world * uSizeScale / max(-mv.z, 1e-3);
+  // Pulled back, every star would shrink to the same 1.6 px floor and the size encoding with it
+  // (98% of vite's stars at home); the floor rises with size, so the largest files still read as
+  // the largest from anywhere. Up close the world size is larger and takes over.
+  px = max(px, uMinPx + aSize * uFloorRange);
   px *= mix(0.7, 1.0, clamp(emph, 0.0, 1.0)) * (1.0 + 0.25 * clamp(emph - 1.0, 0.0, 1.0));
   // The flash barely grows the star: a bigger sprite is a bigger halo, and halos add up.
   px *= 1.0 + 0.7 * isHover + 0.35 * isSel + 0.25 * aFlash + 0.5 * wave;

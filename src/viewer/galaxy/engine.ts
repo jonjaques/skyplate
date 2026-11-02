@@ -133,7 +133,15 @@ interface Slot {
 }
 
 const SECONDS_PER_DAY = 86400;
-/** Envelope padding beyond the members' star radius (CSS px); picking uses the same margin. */
+/**
+ * The star size floor's rise (CSS px at size 1): pulled back, the smallest file is 1.6 px and the
+ * largest 4.6. With a flat 1.6 px floor, a web that is mostly void put 98% of vite's stars on the
+ * floor at home and the size encoding vanished until the reader zoomed in; with this one, 4% sit
+ * on the bare floor and the rest spread from 1.7 to 4.6 px (measured). Kept small: at home the
+ * densest core of big files (vite's packages/vite/src/node) already reads as one bright knot.
+ */
+const FLOOR_RANGE_PX = 3;
+/** Envelope padding beyond the members' mean star radius (CSS px); picking uses the same margin. */
 const GROUP_PAD = 8;
 /** Members projected per envelope at most (see envelope()). */
 const ENVELOPE_POINTS = 12000;
@@ -364,6 +372,7 @@ export class GalaxyEngine {
   private sx: Float32Array;
   private sy: Float32Array;
   private sr: Float32Array; //   pick radius (CSS px)
+  private sp: Float32Array; //   drawn core radius (CSS px), for group envelopes' padding
   private sw: Float32Array; //   clip w (distance), for depth tie-breaks; ≤ 0 when behind
   private cellOf: Int32Array;
   private gridStart = new Int32Array(0);
@@ -383,7 +392,7 @@ export class GalaxyEngine {
   private readonly projMatrix = new THREE.Matrix4();
   /** Bumped whenever project() recomputes; group hulls for picking are cached against it. */
   private projVersion = 0;
-  private hullCache = new Map<number, { version: number; hull: Float32Array; count: number; cx: number; cy: number; radius: number }>();
+  private hullCache = new Map<number, { version: number; hull: Float32Array; count: number; pad: number; cx: number; cy: number; radius: number }>();
   private hullScratch = new HullScratch();
   private hullXs = new Float32Array(0);
   private hullYs = new Float32Array(0);
@@ -488,6 +497,7 @@ export class GalaxyEngine {
         uBaseSize: { value: STAR_SPACING * 0.34 },
         uSizeRange: { value: STAR_SPACING * 1.5 },
         uMinPx: { value: 1.6 },
+        uFloorRange: { value: FLOOR_RANGE_PX },
         uMaxPx: { value: 40 },
         uHover: { value: -1 },
         uReticle: { value: -1 },
@@ -505,6 +515,7 @@ export class GalaxyEngine {
     this.sx = new Float32Array(n);
     this.sy = new Float32Array(n);
     this.sr = new Float32Array(n);
+    this.sp = new Float32Array(n);
     this.sw = new Float32Array(n);
     this.cellOf = new Int32Array(n);
     this.gridItems = new Int32Array(n);
@@ -738,6 +749,34 @@ export class GalaxyEngine {
   dirRange(dir: number): [number, number] {
     if (dir <= 0) return [-1, -1];
     return [this.model.dirStart[dir]!, this.model.dirEnd[dir]!];
+  }
+
+  /**
+   * The range a hovered directory lights: its subtree, or for the root its own files. Hovered,
+   * the root is never "everything": what points at it is a "Root files" name (the region label,
+   * the People chart's row), and the root's own files are the first of the depth-first order.
+   */
+  hoverRange(dir: number): [number, number] {
+    if (dir > 0) return this.dirRange(dir);
+    const own = this.model.report.dirs[0]?.files.length ?? 0;
+    const lo = this.model.dirStart[0] ?? 0;
+    return own > 0 ? [lo, lo + own] : [-1, -1];
+  }
+
+  /**
+   * How many files of a depth-first range [lo, hi) exist at unix time `time` (all of them at
+   * HEAD), by the title's rule: a file without a recorded creation date is always there. Name
+   * tags count with it, so a scrubbed plate's "render 143" agrees with the stars it outlines.
+   */
+  presentIn(lo: number, hi: number, time: number | null): number {
+    if (time === null) return hi - lo;
+    const { fileOrder, created } = this.model;
+    let c = 0;
+    for (let k = lo; k < hi; k++) {
+      const born = created[fileOrder[k]!]!;
+      if (Number.isNaN(born) || born <= time) c++;
+    }
+    return c;
   }
 
   /** History scrubber position (unix seconds) or null for HEAD. */
@@ -991,6 +1030,7 @@ export class GalaxyEngine {
     const fov = THREE.MathUtils.degToRad(camera.fov);
     u.uSizeScale!.value = (height * dpr) / (2 * Math.tan(fov / 2));
     u.uMinPx!.value = 1.6 * dpr;
+    u.uFloorRange!.value = FLOOR_RANGE_PX * dpr;
     u.uMaxPx!.value = 40 * dpr;
 
     camera.updateMatrixWorld();
@@ -1054,7 +1094,8 @@ export class GalaxyEngine {
       const sy = (1 - (e[1]! * x + e[5]! * y + e[9]! * z + e[13]!) / w) * 0.5 * H;
       this.sx[i] = sx;
       this.sy[i] = sy;
-      const px = Math.min(40, Math.max(1.6, ((base + this.size[i]! * range) * scaleCss) / w));
+      const px = Math.min(40, Math.max(1.6 + this.size[i]! * FLOOR_RANGE_PX, ((base + this.size[i]! * range) * scaleCss) / w));
+      this.sp[i] = px * 0.5;
       this.sr[i] = Math.max(7, px * 0.5 + 3);
       if (sx < -20 || sy < -20 || sx > W + 20 || sy > H + 20) continue;
       const c = Math.min(cols - 1, Math.max(0, Math.floor(sx / PICK_CELL))) + Math.min(rows - 1, Math.max(0, Math.floor(sy / PICK_CELL))) * cols;
@@ -1184,7 +1225,10 @@ export class GalaxyEngine {
         } else if (w < -R) return Infinity; // wholly behind the camera
         const h = this.groupHull(d);
         if (h.radius < MIN_GROUP_PX) return Infinity;
-        const pad = GROUP_PAD + (d === sticky ? GROUP_STICKY_PX : 0);
+        // The drawn outline's own padding (see envelope()), so everything inside the hairline
+        // picks the group: padded by GROUP_PAD alone, a ring as wide as the members' stars
+        // looked inside the group and picked nothing.
+        const pad = h.pad + (d === sticky ? GROUP_STICKY_PX : 0);
         if (!hullContains(h.hull, h.count, x, y, pad)) return Infinity;
         return Math.hypot(x - h.cx, y - h.cy) / Math.max(1, h.radius);
       },
@@ -1206,16 +1250,19 @@ export class GalaxyEngine {
     const timeOn = (this.material.uniforms.uTimeOn!.value as number) > 0.5;
     const tNow = this.material.uniforms.uTime!.value as number;
     let m = 0;
+    let sum = 0;
     for (let k = lo; k < hi; k++) {
       const i = fileOrder[k]!;
       if (this.sw[i]! <= 0 || (timeOn && this.born[i]! > tNow)) continue;
       this.hullXs[m] = this.sx[i]!;
       this.hullYs[m] = this.sy[i]!;
+      sum += this.sp[i]!;
       m++;
     }
     const count = envelopeHull(this.hullXs, this.hullYs, m, this.hullOut, this.hullScratch);
     const ext = hullExtent(this.hullOut, count);
-    const entry = { version: this.projVersion, hull: this.hullOut.slice(0, count * 2), count, ...ext };
+    const pad = GROUP_PAD + (m > 0 ? sum / m : 0);
+    const entry = { version: this.projVersion, hull: this.hullOut.slice(0, count * 2), count, pad, ...ext };
     this.hullCache.set(dir, entry);
     return entry;
   }
@@ -1273,7 +1320,7 @@ export class GalaxyEngine {
       if (w <= 0) continue;
       this.hullXs[m] = ((e0 * x + e4 * y + e8 * z + e12) / w + 1) * 0.5 * W;
       this.hullYs[m] = (1 - (e1 * x + e5 * y + e9 * z + e13) / w) * 0.5 * H;
-      sum[0] += Math.min(40, Math.max(1.6, ((base + this.size[i]! * range) * scaleCss) / w)) * 0.5;
+      sum[0] += Math.min(40, Math.max(1.6 + this.size[i]! * FLOOR_RANGE_PX, ((base + this.size[i]! * range) * scaleCss) / w)) * 0.5;
       m++;
     }
     const r = this.envelopeResult;

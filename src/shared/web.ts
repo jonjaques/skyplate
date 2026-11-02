@@ -59,9 +59,10 @@
  * files are its coupling. The skeleton is the maximum spanning forest on coupling plus each
  * node's strongest one or two further links above a floor; a cluster nothing imports and that
  * imports nothing floats alone in a void, as it should. A file whose edges mostly cross along
- * one filament (a bridge file) leans out along it, at most LEAN_MAX of the way, so filaments
- * carry real stars and the web shows where code actually crosses. That lean is the one
- * exception to the truth rule, and it is bounded.
+ * one filament (a bridge file) leans out along it, at most LEAN_MAX of the way and never more
+ * than LEAN_REACH radii of its own directory, so the strands leave their clusters through real
+ * stars and the web shows where code actually crosses. That lean is the one exception to the
+ * truth rule, and it is bounded in absolute terms, not only as a share of the strand.
  *
  * ── Shapes that would break it, handled on purpose ──
  *
@@ -72,12 +73,19 @@
  *     (src/main/java/com/…): the child sits at its center, so wrapper chains cost no space.
  *   - A deep chain of small directories steps off in a seeded direction at every level, so 30
  *     levels coil like a random walk rather than running out as a needle.
+ *   - A directory with thousands of children (DefinitelyTyped's types/) relaxes them on a
+ *     hierarchical collision grid, linear in the siblings; the pairwise sweep it outgrew froze
+ *     the main thread for 2.7 s at 20,000 of them.
  *
  * Deterministic: seeds are a fixed-seed PRNG hashed from directory ids, every aggregation is a
  * sort with id tie-breaks, relaxations run fixed tick counts, so the same report and gravity
- * give identical positions on every run.
+ * give identical positions on every run, and in every JavaScript engine: the trigonometry, roots
+ * and lengths go through dmath.ts and plain arithmetic, never Math.sin, cbrt, pow or hypot,
+ * which engines are allowed to round differently (V8 and JSC disagreed on all of them, and the
+ * relaxation grew one bit into 2% of the radius). Checked by hashing the output under node and Bun.
  */
 
+import { dcbrt, dcos, droot, dsin, datan2 } from "./dmath";
 import type { Report } from "./schema";
 
 // ─── Gravity ─────────────────────────────────────────────────────────────────────────────────
@@ -323,6 +331,19 @@ const BOW = 0.16;
 const LEAN_MAX = 0.36;
 const LEAN_SHARE = 0.5;
 const LEAN_MIN_EDGES = 2;
+/**
+ * And the lean's absolute reach, in radii of the file's own directory (its subtree's sphere, never
+ * less than LEAN_FLOOR). A share of the strand alone has no bound on a long strand: on vite, eight
+ * playground/legacy configs leaned 300 units (about 95 star spacings) into the void toward the
+ * root files, and the directory grew to 8.6 times its own size, so selecting it framed a sliver
+ * across the whole plate. Bounding by the cluster's radius instead still let a two-file test
+ * directory inside playground/css lean 90 units out, 19 times its size. Capped by its own
+ * directory, a bridge file streams off that directory's rim along the strand and stays visibly
+ * part of it, and every group's outline stays within a few times its members' own spread.
+ */
+const LEAN_REACH = 1.5;
+/** The smallest reach a bridge file gets (world units, about three star spacings), so a one- or two-file directory's bridge still visibly leans. */
+const LEAN_FLOOR = 10;
 
 // ─── Small math ──────────────────────────────────────────────────────────────────────────────
 
@@ -355,10 +376,10 @@ function hash(...xs: number[]): number {
 function randomRotation(u1: number, u2: number, u3: number, out: Float64Array, o = 0): void {
   const s1 = Math.sqrt(1 - u1);
   const s2 = Math.sqrt(u1);
-  const x = s1 * Math.sin(2 * Math.PI * u2);
-  const y = s1 * Math.cos(2 * Math.PI * u2);
-  const z = s2 * Math.sin(2 * Math.PI * u3);
-  const w = s2 * Math.cos(2 * Math.PI * u3);
+  const x = s1 * dsin(2 * Math.PI * u2);
+  const y = s1 * dcos(2 * Math.PI * u2);
+  const z = s2 * dsin(2 * Math.PI * u3);
+  const w = s2 * dcos(2 * Math.PI * u3);
   quatToMatrix(x, y, z, w, out, o);
 }
 
@@ -386,6 +407,16 @@ function matMul(a: Float64Array, ao: number, b: Float64Array, bo: number, c: Flo
 /** The R2 low-discrepancy sequence (generalized golden ratio): even coverage, uncorrelated with index order. */
 const R2A = 0.7548776662466927;
 const R2B = 0.5698402909980532;
+
+/**
+ * Length of a 2D or 3D vector. Math.hypot is one of the builtins the spec lets each engine
+ * approximate in its own way, and inside the relaxation a last-bit difference grows: the same
+ * report laid out in node (V8) and Bun (JSC) differed by up to 2% of the web's radius for some
+ * gravities (measured). A square root of a sum of squares is correctly rounded everywhere.
+ */
+function len3(x: number, y: number, z = 0): number {
+  return Math.sqrt(x * x + y * y + z * z);
+}
 
 // ─── computeWeb ──────────────────────────────────────────────────────────────────────────────
 
@@ -612,13 +643,13 @@ export function computeWeb(input: WebInput, gravity: Gravity = DEFAULT_GRAVITY):
         continue;
       }
       const dense = DENSE_LIGHT - (DENSE_LIGHT - DENSE_HEAVY) * (mSum / count);
-      const extent = CLUMP_UNIT * Math.cbrt(count) * dense;
+      const extent = CLUMP_UNIT * dcbrt(count) * dense;
       const a = extent / plummer(QMAX);
       // Seeded axis ratios and orientation, volume-preserving, so no two clumps read as the
       // same ball.
       const ay = 0.72 + 0.23 * rand();
       const az = 0.55 + 0.3 * rand();
-      const norm = 1 / Math.cbrt(ay * az);
+      const norm = 1 / dcbrt(ay * az);
       randomRotation(rand(), rand(), rand(), rot);
       const phase = rand();
       let max = 0;
@@ -631,8 +662,8 @@ export function computeWeb(input: WebInput, gravity: Gravity = DEFAULT_GRAVITY):
         const z = 1 - 2 * uu;
         const rho = Math.sqrt(Math.max(0, 1 - z * z));
         const phi = 2 * Math.PI * vv;
-        const x = r * rho * Math.cos(phi) * norm;
-        const y = r * rho * Math.sin(phi) * ay * norm;
+        const x = r * rho * dcos(phi) * norm;
+        const y = r * rho * dsin(phi) * ay * norm;
         const zz = r * z * az * norm;
         const f = unitFiles[i]!;
         const lx = rot[0]! * x + rot[1]! * y + rot[2]! * zz;
@@ -641,7 +672,7 @@ export function computeWeb(input: WebInput, gravity: Gravity = DEFAULT_GRAVITY):
         local[f * 3] = lx;
         local[f * 3 + 1] = ly;
         local[f * 3 + 2] = lz;
-        max = Math.max(max, Math.hypot(lx, ly, lz));
+        max = Math.max(max, len3(lx, ly, lz));
       }
       unitRadius[u] = max + FILE_PAD;
     }
@@ -734,7 +765,7 @@ export function computeWeb(input: WebInput, gravity: Gravity = DEFAULT_GRAVITY):
           let dx = P[t * 3]! - P[d * 3]!;
           let dy = P[t * 3 + 1]! - P[d * 3 + 1]!;
           let dz = P[t * 3 + 2]! - P[d * 3 + 2]!;
-          const len = Math.hypot(dx, dy, dz);
+          const len = len3(dx, dy, dz);
           if (len < 1e-6) continue;
           const w = extW[p]! / len;
           dx *= w;
@@ -847,7 +878,7 @@ export function computeWeb(input: WebInput, gravity: Gravity = DEFAULT_GRAVITY):
   const filaments = buildFilaments(input, E, fileCluster, C, clusterCenter, positions);
 
   // ── Bridge files ──
-  const lean = leanBridges(input, E, fileCluster, clusterCenter, filaments, positions);
+  const lean = leanBridges(input, E, fileCluster, clusterCenter, filaments, positions, sphereR);
 
   // ── Directory spheres (after the lean, so they really contain every file) ──
   for (let i = 0; i < pc; i++) {
@@ -863,9 +894,9 @@ export function computeWeb(input: WebInput, gravity: Gravity = DEFAULT_GRAVITY):
     const x = positions[f * 3]!;
     const y = positions[f * 3 + 1]!;
     const z = positions[f * 3 + 2]!;
-    radius = Math.max(radius, Math.hypot(x, y, z));
+    radius = Math.max(radius, len3(x, y, z));
     for (let d = input.fileDir[f]!; d >= 0; d = input.dirParent[d]!) {
-      const r = Math.hypot(x - dirCenter[d * 3]!, y - dirCenter[d * 3 + 1]!, z - dirCenter[d * 3 + 2]!) + FILE_PAD;
+      const r = len3(x - dirCenter[d * 3]!, y - dirCenter[d * 3 + 1]!, z - dirCenter[d * 3 + 2]!) + FILE_PAD;
       if (r > dirRadius[d]!) dirRadius[d] = r;
     }
   }
@@ -886,7 +917,9 @@ export function computeWeb(input: WebInput, gravity: Gravity = DEFAULT_GRAVITY):
 
 /** Plummer radius (in units of the scale length) enclosing mass fraction q. */
 function plummer(q: number): number {
-  return 1 / Math.sqrt(Math.pow(q, -2 / 3) - 1);
+  // q^(-2/3), as the square of 1 / ∛q.
+  const c = 1 / dcbrt(q);
+  return 1 / Math.sqrt(c * c - 1);
 }
 
 /** Group item indices by an integer key (counting sort): items of key k are items[start[k] .. start[k + 1]). */
@@ -924,7 +957,7 @@ function enclose(
       const dx = pos[id * 3]! - cx;
       const dy = pos[id * 3 + 1]! - cy;
       const dz = pos[id * 3 + 2]! - cz;
-      const dist = Math.hypot(dx, dy, dz);
+      const dist = len3(dx, dy, dz);
       const reach = dist + radius(id);
       if (reach <= R) continue;
       const next = (R + reach) / 2;
@@ -965,7 +998,7 @@ function solveTurn(items: readonly number[], pos: Float64Array, g: Float64Array,
       const lx = pos[id * 3]! - ox;
       const ly = pos[id * 3 + 1]! - oy;
       const lz = pos[id * 3 + 2]! - oz;
-      const len = Math.hypot(lx, ly, lz);
+      const len = len3(lx, ly, lz);
       if (len < 1e-9) continue;
       const rx = (m[0]! * lx + m[1]! * ly + m[2]! * lz) / len;
       const ry = (m[3]! * lx + m[4]! * ly + m[5]! * lz) / len;
@@ -978,15 +1011,15 @@ function solveTurn(items: readonly number[], pos: Float64Array, g: Float64Array,
       tz += rx * gy - ry * gx;
       dot += rx * gx + ry * gy + rz * gz;
     }
-    const tl = Math.hypot(tx, ty, tz);
+    const tl = len3(tx, ty, tz);
     if (tl < 1e-12) break;
-    const angle = Math.atan2(tl, dot);
+    const angle = datan2(tl, dot);
     if (angle < 1e-5) break;
-    const s = Math.sin(angle / 2) / tl;
+    const s = dsin(angle / 2) / tl;
     const ax = tx * s;
     const ay = ty * s;
     const az = tz * s;
-    const aw = Math.cos(angle / 2);
+    const aw = dcos(angle / 2);
     // q ← step · q
     const nx = aw * qx + ax * qw + ay * qz - az * qy;
     const ny = aw * qy - ax * qz + ay * qw + az * qx;
@@ -1004,15 +1037,16 @@ function solveTurn(items: readonly number[], pos: Float64Array, g: Float64Array,
     qz = -qz;
     qw = -qw;
   }
-  const half = Math.acos(Math.min(1, qw));
-  const sinHalf = Math.sin(half);
+  // acos(qw) for the unit quaternion, from both of its parts (there is no deterministic acos).
+  const half = datan2(len3(qx, qy, qz), qw);
+  const sinHalf = dsin(half);
   if (sinHalf < 1e-9) {
     quatToMatrix(0, 0, 0, 1, out);
     return;
   }
   const h2 = half * EXT_PULL;
-  const k = Math.sin(h2) / sinHalf;
-  quatToMatrix(qx * k, qy * k, qz * k, Math.cos(h2), out);
+  const k = dsin(h2) / sinHalf;
+  quatToMatrix(qx * k, qy * k, qz * k, dcos(h2), out);
 }
 
 // ─── Relaxation ──────────────────────────────────────────────────────────────────────────────
@@ -1036,6 +1070,20 @@ class Relaxer {
   private fixed = new Uint8Array(0);
   private links: number[] = [];
   private order = new Int32Array(0);
+  // The collision grid (collideGrid), for directories with many children: each item's level and
+  // cell, each level's cell size, count and box, and the cells' item lists. Kept between
+  // directories and grown as needed.
+  private level = new Int32Array(0);
+  private cellOf = new Int32Array(0);
+  private items = new Int32Array(0);
+  private cellX = new Int32Array(0);
+  private cellY = new Int32Array(0);
+  private cellZ = new Int32Array(0);
+  private cellStart = new Int32Array(0);
+  private cell = new Float64Array(MAX_LEVELS);
+  private levelCount = new Int32Array(MAX_LEVELS);
+  private box = new Int32Array(MAX_LEVELS * 6);
+  private levels = 0;
 
   reset(m: number): void {
     this.m = m;
@@ -1049,6 +1097,12 @@ class Relaxer {
       this.key = new Float64Array(cap);
       this.fixed = new Uint8Array(cap);
       this.order = new Int32Array(cap);
+      this.level = new Int32Array(cap);
+      this.cellOf = new Int32Array(cap);
+      this.items = new Int32Array(cap);
+      this.cellX = new Int32Array(cap);
+      this.cellY = new Int32Array(cap);
+      this.cellZ = new Int32Array(cap);
     }
     this.x.fill(0, 0, m * 3);
     this.v.fill(0, 0, m * 3);
@@ -1096,17 +1150,20 @@ class Relaxer {
     const rot = new Float64Array(9);
     randomRotation(rand(), rand(), rand(), rot);
     let vol = 0;
-    for (const k of movable) vol += Math.pow(r[k]! * (1 + gapK * 0.5) + GAP_MIN, 3);
-    const shell = Math.cbrt(vol / 0.3);
+    for (const k of movable) {
+      const s = r[k]! * (1 + gapK * 0.5) + GAP_MIN;
+      vol += s * s * s;
+    }
+    const shell = dcbrt(vol / 0.3);
     const coreR = core >= 0 ? r[core]! : 0;
     const golden = Math.PI * (3 - Math.sqrt(5));
     movable.forEach((k, i) => {
       const t = movable.length === 1 ? 0.5 : i / (movable.length - 1);
       const zz = 1 - 2 * (0.05 + 0.9 * t);
       const rho = Math.sqrt(Math.max(0, 1 - zz * zz));
-      const a = i * golden;
-      const dx = rho * Math.cos(a);
-      const dy = rho * Math.sin(a);
+      const a = (i * golden) % (2 * Math.PI);
+      const dx = rho * dcos(a);
+      const dy = rho * dsin(a);
       const ux = rot[0]! * dx + rot[1]! * dy + rot[2]! * zz;
       const uy = rot[3]! * dx + rot[4]! * dy + rot[5]! * zz;
       const uz = rot[6]! * dx + rot[7]! * dy + rot[8]! * zz;
@@ -1120,7 +1177,8 @@ class Relaxer {
     let maxW = 0;
     for (let i = 2; i < links.length; i += 3) maxW = Math.max(maxW, links[i]!);
     const ticks = m <= 24 ? 90 : m <= 200 ? 60 : 40;
-    const decay = 1 - Math.pow(0.002, 1 / ticks);
+    const decay = 1 - droot(0.002, ticks);
+    if (m > GRID_MIN) this.prepareGrid(gapK);
     let alpha = 1;
     for (let t = 0; t < ticks; t++) {
       // Pull toward the parent's center (gravity b).
@@ -1139,7 +1197,7 @@ class Relaxer {
         const dx = x[b * 3]! - x[a * 3]!;
         const dy = x[b * 3 + 1]! - x[a * 3 + 1]!;
         const dz = x[b * 3 + 2]! - x[a * 3 + 2]!;
-        const dist = Math.hypot(dx, dy, dz) || 1e-9;
+        const dist = len3(dx, dy, dz) || 1e-9;
         const rest = r[a]! + r[b]! + gap(a, b);
         if (dist <= rest) continue;
         const f = (((dist - rest) / dist) * k * alpha) / (fixed[a] || fixed[b] ? 1 : 2);
@@ -1168,8 +1226,18 @@ class Relaxer {
     for (let p = 0; p < SETTLE_PASSES; p++) if (!this.collide(gapK, 1)) break;
   }
 
-  /** Push overlapping pairs apart (sweep and prune along x). Returns whether anything moved. */
+  /** Push overlapping pairs apart. Returns whether anything moved. */
   private collide(gapK: number, strength: number): boolean {
+    return this.m > GRID_MIN ? this.collideGrid(gapK, strength) : this.collideSweep(gapK, strength);
+  }
+
+  /**
+   * Sweep and prune along x, for the few siblings most directories have. Its window is the
+   * largest sibling's reach, so a single big sibling widens it for everyone, and it is O(m²) once
+   * the siblings fill a ball: 20,000 one-file directories under one parent took 2.7 s in this
+   * sweep, 98% of the web's time (measured). Past GRID_MIN siblings, collideGrid runs instead.
+   */
+  private collideSweep(gapK: number, strength: number): boolean {
     const m = this.m;
     const { x, r, fixed, order } = this;
     let maxR = 0;
@@ -1194,45 +1262,219 @@ class Relaxer {
       const reachA = r[a]! + maxR + GAP_MIN + gapK * 0.5 * (r[a]! + maxR);
       for (let j = i + 1; j < m; j++) {
         const b = order[j]!;
-        const dx = x[b * 3]! - x[a * 3]!;
-        if (dx > reachA) break;
-        const dy = x[b * 3 + 1]! - x[a * 3 + 1]!;
-        const dz = x[b * 3 + 2]! - x[a * 3 + 2]!;
-        const need = r[a]! + r[b]! + GAP_MIN + gapK * 0.5 * (r[a]! + r[b]!);
-        const d2 = dx * dx + dy * dy + dz * dz;
-        if (d2 >= need * need) continue;
-        let dist = Math.sqrt(d2);
-        let nx = dx;
-        let ny = dy;
-        let nz = dz;
-        if (dist < 1e-9) {
-          // Coincident: separate along a direction fixed by the pair, never by chance.
-          const h = hash(a, b);
-          nx = ((h & 1023) / 1023) * 2 - 1;
-          ny = (((h >>> 10) & 1023) / 1023) * 2 - 1;
-          nz = 0.5;
-          dist = Math.hypot(nx, ny, nz);
-          nx *= 1e-6 / dist;
-          ny *= 1e-6 / dist;
-          nz *= 1e-6 / dist;
-          dist = 1e-6;
-        }
-        const push = ((need - dist) / dist) * strength;
-        if (fixed[a] && fixed[b]) continue;
-        const wa = fixed[a] ? 0 : fixed[b] ? 1 : 0.5;
-        const wb = fixed[b] ? 0 : fixed[a] ? 1 : 0.5;
-        x[a * 3] = x[a * 3]! - nx * push * wa;
-        x[a * 3 + 1] = x[a * 3 + 1]! - ny * push * wa;
-        x[a * 3 + 2] = x[a * 3 + 2]! - nz * push * wa;
-        x[b * 3] = x[b * 3]! + nx * push * wb;
-        x[b * 3 + 1] = x[b * 3 + 1]! + ny * push * wb;
-        x[b * 3 + 2] = x[b * 3 + 2]! + nz * push * wb;
-        moved = true;
+        if (x[b * 3]! - x[a * 3]! > reachA) break;
+        if (this.resolve(a, b, gapK, strength)) moved = true;
       }
     }
     return moved;
   }
+
+  /** Each item's grid level, once per run: the radii do not change while it runs. */
+  private prepareGrid(gapK: number): void {
+    const m = this.m;
+    const { r, level, cell, levelCount } = this;
+    // Two items overlap when their distance is under reach[a] + reach[b] (see resolve's `need`).
+    const reachOf = (k: number) => (1 + gapK * 0.5) * r[k]! + GAP_MIN * 0.5;
+    let base = Number.POSITIVE_INFINITY;
+    for (let k = 0; k < m; k++) base = Math.min(base, reachOf(k));
+    base = Math.max(base, 1e-6);
+    levelCount.fill(0);
+    let top = 0;
+    for (let k = 0; k < m; k++) {
+      // The smallest power-of-two multiple of the base that holds this reach, by doubling: Math.log2
+      // is one of the builtins engines may round differently, and the web must not depend on that.
+      const reach = reachOf(k);
+      let L = 0;
+      let c = base;
+      while (c < reach && L < MAX_LEVELS - 1) {
+        c *= 2;
+        L++;
+      }
+      level[k] = L;
+      levelCount[L]!++;
+      if (L > top) top = L;
+    }
+    this.levels = top + 1;
+    // A level's items reach at most half a cell, so any pair that can touch lies within one cell
+    // of each other on every axis.
+    for (let L = 0, c = 2 * base; L <= top; L++, c *= 2) cell[L] = c;
+  }
+
+  /**
+   * A hierarchical grid: each item sits in one cell of its own level's grid (cells twice the
+   * largest reach on that level, so whatever it can touch there is in the 3 x 3 x 3 cells around
+   * it), and also looks on every coarser level in use. A pass is linear in the siblings however
+   * many there are and however their sizes spread: one huge sibling sits on a coarse level and no
+   * longer widens everyone's search. On its own level an item looks at its own cell (pairs from
+   * the lower index) and the 13 cells after it, so each pair is met once.
+   *
+   * The grids are dense arrays over each level's bounding box of cells. A hashed table was tried
+   * first and spent ten times as long walking empty buckets (1.5 s against 0.1 s for 64 passes
+   * over 20,000 siblings, measured). A box made huge by a few outliers is capped, and items
+   * outside it are clamped onto its edge: clamping keeps neighboring cells neighbors, so it only
+   * adds candidates, never loses one. Cells come from where the items were when the pass began;
+   * items in index order and cells filled in index order make it as deterministic as the sweep.
+   */
+  private collideGrid(gapK: number, strength: number): boolean {
+    const m = this.m;
+    const { x, r, level, cell, levelCount, cellOf, items, cellX, cellY, cellZ, box } = this;
+    const levels = this.levels;
+    // Each item's cell on its own level, and each level's box.
+    for (let L = 0; L < levels; L++) {
+      box[L * 6] = box[L * 6 + 1] = box[L * 6 + 2] = 0x3fffffff;
+      box[L * 6 + 3] = box[L * 6 + 4] = box[L * 6 + 5] = -0x3fffffff;
+    }
+    for (let k = 0; k < m; k++) {
+      const L = level[k]!;
+      const c = cell[L]!;
+      const ix = (cellX[k] = Math.floor(x[k * 3]! / c));
+      const iy = (cellY[k] = Math.floor(x[k * 3 + 1]! / c));
+      const iz = (cellZ[k] = Math.floor(x[k * 3 + 2]! / c));
+      const o = L * 6;
+      if (ix < box[o]!) box[o] = ix;
+      if (iy < box[o + 1]!) box[o + 1] = iy;
+      if (iz < box[o + 2]!) box[o + 2] = iz;
+      if (ix > box[o + 3]!) box[o + 3] = ix;
+      if (iy > box[o + 4]!) box[o + 4] = iy;
+      if (iz > box[o + 5]!) box[o + 5] = iz;
+    }
+    // Lay the levels' boxes out one after another, each padded by a cell so neighbors stay inside.
+    let total = 0;
+    for (let L = 0; L < levels; L++) {
+      const o = L * 6;
+      if (levelCount[L] === 0) continue;
+      // The cap per axis, as an integer cube root by counting: Math.cbrt may round differently
+      // from one engine to the next, and a different cap would reorder the pairs.
+      const budget = GRID_CELLS_PER_ITEM * levelCount[L]! + 64;
+      let cap = 4;
+      while (cap * cap * cap < budget) cap++;
+      for (let j = 0; j < 3; j++) {
+        // A span past the cap keeps its middle; the rest is clamped onto the capped edges.
+        const lo = box[o + j]!;
+        const hi = box[o + 3 + j]!;
+        if (hi - lo + 1 > cap) {
+          const mid = lo + Math.floor((hi - lo) / 2);
+          box[o + j] = mid - Math.floor(cap / 2);
+          box[o + 3 + j] = box[o + j]! + cap - 1;
+        }
+      }
+      dims[L * 3] = box[o + 3]! - box[o]! + 3;
+      dims[L * 3 + 1] = box[o + 4]! - box[o + 1]! + 3;
+      dims[L * 3 + 2] = box[o + 5]! - box[o + 2]! + 3;
+      levelBase[L] = total;
+      total += dims[L * 3]! * dims[L * 3 + 1]! * dims[L * 3 + 2]!;
+      const sy = dims[L * 3 + 2]!;
+      const sx = dims[L * 3 + 1]! * sy;
+      for (let n = 0; n < 27; n++) neighbor[L * 27 + n] = OFF_X[n]! * sx + OFF_Y[n]! * sy + OFF_Z[n]!;
+    }
+    if (this.cellStart.length < total + 1) this.cellStart = new Int32Array(Math.max(total + 1, this.cellStart.length * 2));
+    const start = this.cellStart;
+    start.fill(0, 0, total + 1);
+    const cellIndex = (L: number, ix: number, iy: number, iz: number) => {
+      const o = L * 6;
+      const cx = Math.min(box[o + 3]!, Math.max(box[o]!, ix)) - box[o]! + 1;
+      const cy = Math.min(box[o + 4]!, Math.max(box[o + 1]!, iy)) - box[o + 1]! + 1;
+      const cz = Math.min(box[o + 5]!, Math.max(box[o + 2]!, iz)) - box[o + 2]! + 1;
+      return levelBase[L]! + (cx * dims[L * 3 + 1]! + cy) * dims[L * 3 + 2]! + cz;
+    };
+    // Counting sort into cells: counts, running ends, then filled backwards so each cell lists
+    // its items in index order and start[id] ends up at its first.
+    for (let k = 0; k < m; k++) {
+      const id = cellIndex(level[k]!, cellX[k]!, cellY[k]!, cellZ[k]!);
+      cellOf[k] = id;
+      start[id]!++;
+    }
+    for (let id = 1; id < total; id++) start[id]! += start[id - 1]!;
+    start[total] = m;
+    for (let k = m - 1; k >= 0; k--) items[--start[cellOf[k]!]!] = k;
+    const g = gapK * 0.5;
+    const nb = neighbor;
+    let moved = false;
+    for (let a = 0; a < m; a++) {
+      const La = level[a]!;
+      const ra = r[a]!;
+      for (let L = La; L < levels; L++) {
+        if (levelCount[L] === 0) continue;
+        const own = L === La;
+        const c = cell[L]!;
+        const at = own ? cellOf[a]! : cellIndex(L, Math.floor(x[a * 3]! / c), Math.floor(x[a * 3 + 1]! / c), Math.floor(x[a * 3 + 2]! / c));
+        // On its own level, the half shell: the offsets from (0, 0, 0) on, in x-major order.
+        for (let n = own ? 13 : 0; n < 27; n++) {
+          const id = at + nb[L * 27 + n]!;
+          const q1 = start[id + 1]!;
+          for (let q = start[id]!; q < q1; q++) {
+            const j = items[q]!;
+            if (own && n === 13 && j <= a) continue;
+            // a's position is read again for every candidate: a resolve just above may have moved it.
+            const dx = x[j * 3]! - x[a * 3]!;
+            const dy = x[j * 3 + 1]! - x[a * 3 + 1]!;
+            const dz = x[j * 3 + 2]! - x[a * 3 + 2]!;
+            const need = ra + r[j]! + GAP_MIN + g * (ra + r[j]!);
+            if (dx * dx + dy * dy + dz * dz >= need * need) continue;
+            if (this.resolve(a, j, gapK, strength)) moved = true;
+          }
+        }
+      }
+    }
+    return moved;
+  }
+
+  /** Push one pair apart if it overlaps (the core never moves). Returns whether it did. */
+  private resolve(a: number, b: number, gapK: number, strength: number): boolean {
+    const { x, r, fixed } = this;
+    if (fixed[a] && fixed[b]) return false;
+    const dx = x[b * 3]! - x[a * 3]!;
+    const dy = x[b * 3 + 1]! - x[a * 3 + 1]!;
+    const dz = x[b * 3 + 2]! - x[a * 3 + 2]!;
+    const need = r[a]! + r[b]! + GAP_MIN + gapK * 0.5 * (r[a]! + r[b]!);
+    const d2 = dx * dx + dy * dy + dz * dz;
+    if (d2 >= need * need) return false;
+    let dist = Math.sqrt(d2);
+    let nx = dx;
+    let ny = dy;
+    let nz = dz;
+    if (dist < 1e-9) {
+      // Coincident: separate along a direction fixed by the pair, never by chance.
+      const h = hash(a, b);
+      nx = ((h & 1023) / 1023) * 2 - 1;
+      ny = (((h >>> 10) & 1023) / 1023) * 2 - 1;
+      nz = 0.5;
+      dist = Math.sqrt(nx * nx + ny * ny + nz * nz);
+      nx *= 1e-6 / dist;
+      ny *= 1e-6 / dist;
+      nz *= 1e-6 / dist;
+      dist = 1e-6;
+    }
+    const push = ((need - dist) / dist) * strength;
+    const wa = fixed[a] ? 0 : fixed[b] ? 1 : 0.5;
+    const wb = fixed[b] ? 0 : fixed[a] ? 1 : 0.5;
+    x[a * 3] = x[a * 3]! - nx * push * wa;
+    x[a * 3 + 1] = x[a * 3 + 1]! - ny * push * wa;
+    x[a * 3 + 2] = x[a * 3 + 2]! - nz * push * wa;
+    x[b * 3] = x[b * 3]! + nx * push * wb;
+    x[b * 3 + 1] = x[b * 3 + 1]! + ny * push * wb;
+    x[b * 3 + 2] = x[b * 3 + 2]! + nz * push * wb;
+    return true;
+  }
 }
+
+/** Siblings past which collision runs on the grid (collideGrid) instead of the sweep. */
+const GRID_MIN = 64;
+/** Grid levels at most (cell sizes double per level: 2^31 times the smallest is beyond any web). */
+const MAX_LEVELS = 32;
+/** Cells a level's grid may hold per item on it, before its box is capped (see collideGrid). */
+const GRID_CELLS_PER_ITEM = 12;
+/** Per-level grid dimensions and where each level's cells start, shared by every Relaxer pass. */
+const dims = new Int32Array(MAX_LEVELS * 3);
+const levelBase = new Int32Array(MAX_LEVELS);
+/** Per level, the index offsets of the 27 cells around a cell. */
+const neighbor = new Int32Array(MAX_LEVELS * 27);
+
+/** The 27 cell offsets of a 3 x 3 x 3 neighborhood in x-major order; (0, 0, 0) is number 13. */
+const OFF_X = Int32Array.from({ length: 27 }, (_, n) => Math.floor(n / 9) - 1);
+const OFF_Y = Int32Array.from({ length: 27 }, (_, n) => (Math.floor(n / 3) % 3) - 1);
+const OFF_Z = Int32Array.from({ length: 27 }, (_, n) => (n % 3) - 1);
+
 
 // ─── Filaments ───────────────────────────────────────────────────────────────────────────────
 
@@ -1351,7 +1593,7 @@ function buildFilaments(input: WebInput, E: number, fileCluster: Int32Array, C: 
     const dx = bx - ax;
     const dy = by - ay;
     const dz = bz - az;
-    const len = Math.hypot(dx, dy, dz);
+    const len = len3(dx, dy, dz);
     // A gentle bow off the chord, in a direction fixed by the pair: a straight web reads as a
     // wiring diagram; strands with a little sag read as structure.
     const rand = prng(hash(a, b, 0xf11a));
@@ -1365,12 +1607,12 @@ function buildFilaments(input: WebInput, E: number, fileCluster: Int32Array, C: 
       hy -= along * dy;
       hz -= along * dz;
     }
-    let hl = Math.hypot(hx, hy, hz);
+    let hl = len3(hx, hy, hz);
     if (hl < 1e-6) {
       hx = -dy;
       hy = dx;
       hz = 0;
-      hl = Math.hypot(hx, hy, hz) || 1;
+      hl = len3(hx, hy, hz) || 1;
     }
     const bow = (BOW * len * (0.6 + 0.4 * rand())) / hl;
     const c = out.curve;
@@ -1398,9 +1640,10 @@ export function filamentPoint(f: WebFilaments, i: number, t: number, out: Float6
  * Move bridge files out along their filament. A file leans when more than LEAN_SHARE of its code
  * edges cross to other clusters along filaments, at least LEAN_MIN_EDGES of them; it leans along
  * the strand that carries most of them. How far grows with that cross share (and with the chosen
- * strand's part of it), up to LEAN_MAX of the filament. Counting only the single busiest strand
- * against all edges was tried first: a file split between two neighbors never qualified, and
- * inertialref's 1,465 files produced nine bridge files, which left every strand empty.
+ * strand's part of it), up to LEAN_MAX of the filament or LEAN_REACH radii of its own directory,
+ * whichever is shorter. Counting only the single busiest strand against all edges was tried
+ * first: a file split between two neighbors never qualified, and inertialref's 1,465 files
+ * produced nine bridge files, which left every strand empty.
  *
  * Its offset from its own cluster's center shrinks as it goes, so the leaning files form a stream
  * that tapers along the strand instead of a copy of the clump sliding sideways.
@@ -1412,6 +1655,7 @@ function leanBridges(
   center: Float32Array,
   fil: WebFilaments,
   positions: Float32Array,
+  dirReach: Float64Array,
 ): Float32Array {
   const n = input.fileCount;
   const lean = new Float32Array(n);
@@ -1456,16 +1700,33 @@ function leanBridges(
     const share = cross / Math.max(1, degree[f]!);
     if (share <= LEAN_SHARE) continue;
     const u = Math.min(1, (share - LEAN_SHARE) / (1 - LEAN_SHARE));
-    const t = LEAN_MAX * u * u * (3 - 2 * u) * Math.sqrt(bestCount / cross);
+    // How far along its possible lean the file goes (0-1).
+    const go = u * u * (3 - 2 * u) * Math.sqrt(bestCount / cross);
+    const t = LEAN_MAX * go;
     const own = fileCluster[f]!;
     const fromA = fil.a[best] === own;
-    // Offsets are measured from the strand's own end on this side, so the stream leaves the
-    // cluster where the strand does.
+    // Where the file heads: out along the strand, its offset from the strand's own end on this
+    // side shrinking as it goes, so the stream leaves the cluster where the strand does.
     const end = best * 9 + (fromA ? 0 : 6);
     filamentPoint(fil, best, fromA ? t : 1 - t, p);
-    const keepOffset = 1 - 0.6 * (t / LEAN_MAX);
-    for (let j = 0; j < 3; j++) positions[f * 3 + j] = p[j]! + (positions[f * 3 + j]! - fil.curve[end + j]!) * keepOffset;
-    lean[f] = t;
+    const keepOffset = 1 - 0.6 * go;
+    const dx = p[0]! + (positions[f * 3]! - fil.curve[end]!) * keepOffset - positions[f * 3]!;
+    const dy = p[1]! + (positions[f * 3 + 1]! - fil.curve[end + 1]!) * keepOffset - positions[f * 3 + 1]!;
+    const dz = p[2]! + (positions[f * 3 + 2]! - fil.curve[end + 2]!) * keepOffset - positions[f * 3 + 2]!;
+    // How far it gets there: at most `go` of its reach (LEAN_REACH radii of its own directory).
+    // The bound is on the whole move, not only on the distance along the strand: the shrinking
+    // offset alone dragged a file deep inside a big cluster most of the way to the strand's end,
+    // 36 times its directory's size on a synthetic 3,000-file tree (measured).
+    const move = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (move < 1e-9) continue;
+    const reach = go * LEAN_REACH * Math.max(LEAN_FLOOR, dirReach[input.fileDir[f]!]!);
+    const k = move > reach ? reach / move : 1;
+    positions[f * 3] = positions[f * 3]! + dx * k;
+    positions[f * 3 + 1] = positions[f * 3 + 1]! + dy * k;
+    positions[f * 3 + 2] = positions[f * 3 + 2]! + dz * k;
+    const c = fil.curve;
+    const len = len3(c[best * 9 + 6]! - c[best * 9]!, c[best * 9 + 7]! - c[best * 9 + 1]!, c[best * 9 + 8]! - c[best * 9 + 2]!);
+    lean[f] = Math.min(t, (move * k) / Math.max(len, 1e-9));
   }
   return lean;
 }
