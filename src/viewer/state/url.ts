@@ -336,6 +336,11 @@ function buildHash(): string {
   if (s.focusDir !== null && !(s.selection?.kind === "dir" && s.selection.id === s.focusDir)) {
     const d = s.report?.dirs[s.focusDir];
     if (d) parts.push(`focus=${enc(d.path)}`);
+  } else if (s.focusDir === null && s.selection?.kind === "dir" && s.selection.id > 0) {
+    // A group selected on the plate without opening its drawer. A bare dir= link opens the
+    // drawer too (that is what the rail and older links mean), so an empty focus says "no
+    // drawer" and the link reopens on the same view.
+    parts.push("focus=");
   }
   if (s.tab === "source" && s.source) {
     const f = s.report?.files[s.source.file];

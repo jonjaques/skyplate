@@ -1,6 +1,7 @@
 /**
- * Plate chrome: the drawer title, the filter chip, the color legend, the symbol-mode legend,
- * status notes and the compact controls (layout, gravity, lanes, reset view).
+ * Plate chrome: the drawer title, the filter chip, the selection's breadcrumb, the color legend,
+ * the symbol-mode legend, status notes and the compact controls (layout, gravity, lanes, reset
+ * view).
  *
  * All of it is plate-styled: small, plate-ink text, plate-rule hairlines. The text sits on the
  * plate's own color where stars or lanes can pass behind it (the controls, the legend inset,
@@ -8,7 +9,7 @@
  * there. Every element carries data-plate-chrome, which the label overlays read to keep clear.
  */
 
-import { AlertCircle, LoaderCircle, Maximize2, Orbit, Spline, X } from "lucide-react";
+import { AlertCircle, Ellipsis, LoaderCircle, Maximize2, Orbit, Spline, X } from "lucide-react";
 import { useMemo } from "react";
 import { CATEGORY_GROUP, REF_KINDS, type Category, type CategoryGroup, type CodeSymbols, type RefKind } from "../../shared/schema";
 import { GRAVITIES, GRAVITY_NEEDS_GIT, type Gravity } from "../../shared/web";
@@ -16,6 +17,7 @@ import { Button } from "../components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
@@ -27,9 +29,10 @@ import { CATEGORY_GROUPS, CATEGORY_GROUP_LABEL, HOLOTYPE, categoryGroupColor, se
 import { formatInt, plural } from "../lib/format";
 import { cn } from "../lib/utils";
 import { GRAVITY_HINT, GRAVITY_LABEL } from "../shell/labels";
-import { useViewer, type ColorBy, type EdgeMode, type Filters, type LayoutMode, type SizeBy } from "../state/store";
+import { useHover, useViewer, type ColorBy, type EdgeMode, type Filters, type LayoutMode, type SizeBy } from "../state/store";
 import { isNarrowed, passesFilters } from "./encode";
 import type { GalaxyEngine } from "./engine";
+import { selectionTrail, type Crumb } from "./groups";
 import { LANE_INK, LANE_INK_2, selectionLanes } from "./lanes";
 import { reachPhrase, type SymbolScene } from "./symbolScene";
 
@@ -124,8 +127,9 @@ export function PlateFilterChip({ engine, compact }: { engine: GalaxyEngine; com
       data-plate-chrome
       data-plate-inset="top"
       className={cn(
-        "absolute z-20 flex max-w-[calc(100%-3rem)] items-center gap-1 rounded-sm border border-plate-rule bg-plate py-0.5 pr-0.5 pl-2 text-xs text-plate-ink",
-        compact ? "top-10 left-3" : "top-[58px] left-6 @max-[640px]:top-[92px]",
+        "pointer-events-auto flex max-w-full items-center gap-1 rounded-sm border border-plate-rule bg-plate py-0.5 pr-0.5 pl-2 text-xs text-plate-ink",
+        // On the full plate it is the first of the notes stacked under the title (GalaxyView).
+        compact && "absolute top-10 left-3 z-20 max-w-[calc(100%-3rem)]",
       )}
     >
       <span className="truncate">{describeFilters(engine, filters)}</span>
@@ -139,6 +143,102 @@ export function PlateFilterChip({ engine, compact }: { engine: GalaxyEngine; com
         Clear
       </Button>
     </div>
+  );
+}
+
+// ─── Breadcrumb ──────────────────────────────────────────────────────────────────────────────
+
+/** Past this many levels the middle folds into a menu: a 30-deep tree ran off the plate. */
+const CRUMB_MAX = 6;
+/** Levels kept visible at the deep end when the middle folds. */
+const CRUMB_TAIL = 4;
+
+/**
+ * Where the selection sits in the tree, from the project down: project › packages › universe ›
+ * src › file.ts. Any level can be jumped to; hovering one previews that group on the plate (its
+ * envelope, its lit stars and strands) through the hover store, as a region name does.
+ */
+export function PlateCrumbs({ engine }: { engine: GalaxyEngine }) {
+  const selection = useViewer((s) => s.selection);
+  const symbols = useViewer((s) => s.symbols);
+  const select = useViewer((s) => s.select);
+  const setHover = useHover((s) => s.setHover);
+  const report = engine.model.report;
+  const trail = useMemo(() => selectionTrail(report, symbols, selection), [report, symbols, selection]);
+  if (trail.length < 2) return null;
+
+  const preview = (c: Crumb | null) => setHover(c?.target && c.target.kind !== "symbol" ? c.target : null);
+  const go = (c: Crumb) => {
+    setHover(null);
+    if (c.target) select(c.target);
+    else {
+      // The project crumb is "everything": nothing selected, the whole web in view.
+      select(null);
+      engine.home(true);
+    }
+  };
+  const folded = trail.length > CRUMB_MAX ? trail.slice(1, trail.length - CRUMB_TAIL) : [];
+  const shown: (Crumb | "fold")[] = folded.length > 0 ? [trail[0]!, "fold", ...trail.slice(-CRUMB_TAIL)] : trail;
+  const last = trail.length - 1;
+  const crumbClass = "max-w-[18ch] truncate rounded-xs px-1 py-px outline-none hover:bg-plate-ink/10 hover:text-plate-ink focus-visible:ring-1 focus-visible:ring-plate-ink/60";
+
+  return (
+    <nav data-plate-chrome data-plate-inset="top" aria-label="Selection path" className="pointer-events-auto max-w-full rounded-xs bg-plate py-px pr-1 text-plate-muted">
+      <ol className="flex min-w-0 flex-wrap items-center gap-x-0.5 gap-y-0.5">
+        {shown.map((c, i) => {
+          const sep = i > 0 && (
+            <span aria-hidden="true" className="px-0.5 text-[11px] text-plate-muted/60">
+              ›
+            </span>
+          );
+          if (c === "fold")
+            return (
+              <li key="fold" className="flex items-center">
+                {sep}
+                <DropdownMenu onOpenChange={(open) => !open && preview(null)}>
+                  <DropdownMenuTrigger asChild>
+                    <button type="button" className={cn(crumbClass, "grid h-[18px] place-items-center")} aria-label={`${plural(folded.length, "more level")}`}>
+                      <Ellipsis className="size-3.5" aria-hidden="true" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-44">
+                    {folded.map((f) => (
+                      <DropdownMenuItem key={f.target ? `${f.target.kind}:${f.target.id}` : "root"} onSelect={() => go(f)} onFocus={() => preview(f)} className="font-mono text-xs">
+                        {f.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </li>
+            );
+          const isLast = trail.indexOf(c) === last;
+          const text = c.mono ? "font-mono text-[11px]" : "text-xs font-semibold [font-stretch:85%]";
+          return (
+            <li key={c.target ? `${c.target.kind}:${c.target.id}` : "root"} className="flex min-w-0 items-center">
+              {sep}
+              {isLast ? (
+                <span aria-current="location" className={cn("max-w-[24ch] truncate px-1 py-px text-plate-ink", text)} title={c.label}>
+                  {c.label}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className={cn(crumbClass, text)}
+                  title={c.target?.kind === "dir" ? report.dirs[c.target.id]!.path : c.label}
+                  onClick={() => go(c)}
+                  onPointerEnter={() => preview(c)}
+                  onPointerLeave={() => preview(null)}
+                  onFocus={() => preview(c)}
+                  onBlur={() => preview(null)}
+                >
+                  {c.label}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
   );
 }
 
@@ -560,26 +660,21 @@ function CompactSymbolKey({ scene }: { scene: SymbolScene }) {
 
 // ─── Status ──────────────────────────────────────────────────────────────────────────────────
 
+/** A note on the code-intelligence tables, last of the notes stacked under the title (GalaxyView). */
 export function PlateStatus() {
   const selection = useViewer((s) => s.selection);
   const status = useViewer((s) => s.symbolsStatus);
-  // Below the filter chip when there is one (both sit under the title).
-  const top = useViewer((s) => (isNarrowed(s.filters) ? "top-[92px]" : "top-[60px]"));
   if (selection?.kind !== "symbol") return null;
   if (status === "loading" || status === "idle")
     return (
-      <p
-        data-plate-chrome
-        role="status"
-        className={cn("pointer-events-none absolute left-6 z-20 flex items-center gap-1.5 text-xs text-plate-muted", top)}
-      >
+      <p data-plate-chrome role="status" className="flex items-center gap-1.5 text-xs text-plate-muted">
         <LoaderCircle className="size-3.5 animate-spin motion-reduce:animate-none" aria-hidden="true" />
         Reading the code-intelligence tables
       </p>
     );
   if (status === "error" || status === "absent")
     return (
-      <p data-plate-chrome role="status" className={cn("pointer-events-none absolute left-6 z-20 flex items-center gap-1.5 text-xs text-plate-ink", top)}>
+      <p data-plate-chrome role="status" className="flex items-center gap-1.5 text-xs text-plate-ink">
         <AlertCircle className="size-3.5 text-serious" aria-hidden="true" />
         {status === "error" ? "The code-intelligence tables did not load, so usages cannot be drawn" : "This report has no code-intelligence tables"}
       </p>

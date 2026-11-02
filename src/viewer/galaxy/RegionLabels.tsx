@@ -34,7 +34,7 @@ const NAME_GAP = 10;
  * pixels each side covers a 12px label's counters and letter gaps, so no star or lane shows
  * inside a word; a wider stroke would start erasing the region's own stars around the name.
  */
-const HALO = "[paint-order:stroke_fill] [-webkit-text-stroke:4px_var(--color-plate)] [text-shadow:0_0_4px_var(--color-plate)]";
+export const HALO = "[paint-order:stroke_fill] [-webkit-text-stroke:4px_var(--color-plate)] [text-shadow:0_0_4px_var(--color-plate)]";
 
 /**
  * Does any specimen label, or any leader running from a pinned star to its label, touch `r`?
@@ -141,7 +141,7 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
         // The focused region always keeps its label; others yield to larger regions and chrome.
         const visible = !behind && onPlate(above) && (focused || clear(above, [...placed, ...chrome], 6));
         if (visible) {
-          placed.push(focused ? { ...above, pinned: true } : above);
+          placed.push(focused ? { ...above, pinned: true, dir: region.dir } : { ...above, dir: region.dir });
           shown.push({ el, r: above, alts, focused });
         }
         el.style.transform = `translate3d(${Math.round(above.x)}px, ${Math.round(above.y)}px, 0)`;
@@ -156,12 +156,15 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
     };
   }, [engine, regions, focusRegion]);
 
+  // A region's name hovers its group through the store like any other view, so the plate's
+  // envelope, strands and lit stars agree with it. The root's own files are the exception: as a
+  // target, the root means the whole project, so their range is lit here directly.
   const enter = (r: Region) => {
-    engine.uniform("uHoverRegion", r.index);
     if (r.dir !== 0) setHover({ kind: "dir", id: r.dir });
+    else engine.setHotRange(engine.model.dirStart[0]!, engine.model.dirStart[0]! + engine.model.report.dirs[0]!.files.length);
   };
   const leave = () => {
-    engine.uniform("uHoverRegion", -1);
+    engine.setHotRange(-1, -1);
     setHover(null);
   };
 

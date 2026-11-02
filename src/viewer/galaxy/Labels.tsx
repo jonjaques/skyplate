@@ -203,8 +203,11 @@ export function SpecimenLabels({
           .filter((f): f is number => f !== undefined && model.report.files[f]!.fanIn >= 3)
           .sort((a, b) => model.report.files[b]!.fanIn - model.report.files[a]!.fanIn || a - b);
         // While a star is hovered (or stepped to from the keyboard) its card leads, and the
-        // holotype card it displaced went looking for room and covered four region names.
-        const lead: LabelForm = hover?.kind === "file" || width < REST_CARD_PLATE ? "pin" : card;
+        // holotype card it displaced went looking for room and covered four region names. A
+        // hovered or selected group leads the same way: its envelope and name tag are the
+        // subject, and the full card sat on the tag.
+        const groupInView = (hover?.kind === "dir" && hover.id > 0) || (selection?.kind === "dir" && selection.id > 0);
+        const lead: LabelForm = hover?.kind === "file" || groupInView || width < REST_CARD_PLATE ? "pin" : card;
         ranked.slice(0, 1 + (narrow ? 1 : REST_PINS)).forEach((f, i) => add(f, "holotype", i === 0 ? lead : "pin"));
       }
     }
@@ -284,6 +287,8 @@ export function SpecimenLabels({
         return c;
       };
       const regions = engine.regionLabelRects;
+      // Group tags count as names too: a card over a hovered group's tag hid what it was.
+      const groupTags = engine.groupTagRects;
 
       const placed: PlateRect[] = [];
       // Leaders as drawn this frame, from the star itself (not the gap) to the label's edge, so a
@@ -364,7 +369,7 @@ export function SpecimenLabels({
           // region name strikes it out as surely as a label on top of it.
           const ex = Math.min(Math.max(a.x, x), x + w);
           const ey = Math.min(Math.max(a.y, y), y + h);
-          return regionCost(regions, r, a.x, a.y, ex, ey) + laterCost(x, y, w, h) + Math.min(18, engine.starsIn(x, y, w, h) * 0.25) + Math.min(24, crossings(r) * 0.7) + pref;
+          return regionCost(regions, r, a.x, a.y, ex, ey) + regionCost(groupTags, r, a.x, a.y, ex, ey) + laterCost(x, y, w, h) + Math.min(18, engine.starsIn(x, y, w, h) * 0.25) + Math.min(24, crossings(r) * 0.7) + pref;
         };
         const laterCost = (x: number, y: number, w: number, h: number) => {
           let later = 0;

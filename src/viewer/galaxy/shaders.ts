@@ -3,7 +3,7 @@
  *
  *   stars  every file as a point sprite: soft core + faint halo, holotype and selection rings,
  *          morph between the engine's from and to slots, history fade and flash (on the core
- *          only), region hover
+ *          only), the hovered group's members and the pointer's reticle
  *   filaments  the web's strands between coupled clusters: faint, additive, brighter for more
  *          coupling and for the hovered, selected or open group
  *   lanes  import edges and symbol arcs as hairlines whose brightness travels toward the
@@ -17,7 +17,9 @@
  * the core of a big directory glows because it is dense, not because anything was painted on.
  *
  * Files are 1:1 with vertices, so per-file state that changes on hover (which star is under the
- * pointer) is a uniform compared against gl_VertexID instead of an attribute rewrite.
+ * pointer) is a uniform compared against gl_VertexID instead of an attribute rewrite. A hovered
+ * group is the same idea one level up: aOrder is each file's depth-first ordinal, every
+ * directory's subtree is one contiguous range of them, and the range arrives as a uniform.
  */
 
 export const STAR_VERTEX = /* glsl */ `
@@ -28,9 +30,10 @@ uniform float uBaseSize;    // world size of the smallest star
 uniform float uSizeRange;   // world size added at size 1
 uniform float uMinPx;
 uniform float uMaxPx;
-uniform float uHover;       // file id under the pointer, -1 for none
+uniform float uHover;       // the committed hover's file id (it has a card), -1 for none
+uniform float uReticle;     // the star under the pointer right now, committed or not, -1 for none
 uniform float uSelected;    // selected file id, -1 for none
-uniform float uHoverRegion; // region index under the pointer, -1 for none
+uniform vec2 uHotRange;     // the hovered group's [lo, hi) in depth-first order, (-1, -1) for none
 uniform float uTimeOn;      // 1 while the history scrubber is off HEAD
 uniform float uTime;        // scrubber position, days since the first commit
 uniform float uClock;       // seconds, for breathing and ripples
@@ -44,7 +47,7 @@ attribute float aEmph;
 attribute float aMark;      // 1 holotype ring, 2 definition marker (breathing white), 3 selected (set here)
 attribute float aBorn;      // days since the first commit; -1e6 when unknown
 attribute float aFlash;     // 0-1, touched near the scrubber position
-attribute float aRegion;
+attribute float aOrder;     // depth-first ordinal (Model.fileOrderIndex)
 attribute float aDepth;     // symbol ripple depth, -1 when not reached
 
 varying vec3 vColor;
@@ -55,6 +58,7 @@ varying float vAlpha;
 varying float vHalo;        // halo strength: full for small stars, fading for big ones
 varying float vGhost;       // 1 for a selected file not yet created at the scrubber's date
 varying float vFlash;
+varying vec3 vReticle;      // the reticle's ticks: inner and outer radius, half width (sprite units); 0 when off
 
 void main() {
   vec3 p = mix(position, aTo, uMorph);
@@ -64,9 +68,13 @@ void main() {
   float id = float(gl_VertexID);
   float isHover = 1.0 - step(0.5, abs(id - uHover));
   float isSel = 1.0 - step(0.5, abs(id - uSelected));
+  float isReticle = 1.0 - step(0.5, abs(id - uReticle));
 
   float emph = aEmph;
-  if (uHoverRegion >= 0.0) emph *= abs(aRegion - uHoverRegion) < 0.5 ? 1.45 : 0.32;
+  // A hovered group's members come up and the rest step back a little: enough to see the
+  // group's shape inside a busy web, not so much that the plate blinks as the pointer moves
+  // from group to group (the region hover this replaced dimmed the rest to a third).
+  if (uHotRange.x >= 0.0) emph *= (aOrder > uHotRange.x - 0.5 && aOrder < uHotRange.y - 0.5) ? 1.35 : 0.55;
 
   // Symbol ripple: lit files come up in order of distance from the definition, one wave.
   float wave = 0.0;
@@ -97,6 +105,13 @@ void main() {
   // The definition ring sits inside the knockout disc (see KNOCKOUT_*), so it is drawn larger
   // than a holotype ring: at the old size a heavily used symbol's arcs buried it.
   if (mark > 1.5 && mark < 2.5) sprite = max(sprite, uMinPx * 11.0);
+  // The reticle's ticks sit just outside the star at a fixed size on screen (2 px clear of the
+  // core, 4 px long), so its sprite needs that much room around the core. Sized to the sprite
+  // instead, they grew with a hovered star into a heavy cross over its neighbors.
+  float dpr = uMinPx / 1.6;
+  float tickIn = px * 0.42 + 2.0 * dpr;
+  float tickOut = tickIn + 4.0 * dpr;
+  if (isReticle > 0.5) sprite = max(sprite, tickOut * 2.0 + 2.0 * dpr);
   // A selected file the scrubber has not reached yet keeps a dashed ghost ring where it will
   // be, so a selection made at a past date does not fly to an unexplained empty spot.
   vGhost = isSel * step(visible, 0.999);
@@ -118,6 +133,7 @@ void main() {
   vColor = aColor * bright + vec3(1.0, 0.95, 0.85) * (wave * 0.5 + isHover * 0.35);
   vFlash = aFlash;
   vAlpha = visible;
+  vReticle = isReticle * vec3(tickIn, tickOut, 0.55 * dpr) / (sprite * 0.5);
 }
 `;
 
@@ -131,6 +147,7 @@ varying float vAlpha;
 varying float vHalo;
 varying float vGhost;
 varying float vFlash;
+varying vec3 vReticle;
 
 void main() {
   vec2 c = gl_PointCoord * 2.0 - 1.0;
@@ -166,6 +183,15 @@ void main() {
       float ring = smoothstep(w, 0.0, abs(r - ringR));
       col += uHolotype * ring * 1.15;
     }
+  }
+  if (vReticle.y > 0.0) {
+    // The reticle: four short ticks at the compass points, clear of the core. It answers
+    // "this is the star you are on" while the pointer is still moving, before hover intent
+    // commits a card; ticks rather than a ring so it never reads as the selection's white ring
+    // or a holotype's red one.
+    float band = step(vReticle.x, r) * step(r, vReticle.y);
+    float tick = max(1.0 - smoothstep(vReticle.z * 0.5, vReticle.z * 1.5, abs(c.x)), 1.0 - smoothstep(vReticle.z * 0.5, vReticle.z * 1.5, abs(c.y)));
+    col += vec3(0.86, 0.91, 0.94) * band * tick * 0.55;
   }
   gl_FragColor = vec4(col * vAlpha, 1.0);
 }

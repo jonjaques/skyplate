@@ -28,9 +28,11 @@ import type { LayoutMode } from "../state/store";
 import { computeWeb, DEFAULT_GRAVITY, STAR_SPACING, webInputFromReport, type Gravity, type Web, type WebClusters, type WebFilaments, type WebInput } from "../../shared/web";
 import { STAR_FRAGMENT, STAR_VERTEX } from "./shaders";
 import { buildFacts, type Facts } from "./facts";
+import { deepestGroup, envelopeHull, GROUP_STICKY_PX, HULL_FLOATS, HullScratch, hullContains, hullExtent, MIN_GROUP_PX } from "./groups";
+import { pickScore } from "./hoverIntent";
 
 export interface Region {
-  /** Index into Engine.regions (also the aRegion attribute value). */
+  /** Index into Engine.regions. */
   index: number;
   /** Top-level directory id, or 0 for the root's own files. */
   dir: number;
@@ -61,17 +63,20 @@ export interface PlateRect {
 /** A region name's box on the plate; `pinned` for the open drawer's, which never steps aside. */
 export interface RegionLabelRect extends PlateRect {
   pinned?: boolean;
+  /** The top-level directory it names (group envelopes skip a tag the region name already gives). */
+  dir?: number;
 }
 
 /**
  * Frame listener order. The overlays share the plate and must agree within one frame (with
  * frameloop "demand" a label that waits for the next frame may never get one):
  *   REGIONS   region labels work out where they would sit and publish it
+ *   ENVELOPES the hovered and selected groups' outlines and name tags, which publish the tags
  *   LABELS    specimen labels place themselves around those, then publish their rects and leaders
  *   YIELD     region labels a specimen label or its leader still touches move below or beside
  *             their star, or step aside when those spots are taken too
  */
-export const FRAME_ORDER = { REGIONS: 0, LABELS: 1, YIELD: 2 } as const;
+export const FRAME_ORDER = { REGIONS: 0, ENVELOPES: 0.5, LABELS: 1, YIELD: 2 } as const;
 
 /** Plate edges covered by chrome (title, legend, scrubber), in CSS px. Framing keeps clear of them. */
 export interface Insets {
@@ -128,6 +133,10 @@ interface Slot {
 }
 
 const SECONDS_PER_DAY = 86400;
+/** Envelope padding beyond the members' star radius (CSS px); picking uses the same margin. */
+const GROUP_PAD = 8;
+/** Members projected per envelope at most (see envelope()). */
+const ENVELOPE_POINTS = 12000;
 /** Morph time constant (s). Exponential approach: damped, no overshoot, ~0.8 s to settle. */
 const MORPH_TAU = 0.2;
 const PICK_CELL = 24;
@@ -274,7 +283,8 @@ export class GalaxyEngine {
   readonly mark: Float32Array;
   readonly born: Float32Array;
   readonly flash: Float32Array;
-  readonly regionOf: Float32Array;
+  /** Each file's position in the model's depth-first order (Model.fileOrderIndex), as aOrder. */
+  readonly order: Float32Array;
   readonly depth: Float32Array;
 
   readonly geometry: THREE.BufferGeometry;
@@ -318,6 +328,8 @@ export class GalaxyEngine {
 
   /** Region labels that would show this frame (published at FRAME_ORDER.REGIONS). */
   regionLabelRects: RegionLabelRect[] = [];
+  /** Group name tags on the plate this frame (published at FRAME_ORDER.ENVELOPES). */
+  groupTagRects: RegionLabelRect[] = [];
   /** Specimen labels placed this frame (published at FRAME_ORDER.LABELS). */
   labelRects: PlateRect[] = [];
   /** Their leaders, flat [x1, y1, x2, y2, …] from each pinned star to its label (FRAME_ORDER.LABELS). */
@@ -330,6 +342,8 @@ export class GalaxyEngine {
   moonScreen = new Float32Array(0);
   moonFile = -1;
   hoverMoon = -1;
+  /** The moon under the pointer before hover intent commits it: the ring holds still under it. */
+  pointerMoon = -1;
 
   private listeners: { fn: FrameListener; order: number }[] = [];
   private retargetListeners = new Set<() => void>();
@@ -345,20 +359,40 @@ export class GalaxyEngine {
   /** Camera direction (target → camera) for the whole collection, fixed from the default web. */
   readonly homeDirection: THREE.Vector3;
 
-  // Picking cache: screen positions at the last projection, bucketed into a grid.
+  // Picking cache: screen positions at the last projection, bucketed into a grid. Every buffer
+  // is kept and reused: project() runs on pointer moves and, while labels show, every few frames.
   private sx: Float32Array;
   private sy: Float32Array;
   private sr: Float32Array; //   pick radius (CSS px)
   private sw: Float32Array; //   clip w (distance), for depth tie-breaks; ≤ 0 when behind
+  private cellOf: Int32Array;
   private gridStart = new Int32Array(0);
+  private gridFill = new Int32Array(0);
   private gridItems: Int32Array;
   private gridCols = 0;
   private gridRows = 0;
   private sat = new Float32Array(0);
   private densityAge = 0;
-  private projKey = "";
-  private lastMatrix = new Float32Array(16);
+  private projW = -1;
+  private projH = -1;
+  // Float64: three's matrix elements are doubles, and a Float32 copy never compared equal to
+  // them, so every pick and density refresh re-projected every star even with the camera still
+  // (and the group hull cache keyed on the projection never hit).
+  private lastMatrix = new Float64Array(16);
   private projMorph = -1;
+  private readonly projMatrix = new THREE.Matrix4();
+  /** Bumped whenever project() recomputes; group hulls for picking are cached against it. */
+  private projVersion = 0;
+  private hullCache = new Map<number, { version: number; hull: Float32Array; count: number; cx: number; cy: number; radius: number }>();
+  private hullScratch = new HullScratch();
+  private hullXs = new Float32Array(0);
+  private hullYs = new Float32Array(0);
+  private hullOut = new Float32Array(HULL_FLOATS);
+  private readonly sphereScratch = new THREE.Vector3();
+  private readonly envelopeMatrix = new Float64Array(16);
+  /** The envelope's running sum of star radii. A local `let` sum boxed a number per member. */
+  private readonly envelopeSum = new Float64Array(1);
+  private readonly envelopeResult = { count: 0, pad: 0 };
 
   constructor(model: Model, initial: { layout: LayoutMode; gravity: Gravity } = { layout: "web", gravity: DEFAULT_GRAVITY }) {
     this.model = model;
@@ -388,7 +422,7 @@ export class GalaxyEngine {
     this.mark = new Float32Array(n);
     this.born = new Float32Array(n);
     this.flash = new Float32Array(n);
-    this.regionOf = new Float32Array(n);
+    this.order = Float32Array.from(model.fileOrderIndex);
     this.depth = new Float32Array(n).fill(-1);
 
     const first = report.git?.first ?? 0;
@@ -412,7 +446,6 @@ export class GalaxyEngine {
       this.regions.push({ index, dir: d, name: report.dirs[d]!.name, files: filesUnder(model, d) });
       this.regionByDir.set(d, index);
     }
-    for (let i = 0; i < n; i++) this.regionOf[i] = this.regionByDir.get(model.topDir[i]!) ?? 0;
 
     this.holotypeMarks = new Float32Array(n);
     for (const f of model.holotypes) this.holotypeMarks[f] = 1;
@@ -430,7 +463,9 @@ export class GalaxyEngine {
     g.setAttribute("aMark", new THREE.BufferAttribute(this.mark, 1).setUsage(THREE.DynamicDrawUsage));
     g.setAttribute("aBorn", new THREE.BufferAttribute(this.born, 1));
     g.setAttribute("aFlash", new THREE.BufferAttribute(this.flash, 1).setUsage(THREE.DynamicDrawUsage));
-    g.setAttribute("aRegion", new THREE.BufferAttribute(this.regionOf, 1));
+    // Depth-first ordinals: every directory's subtree is one contiguous range of them, so a hovered
+    // group at any depth reaches the shader as two numbers (uHotRange), never an attribute upload.
+    g.setAttribute("aOrder", new THREE.BufferAttribute(this.order, 1));
     g.setAttribute("aDepth", new THREE.BufferAttribute(this.depth, 1).setUsage(THREE.DynamicDrawUsage));
     // Every layout shares one bounding sphere; frustum culling must not drop the whole cloud
     // mid-morph because the sphere was computed from one slot's positions alone.
@@ -455,8 +490,9 @@ export class GalaxyEngine {
         uMinPx: { value: 1.6 },
         uMaxPx: { value: 40 },
         uHover: { value: -1 },
+        uReticle: { value: -1 },
         uSelected: { value: -1 },
-        uHoverRegion: { value: -1 },
+        uHotRange: { value: new THREE.Vector2(-1, -1) },
         uTimeOn: { value: 0 },
         uTime: { value: 0 },
         uClock: { value: 0 },
@@ -470,6 +506,7 @@ export class GalaxyEngine {
     this.sy = new Float32Array(n);
     this.sr = new Float32Array(n);
     this.sw = new Float32Array(n);
+    this.cellOf = new Int32Array(n);
     this.gridItems = new Int32Array(n);
   }
 
@@ -658,6 +695,9 @@ export class GalaxyEngine {
 
   touch(name: "aColor" | "aSize" | "aEmph" | "aMark" | "aFlash" | "aDepth"): void {
     (this.geometry.getAttribute(name) as THREE.BufferAttribute).needsUpdate = true;
+    // Pick radii follow star sizes, and the projection cache would keep the old ones until the
+    // camera next moved.
+    if (name === "aSize") this.projMorph = -1;
     this.invalidate();
   }
 
@@ -683,10 +723,29 @@ export class GalaxyEngine {
     }
   }
 
+  /**
+   * The hovered group's depth-first file range [lo, hi), or (-1, -1) for none. Its stars come up
+   * and the rest step back in the shader; nothing is uploaded but these two numbers.
+   */
+  setHotRange(lo: number, hi: number): void {
+    const v = this.material.uniforms.uHotRange!.value as THREE.Vector2;
+    if (v.x === lo && v.y === hi) return;
+    v.set(lo, hi);
+    this.invalidate();
+  }
+
+  /** A directory's subtree as a depth-first range, or (-1, -1) for the root (it is everything). */
+  dirRange(dir: number): [number, number] {
+    if (dir <= 0) return [-1, -1];
+    return [this.model.dirStart[dir]!, this.model.dirEnd[dir]!];
+  }
+
   /** History scrubber position (unix seconds) or null for HEAD. */
   setTime(time: number | null): void {
     const git = this.model.report.git;
     this.flash.fill(0);
+    // Group hulls for picking leave out files not yet created; a new date redraws them.
+    this.projMorph = -1;
     if (time === null || !git) {
       this.uniform("uTimeOn", 0);
       this.touch("aFlash");
@@ -951,14 +1010,15 @@ export class GalaxyEngine {
   private project(): void {
     const camera = this.camera;
     if (!camera) return;
-    const m = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-    const e = m.elements;
-    let same = this.projMorph === this.morph && this.projKey === `${this.width}x${this.height}`;
+    const e = this.projMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).elements;
+    let same = this.projMorph === this.morph && this.projW === this.width && this.projH === this.height;
     for (let i = 0; same && i < 16; i++) if (this.lastMatrix[i] !== e[i]) same = false;
     if (same) return;
     this.lastMatrix.set(e);
     this.projMorph = this.morph;
-    this.projKey = `${this.width}x${this.height}`;
+    this.projW = this.width;
+    this.projH = this.height;
+    this.projVersion++;
 
     const W = this.width;
     const H = this.height;
@@ -973,8 +1033,14 @@ export class GalaxyEngine {
     const range = u.uSizeRange!.value as number;
     const cols = (this.gridCols = Math.max(1, Math.ceil(W / PICK_CELL)));
     const rows = (this.gridRows = Math.max(1, Math.ceil(H / PICK_CELL)));
-    const cellOf = new Int32Array(n);
-    const start = new Int32Array(cols * rows + 1);
+    const cellOf = this.cellOf;
+    if (this.gridStart.length !== cols * rows + 1) {
+      this.gridStart = new Int32Array(cols * rows + 1);
+      this.gridFill = new Int32Array(cols * rows);
+      this.sat = new Float32Array((cols + 1) * (rows + 1));
+    }
+    const start = this.gridStart;
+    start.fill(0);
     for (let i = 0; i < n; i++) {
       const j = i * 3;
       const x = t[j]! + (g[j]! - t[j]!) * k;
@@ -997,7 +1063,7 @@ export class GalaxyEngine {
     }
     // Summed-area table of star counts per cell (before the counts become offsets), so label
     // placement can ask "how many stars would this card cover" in constant time.
-    const sat = new Float32Array((cols + 1) * (rows + 1));
+    const sat = this.sat;
     for (let r = 0; r < rows; r++) {
       let rowSum = 0;
       for (let c = 0; c < cols; c++) {
@@ -1005,14 +1071,13 @@ export class GalaxyEngine {
         sat[c + 1 + (r + 1) * (cols + 1)] = sat[c + 1 + r * (cols + 1)]! + rowSum;
       }
     }
-    this.sat = sat;
     for (let c = 0; c < cols * rows; c++) start[c + 1]! += start[c]!;
-    const fill = start.slice(0, cols * rows);
+    const fill = this.gridFill;
+    fill.set(start.subarray(0, cols * rows));
     for (let i = 0; i < n; i++) {
       const c = cellOf[i]!;
       if (c >= 0) this.gridItems[fill[c]!++] = i;
     }
-    this.gridStart = start;
   }
 
   /**
@@ -1040,8 +1105,12 @@ export class GalaxyEngine {
     return sat[c1 + r1 * S]! - sat[c0 + r1 * S]! - sat[c1 + r0 * S]! + sat[c0 + r0 * S]!;
   }
 
-  /** The star under a plate point (CSS px), or -1. Receding stars lose ties to lit ones. */
-  pick(x: number, y: number): number {
+  /**
+   * The star under a plate point (CSS px), or -1. Receding stars lose ties to lit ones. The
+   * `sticky` star (the committed hover) competes with its pick radius enlarged (see pickScore),
+   * so a pixel of jitter between dense neighbors does not hand its card to the next star.
+   */
+  pick(x: number, y: number, sticky = -1): number {
     this.project();
     if (this.gridStart.length === 0) return -1;
     const cols = this.gridCols;
@@ -1052,6 +1121,17 @@ export class GalaxyEngine {
     const tNow = this.material.uniforms.uTime!.value as number;
     let best = -1;
     let bestScore = Infinity;
+    const consider = (i: number) => {
+      if (timeOn && this.born[i]! > tNow) return;
+      if (this.sw[i]! <= 0) return;
+      const s = pickScore(Math.hypot(this.sx[i]! - x, this.sy[i]! - y), this.sr[i]!, i === sticky);
+      if (s === Infinity) return;
+      const score = s * (this.emph[i]! < 0.3 ? 2 : 1) + this.sw[i]! * 1e-9;
+      if (score < bestScore) {
+        bestScore = score;
+        best = i;
+      }
+    };
     for (let gy = cy - 1; gy <= cy + 1; gy++) {
       if (gy < 0 || gy >= rows) continue;
       for (let gx = cx - 1; gx <= cx + 1; gx++) {
@@ -1059,19 +1139,149 @@ export class GalaxyEngine {
         const c = gx + gy * cols;
         for (let k = this.gridStart[c]!; k < this.gridStart[c + 1]!; k++) {
           const i = this.gridItems[k]!;
-          if (timeOn && this.born[i]! > tNow) continue;
-          const d = Math.hypot(this.sx[i]! - x, this.sy[i]! - y);
-          const r = this.sr[i]!;
-          if (d > r) continue;
-          const score = (d / r) * (this.emph[i]! < 0.3 ? 2 : 1) + this.sw[i]! * 1e-9;
-          if (score < bestScore) {
-            bestScore = score;
-            best = i;
-          }
+          if (i !== sticky) consider(i);
         }
       }
     }
+    // The sticky star's enlarged reach can run past the 3 x 3 cells searched above (a big star
+    // reaches 23 px, 34 enlarged); it is one star, so it is tested directly.
+    if (sticky >= 0 && sticky < this.n) consider(sticky);
     return best;
+  }
+
+  /**
+   * The group under a plate point: the deepest directory whose envelope holds it and spans at
+   * least MIN_GROUP_PX (see deepestGroup), or -1 for the void. Zoomed out that is a supercluster,
+   * zoomed in a subgroup. Only in the web: in the import graph a directory's files are scattered,
+   * and the hull around them would cover most of the plate. The `sticky` group (the committed
+   * hover) reaches GROUP_STICKY_PX further, so its edge does not flicker under a resting pointer.
+   */
+  pickGroup(x: number, y: number, sticky = -1): number {
+    if (this.layout !== "web" || this.webness < 0.5 || !this.camera) return -1;
+    this.project();
+    const dirs = this.model.report.dirs;
+    const root = dirs[0];
+    if (!root) return -1;
+    const e = this.lastMatrix;
+    const fov = THREE.MathUtils.degToRad(this.camera.fov);
+    const scaleCss = this.height / (2 * Math.tan(fov / 2));
+    const c = this.sphereScratch;
+    return deepestGroup(
+      root.dirs,
+      (d) => dirs[d]!.dirs,
+      (d) => {
+        if (dirs[d]!.totalFiles === 0) return Infinity;
+        // A quick reject on the directory's sphere before any hull: most siblings are nowhere
+        // near the pointer, and a sphere this small on screen holds no group worth picking.
+        const R = this.dirSphere(d, c);
+        const w = e[3]! * c.x + e[7]! * c.y + e[11]! * c.z + e[15]!;
+        if (w > R) {
+          const sx = ((e[0]! * c.x + e[4]! * c.y + e[8]! * c.z + e[12]!) / w + 1) * 0.5 * this.width;
+          const sy = (1 - (e[1]! * c.x + e[5]! * c.y + e[9]! * c.z + e[13]!) / w) * 0.5 * this.height;
+          const rpx = (R * scaleCss) / w;
+          if (rpx * 1.25 < MIN_GROUP_PX) return Infinity;
+          if (Math.hypot(x - sx, y - sy) > rpx * 1.25 + 40) return Infinity;
+        } else if (w < -R) return Infinity; // wholly behind the camera
+        const h = this.groupHull(d);
+        if (h.radius < MIN_GROUP_PX) return Infinity;
+        const pad = GROUP_PAD + (d === sticky ? GROUP_STICKY_PX : 0);
+        if (!hullContains(h.hull, h.count, x, y, pad)) return Infinity;
+        return Math.hypot(x - h.cx, y - h.cy) / Math.max(1, h.radius);
+      },
+    );
+  }
+
+  /** A group's hull at the last projection (for picking), cached until the camera or morph moves. */
+  private groupHull(dir: number) {
+    const hit = this.hullCache.get(dir);
+    if (hit && hit.version === this.projVersion) return hit;
+    if (this.hullCache.size > 256) this.hullCache.clear();
+    const { dirStart, dirEnd, fileOrder } = this.model;
+    const lo = dirStart[dir]!;
+    const hi = dirEnd[dir]!;
+    if (this.hullXs.length < hi - lo) {
+      this.hullXs = new Float32Array(this.n);
+      this.hullYs = new Float32Array(this.n);
+    }
+    const timeOn = (this.material.uniforms.uTimeOn!.value as number) > 0.5;
+    const tNow = this.material.uniforms.uTime!.value as number;
+    let m = 0;
+    for (let k = lo; k < hi; k++) {
+      const i = fileOrder[k]!;
+      if (this.sw[i]! <= 0 || (timeOn && this.born[i]! > tNow)) continue;
+      this.hullXs[m] = this.sx[i]!;
+      this.hullYs[m] = this.sy[i]!;
+      m++;
+    }
+    const count = envelopeHull(this.hullXs, this.hullYs, m, this.hullOut, this.hullScratch);
+    const ext = hullExtent(this.hullOut, count);
+    const entry = { version: this.projVersion, hull: this.hullOut.slice(0, count * 2), count, ...ext };
+    this.hullCache.set(dir, entry);
+    return entry;
+  }
+
+  /**
+   * A group's envelope as it is drawn this frame: its members projected through `camera` at the
+   * current morph and hulled into `out` (HULL_FLOATS long). Returns the vertex count and the
+   * padding that clears the members' own sprites, in an object it reuses: the overlay calls it
+   * on every frame the camera, the morph or the group changes, and it allocates nothing.
+   */
+  envelope(dir: number, camera: THREE.Camera, out: Float32Array): { count: number; pad: number } {
+    const { dirStart, dirEnd, fileOrder } = this.model;
+    const lo = dirStart[dir]!;
+    const hi = dirEnd[dir]!;
+    if (this.hullXs.length < hi - lo) {
+      this.hullXs = new Float32Array(this.n);
+      this.hullYs = new Float32Array(this.n);
+    }
+    // The view-projection product goes into a Float64Array, not a Matrix4: three's matrices
+    // keep their elements in a plain array, and writing sixteen doubles into it boxed each one.
+    const me = this.envelopeMatrix;
+    const P = camera.projectionMatrix.elements;
+    const V = camera.matrixWorldInverse.elements;
+    for (let c = 0; c < 4; c++) {
+      for (let r = 0; r < 4; r++) me[c * 4 + r] = P[r]! * V[c * 4]! + P[4 + r]! * V[c * 4 + 1]! + P[8 + r]! * V[c * 4 + 2]! + P[12 + r]! * V[c * 4 + 3]!;
+    }
+    const e0 = me[0]!, e1 = me[1]!, e3 = me[3]!, e4 = me[4]!, e5 = me[5]!, e7 = me[7]!;
+    const e8 = me[8]!, e9 = me[9]!, e11 = me[11]!, e12 = me[12]!, e13 = me[13]!, e15 = me[15]!;
+    const W = this.width;
+    const H = this.height;
+    const a = this.from;
+    const b = this.to;
+    const k = this.morph;
+    const u = this.material.uniforms;
+    const fov = THREE.MathUtils.degToRad((camera as THREE.PerspectiveCamera).fov ?? 40);
+    const scaleCss = H / (2 * Math.tan(fov / 2));
+    const base = u.uBaseSize!.value as number;
+    const range = u.uSizeRange!.value as number;
+    const timeOn = (u.uTimeOn!.value as number) > 0.5;
+    const tNow = u.uTime!.value as number;
+    // Sampled when huge: a 20k-file supercluster hulled from every member costs a frame's budget
+    // while the camera turns, and the pad absorbs the rare outlier a stride steps over.
+    const stride = Math.max(1, Math.ceil((hi - lo) / ENVELOPE_POINTS));
+    let m = 0;
+    const sum = this.envelopeSum;
+    sum[0] = 0;
+    for (let q = lo; q < hi; q += stride) {
+      const i = fileOrder[q]!;
+      if (timeOn && this.born[i]! > tNow) continue;
+      const j = i * 3;
+      const x = a[j]! + (b[j]! - a[j]!) * k;
+      const y = a[j + 1]! + (b[j + 1]! - a[j + 1]!) * k;
+      const z = a[j + 2]! + (b[j + 2]! - a[j + 2]!) * k;
+      const w = e3 * x + e7 * y + e11 * z + e15;
+      if (w <= 0) continue;
+      this.hullXs[m] = ((e0 * x + e4 * y + e8 * z + e12) / w + 1) * 0.5 * W;
+      this.hullYs[m] = (1 - (e1 * x + e5 * y + e9 * z + e13) / w) * 0.5 * H;
+      sum[0] += Math.min(40, Math.max(1.6, ((base + this.size[i]! * range) * scaleCss) / w)) * 0.5;
+      m++;
+    }
+    const r = this.envelopeResult;
+    r.count = envelopeHull(this.hullXs, this.hullYs, m, out, this.hullScratch);
+    // Clear of the members' cores by their mean radius: a fixed pad cut through the big stars
+    // of a group seen up close, and one sized to its largest star ballooned around one hub.
+    r.pad = GROUP_PAD + (m > 0 ? sum[0]! / m : 0);
+    return r;
   }
 
   /**

@@ -228,6 +228,13 @@ components:
     textColor: "{colors.plate-muted}"
     rounded: "{rounded.xs}"
     padding: "8px 10px"
+  plate-crumbs:
+    backgroundColor: "{colors.plate}"
+    textColor: "{colors.plate-muted}"
+    typography: "{typography.mono}"
+    rounded: "{rounded.xs}"
+  group-envelope:
+    textColor: "{colors.plate-ink}"
   holotype-badge:
     backgroundColor: "{colors.holotype}"
     textColor: "{colors.holotype-ink}"
@@ -400,8 +407,15 @@ The plate's default arrangement is a cosmic web of the directory tree (`src/shar
 - **Gravity:** a plate control chooses what has mass (dependencies, complexity, hotspots, churn, recent change, size). The heaviest files sink to their clump's core, heavier groups draw toward the heart of their cluster, heavy clumps are denser. Star size and color never change with gravity. Each change morphs from wherever the stars are, on the damped curve; reduced motion snaps.
 - **Symbol arcs** bow toward the camera's up, perpendicular to their chord, so a function's callers rise over the web as a canopy rather than threading through the knots between them.
 
+### Pointing at the plate
+Hover follows intent, not the pointer's path (`galaxy/hoverIntent.ts`). What is under the pointer answers at once in two cheap ways: the cursor, and a faint reticle of four short ticks around the star. The card, the envelope, the lit lanes and the dimming wait until the pointer settles: about 75ms on one candidate while moving slowly, or the moment it stops. A sweep commits nothing. Once a card is up, slow steps to a neighbor hand it on within 30ms; slipping off keeps it for 200ms, and the committed star holds a slightly wider, slightly closer claim than its neighbors, so a pixel of jitter never steals it. A group waits out a star's grace before it takes over, so scanning star by star through a cluster does not flash the cluster's outline in the gaps. Touch and pen never hover; a tap selects.
+- **Groups at every level.** Precedence under the pointer: a moon, then a star within its pick radius, then the deepest directory whose envelope holds the pointer and spans at least 24px, then the void. Zoomed out that is a supercluster; zoomed in, a subgroup. Groups are pickable in the web only; in the import graph a directory's files are scattered.
+- **Envelopes.** A hovered group's members brighten and the rest step back; a hairline traces the group: the convex hull of its stars as they project, padded clear of their sprites and rounded. Hover is dashed plate ink at 60%; the selected group is solid at 85%. No fills, no shadows. A name and file count tag sits over the envelope's top in the region-name style, except where the region name already says it.
+- **Selecting.** A click selects a group (its directory record, the camera framing it); a double-click opens its drawer; a click on the void clears. Escape climbs one level at a time: symbol, file, directory, each parent that looks different, then nothing, then the open drawer closes.
+- **Breadcrumb.** Under the title, the selection's place in the tree (project › packages › universe › src › file.ts), names in mono. Any level jumps; hovering one previews its envelope. Past six levels the middle folds into a menu.
+
 ### Plate chrome
-The plate title (display type in plate ink), the Web/Imports toggle, the Gravity menu (each mode with a one-line description; disabled, with a tooltip saying why, in the Imports layout and for history modes without git) and the Lanes control, and a legend inset: solid plate fill with a plate-rule hairline and 1px corners, swatch-led entries that isolate a language on click, the holotype key, one line stating the current gravity, and one line keying the strands. The history scrubber runs along the plate's bottom.
+The plate title (display type in plate ink), the selection's breadcrumb under it, the Web/Imports toggle, the Gravity menu (each mode with a one-line description; disabled, with a tooltip saying why, in the Imports layout and for history modes without git) and the Lanes control, and a legend inset: solid plate fill with a plate-rule hairline and 1px corners, swatch-led entries that isolate a language on click, the holotype key, one line stating the current gravity, and one line keying the strands. The history scrubber runs along the plate's bottom.
 
 ## Do's and Don'ts
 

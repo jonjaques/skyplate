@@ -410,9 +410,9 @@ function Moons({ engine }: { engine: GalaxyEngine }) {
     up.setFromMatrixColumn(camera.matrixWorld, 1);
     const pos = geometry.getAttribute("position") as THREE.BufferAttribute;
     // The ring turns slowly so moons do not sit on the same lanes forever, and holds still
-    // while one is under the pointer: a moving target drifted a neighbor under the cursor
-    // between hover and click.
-    if (!engine.reducedMotion && engine.hoverMoon < 0) spin.current += Math.min(delta, 0.1) * 0.12;
+    // while one is under the pointer (from the first pick, before hover intent commits it): a
+    // moving target drifted a neighbor under the cursor between hover and click.
+    if (!engine.reducedMotion && engine.hoverMoon < 0 && engine.pointerMoon < 0) spin.current += Math.min(delta, 0.1) * 0.12;
     for (let i = 0; i < k; i++) {
       const a = (i / k) * Math.PI * 2 + spin.current;
       // Two radii alternate so neighbors on a crowded ring do not touch.

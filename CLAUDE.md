@@ -30,7 +30,8 @@ src/core/                 analyzer: walk, languages/, metrics, facts, imports/, 
                           ts/ (TypeScript 7 compiler API), stats, findings, layout, site,
                           pipeline (orchestrates), worker + pool (per-file analysis), validate
 src/viewer/               React app: state/ (zustand store, loaders, URL), model/ (derived
-                          indexes), galaxy/, charts/ (+ kit/), shell/ (+ record/), source/,
+                          indexes), galaxy/ (engine, shaders, hoverIntent, groups: hulls,
+                          picking, levels), charts/ (+ kit/), shell/ (+ record/), source/,
                           components/ui (shadcn), lib/ (format, colors, cn)
 build.ts                  viewer production build (see "file:// rules")
 src/index.ts              dev server
@@ -65,6 +66,20 @@ src/index.ts              dev server
   main-thread budget (`test/web.test.ts`: 150 ms at 20k files, 400 ms at 50k). The truth rule:
   no layout choice, gravity included, moves a file out of its directory's neighborhood; bridge
   files leaning along a filament are the one bounded exception.
+- **Hover goes through intent; hover never uploads.** The plate picks on every pointer sample
+  (moon, then star, then the deepest group whose envelope holds the pointer, `engine.pick` /
+  `pickGroup`) but only commits to the hover store when `galaxy/hoverIntent.ts` says the pointer
+  settled. That module is pure and clock-injected; tune its constants there, with the reasons
+  beside them, and keep `hoverIntent.test.ts` passing. A hovered star or group reaches the
+  shader as uniforms (`uHover`, `uReticle`, and `uHotRange`, a depth-first file range tested
+  against the `aOrder` attribute): a per-hover attribute rewrite is a regression.
+- **New per-frame work does not allocate.** Frame listeners (`engine.onFrame`) and what they
+  call reuse buffers and recompute only when the camera, morph or subject changed (see
+  `Envelopes.tsx`, which draws on a 2D canvas because an SVG path string was garbage every
+  frame). The specimen and region label placement passes still allocate per frame (about 2 MB/s
+  while frames run, measured); don't add to them. Check with a heap sampling profile, not by
+  eye. In the dev server, `window.__plate` exposes the full plate's engine, hover intent and
+  stores for scripted pointer runs; production builds drop it.
 
 ## Visual world
 
