@@ -136,7 +136,11 @@ describe("computeLayout", () => {
     const out = computeLayout(big);
     const ms = performance.now() - t0;
     expectFinite(out.graph, "graph");
-    // The budget the analyzer's layout worker is designed around (the web is ~50 ms of it).
-    expect(ms).toBeLessThan(6000);
-  }, 20_000);
+    // The budget the analyzer's layout worker is designed around (the web is ~50 ms of it),
+    // measured on an Apple M5 at ~4.1 s. GitHub's hosted runners run this same code 2-3x slower
+    // (11.7 s on the first CI run), so CI gets 2.5x the budget: still enough to catch a layout
+    // that went quadratic, without failing every PR on the machine's speed alone.
+    const budget = process.env.CI ? 15_000 : 6000;
+    expect(ms).toBeLessThan(budget);
+  }, 30_000);
 });
