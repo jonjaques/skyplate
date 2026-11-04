@@ -521,7 +521,7 @@ function modelineLanguage(text: string, complete: boolean): string | undefined {
 // ─── Language: filename, extension, shape ────────────────────────────────────────────────────
 
 /**
- * starchart's additions to linguist's exact-filename table: conventions linguist either
+ * Skyplate's additions to linguist's exact-filename table: conventions linguist either
  * leaves to its classifier or does not know. Checked after linguist's own filenames.
  */
 const FILENAME_RULES: readonly [RegExp, string][] = [
@@ -639,7 +639,7 @@ function detectLanguage(path: string, name: string, lower: string, text: string,
   const exact = languagesForFilename(name);
   if (exact.length) return { language: exact.length === 1 ? exact[0]! : byShape(exact, text), reason: "filename" };
 
-  // A name matched only case-insensitively or by starchart's own conventions is weaker than
+  // A name matched only case-insensitively or by Skyplate's own conventions is weaker than
   // an interpreter line: `install` and `build` beside fzf's and linguist's bash and sh
   // shebangs are scripts, not linguist's INSTALL (Text) and BUILD (Starlark). Linguist
   // itself would never match them, since its filename lookup is exact.
@@ -1120,7 +1120,7 @@ const GENERATED_DIR = /(?:^|\/)(?:__generated__|htmlcov|\.sqlx|Godeps)\//;
 const GENERATED_FILENAMES = new Set(["gradlew", "gradlew.bat", "mvnw", "mvnw.cmd", "Cargo.toml.orig", ".secrets.baseline"]);
 
 // CocoaPods installs dependencies, their support files and its own Xcode project into Pods/.
-// Linguist calls that generated; to starchart it is someone else's code, as node_modules is,
+// Linguist calls that generated; to Skyplate it is someone else's code, as node_modules is,
 // so it is vendored. Case-sensitive, as CocoaPods writes it.
 const PODS_DIR = /(?:^|\/)Pods\//;
 

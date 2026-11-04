@@ -19,7 +19,7 @@ import { formatInt } from "../lib/format";
 import { filesUnder, neighbors, type Model } from "../model/indices";
 import { ensureSymbols } from "../state/loaders";
 import { sameTarget, useHover, useViewer, type Target } from "../state/store";
-import { PlateControls, PlateCrumbs, PlateFilterChip, PlateLegend, PlateStatus, PlateTitle, type LegendPreview } from "./Chrome";
+import { PlateControls, PlateCrumbs, PlateFilterChip, PlateLegend, PlateMarks, PlateStatus, PlateTitle, type LegendPreview } from "./Chrome";
 import { PlateClicks } from "./clicks";
 import { encodeColors, encodeEmphasis, encodeSizes } from "./encode";
 import { GalaxyEngine } from "./engine";
@@ -38,7 +38,7 @@ export function GalaxyView({ compact = false }: { compact?: boolean }) {
   if (!model) {
     return (
       <div className="relative grid h-full w-full place-items-center bg-plate text-sm text-plate-muted">
-        <p role="status">Charting the collection…</p>
+        <p role="status">Developing the plate…</p>
       </div>
     );
   }
@@ -46,7 +46,7 @@ export function GalaxyView({ compact = false }: { compact?: boolean }) {
     return (
       <div className="relative grid h-full w-full place-items-center bg-plate p-8 text-center text-sm text-plate-muted">
         <p>
-          This project has no files to chart. starchart skips ignored and unreadable files; the about panel lists what was
+          This project has no files to chart. Skyplate skips ignored and unreadable files; the about panel lists what was
           skipped.
         </p>
       </div>
@@ -535,8 +535,8 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
       onBlur={onPlateBlur}
       tabIndex={0}
       role="application"
-      aria-roledescription="galaxy map"
-      aria-label={`Galaxy map of ${model.report.project.name}: ${formatInt(model.fileCount)} files. Drag to orbit, scroll to zoom, click a star to select it, or the space around a group of stars to select that directory. With the map focused, arrow keys step between stars and Enter selects one${compact ? "" : "; Escape steps up one level, from a symbol to its file, its directory and on up"}; F frames it. Command K finds any file by name.`}
+      aria-roledescription="sky map"
+      aria-label={`Sky map of ${model.report.project.name}: ${formatInt(model.fileCount)} files. Drag to orbit, scroll to zoom, click a star to select it, or the space around a group of stars to select that directory. With the map focused, arrow keys step between stars and Enter selects one${compact ? "" : "; Escape steps up one level, from a symbol to its file, its directory and on up"}; F frames it. Command K finds any file by name.`}
     >
       <Canvas
         className="absolute inset-0"
@@ -553,6 +553,7 @@ function Plate({ model, compact }: { model: Model; compact: boolean }) {
       {!compact && <RegionLabels engine={engine} />}
       <SpecimenLabels engine={engine} compact={compact} scene={scene} dismissed={dismissed} />
       <MoonLabel engine={engine} index={moonHover} />
+      <PlateMarks engine={engine} compact={compact} raised={hasHistory} />
       <PlateTitle engine={engine} compact={compact} />
       {compact ? (
         <PlateFilterChip engine={engine} compact />
@@ -602,10 +603,10 @@ function MoonLabel({ engine, index }: { engine: GalaxyEngine; index: number }) {
   return (
     <div
       ref={el}
-      className="pointer-events-none absolute top-0 left-0 z-30 bg-white px-1.5 py-0.5 text-[11px] whitespace-nowrap text-[#15191c]"
+      className="pointer-events-none absolute top-0 left-0 z-30 bg-white px-1.5 py-0.5 text-[11px] whitespace-nowrap text-[#11171d]"
       role="tooltip"
     >
-      <span className="font-mono">{symbols.symbols.name[s]}</span> <span className="text-[#5d666d] italic">{symbols.symbols.kind[s]}</span>
+      <span className="font-mono">{symbols.symbols.name[s]}</span> <span className="text-[#5a6571] italic">{symbols.symbols.kind[s]}</span>
     </div>
   );
 }

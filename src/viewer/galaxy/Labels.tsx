@@ -1,7 +1,7 @@
 /**
  * Specimen labels: white label stock pinned to stars by 1px hairline leaders.
  *
- * The signature of the Specimen Cabinet direction. Which files get a label is React's job and
+ * The plate's signature, the catalog label pinned to its star. Which files get a label is React's job and
  * changes rarely (hover, selection, focus); where each label sits is the frame bus's job and
  * changes every frame the camera moves. Placement is greedy in priority order (selected, then
  * hovered, then holotypes): each label tries a ring of positions around its star, keeps last
@@ -496,24 +496,24 @@ const SpecimenCard = memo(function SpecimenCard({
       ref={cardRef}
       className={cn(
         "absolute top-0 left-0 px-2.5 pt-2 pb-[7px] text-[11px] leading-[1.35] transition-opacity duration-150 will-change-transform",
-        holo ? "w-[216px] bg-holotype text-white" : "w-[196px] bg-white text-[#15191c]",
+        holo ? "w-[216px] bg-holotype text-white" : "w-[196px] bg-white text-[#11171d]",
       )}
       style={{ opacity: 0 }}
     >
-      <div className={cn("mb-[5px] truncate border-b pb-1 text-[13px] font-bold [font-stretch:80%]", holo ? "border-white" : "border-[#15191c]")}>
+      <div className={cn("mb-[5px] truncate border-b pb-1 text-[13px] font-bold [font-stretch:80%]", holo ? "border-white" : "border-[#11171d]")}>
         {holo ? `Holotype · ${baseName(f.path)}` : baseName(f.path)}
       </div>
       <dl className="grid grid-cols-[62px_1fr] gap-y-0.5">
         {fields.map(([k, v, mono]) => (
           <div key={k} className="contents">
-            <dt className={cn("[font-stretch:75%]", holo ? "text-[#fff3f1]" : "text-[#5d666d]")}>{k}</dt>
+            <dt className={cn("[font-stretch:75%]", holo ? "text-[#fff3f1]" : "text-[#5a6571]")}>{k}</dt>
             <dd className={cn("truncate", mono ? "font-mono text-[10.5px]" : "")} title={k === "Path" ? f.path : undefined}>
               {v}
             </dd>
           </div>
         ))}
       </dl>
-      <div className={cn("mt-[5px] border-t pt-1 italic", holo ? "border-[#e07a6e] text-[#fff3f1]" : "border-[#d5d9d6] text-[#5d666d]")}>{det}</div>
+      <div className={cn("mt-[5px] border-t pt-1 italic", holo ? "border-[#e07a6e] text-[#fff3f1]" : "border-[#dde2e8] text-[#5a6571]")}>{det}</div>
     </div>
   );
 });
@@ -535,7 +535,7 @@ const PinLabel = memo(function PinLabel({
       ref={cardRef}
       className={cn(
         "absolute top-0 left-0 max-w-[200px] truncate px-1.5 py-[3px] text-[11px] leading-[1.15] font-bold whitespace-nowrap [font-stretch:80%] transition-opacity duration-150 will-change-transform",
-        holo ? "bg-holotype text-white" : "bg-white text-[#15191c]",
+        holo ? "bg-holotype text-white" : "bg-white text-[#11171d]",
       )}
       style={{ opacity: 0 }}
       title={f.path}
@@ -556,11 +556,11 @@ function SymbolTag({ cardRef }: { cardRef: (el: HTMLDivElement | null) => void }
   return (
     <div
       ref={cardRef}
-      className="absolute top-0 left-0 bg-white px-2 py-1 text-[11px] leading-[1.2] whitespace-nowrap text-[#15191c] transition-opacity duration-150 will-change-transform"
+      className="absolute top-0 left-0 bg-white px-2 py-1 text-[11px] leading-[1.2] whitespace-nowrap text-[#11171d] transition-opacity duration-150 will-change-transform"
       style={{ opacity: 0 }}
     >
       <span className="font-mono font-semibold">{t.name[s]}</span>
-      <span className="text-[#5d666d]">
+      <span className="text-[#5a6571]">
         {" "}
         · <span className="italic">{t.kind[s]}</span> · <span className="figures font-mono">{formatInt(t.refs[s]!)}</span> refs ·{" "}
         <span className="figures font-mono">{formatInt(t.files[s]!)}</span> files

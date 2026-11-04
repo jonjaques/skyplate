@@ -1,10 +1,11 @@
 /*
- * starchart viewer styles: the Specimen Cabinet world.
+ * Skyplate viewer styles: the Plate Archive world.
  *
- * Direction contract: .impeccable/surfaces/src-viewer-index-html.md. Tray-white ground ruled by
- * hairlines into unit trays (no cards, no shadows), an archival gray-blue rail of drawers, ink
- * text, holotype red reserved for each region's most-depended-on file, and a dark glass plate
- * for the galaxy that stays dark in both themes.
+ * Direction contract: .impeccable/surfaces/src-viewer-index-html.md; the shipped system is
+ * DESIGN.md. A codebase photographed onto glass and catalogued: the chrome is silver-gelatin
+ * monochrome (a cool silver ground, white paper, ink), the galaxy plate is dark glass in both
+ * themes, and hue appears only on measured marks and the reserved signals. Holotype red is each
+ * region's most-depended-on file and nothing else.
  *
  * Two layers of tokens:
  *   1. World tokens (tray, paper, rail, plate, holotype, series…): what the direction names.
@@ -13,10 +14,11 @@
  *      without per-component overrides.
  *
  * Every color was checked with the dataviz skill's validate_palette.js against the surface it
- * renders on. The categorical slots are the skill's reference palette minus slot 8 (red): red
+ * renders on (the light ground #f4f6f8 and white paper; the dark ground #13181e and the plate
+ * #0b1016). The categorical slots are the skill's reference palette minus slot 8 (red): red
  * already means "holotype" here, and a red language would impersonate it. Light-mode slots
- * 2-5 sit under 3:1 on the tray, so every chart ships direct labels or a table view as relief
- * (validator WARN, not dismissable).
+ * 2-5 sit under 3:1 on the ground, so every chart ships direct labels or a table view as
+ * relief (validator WARN, not dismissable).
  */
 
 @import "tailwindcss";
@@ -32,28 +34,36 @@
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 
   /* ── World tokens (light) ─────────────────────────────────────────────────────────────── */
-  --color-tray: #f6f7f5;
-  --color-paper: #ffffff;
-  --color-wash: #eef0ee; /*         hover and quiet fills, one step off the tray */
-  --color-ink: #15191c;
-  --color-ink-2: #3b4348; /*        secondary text */
-  --color-ink-3: #5d666d; /*        tertiary text: 5.45:1 on tray */
-  --color-rule: #d5d9d6; /*         hairline */
-  --color-rule-strong: #b9c0c4; /*  control borders */
+  /* The light table: a cool silver ground, white paper on it, ink. The slate rail of the
+     Specimen Cabinet is gone: two big dark-to-mid fields (the rail and the plate) fought for
+     the eye, and the plate is the one that carries facts. */
+  --color-tray: #f4f6f8; /*         the ground: trays, charts, explorer */
+  --color-paper: #ffffff; /*        the record, popovers, the active nav item */
+  --color-wash: #eaeef2; /*         hover and pressed fills, one step down from the ground */
+  --color-rail: #eef1f4; /*         the rail, a half step below the ground so it reads as a sleeve */
+  --color-ink: #11171d;
+  --color-ink-2: #39434d; /*        secondary text */
+  --color-ink-3: #5a6571; /*        tertiary text: 5.48:1 on the ground, 5.24:1 on the rail */
+  --color-rule: #dde2e8; /*         hairline */
+  --color-rule-strong: #c2cad2; /*  control borders */
 
-  --color-rail: #4e6170;
-  --color-rail-deep: #41525f;
-  --color-rail-line: #5d707e;
-  --color-rail-ink: #ffffff;
-  --color-rail-muted: #dfe6eb; /*   5.10:1 on rail */
+  /* Single-series magnitude marks (commit columns, timing bars). Blue is language slot 1, so a
+     blue bar would read as "Markdown commits"; this slate belongs to no categorical slot.
+     5.93:1 on the light ground. */
+  --color-measure: #4e6170;
 
   --color-holotype: #c23a2b; /*     reserved: most-depended-on file per region */
   --color-holotype-ink: #ffffff;
 
   --color-plate: #0b1016; /*        the galaxy's glass, identical in both themes */
   --color-plate-ink: #e9eef1;
-  --color-plate-muted: #aeb8bf;
+  --color-plate-muted: #aeb8bf; /*  9.46:1 on the plate */
   --color-plate-rule: #26313a;
+
+  /* The brand mark: a positive (white stars on dark glass) on light grounds, a negative on
+     dark ones (scripts/brand.ts explains why). */
+  --color-mark-plate: #0b1016;
+  --color-mark-ink: #ffffff;
 
   /* Status (fixed, never themed; always paired with an icon and a label). Critical is ink,
      not the reference palette's red: this world reserves red for holotypes, and a red
@@ -99,8 +109,8 @@
   --color-card-foreground: var(--color-ink);
   --color-popover: var(--color-paper);
   --color-popover-foreground: var(--color-ink);
-  --color-primary: var(--color-rail); /*          the archival gray-blue carries primary actions */
-  --color-primary-foreground: var(--color-rail-ink);
+  --color-primary: var(--color-ink); /*           primary actions are printed in ink */
+  --color-primary-foreground: var(--color-paper);
   --color-secondary: var(--color-wash);
   --color-secondary-foreground: var(--color-ink);
   --color-muted: var(--color-wash);
@@ -110,84 +120,106 @@
   --color-destructive: var(--color-critical);
   --color-border: var(--color-rule);
   --color-input: var(--color-rule-strong);
-  --color-ring: var(--color-series-1);
+  /* Focus is printed in ink, not the first categorical blue: the chrome has no hue of its own,
+     so a blue ring read as "Markdown" (or whatever language holds slot 1). The solid border and
+     outline carry focus: ink 2 is 9.30:1 on the light ground, 10.96:1 on the dark one. The 50%
+     halo around them is softer (2.56:1 light, 3.66:1 dark) and is not relied on. The plate's
+     controls ring in plate ink instead. */
+  --color-ring: var(--color-ink-2);
   --color-chart-1: var(--color-series-1);
   --color-chart-2: var(--color-series-2);
   --color-chart-3: var(--color-series-3);
   --color-chart-4: var(--color-series-4);
   --color-chart-5: var(--color-series-5);
   --color-sidebar: var(--color-rail);
-  --color-sidebar-foreground: var(--color-rail-ink);
-  --color-sidebar-primary: var(--color-tray);
+  --color-sidebar-foreground: var(--color-ink);
+  --color-sidebar-primary: var(--color-paper);
   --color-sidebar-primary-foreground: var(--color-ink);
-  --color-sidebar-accent: var(--color-rail-deep);
-  --color-sidebar-accent-foreground: var(--color-rail-ink);
-  --color-sidebar-border: var(--color-rail-line);
-  --color-sidebar-ring: var(--color-rail-muted);
+  --color-sidebar-accent: var(--color-wash);
+  --color-sidebar-accent-foreground: var(--color-ink);
+  --color-sidebar-border: var(--color-rule);
+  --color-sidebar-ring: var(--color-ring);
 
-  /* Label stock has barely-there corners. shadcn derives its scale as calc(--radius - 4px),
-     which goes negative at these sizes (an invalid radius, silently dropped), so the scale
-     is set outright. */
-  --radius-xs: 1px;
-  --radius-sm: 2px;
-  --radius-md: 3px;
-  --radius-lg: 4px;
-  --radius-xl: 6px;
-  --radius-2xl: 8px;
+  /* Small, consistent corners. shadcn derives its scale as calc(--radius - 4px), which goes
+     negative at these sizes (an invalid radius, silently dropped), so the scale is set
+     outright. Controls take 6px, inset panels on the plate 8px, data marks are round. */
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
 
-  /* Trays and controls sit flat on the tray; only layers that float over content (menus,
-     popovers, dialogs, the command palette) get depth, and that depth has an offset and a
-     soft blur. shadcn puts shadow-xs/sm on inputs, buttons and the active tab.
+  /* In-layout surfaces sit flat; only layers that float over content (menus, popovers,
+     dialogs, the command palette) get depth, and that depth has an offset and a soft blur.
+     shadcn puts shadow-xs/sm on inputs, buttons and the active tab.
      Flat is a transparent zero shadow, not `none`: Tailwind composes these into one
      box-shadow list with the focus ring, and a `none` inside that list makes the whole
      declaration invalid, so focus rings silently never painted on selects, switches and the
      slider thumb. */
   --shadow-xs: 0 0 #0000;
   --shadow-sm: 0 0 #0000;
-  --shadow-md: 0 8px 20px -6px rgb(21 25 28 / 0.22), 0 1px 2px rgb(21 25 28 / 0.08);
-  --shadow-lg: 0 18px 40px -12px rgb(21 25 28 / 0.32), 0 2px 6px rgb(21 25 28 / 0.08);
+  --shadow-md: 0 10px 24px -8px rgb(17 23 29 / 0.22), 0 1px 2px rgb(17 23 29 / 0.08);
+  --shadow-lg: 0 22px 48px -14px rgb(17 23 29 / 0.34), 0 2px 6px rgb(17 23 29 / 0.08);
 
   --ease-damped: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-develop: develop 2.4s var(--ease-damped) infinite;
 }
 
-/* Dark theme: the rail deepens, trays go to slate, the plate does not change. index.html
-   resolves the system preference into data-theme before first paint; the media block is the
-   no-script fallback, guarded so an explicit light choice still wins. */
+/* A star coming up out of the emulsion, for the loading plate: it fades in, holds, and sinks
+   back, each star on its own delay, so the plate looks like it is developing. */
+@keyframes develop {
+  0%,
+  100% {
+    opacity: 0.08;
+    transform: scale(0.6);
+  }
+  45%,
+  70% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Dark theme: the room lights go down. The ground goes to a blue-black a step above the
+   plate, paper to a lifted slate, and the plate does not change (it gets a hairline edge from
+   the shell instead, so it never merges into the ground). index.html resolves the system
+   preference into data-theme before first paint; the media block is the no-script fallback,
+   guarded so an explicit light choice still wins. */
 @media (prefers-color-scheme: dark) {
   :root:where(:not([data-theme="light"])) {
     color-scheme: dark;
-    --color-tray: #161c20;
-    --color-paper: #1c2328;
-    --color-wash: #222a30;
-    --color-ink: #e8ecee;
-    --color-ink-2: #c4ccd1;
-    --color-ink-3: #9aa5ad;
-    --color-rule: #2b3439;
-    --color-rule-strong: #3d484f;
-    --color-rail: #2c3a45;
-    --color-rail-deep: #24303a;
-    --color-rail-line: #3a4a56;
-    --color-rail-muted: #d8dfe4;
+    --color-tray: #13181e;
+    --color-paper: #181e25;
+    --color-wash: #1f262e;
+    --color-rail: #0f1419;
+    --color-ink: #e8edf1;
+    --color-ink-2: #c3ccd3;
+    --color-ink-3: #98a3ad;
+    --color-rule: #262e36;
+    --color-rule-strong: #36404a;
+    --color-measure: #8da2b2;
     --color-holotype: #b8402f;
-    --color-ring: var(--color-series-dark-1);
+    --color-mark-plate: #e9eef2;
+    --color-mark-ink: #0b1016;
   }
 }
 :root[data-theme="dark"] {
   color-scheme: dark;
-  --color-tray: #161c20;
-  --color-paper: #1c2328;
-  --color-wash: #222a30;
-  --color-ink: #e8ecee;
-  --color-ink-2: #c4ccd1;
-  --color-ink-3: #9aa5ad;
-  --color-rule: #2b3439;
-  --color-rule-strong: #3d484f;
-  --color-rail: #2c3a45;
-  --color-rail-deep: #24303a;
-  --color-rail-line: #3a4a56;
-  --color-rail-muted: #d8dfe4;
+  --color-tray: #13181e;
+  --color-paper: #181e25;
+  --color-wash: #1f262e;
+  --color-rail: #0f1419;
+  --color-ink: #e8edf1;
+  --color-ink-2: #c3ccd3;
+  --color-ink-3: #98a3ad;
+  --color-rule: #262e36;
+  --color-rule-strong: #36404a;
+  --color-measure: #8da2b2;
   --color-holotype: #b8402f;
-  --color-ring: var(--color-series-dark-1);
+  --color-mark-plate: #e9eef2;
+  --color-mark-ink: #0b1016;
 }
 
 @layer base {

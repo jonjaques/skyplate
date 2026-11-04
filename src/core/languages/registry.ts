@@ -1,5 +1,5 @@
 /**
- * Language registry: every GitHub Linguist language plus starchart's two fallbacks, indexed by
+ * Language registry: every GitHub Linguist language plus Skyplate's two fallbacks, indexed by
  * id, extension, filename, interpreter and alias.
  *
  * Ids follow the shared rule: the linguist name lowercased with spaces turned into "-"
@@ -15,7 +15,7 @@ import { LANGUAGES, type LanguageRow } from "./linguist.generated";
 
 export const toLanguageId = (name: string): string => name.toLowerCase().replace(/ /g, "-");
 
-/** Fallback ids. "text" is also linguist's own "Text" language; "binary" is starchart's. */
+/** Fallback ids. "text" is also linguist's own "Text" language; "binary" is Skyplate's. */
 export const TEXT = "text";
 export const BINARY = "binary";
 

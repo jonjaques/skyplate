@@ -6,4 +6,4 @@
 
 import hljs from "highlight.js";
 
-window.__starchartHighlight = hljs;
+window.__skyplateHighlight = hljs;

@@ -1,8 +1,8 @@
 /**
- * Command-line parsing for `starchart`, on node:util parseArgs.
+ * Command-line parsing for `skyplate`, on node:util parseArgs.
  *
- *   starchart [path=.] [options]          analyze a project and write a report folder
- *   starchart serve <dir> [--port N] [--open]
+ *   skyplate [path=.] [options]          analyze a project and write a report folder
+ *   skyplate serve <dir> [--port N] [--open]
  *
  * parseArgs has no negated booleans that work across runtimes (`allowNegative` is recent in
  * Node and not something Bun promises), so --no-git and friends are declared as their own
@@ -12,15 +12,15 @@
 import { parseArgs } from "node:util";
 import { DEFAULT_OPTIONS } from "../core/pipeline";
 
-export const USAGE = `starchart: map a project as an explorable 3D galaxy, dashboard and source reader.
+export const USAGE = `skyplate: map a project as an explorable 3D galaxy, dashboard and source reader.
 
 Usage
-  starchart [path] [options]              analyze <path> (default: .) and write a report folder
-  starchart serve <dir> [--port N] [--open]
+  skyplate [path] [options]              analyze <path> (default: .) and write a report folder
+  skyplate serve <dir> [--port N] [--open]
                                           serve an existing report folder over http
 
 Output
-  -o, --out <dir>          report folder (default: ./<project-name>.starchart)
+  -o, --out <dir>          report folder (default: ./<project-name>.skyplate)
       --open               serve the finished report and open it in the browser
       --serve              serve the finished report without opening a browser
       --port <n>           port for --serve / --open / serve (default: 4747, or any free one)
@@ -138,7 +138,7 @@ export function parseCommand(argv: string[]): Command {
   if (v.version) return { kind: "version" };
 
   if (positionals[0] === "serve") {
-    if (positionals.length !== 2) throw new UsageError("serve takes exactly one report folder: starchart serve <dir>");
+    if (positionals.length !== 2) throw new UsageError("serve takes exactly one report folder: skyplate serve <dir>");
     return { kind: "serve", dir: positionals[1]!, port: parsePort(v.port), open: !!v.open };
   }
   if (positionals.length > 1) throw new UsageError(`expected one project path, got ${positionals.length}: ${positionals.join(" ")}`);

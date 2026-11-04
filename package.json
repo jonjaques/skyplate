@@ -1,18 +1,45 @@
 {
-  "name": "starchart",
+  "name": "skyplate",
   "version": "0.1.0",
+  "description": "Point it at any project and get a static report: a 3D plate of every file, a statistics dashboard, a source reader and TypeScript code intelligence.",
+  "license": "Apache-2.0",
+  "author": {
+    "name": "Jon Jaques",
+    "url": "https://github.com/jonjaques"
+  },
+  "homepage": "https://github.com/jonjaques/skyplate",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jonjaques/skyplate.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jonjaques/skyplate/issues"
+  },
+  "keywords": [
+    "codebase",
+    "code-visualization",
+    "code-map",
+    "repository-analysis",
+    "static-report",
+    "dependency-graph",
+    "git-history",
+    "hotspots",
+    "typescript",
+    "3d",
+    "cli"
+  ],
   "private": true,
   "type": "module",
   "bin": {
-    "starchart": "bin/starchart.ts"
+    "skyplate": "bin/skyplate.ts"
   },
   "scripts": {
     "dev": "bun --hot src/index.ts",
     "start": "NODE_ENV=production bun src/index.ts",
     "build": "bun run build.ts",
     "typecheck": "bun check",
-    "starchart": "bun bin/starchart.ts",
-    "report:dev": "bun bin/starchart.ts --out .starchart/dev"
+    "skyplate": "bun bin/skyplate.ts",
+    "report:dev": "bun bin/skyplate.ts --out .skyplate/dev"
   },
   "dependencies": {
     "@fontsource-variable/archivo": "^5.3.0",
@@ -44,9 +71,10 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/d3": "^7.4.3",
+    "@types/fontkit": "^2.0.9",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/three": "^0.187.0"
-  },
-  "description": "Point it at any project; get an explorable 3D galaxy map, statistics dashboard, and source reader as a static site."
+    "@types/three": "^0.187.0",
+    "fontkit": "^2.0.4"
+  }
 }

@@ -37,7 +37,7 @@ import type { GitResult } from "../src/core/contracts";
 
 // ─── Fixture plumbing ────────────────────────────────────────────────────────────────────────
 
-const TMP = mkdtempSync(join(tmpdir(), "starchart-git-test-"));
+const TMP = mkdtempSync(join(tmpdir(), "skyplate-git-test-"));
 const ISOLATED = {
   PATH: process.env.PATH ?? "/usr/bin:/bin",
   HOME: TMP,

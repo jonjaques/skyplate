@@ -1,5 +1,5 @@
 /**
- * The starchart report contract.
+ * The Skyplate report contract.
  *
  * This file is the single seam between the analyzer (runs in Bun, writes the report) and the
  * viewer (runs in the browser, reads it). Both sides import these types; nothing else crosses.
@@ -686,7 +686,7 @@ export interface CodeSymbolsIndex {
 
 export interface Report {
   schemaVersion: typeof SCHEMA_VERSION;
-  tool: { name: "starchart"; version: string };
+  tool: { name: "skyplate"; version: string };
   /** ISO 8601. */
   generatedAt: string;
   /** Wall-clock analysis time in milliseconds, per phase. */
@@ -754,14 +754,14 @@ export interface Report {
  * from disk: browsers refuse fetch() and module scripts over file://, but they still run a
  * plain <script src>. Each data file is one call:
  *
- *   window.__starchart.resolve("report", { ...Report });
- *   window.__starchart.resolve("symbols", { ...CodeSymbols });
- *   window.__starchart.resolve("source/12", { chunk: 12, files: {...} });
+ *   window.__skyplate.resolve("report", { ...Report });
+ *   window.__skyplate.resolve("symbols", { ...CodeSymbols });
+ *   window.__skyplate.resolve("source/12", { chunk: 12, files: {...} });
  *
  * The report loads first and paints; symbols and source chunks load on demand, so a large
  * repository's first view never waits on its reference table.
  *
- * The viewer installs `window.__starchart` before injecting the tags.
+ * The viewer installs `window.__skyplate` before injecting the tags.
  */
-export const DATA_GLOBAL = "__starchart" as const;
+export const DATA_GLOBAL = "__skyplate" as const;
 export const REPORT_FILE = "data/report.js" as const;

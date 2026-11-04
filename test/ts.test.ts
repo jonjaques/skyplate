@@ -639,7 +639,7 @@ describe("limits", () => {
 
   test("never throws: an unusable root is reported, not raised", async () => {
     const messages: string[] = [];
-    const t = await analyzeTypeScript(inputFor("/nonexistent/starchart-root", ["a.ts"], { onProgress: (m) => messages.push(m) }));
+    const t = await analyzeTypeScript(inputFor("/nonexistent/skyplate-root", ["a.ts"], { onProgress: (m) => messages.push(m) }));
     expect(t).toBeNull();
     expect(messages.length).toBeGreaterThan(0);
   }, 60_000);
@@ -649,7 +649,7 @@ describe("limits", () => {
 
 describe("CommonJS without a config", () => {
   // Built in the OS temp dir rather than under test/fixtures: an inferred project searches the
-  // file's ancestors for a tsconfig, and under this repo it would find starchart's own.
+  // file's ancestors for a tsconfig, and under this repo it would find Skyplate's own.
   let dir = "";
   let c: CodeSymbols;
   const files: Record<string, string> = {
@@ -687,7 +687,7 @@ describe("CommonJS without a config", () => {
   const find = (n: string) => c.symbols.name.indexOf(n);
 
   beforeAll(async () => {
-    dir = mkdtempSync(join(tmpdir(), "starchart-ts-cjs-"));
+    dir = mkdtempSync(join(tmpdir(), "skyplate-ts-cjs-"));
     for (const [p, text] of Object.entries(files)) {
       mkdirSync(join(dir, p, ".."), { recursive: true });
       writeFileSync(join(dir, p), text);
@@ -750,7 +750,7 @@ describe("CommonJS without a config", () => {
 
 describe("doc comments with every link form", () => {
   // A bare `{@link}` made the compiler's own comment formatter throw, and that one comment
-  // ended the analysis of the whole project: starchart's report of itself had no symbols.
+  // ended the analysis of the whole project: Skyplate's report of itself had no symbols.
   let dir = "";
   let c: CodeSymbols | null;
   const files: Record<string, string> = {
@@ -768,7 +768,7 @@ describe("doc comments with every link form", () => {
   const paths = Object.keys(files).sort();
 
   beforeAll(async () => {
-    dir = mkdtempSync(join(tmpdir(), "starchart-ts-links-"));
+    dir = mkdtempSync(join(tmpdir(), "skyplate-ts-links-"));
     for (const [p, text] of Object.entries(files)) {
       mkdirSync(join(dir, p, ".."), { recursive: true });
       writeFileSync(join(dir, p), text);
@@ -803,7 +803,7 @@ describe("a circular tsconfig `extends`", () => {
   const paths = Object.keys(files).sort();
 
   beforeAll(() => {
-    dir = mkdtempSync(join(tmpdir(), "starchart-ts-circular-"));
+    dir = mkdtempSync(join(tmpdir(), "skyplate-ts-circular-"));
     for (const [p, text] of Object.entries(files)) {
       mkdirSync(join(dir, p, ".."), { recursive: true });
       writeFileSync(join(dir, p), text);

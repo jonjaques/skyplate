@@ -1,38 +1,48 @@
-# starchart
+<p>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/skyplate-lockup-dark.svg" />
+    <img src="docs/brand/skyplate-lockup-light.svg" alt="Skyplate" width="297" height="54" />
+  </picture>
+</p>
 
-Point it at any project and get a static report folder: a 3D galaxy map of every file, a
+Point Skyplate at any project and get a static report folder: a 3D plate of every file, a
 statistics dashboard, a source reader, and TypeScript code intelligence where picking a
 function lights up every file that calls it.
 
-The galaxy is a cosmic web of the directory tree: directories are clusters of stars nested
-inside their parents, strung together by filaments that stand for the imports between them.
-A Gravity control picks what pulls files to the center of their clusters (dependencies,
-complexity, hotspots, churn, recent change or size), and the Imports view rearranges every
-file by the import graph alone.
+The name comes from astronomical photographic plates: the sky recorded on glass, then
+catalogued. Skyplate does that to a codebase. The plate is a cosmic web of the directory tree:
+directories are clusters of stars nested inside their parents, strung together by filaments
+that stand for the imports between them. A Gravity control picks what pulls files to the center
+of their clusters (dependencies, complexity, hotspots, churn, recent change or size), and the
+Imports view rearranges every file by the import graph alone.
 
 ```sh
 bun install
-bun run build                          # build the viewer template once (dist/viewer)
-bun run starchart ~/code/some-project  # writes ./some-project.starchart/
+bun run build                         # build the viewer template once (dist/viewer)
+bun run skyplate ~/code/some-project  # writes ./some-project.skyplate/
 ```
 
-Open `some-project.starchart/index.html` straight from disk, or serve it:
+Open `some-project.skyplate/index.html` straight from disk, or serve it:
 
 ```sh
-bun run starchart serve some-project.starchart --open
+bun run skyplate serve some-project.skyplate --open
 ```
 
 The folder is self-contained and static, so it can be zipped, attached, or dropped on any
-static host. Run `bun run starchart --help` for every option. The ones people reach for:
+static host. Run `bun run skyplate --help` for every option. The ones people reach for:
 
 | Option | What it does |
 | --- | --- |
-| `-o, --out <dir>` | where to write the report (default `./<project>.starchart`) |
+| `-o, --out <dir>` | where to write the report (default `./<project>.skyplate`) |
 | `--open` | serve the finished report and open it |
 | `--no-source` | embed no file contents, for reports you share |
 | `--redact-paths` | leave the absolute project path out of the report |
 | `--no-git` / `--no-symbols` | skip history / skip TypeScript analysis |
 | `--exclude <glob>` | leave paths out (gitignore syntax, repeatable) |
+
+Skyplate was called starchart before its first release. It still replaces a report folder an
+earlier starchart run wrote, and still leaves `*.starchart/` folders inside a project out of the
+analysis.
 
 ## What it measures
 
@@ -55,15 +65,26 @@ static host. Run `bun run starchart --help` for every option. The ones people re
 ## Development
 
 ```sh
-bun dev                                  # viewer with hot reload on :4317, serving .starchart/dev
-bun run starchart <path> --out .starchart/dev   # point the dev server at a real report
-bun test                                 # analyzer, pipeline, CLI and viewer-logic tests
-bun check                                # typecheck (TypeScript 7)
+bun dev                                         # viewer with hot reload on :4317, serving .skyplate/dev
+bun run skyplate <path> --out .skyplate/dev     # point the dev server at a real report
+bun test                                        # analyzer, pipeline, CLI and viewer-logic tests
+bun check                                       # typecheck (TypeScript 7)
+bun scripts/brand.ts                            # regenerate the mark, wordmark and favicon
 ```
 
-`bun run report:dev` writes a report of starchart itself into `.starchart/dev`.
+`bun run report:dev` writes a report of Skyplate itself into `.skyplate/dev`.
 
-## License notes
+## License
+
+Skyplate is licensed under the [Apache License 2.0](LICENSE); see [NOTICE](NOTICE) for the
+copyright and attributions.
 
 `src/core/languages/linguist.generated.ts` is generated from GitHub Linguist's language data
-(MIT). Regenerate it with `bun scripts/gen-languages.ts`.
+(MIT; the notice is in the file's header). Regenerate it with `bun scripts/gen-languages.ts`.
+
+Every report carries the viewer bundle, so sharing a report redistributes Skyplate and the
+open-source packages and fonts bundled into it. Each report folder therefore ships `LICENSE`,
+`NOTICE` and `THIRD_PARTY_NOTICES` beside its `index.html`, and the bundled scripts open with a
+one-line license banner. [THIRD_PARTY_NOTICES](THIRD_PARTY_NOTICES) lists every bundled package
+with its version and license text; `bun run build` regenerates it from what the bundles actually
+contain (`scripts/third-party-notices.ts`), so it changes only when they do.

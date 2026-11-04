@@ -232,7 +232,7 @@ export function firstSentence(doc: TsNode | undefined): string {
  * getTextOfJSDocComment, which rebuilds a link from `link.name`: for a link with no name
  * (`{@link}`) the remote node's `name` is the link's text node, its formatter calls assertNever
  * on that, and assertNever's message throws trying to JSON.stringify the cyclic remote node.
- * Nothing caught it, so one such comment ended the analysis of the whole repository (starchart's
+ * Nothing caught it, so one such comment ended the analysis of the whole repository (Skyplate's
  * own inline-doc.tsx has one). The written form is also what the viewer's inline-doc parser
  * reads, `{@link Name|label}` and `{@link Name#member}` included.
  */

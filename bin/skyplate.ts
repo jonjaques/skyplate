@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
 /**
- * starchart: point it at a project directory, get an explorable report folder.
+ * skyplate: point it at a project directory, get an explorable report folder.
  *
- *   bun bin/starchart.ts <path> [options]      run `--help` for the options
+ *   bun bin/skyplate.ts <path> [options]      run `--help` for the options
  *
  * Kept to the entry point alone so `bin` in package.json stays a stable path while the CLI
  * itself lives in src/cli/.

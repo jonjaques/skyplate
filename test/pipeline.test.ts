@@ -22,10 +22,10 @@ import { isReplaceable, outputPlacement, writeSite } from "../src/core/site";
 import { validateReport } from "../src/core/validate";
 import { REF_KINDS, SymbolFlag, type Report } from "../src/shared/schema";
 
-const TMP = realpathSync(mkdtempSync(join(tmpdir(), "starchart-pipeline-test-")));
+const TMP = realpathSync(mkdtempSync(join(tmpdir(), "skyplate-pipeline-test-")));
 const REPO = join(TMP, "demo");
-const OUT = join(TMP, "out", "demo.starchart");
-const SECRET = "starchart-test-secret-6f1c9e0d7b";
+const OUT = join(TMP, "out", "demo.skyplate");
+const SECRET = "skyplate-test-secret-6f1c9e0d7b";
 
 const ISOLATED = {
   PATH: process.env.PATH ?? "/usr/bin:/bin",
@@ -71,7 +71,7 @@ const id = (path: string) => report.files.findIndex((f) => f.path === path);
 beforeAll(async () => {
   mkdirSync(REPO, { recursive: true });
   git(["init", "-q", "-b", "main"]);
-  write("README.md", "# Demo Project\n\nA small fixture for the starchart pipeline test.\n\nSee [the guide](docs/guide.md).\n");
+  write("README.md", "# Demo Project\n\nA small fixture for the skyplate pipeline test.\n\nSee [the guide](docs/guide.md).\n");
   write("docs/guide.md", "# Guide\n\nBack to the [readme](../README.md).\n");
   write("tsconfig.json", JSON.stringify({ compilerOptions: { strict: true, target: "ES2022", module: "ESNext", moduleResolution: "bundler" }, include: ["src", "tests"] }, null, 2));
   write(
@@ -124,7 +124,7 @@ function walkFiles(dir: string): string[] {
 
 function loadData<T>(file: string): T {
   const text = readFileSync(file, "utf8");
-  const m = /^window\.__starchart\.resolve\("([^"]+)", ([\s\S]*)\);\n$/.exec(text);
+  const m = /^window\.__skyplate\.resolve\("([^"]+)", ([\s\S]*)\);\n$/.exec(text);
   if (!m) throw new Error(`${file} is not a data script`);
   return JSON.parse(m[2]!) as T;
 }
@@ -362,7 +362,7 @@ describe("code intelligence", () => {
 describe("site", () => {
   test("data files are classic scripts the viewer can load over file://", () => {
     for (const f of ["data/report.js", "data/symbols.js", "data/source/0000.js"]) {
-      expect(readFileSync(join(OUT, f), "utf8").startsWith("window.__starchart.resolve(")).toBe(true);
+      expect(readFileSync(join(OUT, f), "utf8").startsWith("window.__skyplate.resolve(")).toBe(true);
     }
     expect(existsSync(join(OUT, "index.html"))).toBe(true);
     expect(existsSync(join(OUT, "data/report.json"))).toBe(false);
@@ -377,6 +377,28 @@ describe("site", () => {
     for (const p of assets.filter((p) => p.endsWith(".js") || p.endsWith(".css"))) {
       expect(readFileSync(p, "utf8")).not.toMatch(/sourceMappingURL=\S*\.map/);
     }
+  });
+
+  test("every report carries Skyplate's license, NOTICE and the bundled packages' licenses", () => {
+    // Sharing a report redistributes the viewer bundle, so its notices travel with it, at the
+    // top level where a reader looks.
+    const root = join(import.meta.dir, "..");
+    expect(readFileSync(join(OUT, "LICENSE"), "utf8")).toBe(readFileSync(join(root, "LICENSE"), "utf8"));
+    expect(readFileSync(join(OUT, "LICENSE"), "utf8")).toContain("Apache License\n                           Version 2.0, January 2004");
+    expect(readFileSync(join(OUT, "NOTICE"), "utf8")).toBe(readFileSync(join(root, "NOTICE"), "utf8"));
+    expect(readFileSync(join(OUT, "NOTICE"), "utf8")).toContain("Copyright 2026 Jon Jaques");
+    const third = readFileSync(join(OUT, "THIRD_PARTY_NOTICES"), "utf8");
+    // A few of what the bundles really contain, the fonts and CSS-only packages included.
+    for (const name of ["react", "react-dom", "three", "highlight.js", "d3-scale", "zustand", "@fontsource-variable/archivo", "tailwindcss", "@react-three/fiber"]) {
+      expect(third).toMatch(new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")} \\d+\\.\\d+\\.\\d+ `, "m"));
+    }
+    expect(third).toContain("SIL OPEN FONT LICENSE Version 1.1");
+    // Declared dependencies the viewer never imports are not claimed as bundled.
+    expect(third).not.toMatch(/^d3-force-3d /m);
+    // And the scripts name their license on their first line, outside the IIFE.
+    const app = readFileSync(join(OUT, "assets", "app.js"), "utf8");
+    expect(app.split("\n")[0]).toMatch(/^\/\*! .*Apache-2\.0.*THIRD_PARTY_NOTICES \*\/$/);
+    expect(app.split("\n")[1]).toStartWith("(()=>{");
   });
 
   test("source is embedded by chunk and the reader can find it", () => {
@@ -399,14 +421,14 @@ describe("site", () => {
     await writeSite(result, OUT, { json: true });
     expect(existsSync(join(OUT, "data/report.json"))).toBe(true);
     const siblings = readdirSync(join(OUT, ".."));
-    expect(siblings).toEqual(["demo.starchart"]);
+    expect(siblings).toEqual(["demo.skyplate"]);
   });
 
   test("refuses to replace a folder that is not a report", async () => {
     const other = join(TMP, "not-a-report");
     mkdirSync(other, { recursive: true });
     writeFileSync(join(other, "notes.txt"), "keep me");
-    await expect(writeSite(result, other)).rejects.toThrow(/not a starchart report/);
+    await expect(writeSite(result, other)).rejects.toThrow(/not a skyplate report/);
     expect(readFileSync(join(other, "notes.txt"), "utf8")).toBe("keep me");
   });
 
@@ -417,7 +439,7 @@ describe("site", () => {
     mkdirSync(join(victim, "src"), { recursive: true });
     writeFileSync(join(victim, "data", "report.js"), "export const report = {};\n");
     writeFileSync(join(victim, "src", "important.txt"), "keep me");
-    await expect(writeSite(result, victim)).rejects.toThrow(/not a starchart report/);
+    await expect(writeSite(result, victim)).rejects.toThrow(/not a skyplate report/);
     expect(readFileSync(join(victim, "src", "important.txt"), "utf8")).toBe("keep me");
     expect(isReplaceable(victim)).toBe(false);
   });
@@ -433,13 +455,32 @@ describe("site", () => {
     expect(isReplaceable(copy)).toBe(false);
   });
 
+  test("a report written before the rename (as starchart) is still replaced, and only a whole one", async () => {
+    const legacy = join(TMP, "old.starchart");
+    cpSync(OUT, legacy, { recursive: true });
+    const page = join(legacy, "index.html");
+    const data = join(legacy, "data", "report.js");
+    // What starchart's viewer and data scripts said, and nothing else at the top level.
+    for (const f of ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES"]) rmSync(join(legacy, f));
+    writeFileSync(page, readFileSync(page, "utf8").replace('content="skyplate"', 'content="starchart"'));
+    writeFileSync(data, readFileSync(data, "utf8").replace("window.__skyplate.", "window.__starchart."));
+    expect(isReplaceable(legacy)).toBe(true);
+    // One half of each pair is not a report: an old data script under a new page, or the reverse.
+    writeFileSync(page, readFileSync(page, "utf8").replace('content="starchart"', 'content="skyplate"'));
+    expect(isReplaceable(legacy)).toBe(false);
+    writeFileSync(page, readFileSync(page, "utf8").replace('content="skyplate"', 'content="starchart"'));
+    await writeSite(result, legacy);
+    expect(readFileSync(data, "utf8")).toStartWith("window.__skyplate.resolve(");
+    expect(existsSync(join(legacy, "THIRD_PARTY_NOTICES"))).toBe(true);
+  });
+
   test("refuses to write over the analyzed project or a folder that holds it", async () => {
     expect(result.root).toBe(REPO);
     await expect(writeSite(result, REPO)).rejects.toThrow(/is the project being analyzed/);
     await expect(writeSite(result, TMP)).rejects.toThrow(/contains the project being analyzed/);
     expect(existsSync(join(REPO, "src", "app.ts"))).toBe(true);
-    // A new folder inside the project is fine: that is where `starchart .` writes by default.
-    expect(outputPlacement(join(REPO, "fresh.starchart"), REPO)).toBe("inside");
+    // A new folder inside the project is fine: that is where `skyplate .` writes by default.
+    expect(outputPlacement(join(REPO, "fresh.skyplate"), REPO)).toBe("inside");
   });
 
   test("an output path under a file fails in one line, naming the file", async () => {

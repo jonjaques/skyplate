@@ -1,5 +1,5 @@
 /**
- * Galaxy dev harness: the Specimen Cabinet frame (rail, top bar, record, trays) as plain
+ * Galaxy dev harness: the Plate Archive frame (rail, top bar, record, trays) as plain
  * placeholders around a real GalaxyView, plus query-string presets for repeatable looks:
  *
  *   ?compact=1        the Source tab's small plate
@@ -18,6 +18,7 @@ import { loadReport } from "../../data/load";
 import { ensureSymbols } from "../../state/loaders";
 import { useViewer, type ColorBy, type EdgeMode, type Gravity, type LayoutMode, type SizeBy } from "../../state/store";
 import "../../styles.css";
+import { Lockup } from "../../brand/Brand";
 import { GalaxyView } from "../GalaxyView";
 
 const q = new URLSearchParams(location.search);
@@ -66,9 +67,9 @@ function Frame() {
   const compact = q.get("compact") === "1";
   return (
     <div className="grid h-full grid-cols-[260px_1fr_340px] grid-rows-[52px_1fr_216px]">
-      <nav className="row-span-3 bg-rail p-5 text-rail-ink">
-        <div className="text-[28px] leading-none font-bold [font-stretch:80%]">starchart</div>
-        <div className="mt-1.5 text-xs text-rail-muted">{report?.project.name ?? error ?? "loading"}</div>
+      <nav className="row-span-3 border-r border-rule bg-rail p-5 text-ink">
+        <Lockup height={17} />
+        <div className="mt-3 text-xs text-ink-3">{report?.project.name ?? error ?? "loading"}</div>
       </nav>
       <header className="col-span-2 border-b border-rule bg-paper" />
       <main className={compact ? "relative grid min-h-0 grid-cols-[1fr_420px]" : "relative min-h-0"}>
@@ -80,7 +81,7 @@ function Frame() {
       <aside className="row-span-2 border-l border-rule bg-paper p-5 font-mono text-xs text-ink-3">
         {selection ? `${selection.kind} ${selection.id}` : "no selection"}
       </aside>
-      <section className="border-t border-ink bg-tray" />
+      <section className="border-t border-rule bg-tray" />
     </div>
   );
 }

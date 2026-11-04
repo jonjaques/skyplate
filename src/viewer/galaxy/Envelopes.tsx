@@ -6,7 +6,7 @@
  * of their sprites and rounded (groups.ts). It is traced in screen space because a 3D outline
  * of a web cluster has no single silhouette: the disc-plane contours this replaces were
  * meaningless once the clusters left the disc. Hairlines only, no fill and no shadow: the
- * Specimen Cabinet draws boundaries the way a survey map draws a parcel.
+ * plate draws boundaries the way a survey map draws a parcel.
  *
  * The outlines go on a 2D canvas over the stars, and are redrawn only on frames where the
  * camera, the morph, the plate's size, the scrubber or a group changes; any other frame touches

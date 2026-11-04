@@ -8,8 +8,8 @@ import { Kbd } from "../../components/ui/kbd";
 import { formatInt, plural } from "../../lib/format";
 import { useViewer } from "../../state/store";
 import { show } from "../navigate";
-import { Quiet, RowButton, Section, SeverityMark, PathText } from "../parts";
-import { MOD_KEY } from "../TopBar";
+import { MetaText, Quiet, RowButton, Section, SeverityMark, PathText } from "../parts";
+import { MOD_KEY } from "../nav";
 import { AuthorRecordView } from "./AuthorRecord";
 import { DirRecordView } from "./DirRecord";
 import { FileRecordView } from "./FileRecord";
@@ -83,11 +83,20 @@ function Guide() {
       <header>
         <h2 className="text-[22px] leading-[1.15] font-bold [font-stretch:80%]">{report.project.name}</h2>
         {report.project.description && <p className="mt-2 text-[13px] text-ink-2">{report.project.description}</p>}
-        <p className="figures mt-2 font-mono text-xs text-ink-3">
-          {/* Each figure keeps its unit: a break may fall between them, never inside one. */}
-          <span className="whitespace-nowrap">{plural(report.totals.files, "file")}</span> ·{" "}
-          <span className="whitespace-nowrap">{formatInt(report.totals.lines)} lines</span> ·{" "}
-          <span className="whitespace-nowrap">{plural(report.totals.languages, "language")}</span>
+        <p className="mt-2 text-xs text-ink-3">
+          {/* Each figure keeps its unit: a break may fall between them, never inside one. MetaText
+              sets the phrase in one face with tabular figures. */}
+          <span className="whitespace-nowrap">
+            <MetaText>{plural(report.totals.files, "file")}</MetaText>
+          </span>{" "}
+          ·{" "}
+          <span className="whitespace-nowrap">
+            <MetaText>{`${formatInt(report.totals.lines)} lines`}</MetaText>
+          </span>{" "}
+          ·{" "}
+          <span className="whitespace-nowrap">
+            <MetaText>{plural(report.totals.languages, "language")}</MetaText>
+          </span>
         </p>
       </header>
 
@@ -99,7 +108,7 @@ function Guide() {
             Press <Kbd>{MOD_KEY === "⌘" ? "⌘K" : "Ctrl K"}</Kbd> or <Kbd>/</Kbd> to find any file, directory, symbol or author.
           </li>
           <li className="border-b border-rule py-1.5">
-            Keys <Kbd>1</Kbd>–<Kbd>5</Kbd> switch between the galaxy, charts, explorer, source and findings.
+            Keys <Kbd>1</Kbd>–<Kbd>5</Kbd> switch between the plate, charts, explorer, source and findings.
           </li>
         </ul>
       </Section>

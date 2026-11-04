@@ -902,7 +902,7 @@ export async function analyzeProject(
 
     const report: Report = {
       schemaVersion: SCHEMA_VERSION,
-      tool: { name: "starchart", version: pkg.version },
+      tool: { name: "skyplate", version: pkg.version },
       generatedAt: new Date().toISOString(),
       timings: {},
       project: {
@@ -948,7 +948,7 @@ export async function analyzeProject(
     return { report, ...(symbols ? { symbols } : {}), sources, chunks, abs, root };
   } finally {
     // A throw above leaves git and tsgo running: neither module takes a cancellation signal
-    // yet, so their subprocesses finish on their own (bin/starchart.ts exits on failure
+    // yet, so their subprocesses finish on their own (bin/skyplate.ts exits on failure
     // rather than waiting for them).
     pool.close();
   }

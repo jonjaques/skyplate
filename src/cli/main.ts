@@ -1,7 +1,7 @@
 /**
- * The `starchart` command: argument handling, progress, the final summary, and serving.
+ * The `skyplate` command: argument handling, progress, the final summary, and serving.
  *
- *   bun bin/starchart.ts <path> [options]      (see USAGE in ./args.ts)
+ *   bun bin/skyplate.ts <path> [options]      (see USAGE in ./args.ts)
  *
  * main() returns the exit code instead of calling process.exit, so tests can drive it and a
  * pending stderr write is never cut off. Every failure a user can cause (missing path, a file
@@ -60,17 +60,17 @@ export async function main(argv: string[]): Promise<number> {
       return 0;
     }
     if (cmd.kind === "version") {
-      process.stdout.write(`starchart ${pkg.version}\n`);
+      process.stdout.write(`skyplate ${pkg.version}\n`);
       return 0;
     }
     if (cmd.kind === "serve") return await serveCommand(cmd);
     return await analyzeCommand(cmd);
   } catch (e) {
     if (e instanceof UsageError) {
-      err(`starchart: ${e.message}\nRun "starchart --help" for usage.`);
+      err(`skyplate: ${e.message}\nRun "skyplate --help" for usage.`);
       return 1;
     }
-    err(`starchart: ${e instanceof Error ? e.message : String(e)}`);
+    err(`skyplate: ${e instanceof Error ? e.message : String(e)}`);
     return 1;
   }
 }
@@ -79,7 +79,7 @@ async function serveCommand(cmd: ServeCommand): Promise<number> {
   const dir = resolve(cmd.dir);
   if (!existsSync(dir)) throw new CliError(`report folder not found: ${cmd.dir}`);
   if (!statSync(dir).isDirectory()) throw new CliError(`not a folder: ${cmd.dir}`);
-  if (!isReportDir(dir)) throw new CliError(`no index.html in ${cmd.dir}; is it a starchart report folder?`);
+  if (!isReportDir(dir)) throw new CliError(`no index.html in ${cmd.dir}; is it a skyplate report folder?`);
   serveAndWait(dir, cmd.port, cmd.open);
   return await new Promise<number>(() => {}); // the server keeps running until Ctrl-C
 }
@@ -100,11 +100,14 @@ async function analyzeCommand(cmd: AnalyzeCommand): Promise<number> {
   if (out) checkOut(out, root);
 
   // Reports are never part of the project they describe. The default output lands inside the
-  // project when run as `starchart .`, and without this the second run would measure the
+  // project when run as `skyplate .`, and without this the second run would measure the
   // first run's data files (megabytes of JSON) as the biggest "code" in the repository.
   // Compared through realpath, as the walker roots itself, so an --out spelled through a
   // symlink is still recognized as inside.
-  const exclude = [...cmd.options.exclude, "*.starchart/"];
+  // "*.starchart/" is back-compat, kept on purpose: before the rename the tool was called
+  // starchart and `starchart .` wrote <project>.starchart/ inside the project, so projects that
+  // were analyzed before still carry one, and it is a report, not part of the project.
+  const exclude = [...cmd.options.exclude, "*.skyplate/", "*.starchart/"];
   if (out && outputPlacement(out, root) === "inside") {
     exclude.push(`/${relative(realPath(root), realPath(out)).split(sep).join("/")}/`);
   }
@@ -115,8 +118,8 @@ async function analyzeCommand(cmd: AnalyzeCommand): Promise<number> {
     const result = await analyzeProject(root, { ...cmd.options, exclude }, (e) => progress.event(e));
     const report = result.report;
     if (!out) {
-      out = resolve(`${slug(report.project.name) || slug(basename(root)) || "project"}.starchart`);
-      // Still checked against the project: a folder foo.starchart whose README is titled
+      out = resolve(`${slug(report.project.name) || slug(basename(root)) || "project"}.skyplate`);
+      // Still checked against the project: a folder foo.skyplate whose README is titled
       // "Foo", analyzed from its parent, gets itself as the default output.
       checkOut(out, root);
     }
@@ -139,7 +142,7 @@ async function analyzeCommand(cmd: AnalyzeCommand): Promise<number> {
       const rel = relative(process.cwd(), out) || ".";
       const shown = rel.startsWith("..") ? out : rel;
       err("");
-      err(`starchart · ${report.project.name}`);
+      err(`skyplate · ${report.project.name}`);
       err(`  ${facts.join(" · ")}`);
       err(`  findings: ${findings.length ? findings.join(" · ") : "none"}`);
       if (report.warnings.length) err(`  ${report.warnings.length === 1 ? "1 warning" : `${report.warnings.length} warnings`} (listed in the report's about panel)`);
@@ -149,7 +152,7 @@ async function analyzeCommand(cmd: AnalyzeCommand): Promise<number> {
       if (!cmd.open && !cmd.serve) {
         err("");
         err(`  next: open ${shown}/index.html`);
-        err(`    or: starchart serve ${shown}`);
+        err(`    or: skyplate serve ${shown}`);
       }
     }
     if (cmd.open || cmd.serve) {

@@ -1,0 +1,11 @@
+Skyplate
+Copyright 2026 Jon Jaques
+
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+src/core/languages/linguist.generated.ts is generated from GitHub Linguist's language data
+(https://github.com/github-linguist/linguist). GitHub Linguist is released under the MIT
+License, Copyright (c) 2017 GitHub, Inc.; its full notice is reproduced in that file's header.
+
+The report viewer bundles third-party software; THIRD_PARTY_NOTICES lists each package and its
+license, and ships beside this file in every report.

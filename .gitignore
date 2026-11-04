@@ -33,7 +33,11 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # Finder (MacOS) folder config
 .DS_Store
 
-# starchart: reports generated during development and the compiled CLI
+# Skyplate: reports generated during development and the compiled CLI
+.skyplate/
+*.skyplate/
+# Back-compat, kept on purpose: reports written before the rename from starchart, which
+# existing checkouts still have lying around (.starchart/dev, <project>.starchart/).
 .starchart/
 *.starchart/
 dist/

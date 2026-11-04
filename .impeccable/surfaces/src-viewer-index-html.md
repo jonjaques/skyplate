@@ -7,11 +7,11 @@ related_targets: []
 
 ## Scope
 
-The starchart report viewer: the static site the CLI writes for one analyzed project. One
-application screen with four work areas (Galaxy, Charts, Explorer, Source) plus Findings.
-Visitor mode: Operate. Build path: code-led (no comps; the chosen HTML sketch at
-`.impeccable/mocks/decision/assigned.html` is the composition to match and the finish
-review's reference).
+The Skyplate report viewer: the static site the CLI writes for one analyzed project. One
+application screen with five work areas (Plate, Charts, Explorer, Source, Findings) plus the
+accession record. Visitor mode: Operate. Build path: code-led; no comp. The Specimen Cabinet
+sketch at `.impeccable/mocks/decision/assigned.html` is the superseded direction's reference,
+kept as history, not as a composition to match.
 
 ## Audience and task
 
@@ -21,44 +21,47 @@ depended-on files, its hotspots, and who knows what, within a minute of opening.
 
 ## Direction contract
 
-THESIS: Every file is a catalogued specimen, classified, labeled, and pinned where it was
-collected. Refuses the category default: a near-black card grid with a KPI row and one blue
-accent.
+THESIS: A codebase photographed onto glass, then catalogued: the plate is the image and the
+chrome is the catalog around it. Chrome is silver-gelatin monochrome so that every hue on
+screen is a measured fact. Refuses the category default: a navy sidebar, a top tab bar of
+form controls, and a KPI card grid with one blue accent.
 
-OWN-WORLD: Tray-white ground (#f6f7f5) ruled by 1px hairlines into unit trays, with no cards
-and no shadows. A solid archival-box gray-blue rail (#4e6170) holds the drawers (directories).
-Ink #15191c. Holotype red #c23a2b is reserved for each region's most-depended-on file and
-nothing else. The galaxy sits on a dark glass plate (#0b1016). Type: Archivo at condensed
-widths for UI and labels, JetBrains Mono for paths and figures. Specimen labels are white
-cards with a 1px ink title rule, Language/Category/Path/Collector/Collected fields, and an
-italic det. line. Dark theme: the rail deepens, trays go to slate, and the plate is
-unchanged.
+OWN-WORLD: Cool silver ground (#f4f6f8), white paper (record, popovers, the active row), ink
+#11171d, hairlines #dde2e8, 6px control corners; dark theme drops the ground to #13181e and
+paper to #181e25. The plate is dark glass #0b1016 in both themes. Holotype red #c23a2b is each
+region's most depended-on file and nothing else. Archivo condensed (88%) for UI, Archivo at
+its widest (125%, 600) for the lowercase wordmark, JetBrains Mono for paths and figures. The
+mark is a notched glass plate with one star under the four-tick hover reticle; positive on
+light grounds, negative on dark.
 
-STORY: The reader sees the whole collection as a galaxy, opens a drawer to focus a region,
-reads pinned labels to learn what each specimen is and who collected it, and follows the
-red holotypes to the files that everything depends on. Then they audit hotspots, history,
-and ownership in the trays.
+STORY: The reader opens a report and sees the whole project as a plate of stars, names its
+regions from the labels, follows the red holotypes to the files everything depends on, opens a
+drawer to focus a region, and reads the accession record for what was measured. Then the
+trays, charts and findings give hotspots, history and ownership.
 
-FIRST VIEWPORT: The rail on the left (260px) shows the wordmark, the repo and HEAD, and the
-drawer list with counts, with the active drawer inverted to tray white. A top bar holds the
-tabs (Galaxy, Charts, Explorer, Source, Findings), find, the color-by select, and actions.
-The center is the galaxy plate, filling the height and carrying the drawer title, the pinned
-labels, the holotype label, and the legend. On the right (340px) is the accession record for
-the selection. Along the bottom is a row of three unit trays: language composition, commit
-activity, hotspots with an alert. Signature interaction: hovering or selecting a star pins a
-specimen label to it with a hairline leader. Motion grammar: the camera eases to a focused
-drawer and the layout morphs between tree and import graph, both damped with no overshoot.
-The history scrubber remaps every mark at once.
+FIRST VIEWPORT: Left, a 264px rail on the silver sleeve tone: the lockup, the project and its
+branch and commit, a find field (⌘K), the five views as a vertical list with icons (active =
+paper row with a hairline, Findings shows its severity icon and count), then the drawers with
+mono counts, then a foot with the generation date, totals, theme and About. No top bar. Center,
+the plate fills the height: its title (project in plate ink, the specimen count muted), the
+breadcrumb, Web/Imports, Gravity, Display (color, size, lanes) and reset at top right, the
+legend inset at bottom left, the history scrubber along the foot; below it three unit trays
+(language composition, commit activity, hotspots) at 216px. Right, the 340px accession record
+on paper. Below 1024px the rail becomes a sheet and a slim 52px bar carries the mark, the
+views as a pill control, find and theme. Signature interaction: the hover reticle (four short
+ticks) commits to a specimen label pinned by a hairline leader; the same reticle is the brand
+mark. Motion grammar: damped camera eases and layout morphs, no overshoot; the loading plate
+develops its stars in turn.
 
-FORM: Specimen Cabinet, #3 of the ordered list (1 Geological survey, 2 Nautical chart,
-3 Specimen cabinet, 4 Observatory plate archive, 5 Isotype, 6 NASA graphics standards
-manual, 7 Transit diagram). seed:b1138d87fe1db105. Raises kept from declined challengers:
-one history scrubber (Type Specimen), one region geometry per directory (Garden Guide Map),
-1-device-pixel rules from layout (Centre-Rail Edition), focus that dims the rest
-(Title Card Wall).
+FORM: Observatory plate archive, #4 of the original ordered list, pinned by the brief (the
+rename to Skyplate names astronomical photographic plates), evolved from Specimen Cabinet (#3),
+whose catalog vocabulary (specimens, holotypes, drawers, accession records) it keeps.
+seed: none (no roll this round: the direction was pinned by the brief, so concept-seed was not run)
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
 ## Unresolved
 
-- Exact dark-theme steps get validated with the dataviz palette script during the build.
+- The sequential ramp's lightest step (#cde2fb) fails the validator's ordinal light-end check
+  on the light ground (1.22:1); the ramp is used as a continuous magnitude scale whose
+  near-zero end recedes on purpose, and was not restepped in this round.

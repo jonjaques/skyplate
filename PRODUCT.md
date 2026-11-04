@@ -15,7 +15,7 @@ bundler + dev server), React, Tailwind CSS v4, D3, react-three-fiber, three.js.
 
 One audience in three situations, all confirmed:
 
-- **Orienting in an unfamiliar repository.** A developer points starchart at a codebase they
+- **Orienting in an unfamiliar repository.** A developer points Skyplate at a codebase they
   have never seen and needs to learn fast where things live, what is central, and what is risky.
 - **Sharing with a team or stakeholders.** A report gets attached to a PR, handed to a client,
   or used in an architecture review, so people who did not run the tool read it too.
@@ -24,8 +24,8 @@ One audience in three situations, all confirmed:
 
 ## Product Purpose
 
-starchart turns any project directory into an explorable report. One command
-(`starchart <path>`) walks the tree, recognizes every kind of file (source in any language,
+Skyplate turns any project directory into an explorable report. One command
+(`skyplate <path>`) walks the tree, recognizes every kind of file (source in any language,
 markup, config, data, docs, notebooks, media, binaries), measures it, reads its imports and
 its git history, and writes a static site that pairs a 3D map of the codebase with a
 statistical dashboard and a source reader.
@@ -43,8 +43,9 @@ source view.
 ## Operating Context
 
 - Run from a terminal against a local checkout. The CLI writes a **static site folder**
-  (`index.html` plus assets and data files). Because browsers block module scripts over
-  `file://`, the folder is opened through a local server; the CLI provides one.
+  (`index.html` plus assets, data files and its license notices) that opens by
+  double-clicking `index.html`: the viewer ships as classic scripts, which browsers run over
+  `file://`. The CLI also serves a folder, for other machines and locked-down browsers.
 - Works with or without git. With git, history adds churn, authorship, age, and
   co-change coupling.
 - Reports can be large (tens of thousands of files) and must stay responsive.
@@ -60,7 +61,13 @@ source view.
 
 ## Brand Commitments
 
-- Name: **starchart** (lowercase), which is also the CLI command.
+- Name: **Skyplate** in prose; `skyplate` (lowercase) is the CLI command, the npm package and
+  the wordmark. Renamed from starchart before the first release: the name collided with an
+  existing codebase-mapping tool.
+- The name comes from astronomical photographic plates, the sky recorded on glass and then
+  catalogued. The identity leans on the plate and the catalog, not on the word "galaxy" (the
+  closest visual competitor is a 3D file-star galaxy).
+- Licensed Apache-2.0. Every report carries LICENSE, NOTICE and THIRD_PARTY_NOTICES.
 
 ## Evidence on Hand
 

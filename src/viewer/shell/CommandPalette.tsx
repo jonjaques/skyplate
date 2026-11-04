@@ -13,7 +13,6 @@ import {
   FileText,
   Folder,
   Info,
-  LayoutGrid,
   LoaderCircle,
   Monitor,
   Moon,
@@ -37,7 +36,7 @@ import { focusDrawer, openSymbolDefinition, show } from "./navigate";
 import { LanguageSwatch } from "./parts";
 import { queryTerms, rankScored, searchable, type Searchable } from "./search";
 import { useShell } from "./shell-state";
-import { TAB_ORDER } from "./TopBar";
+import { TAB_ORDER } from "./nav";
 
 const LIMIT = { files: 8, dirs: 5, symbols: 8, authors: 5 };
 
@@ -398,11 +397,11 @@ function useActions(close: () => void): Action[] {
       }),
       disabled: !hasGit && GRAVITY_NEEDS_GIT.has(g),
     }));
-    const tabs = TAB_ORDER.map<Action>((t) => ({
-      id: `tab-${t.id}`,
-      label: `Go to ${t.label}`,
-      icon: <LayoutGrid />,
-      run: done(() => s().setTab(t.id as Tab)),
+    const tabs = TAB_ORDER.map<Action>(({ id, label, icon: ViewIcon }) => ({
+      id: `tab-${id}`,
+      label: `Go to ${label}`,
+      icon: <ViewIcon />,
+      run: done(() => s().setTab(id as Tab)),
     }));
     const themes: Action[] = (
       [

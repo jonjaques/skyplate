@@ -18,8 +18,12 @@ import { useViewer } from "../state/store";
 import type { GalaxyEngine } from "./engine";
 
 const WEEK = 7 * 86400;
-/** Column width cap (px): past it a short history reads as a row of blocks, not a series. */
-const COLUMN_MAX = 24;
+/**
+ * Column width cap (px): past it a short history reads as a row of blocks, not a series. It
+ * was 24, and a three-week history (a shallow clone) drew three wide gray slabs across the
+ * strip that read as placeholders that had failed to load.
+ */
+const COLUMN_MAX = 8;
 
 /**
  * SVG path for weekly columns `from`..`to` in a `width` × `height` box (pixels). Linear in

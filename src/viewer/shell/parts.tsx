@@ -98,6 +98,32 @@ export function Section({
   );
 }
 
+/**
+ * Text that mixes figures and words ("13 with code", "16 importers", "40,033 lines"): one face
+ * for the phrase, the UI's, with tabular digits on the figures so they still line up down a
+ * column. Set wholly in mono, "commits · complexity" and "per quarter" were typewriter costume;
+ * split across the two faces, JetBrains Mono gave each comma a full cell ("40 , 033") and the
+ * figure sat hard against the condensed word after it. Standalone figure columns and paths stay
+ * mono. Anything that is not a plain string is passed through untouched.
+ */
+export function MetaText({ children }: { children: ReactNode }) {
+  if (typeof children !== "string") return <>{children}</>;
+  const parts = children.split(/([:+−-]?\d[\d,.%]*)/);
+  return (
+    <>
+      {parts.map((p, i) =>
+        i % 2 === 1 ? (
+          <span key={i} className="figures">
+            {p}
+          </span>
+        ) : (
+          p
+        ),
+      )}
+    </>
+  );
+}
+
 /** One ruled, clickable row: a label on the left, a figure on the right. */
 export function RowButton({
   onClick,
@@ -130,7 +156,11 @@ export function RowButton({
       )}
     >
       <span className="flex min-w-0 items-center gap-2">{children}</span>
-      {aside !== undefined && <span className="figures shrink-0 font-mono text-xs text-ink-3">{aside}</span>}
+      {aside !== undefined && (
+        <span className="shrink-0 text-xs text-ink-3">
+          <MetaText>{aside}</MetaText>
+        </span>
+      )}
     </button>
   );
 }

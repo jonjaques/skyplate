@@ -47,7 +47,7 @@ export function describeUnavailable(
     case "secret":
       return {
         title: "Contents withheld: this file looks like it holds credentials",
-        body: `starchart never embeds files that look like keys, tokens or .env secrets, whatever the report options say. Its size${report.git ? " and history are" : " is"} still measured.`,
+        body: `Skyplate never embeds files that look like keys, tokens or .env secrets, whatever the report options say. Its size${report.git ? " and history are" : " is"} still measured.`,
       };
     case "binary":
       return {
@@ -64,11 +64,11 @@ export function describeUnavailable(
       return report.source && file.bytes > report.source.maxFileBytes
         ? {
             title: "Over the size cap for embedded source",
-            body: `At ${formatBytes(file.bytes)}, this file is over the report's ${formatBytes(report.source.maxFileBytes)} per-file cap, so its contents were left out. Re-running starchart with a larger --max-source-file includes it.`,
+            body: `At ${formatBytes(file.bytes)}, this file is over the report's ${formatBytes(report.source.maxFileBytes)} per-file cap, so its contents were left out. Re-running skyplate with a larger --max-source-file includes it.`,
           }
         : {
             title: "Left out when the source budget ran out",
-            body: `The report embeds at most ${formatBytes(report.source?.maxTotalBytes ?? 0)} of source in total, and that was spent before this file's turn came. Re-running starchart with a larger --max-source-total includes it.`,
+            body: `The report embeds at most ${formatBytes(report.source?.maxTotalBytes ?? 0)} of source in total, and that was spent before this file's turn came. Re-running skyplate with a larger --max-source-total includes it.`,
           };
     case "missing":
       return {

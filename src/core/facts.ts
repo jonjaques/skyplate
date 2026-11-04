@@ -106,13 +106,16 @@ export function markdownFacts(text: string): FileFacts {
     const atx = ATX.exec(line);
     if (atx?.[1]) {
       headings++;
-      if (title === undefined && atx[1].length === 1 && atx[2]) title = plainHeading(atx[2]);
+      // Only the document's first heading can be its title. zustand's README opens with a logo
+      // and badges, has no title heading, and its first H1 ("Recipes") sits after a dozen
+      // sections; taken as the title, it named the whole report "Recipes".
+      if (title === undefined && headings === 1 && atx[1].length === 1 && atx[2]) title = plainHeading(atx[2]);
       prevParagraph = false;
       continue;
     }
     if (prevParagraph && (SETEXT_H1.test(line) || SETEXT_H2.test(line))) {
       headings++;
-      if (title === undefined && SETEXT_H1.test(line)) title = plainHeading(prevText);
+      if (title === undefined && headings === 1 && SETEXT_H1.test(line)) title = plainHeading(prevText);
       prevParagraph = false;
       continue;
     }

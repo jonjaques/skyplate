@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { formatBytes, formatInt, plural } from "../lib/format";
 import { useViewer } from "../state/store";
 import { formatGenerated } from "./labels";
+import { Lockup } from "../brand/Brand";
 import { takeAboutOpener, useShell } from "./shell-state";
 
 export function About() {
@@ -30,9 +31,10 @@ export function About() {
         }}
       >
         <DialogHeader className="border-b border-rule px-6 pt-5 pb-4">
+          <Lockup height={15} className="mb-3 text-ink" />
           <DialogTitle className="text-[20px] font-bold [font-stretch:82%]">About this report</DialogTitle>
           <DialogDescription>
-            How starchart measured {report.project.name}, and what it left out.
+            How Skyplate measured {report.project.name}, and what it left out.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-6 px-6 py-5">
@@ -41,6 +43,7 @@ export function About() {
           <Timings timings={report.timings} />
           <Coverage report={report} />
           {report.symbols && <Symbols report={report} />}
+          <Licenses version={report.tool.version} />
         </div>
       </DialogContent>
     </Dialog>
@@ -116,7 +119,7 @@ const PHASE_LABEL: Record<string, string> = {
   imports: "Reading imports",
   graph: "Building the import graph",
   git: "Reading git history",
-  layout: "Laying out the galaxy",
+  layout: "Laying out the plate",
   typescript: "TypeScript symbols",
   stats: "Statistics",
   findings: "Findings",
@@ -136,7 +139,7 @@ function Timings({ timings }: { timings: Record<string, number> }) {
         {phases.map(([k, ms]) => (
           <div key={k} className="grid grid-cols-[170px_1fr_64px] items-center gap-3 border-b border-rule py-1.5 text-[13px]">
             <span className="truncate text-ink-3">{PHASE_LABEL[k] ?? k}</span>
-            <span className="h-1 bg-rail dark:bg-ink-3" style={{ width: `${Math.max(1, (ms / max) * 100)}%` }} aria-hidden />
+            <span className="h-1 bg-measure" style={{ width: `${Math.max(1, (ms / max) * 100)}%` }} aria-hidden />
             <span className="figures text-right font-mono text-xs">{formatMs(ms)}</span>
           </div>
         ))}
@@ -187,4 +190,32 @@ function Symbols({ report }: { report: Report }) {
   if (s.stats.truncated > 0) rows.push(["Dropped by the cap", `${plural(s.stats.truncated, "reference")} (totals still count them)`]);
   if (loaded) rows.push(["Projects", loaded.projects.map((p) => `${p.config || "inferred"} (${formatInt(p.files)})`).join(", ")]);
   return <Table title="Code intelligence" rows={rows} />;
+}
+
+/**
+ * The report's own license notices. Every report folder carries LICENSE, NOTICE and
+ * THIRD_PARTY_NOTICES beside index.html (src/core/site.ts), because sharing a report
+ * redistributes the viewer and everything bundled into it; these links are how a reader who
+ * never opens the folder finds them. Relative, like every URL in a report, so they work over
+ * file:// and from any static host (the CLI's server sends them as text).
+ */
+function Licenses({ version }: { version: string }) {
+  const link = "underline decoration-rule-strong underline-offset-2 hover:text-ink hover:decoration-ink-3";
+  return (
+    <section className="border-t border-rule pt-4 text-xs leading-relaxed text-ink-3">
+      Skyplate {version} is open source under the{" "}
+      <a className={link} href="LICENSE" target="_blank" rel="noreferrer">
+        Apache License 2.0
+      </a>
+      {" "}(
+      <a className={link} href="NOTICE" target="_blank" rel="noreferrer">
+        NOTICE
+      </a>
+      ). The viewer bundles open-source packages and fonts whose licenses are in{" "}
+      <a className={link} href="THIRD_PARTY_NOTICES" target="_blank" rel="noreferrer">
+        third-party notices
+      </a>
+      .
+    </section>
+  );
 }

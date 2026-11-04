@@ -3,14 +3,19 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="generator" content="starchart" />
-    <title>starchart</title>
+    <meta name="generator" content="skyplate" />
+    <meta name="theme-color" content="#f3f5f7" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0d1217" media="(prefers-color-scheme: dark)" />
+    <title>Skyplate</title>
+    <!-- brand:favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cstyle%3E.p%7Bfill%3A%230b1016%7D.i%7Bfill%3A%23ffffff%3Bstroke%3A%23ffffff%7D%40media%20(prefers-color-scheme%3Adark)%7B.p%7Bfill%3A%23e9eef2%7D.i%7Bfill%3A%230b1016%3Bstroke%3A%230b1016%7D%7D%3C%2Fstyle%3E%3Cpath%20class%3D%22p%22%20d%3D%22M7%202h15l8%208v15a5%205%200%200%201-5%205H7a5%205%200%200%201-5-5V7a5%205%200%200%201%205-5z%22%2F%3E%3Cpath%20class%3D%22i%22%20d%3D%22M14%209.6v3.2M14%2023.2v3.2M5.6%2018h3.2M19.2%2018h3.2%22%20stroke-width%3D%222.3%22%20stroke-linecap%3D%22round%22%20fill%3D%22none%22%20style%3D%22fill%3Anone%22%2F%3E%3Ccircle%20class%3D%22i%22%20cx%3D%2214%22%20cy%3D%2218%22%20r%3D%222.8%22%20stroke%3D%22none%22%20style%3D%22stroke%3Anone%22%2F%3E%3Ccircle%20class%3D%22i%22%20cx%3D%2223.2%22%20cy%3D%2211.2%22%20r%3D%221.6%22%20stroke%3D%22none%22%20style%3D%22stroke%3Anone%22%2F%3E%3Ccircle%20class%3D%22i%22%20cx%3D%2224.6%22%20cy%3D%2224%22%20r%3D%221.1%22%20stroke%3D%22none%22%20style%3D%22stroke%3Anone%22%2F%3E%3C%2Fsvg%3E" />
+    <!-- /brand:favicon -->
     <script>
       // Resolve the theme before first paint so the page never flashes the wrong one. The
-      // viewer's theme toggle writes "starchart-theme"; absent that, follow the OS setting.
+      // viewer's theme toggle writes "skyplate-theme"; absent that, follow the OS setting.
       (function () {
         var pref = null;
-        try { pref = localStorage.getItem("starchart-theme"); } catch (e) {}
+        try { pref = localStorage.getItem("skyplate-theme"); } catch (e) {}
         var dark = pref ? pref === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
         document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
       })();

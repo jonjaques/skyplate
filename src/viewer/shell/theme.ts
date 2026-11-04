@@ -2,7 +2,7 @@
  * Theme preference (system / light / dark) and the surface it resolves to.
  *
  * index.html resolves the theme into data-theme on <html> before first paint, reading the same
- * "starchart-theme" key written here, so a reload never flashes the wrong ground. This module
+ * "skyplate-theme" key written here, so a reload never flashes the wrong ground. This module
  * keeps that attribute in step with the store afterwards and, under "system", with the OS.
  * Components that pick a swatch step (light trays vs dark trays) read the attribute itself,
  * because it is the one value every surface actually renders with.
@@ -12,7 +12,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import type { Surface } from "../lib/colors";
 import { useViewer, type ThemePref } from "../state/store";
 
-const KEY = "starchart-theme";
+const KEY = "skyplate-theme";
 const DARK_QUERY = "(prefers-color-scheme: dark)";
 
 export function readThemePref(): ThemePref {

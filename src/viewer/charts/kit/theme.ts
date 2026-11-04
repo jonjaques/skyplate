@@ -16,11 +16,10 @@ import { OTHER_DARK, OTHER_LIGHT, seriesColor, type Surface } from "../../lib/co
 export { useSurface } from "../../shell/theme";
 
 /**
- * The single-series "measure" color. Blue is language slot 0 (usually TypeScript) in the
- * galaxy legend, so a blue commit column would read as "TypeScript commits". Single-series
- * magnitude marks wear the archival rail slate instead (as the chosen sketch does), which no
- * categorical slot uses. Contrast checked with the dataviz validator: 5.98:1 on the light
- * tray, 6.51:1 on the dark tray.
+ * The single-series "measure" color (--color-measure). Blue is language slot 1 in the plate's
+ * legend, so a blue commit column would read as that language's commits; single-series
+ * magnitude marks wear a slate that no categorical slot uses. Contrast checked with the dataviz
+ * validator: 5.93:1 on the light ground, 6.75:1 on the dark one.
  */
 export function measureColor(surface: Surface): string {
   return surface === "light" ? "#4e6170" : "#8da2b2";
@@ -33,12 +32,12 @@ export function mutedColor(surface: Surface): string {
 
 /** Emphasis by value contrast, not hue: ink marks pop against gray without claiming a slot. */
 export function emphasisColor(surface: Surface): string {
-  return surface === "light" ? "#15191c" : "#e8ecee";
+  return surface === "light" ? "#11171d" : "#e8edf1";
 }
 
 /** The tray color, for 2px surface rings drawn around overlapping marks. */
 export function surfaceColor(surface: Surface): string {
-  return surface === "light" ? "#f6f7f5" : "#161c20";
+  return surface === "light" ? "#f4f6f8" : "#13181e";
 }
 
 export function slotColor(slot: number, surface: Surface): string {

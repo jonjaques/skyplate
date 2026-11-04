@@ -9,7 +9,7 @@
  * there. Every element carries data-plate-chrome, which the label overlays read to keep clear.
  */
 
-import { AlertCircle, Ellipsis, LoaderCircle, Maximize2, Orbit, Spline, X } from "lucide-react";
+import { AlertCircle, Ellipsis, LoaderCircle, Maximize2, Orbit, SlidersHorizontal, X } from "lucide-react";
 import { useMemo } from "react";
 import { CATEGORY_GROUP, REF_KINDS, type Category, type CategoryGroup, type CodeSymbols, type RefKind } from "../../shared/schema";
 import { GRAVITIES, GRAVITY_NEEDS_GIT, type Gravity } from "../../shared/web";
@@ -23,12 +23,14 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "../components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "../components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../components/ui/tooltip";
 import { CATEGORY_GROUPS, CATEGORY_GROUP_LABEL, HOLOTYPE, categoryGroupColor, sequentialColor, seriesColor } from "../lib/colors";
 import { formatInt, plural } from "../lib/format";
 import { cn } from "../lib/utils";
-import { GRAVITY_HINT, GRAVITY_LABEL } from "../shell/labels";
+import { COLOR_BY_HINT, COLOR_BY_LABEL, GRAVITY_HINT, GRAVITY_LABEL, NEEDS_GIT, SIZE_BY_LABEL } from "../shell/labels";
 import { useHover, useViewer, type ColorBy, type EdgeMode, type Filters, type LayoutMode, type SizeBy } from "../state/store";
 import { isNarrowed, passesFilters } from "./encode";
 import type { GalaxyEngine } from "./engine";
@@ -84,13 +86,18 @@ export function PlateTitle({ engine, compact }: { engine: GalaxyEngine; compact:
           : "top-[18px] left-6 max-w-[calc(100%-380px)] text-2xl @max-[640px]:top-[58px] @max-[640px]:max-w-[calc(100%-3rem)] @max-[640px]:text-xl",
       )}
     >
-      {name} <span className="text-plate-muted">·</span>{" "}
-      {narrowed ? (
-        <>
-          <span className="figures">{formatInt(inView)}</span> <span className="text-plate-muted">of</span>{" "}
-        </>
-      ) : null}
-      <span className="figures">{formatInt(count)}</span> {count === 1 ? "specimen" : "specimens"}
+      {/* The name leads; the count reads as its caption, in the muted plate ink and a lighter
+          weight, except the in-view figure of a filtered plate, which is the news. */}
+      {name}
+      <span className="font-normal text-plate-muted">
+        {" · "}
+        {narrowed ? (
+          <>
+            <span className="figures font-semibold text-plate-ink">{formatInt(inView)}</span> of{" "}
+          </>
+        ) : null}
+        <span className="figures">{formatInt(count)}</span> {count === 1 ? "specimen" : "specimens"}
+      </span>
     </h2>
   );
 }
@@ -363,9 +370,11 @@ export function PlateLegend({
       data-plate-chrome
       data-plate-inset="bottom"
       className={cn(
-        // A solid plate backing with a hairline edge, like a map's legend inset: lanes and stars
-        // passing under the key made both unreadable over a dense region.
-        "absolute left-6 z-20 flex w-fit max-w-[calc(100%-3rem)] flex-col gap-1.5 rounded-xs border border-plate-rule bg-plate px-2.5 py-2 text-xs text-plate-muted",
+        // A key in the plate's margin: the plate's own fill behind it, so lanes and stars passing
+        // under it never make it unreadable over a dense region, and no edge, so it reads as
+        // writing on the glass rather than a panel laid over it (a bordered box was the heaviest
+        // object on the plate).
+        "absolute left-4 z-20 flex w-fit max-w-[calc(100%-2rem)] flex-col gap-1.5 rounded-lg bg-plate px-2 py-2 text-xs text-plate-muted",
         raised ? "bottom-[64px]" : "bottom-4",
         compact && "bottom-2.5 left-3 max-w-[calc(100%-1.5rem)] px-2 py-1.5",
       )}
@@ -399,6 +408,13 @@ export function PlateLegend({
               </li>
             );
           })}
+          {/* The compact plate keeps five keys; the rest are named as a count rather than
+              silently dropped, so the key never claims to be the whole palette. */}
+          {items && items.length > shown.length && (
+            <li className="flex items-center px-1.5 py-0.5 text-plate-muted" title={items.slice(shown.length).map((k) => k.label).join(", ")}>
+              +{items.length - shown.length} more
+            </li>
+          )}
         </ul>
       ) : (
         <SequentialScale mode={colorBy as Exclude<ColorBy, "language" | "category">} />
@@ -684,19 +700,26 @@ export function PlateStatus() {
 
 // ─── Controls ────────────────────────────────────────────────────────────────────────────────
 
+/** Plate buttons: plate-ink on the plate's glass, a hairline edge, a 10% plate-ink hover. */
+// Focus on the plate is plate ink: the shell's ring (ink 2) is a dark slate in the light theme,
+// which all but disappears against the dark glass.
+const plateButton =
+  "h-7 gap-1.5 rounded-md border border-plate-rule bg-plate px-2.5 text-xs font-semibold text-plate-muted [font-stretch:85%] hover:bg-plate-ink/10 hover:text-plate-ink focus-visible:border-plate-ink focus-visible:ring-plate-ink/40 disabled:opacity-45";
 const plateToggle =
-  "h-7 border border-plate-rule px-2.5 text-xs font-semibold text-plate-muted [font-stretch:85%] hover:bg-plate-ink/10 hover:text-plate-ink data-[state=on]:bg-plate-ink/15 data-[state=on]:text-plate-ink focus-visible:ring-plate-ink/40";
+  "h-[26px] rounded-[5px] border-0 px-2.5 text-xs font-semibold text-plate-muted [font-stretch:85%] hover:bg-plate-ink/10 hover:text-plate-ink data-[state=on]:bg-plate-ink/15 data-[state=on]:text-plate-ink focus-visible:outline-plate-ink focus-visible:ring-plate-ink/40";
 
-const EDGE_LABEL: Record<EdgeMode, string> = { none: "No lanes", selection: "Selected file's lanes", all: "Every import, faintly" };
+const EDGE_LABEL: Record<EdgeMode, string> = { none: "None", selection: "Selected file", all: "Every import, faintly" };
+const COLOR_MODES: ColorBy[] = ["language", "category", "hotspot", "churn", "age", "complexity", "ownership", "rank"];
+const SIZE_MODES: SizeBy[] = ["lines", "bytes", "complexity", "commits", "rank"];
 
 /** The legend's reading of the current gravity, after "Gravity: <mode>." */
 const GRAVITY_MEANING: Record<Gravity, string> = {
-  dependencies: "Files many others import sink to their clump's core; heavily imported groups draw to the heart of their cluster.",
-  complexity: "The most complex files sink to their clump's core; complex groups draw to the heart of their cluster.",
-  hotspots: "Complex, often-changed files sink to their clump's core; hot groups draw to the heart of their cluster.",
-  churn: "The most-committed files sink to their clump's core; busy groups draw to the heart of their cluster.",
-  recent: "Recently changed files sink to their clump's core; active groups draw to the heart of their cluster.",
-  size: "The largest files sink to their clump's core; large groups draw to the heart of their cluster.",
+  dependencies: "Files many others import sink to the core of their clump.",
+  complexity: "The most complex files sink to the core of their clump.",
+  hotspots: "Complex, often-changed files sink to the core of their clump.",
+  churn: "The most-committed files sink to the core of their clump.",
+  recent: "Recently changed files sink to the core of their clump.",
+  size: "The largest files sink to the core of their clump.",
 };
 
 export function PlateControls({ engine, compact }: { engine: GalaxyEngine; compact: boolean }) {
@@ -712,13 +735,7 @@ export function PlateControls({ engine, compact }: { engine: GalaxyEngine; compa
   const reset = (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          className="size-7 border border-plate-rule text-plate-muted hover:bg-plate-ink/10 hover:text-plate-ink"
-          onClick={() => engine.home(true)}
-          aria-label="Reset view"
-        >
+        <Button variant="ghost" size="icon-sm" className={cn(plateButton, "size-7 px-0")} onClick={() => engine.home(true)} aria-label="Reset view">
           <Maximize2 className="size-3.5" />
         </Button>
       </TooltipTrigger>
@@ -743,12 +760,12 @@ export function PlateControls({ engine, compact }: { engine: GalaxyEngine; compa
         value={layout}
         onValueChange={(v) => v && setLayout(v as LayoutMode)}
         aria-label="Arrange stars by"
-        className="rounded-sm"
+        className="gap-0.5 rounded-md border border-plate-rule bg-plate p-px"
       >
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="inline-flex">
-              <ToggleGroupItem value="web" className={cn(plateToggle, "rounded-l-sm")} aria-label="Arrange as a web of the directory tree">
+              <ToggleGroupItem value="web" className={plateToggle} aria-label="Arrange as a web of the directory tree">
                 Web
               </ToggleGroupItem>
             </span>
@@ -762,7 +779,7 @@ export function PlateControls({ engine, compact }: { engine: GalaxyEngine; compa
               <ToggleGroupItem
                 value="graph"
                 disabled={!hasImports}
-                className={cn(plateToggle, "rounded-r-sm border-l-0")}
+                className={plateToggle}
                 aria-label="Arrange by import graph"
               >
                 Imports
@@ -781,12 +798,7 @@ export function PlateControls({ engine, compact }: { engine: GalaxyEngine; compa
             {/* The span keeps the tooltip reachable while the trigger is disabled. */}
             <span className="inline-flex">
               <DropdownMenuTrigger asChild disabled={layout !== "web"}>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 gap-1.5 border border-plate-rule px-2.5 text-xs font-semibold text-plate-muted [font-stretch:85%] hover:bg-plate-ink/10 hover:text-plate-ink disabled:opacity-45"
-                  aria-label={`Gravity: ${GRAVITY_LABEL[gravity]}`}
-                >
+                <Button variant="ghost" size="sm" className={plateButton} aria-label={`Gravity: ${GRAVITY_LABEL[gravity]}`}>
                   <Orbit className="size-3.5" aria-hidden="true" />
                   Gravity
                 </Button>
@@ -812,38 +824,178 @@ export function PlateControls({ engine, compact }: { engine: GalaxyEngine; compa
               );
             })}
           </DropdownMenuRadioGroup>
+          {/* The group half of gravity, which the legend's one line leaves out. */}
+          <p className="border-t border-rule px-2 pt-2 pb-1 text-xs leading-snug text-muted-foreground">
+            Heavy files sink to the core of their clump, and heavy groups draw toward the heart of their cluster.
+          </p>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 border border-plate-rule px-2.5 text-xs font-semibold text-plate-muted [font-stretch:85%] hover:bg-plate-ink/10 hover:text-plate-ink"
-              >
-                <Spline className="size-3.5" aria-hidden="true" />
-                Lanes
-              </Button>
-            </DropdownMenuTrigger>
-          </TooltipTrigger>
-          <TooltipContent side="bottom">{EDGE_LABEL[edges]}</TooltipContent>
-        </Tooltip>
-        <DropdownMenuContent align="end" className="min-w-52">
-          <DropdownMenuLabel className="text-xs text-muted-foreground">Import lanes on the plate</DropdownMenuLabel>
-          <DropdownMenuRadioGroup value={edges} onValueChange={(v) => setEdges(v as EdgeMode)}>
-            <DropdownMenuRadioItem value="selection">For the selected file</DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="all" disabled={!hasImports}>
-              Every import, faintly
-            </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="none">None</DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <DisplayOptions engine={engine} edges={edges} setEdges={setEdges} hasImports={hasImports} />
 
       {reset}
     </div>
+  );
+}
+
+/**
+ * Display: how stars are colored and sized, and which import lanes are drawn. These used to be
+ * the top bar's two labeled selects, but they only ever applied to the plate, so they live on
+ * it now, beside Gravity, behind one button: a popover of three rows, each a select whose items
+ * say what the mode measures (and which need git history this report may lack). A popover, not
+ * a menu, because each row is a choice of its own; it is a role=dialog, which the plate's click
+ * rules already treat as an open overlay (GalaxyView overlayOpen), so dismissing it never selects
+ * the star under the pointer.
+ */
+function DisplayOptions({
+  engine,
+  edges,
+  setEdges,
+  hasImports,
+}: {
+  engine: GalaxyEngine;
+  edges: EdgeMode;
+  setEdges(e: EdgeMode): void;
+  hasImports: boolean;
+}) {
+  const colorBy = useViewer((s) => s.colorBy);
+  const setColorBy = useViewer((s) => s.setColorBy);
+  const sizeBy = useViewer((s) => s.sizeBy);
+  const setSizeBy = useViewer((s) => s.setSizeBy);
+  const hasGit = !!engine.model.report.git;
+  const row = "grid grid-cols-[64px_minmax(0,1fr)] items-center gap-3";
+  const label = "text-xs font-medium text-ink-3";
+  return (
+    <Popover>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button variant="ghost" size="sm" className={plateButton} aria-label={`Display: color by ${COLOR_BY_LABEL[colorBy]}, size by ${SIZE_BY_LABEL[sizeBy]}`}>
+              <SlidersHorizontal className="size-3.5" aria-hidden="true" />
+              Display
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">
+          Color by {COLOR_BY_LABEL[colorBy].toLowerCase()}, size by {SIZE_BY_LABEL[sizeBy].toLowerCase()}
+        </TooltipContent>
+      </Tooltip>
+      <PopoverContent align="end" className="flex w-[300px] flex-col gap-2.5 p-3">
+        <p className="text-[13px] font-semibold text-ink">Display</p>
+        <label className={row}>
+          <span className={label}>Color</span>
+          <Select value={colorBy} onValueChange={(v) => setColorBy(v as ColorBy)}>
+            <SelectTrigger size="sm" aria-label="Color stars by" className="w-full bg-paper">
+              {/* Explicit children: the items carry a second line the trigger must not repeat. */}
+              <SelectValue>{COLOR_BY_LABEL[colorBy]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent position="popper" align="end" className="w-[248px]">
+              {COLOR_MODES.map((m) => {
+                const off = !hasGit && NEEDS_GIT.has(m);
+                return (
+                  <SelectItem key={m} value={m} disabled={off} textValue={COLOR_BY_LABEL[m]}>
+                    <span className="flex flex-col">
+                      <span>{COLOR_BY_LABEL[m]}</span>
+                      <span className="text-xs text-ink-3">{off ? "Needs git history" : COLOR_BY_HINT[m]}</span>
+                    </span>
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </label>
+        <label className={row}>
+          <span className={label}>Size</span>
+          <Select value={sizeBy} onValueChange={(v) => setSizeBy(v as SizeBy)}>
+            <SelectTrigger size="sm" aria-label="Size stars by" className="w-full bg-paper">
+              <SelectValue>{SIZE_BY_LABEL[sizeBy]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent position="popper" align="end">
+              {SIZE_MODES.map((m) => (
+                <SelectItem key={m} value={m} disabled={!hasGit && NEEDS_GIT.has(m)}>
+                  {SIZE_BY_LABEL[m]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </label>
+        <label className={row}>
+          <span className={label}>Lanes</span>
+          <Select value={edges} onValueChange={(v) => setEdges(v as EdgeMode)}>
+            <SelectTrigger size="sm" aria-label="Import lanes on the plate" className="w-full bg-paper">
+              <SelectValue>{EDGE_LABEL[edges]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent position="popper" align="end">
+              <SelectItem value="selection">{EDGE_LABEL.selection}</SelectItem>
+              <SelectItem value="all" disabled={!hasImports}>
+                {EDGE_LABEL.all}
+              </SelectItem>
+              <SelectItem value="none">{EDGE_LABEL.none}</SelectItem>
+            </SelectContent>
+          </Select>
+        </label>
+        <p className="text-xs leading-snug text-ink-3">Gravity, beside this, chooses which files sink to the center of their cluster.</p>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+// ─── Plate marks ─────────────────────────────────────────────────────────────────────────────
+
+/** One registration mark: an L of two short hairlines, turned to face its corner. */
+function Corner({ className, rotate }: { className: string; rotate: number }) {
+  return (
+    <svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true" className={cn("absolute", className)} style={{ transform: `rotate(${rotate}deg)` }}>
+      <path d="M0.5 10.5V0.5H10.5" fill="none" stroke="var(--color-plate-ink)" strokeOpacity="0.28" />
+    </svg>
+  );
+}
+
+/**
+ * What marks the plate as a plate: registration marks in its four corners, the way a
+ * photographic plate's corners are marked for the measuring engine, and its inscription, the
+ * plate number and date written on the glass. The number is the commit the report was measured
+ * at and the date is when it was taken, so the inscription is a fact about the plate, not
+ * decoration; it repeats what the rail says, so it is hidden from assistive tech.
+ *
+ * The corners sit inside the 16px the controls and the title keep from the edges, and above the
+ * scrubber when there is one. The inscription takes the bottom-right margin, opposite the
+ * legend, and carries data-plate-chrome so specimen labels keep off it; it claims no framing
+ * inset, so the camera frames the web as before. Narrow plates drop it, where the legend takes
+ * the whole width.
+ */
+export function PlateMarks({ engine, compact, raised }: { engine: GalaxyEngine; compact: boolean; raised: boolean }) {
+  const report = engine.model.report;
+  const git = report.git;
+  const bottom = raised ? 52 : 0;
+  // The reader's local calendar date, as the rail and About print it (labels.ts
+  // generatedParts): the ISO string's first ten characters are the UTC date, which said
+  // "2026-11-04" under a rail that said "Nov 3" for a report written late in the evening.
+  const at = new Date(report.generatedAt);
+  const taken = Number.isNaN(at.getTime())
+    ? report.generatedAt.slice(0, 10)
+    : `${at.getFullYear()}-${String(at.getMonth() + 1).padStart(2, "0")}-${String(at.getDate()).padStart(2, "0")}`;
+  return (
+    <>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 z-10" style={{ bottom }}>
+        <Corner className="top-[5px] left-[5px]" rotate={0} />
+        <Corner className="top-[5px] right-[5px]" rotate={90} />
+        <Corner className="right-[5px] bottom-[5px]" rotate={180} />
+        <Corner className="bottom-[5px] left-[5px]" rotate={270} />
+      </div>
+      {!compact && (
+        <p
+          data-plate-chrome
+          aria-hidden="true"
+          className="pointer-events-none absolute right-5 z-20 flex items-baseline gap-2 bg-plate px-1 text-[10.5px] text-plate-muted/75 @max-[640px]:hidden"
+          style={{ bottom: bottom + 12 }}
+        >
+          <span className="font-semibold tracking-[0.08em] uppercase [font-stretch:80%]">Plate</span>
+          <span className="figures font-mono">{git ? git.head.slice(0, 7) : "no git"}</span>
+          {git && <span className="max-w-[16ch] truncate font-mono">{git.branch}</span>}
+          <span className="figures font-mono">{taken}</span>
+        </p>
+      )}
+    </>
   );
 }

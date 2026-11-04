@@ -1,5 +1,5 @@
 /**
- * `starchart serve <dir>`: a static file server for a report folder.
+ * `skyplate serve <dir>`: a static file server for a report folder.
  *
  * A report opens straight from disk, so this exists for the cases file:// cannot cover:
  * opening it from another machine, browsers or policies that lock file:// down, and --open
@@ -12,7 +12,10 @@
  */
 
 import { existsSync, statSync } from "node:fs";
-import { join, resolve, sep } from "node:path";
+import { basename, join, resolve, sep } from "node:path";
+import { NOTICE_FILES } from "../core/site";
+
+const NOTICE_NAMES = new Set<string>(NOTICE_FILES);
 
 export interface StaticServer {
   url: string;
@@ -47,9 +50,13 @@ export function startServer(dir: string, port: number | undefined): StaticServer
     }
     const blob = Bun.file(target);
     if (!(await blob.exists())) return new Response("Not found", { status: 404 });
+    // LICENSE, NOTICE and THIRD_PARTY_NOTICES have no extension (the conventional names), so Bun
+    // types them application/octet-stream and a browser downloads them instead of showing them;
+    // the About panel links to them, and a reader clicking "licenses" expects to read them.
+    const type = NOTICE_NAMES.has(basename(target)) ? "text/plain; charset=utf-8" : blob.type || "application/octet-stream";
     return new Response(req.method === "HEAD" ? null : blob, {
       headers: {
-        "Content-Type": blob.type || "application/octet-stream",
+        "Content-Type": type,
         "Cache-Control": "no-cache",
         "Content-Length": String(blob.size),
       },
