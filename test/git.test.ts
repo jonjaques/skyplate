@@ -9,7 +9,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { commitType, mineGit, renameWarning, scrubRemote, truncateSubject } from "../src/core/git";
@@ -237,7 +237,9 @@ function buildMainFixture(): string {
     env: { ...ISOLATED, GIT_COMMITTER_NAME: ALICE.name, GIT_COMMITTER_EMAIL: ALICE.email },
   });
   expect(r.exitCode).not.toBe(0); // the conflict is the point
-  expect(git(repo, ["rev-parse", "-q", "--verify", "MERGE_HEAD"]).trim()).not.toBe("");
+  // A file check rather than `rev-parse -q --verify MERGE_HEAD`: that either prints a hash or
+  // exits non-zero with -q silencing stderr, so git() threw "failed: " with nothing after it.
+  expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(true);
   write(
     repo,
     "src/b.ts",

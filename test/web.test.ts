@@ -10,6 +10,15 @@
 import { describe, expect, test } from "bun:test";
 import { computeWeb, GRAVITIES, gravityMass, type Web, type WebInput } from "../src/shared/web";
 
+/**
+ * The time budgets below are the viewer's main-thread budgets on the machine they were set on
+ * (Apple M5). GitHub's hosted runners run the same code 2-3x slower and failed them by 10-20%
+ * (357 ms against 300, 434 against 400), so CI gets the same 2.5x layout.test.ts gives
+ * computeLayout. A layout that went quadratic still fails there: the sibling sweep the 10,000-
+ * sibling test guards against took 780 ms locally, so at a runner's 2-3x it is far past 750.
+ */
+const CI_SLOWDOWN = process.env.CI ? 2.5 : 1;
+
 function prng(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
@@ -659,7 +668,7 @@ describe("computeWeb", () => {
     }
     expectFinite(w!.positions, "positions");
     expect(stackedPairs(w!.positions)).toBe(0);
-    expect(best).toBeLessThan(300);
+    expect(best).toBeLessThan(300 * CI_SLOWDOWN);
   }, 30_000);
 
   test("stays inside the viewer's main-thread budget at 20k and 50k files", () => {
@@ -677,7 +686,7 @@ describe("computeWeb", () => {
       }
       expectFinite(w!.positions, "positions");
       expect(stackedPairs(w!.positions)).toBe(0);
-      expect(best).toBeLessThan(budget);
+      expect(best).toBeLessThan(budget * CI_SLOWDOWN);
     }
   }, 30_000);
 });

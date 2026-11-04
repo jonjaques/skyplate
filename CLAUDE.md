@@ -17,7 +17,7 @@ what breaks if you change it carelessly.
 | Regenerate the mark, wordmark and favicon | `bun scripts/brand.ts` (needs `woff2_decompress`: `brew install woff2`) |
 | Tests | `bun test` |
 | Typecheck | `bun check` (TypeScript 7; do not use `tsc`) |
-| Publish to npm | bump `version`, then `npm publish` (`prepublishOnly` builds, tests and typechecks) |
+| Publish to npm | bump `version`, then `bun publish` (`prepublishOnly` builds, tests and typechecks; not when handed a tarball) |
 
 Bun is the runtime, package manager and bundler here (this project began from
 `bun init --react=tailwind`). Use `bun add`, never npm/yarn/pnpm.
@@ -65,8 +65,8 @@ src/index.ts              dev server
   `src/shared` import at runtime (today `typescript`, `ignore`, `d3-force-3d`); the viewer's
   packages are `devDependencies` because `dist/viewer` arrives already bundled. A new bare import
   in those four directories goes in `dependencies`, or installed copies fail with a missing
-  module that `bun test` in a checkout never sees. Smoke-test with `bun pm pack` and an install
-  of the tarball before a release.
+  module that `bun test` in a checkout never sees. CI packs, installs and runs the tarball on
+  every PR for that reason; repeat it with `bun pm pack` and an install before a release.
 - **Secrets are never embedded.** `Detection.secret` files are measured but carry no content
   and no hash. Keep it that way.
 - **TypeScript analysis uses the async API** (`typescript/unstable/async`). The sync client

@@ -4,20 +4,26 @@
   "description": "Point it at any project and get a static report: a 3D plate of every file, a statistics dashboard, a source reader and TypeScript code intelligence.",
   "keywords": [
     "codebase",
-    "visualization",
-    "static-site",
-    "report",
-    "cli",
+    "code-visualization",
+    "code-map",
+    "repository-analysis",
+    "static-report",
+    "dependency-graph",
+    "git-history",
+    "hotspots",
     "typescript",
-    "three.js",
-    "bun"
+    "3d",
+    "cli"
   ],
-  "homepage": "https://github.com/jonjaques/skyplate#readme",
+  "homepage": "https://github.com/jonjaques/skyplate",
   "bugs": {
     "url": "https://github.com/jonjaques/skyplate/issues"
   },
   "license": "Apache-2.0",
-  "author": "Jon Jaques",
+  "author": {
+    "name": "Jon Jaques",
+    "url": "https://github.com/jonjaques"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jonjaques/skyplate.git"
@@ -32,6 +38,7 @@
     "src/core",
     "src/shared",
     "dist/viewer",
+    "!dist/viewer/**/*.map",
     "docs/brand",
     "LICENSE",
     "NOTICE",
