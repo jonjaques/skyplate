@@ -162,6 +162,12 @@ function viewerComplete(): boolean {
 
 export async function ensureViewer(): Promise<string> {
   if (viewerComplete()) return VIEWER_DIR;
+  // An installed copy ships dist/viewer pre-built and no build.ts (package.json "files"), so
+  // spawning it would fail on a missing module and the advice to run "bun run build" could not
+  // be followed. Only a damaged install gets here; reinstalling is the fix.
+  if (!existsSync(join(PROJECT_ROOT, "build.ts"))) {
+    throw new Error(`this skyplate install has an incomplete viewer (${VIEWER_DIR}); reinstall the package`);
+  }
   const proc = Bun.spawn([process.execPath, join(PROJECT_ROOT, "build.ts")], {
     cwd: PROJECT_ROOT,
     stdout: "pipe",
@@ -178,8 +184,15 @@ export async function ensureViewer(): Promise<string> {
  * True when a source file of the viewer (or the schema it reads) is newer than the built
  * dist/viewer, so reports would ship a viewer that predates the code beside it. False when
  * either side is missing: an installed copy has no src/viewer to compare against.
+ *
+ * The src/viewer check comes first, and on its own: an installed copy does ship src/shared (the
+ * CLI runs it), and package managers stamp extracted files with the time they wrote them, in
+ * tarball order, so src/shared lands a few milliseconds after dist/viewer/index.html. Comparing
+ * it would call every `bunx skyplate` run stale and tell the user to run a build script the
+ * package does not contain.
  */
 export function viewerIsStale(): boolean {
+  if (!existsSync(join(PROJECT_ROOT, "src", "viewer"))) return false;
   let built: number;
   try {
     built = statSync(join(VIEWER_DIR, "index.html")).mtimeMs;

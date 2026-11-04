@@ -9,7 +9,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
+import { existsSync, mkdtempSync, mkdirSync, rmSync, writeFileSync, appendFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { commitType, mineGit, renameWarning, scrubRemote, truncateSubject } from "../src/core/git";
@@ -228,8 +228,18 @@ function buildMainFixture(): string {
   git(repo, ["checkout", "-q", "main"]);
   write(repo, "src/b.ts", "B main\n" + lines(5, "b").split("\n").slice(1).join("\n") + "b side\n");
   commit(repo, ALICE, D.c12, "fix: b on main");
-  const r = Bun.spawnSync(["git", "merge", "-q", "--no-ff", "side2"], { cwd: repo, env: ISOLATED });
+  // An identity is passed even though a conflicted merge writes no commit: git checks for one
+  // before it starts. macOS invents one from the hostname, Linux refuses, and the refusal also
+  // exits non-zero, so without it CI never merged side2 at all and c13 lost a parent. Hence
+  // MERGE_HEAD, not the exit code, is what proves the merge stopped on the conflict.
+  const r = Bun.spawnSync(["git", "merge", "-q", "--no-ff", "side2"], {
+    cwd: repo,
+    env: { ...ISOLATED, GIT_COMMITTER_NAME: ALICE.name, GIT_COMMITTER_EMAIL: ALICE.email },
+  });
   expect(r.exitCode).not.toBe(0); // the conflict is the point
+  // A file check rather than `rev-parse -q --verify MERGE_HEAD`: that either prints a hash or
+  // exits non-zero with -q silencing stderr, so git() threw "failed: " with nothing after it.
+  expect(existsSync(join(repo, ".git", "MERGE_HEAD"))).toBe(true);
   write(
     repo,
     "src/b.ts",
@@ -669,6 +679,9 @@ describe("scope and edge cases", () => {
     git(dir, ["merge", "-q", "--no-ff", "--no-commit", "esm"], {
       GIT_AUTHOR_NAME: "x",
       GIT_AUTHOR_EMAIL: "x@x",
+      // A committer too: Linux git will not invent one from the hostname (see buildMainFixture).
+      GIT_COMMITTER_NAME: "x",
+      GIT_COMMITTER_EMAIL: "x@x",
     });
     git(dir, ["mv", "types.d.mts", "types.d.ts"]);
     commit(dir, ALICE, "2024-02-04T09:00:00Z", "Merge branch 'esm', keeping .d.ts");
