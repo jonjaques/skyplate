@@ -15,7 +15,7 @@ import { analyzeProject } from "../src/core/pipeline";
 import { validateReport } from "../src/core/validate";
 import type { CodeSymbols, Report } from "../src/shared/schema";
 
-const TMP = realpathSync(mkdtempSync(join(tmpdir(), "starchart-validate-test-")));
+const TMP = realpathSync(mkdtempSync(join(tmpdir(), "skyplate-validate-test-")));
 let base: Report;
 
 beforeAll(async () => {

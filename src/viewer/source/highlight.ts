@@ -1,12 +1,12 @@
 /**
  * Syntax highlighting for the source reader: highlight.js, loaded only when a file is opened.
  *
- * Why highlight.js: starchart recognizes hundreds of languages and highlight.js grammars cover
+ * Why highlight.js: Skyplate recognizes hundreds of languages and highlight.js grammars cover
  * ~190 of them in one synchronous call, with no WASM and no worker (both of which are awkward
  * or blocked over file://). Its full build is about 1 MB, so it never rides in the main bundle:
  *
  * - Production (a report folder): build.ts writes it as its own classic script,
- *   assets/highlight.js, which sets window.__starchartHighlight. It is injected with a plain
+ *   assets/highlight.js, which sets window.__skyplateHighlight. It is injected with a plain
  *   <script src> on first use, the same way report data loads, so it works from file://.
  * - Development: the Bun dev server serves ES modules, so a dynamic import() does the job.
  *   The branch is keyed on process.env.NODE_ENV, which build.ts defines as "production", and
@@ -22,7 +22,7 @@ import type { FileRecord } from "../../shared/schema";
 
 declare global {
   interface Window {
-    __starchartHighlight?: HLJSApi;
+    __skyplateHighlight?: HLJSApi;
   }
 }
 
@@ -41,12 +41,12 @@ function injectScript(src: string): Promise<void> {
 
 /** The highlighter, or null when it cannot load (the reader then shows plain text). */
 export function loadHighlighter(): Promise<HLJSApi | null> {
-  if (window.__starchartHighlight) return Promise.resolve(window.__starchartHighlight);
+  if (window.__skyplateHighlight) return Promise.resolve(window.__skyplateHighlight);
   if (!loading) {
     const load: Promise<HLJSApi | undefined> =
       process.env.NODE_ENV !== "production"
         ? import("highlight.js").then((m) => m.default)
-        : injectScript("assets/highlight.js").then(() => window.__starchartHighlight);
+        : injectScript("assets/highlight.js").then(() => window.__skyplateHighlight);
     loading = load.then(
       (h) => h ?? null,
       () => null,
@@ -56,7 +56,7 @@ export function loadHighlighter(): Promise<HLJSApi | null> {
 }
 
 /**
- * starchart language ids (linguist slugs) whose highlight.js grammar has another name. Ids not
+ * Skyplate language ids (linguist slugs) whose highlight.js grammar has another name. Ids not
  * listed are tried as-is, then by extension, since most slugs ("python", "rust", "go") are
  * already highlight.js names or aliases.
  */

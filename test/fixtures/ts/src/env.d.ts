@@ -1,5 +1,5 @@
 // Globals the fixture's code relies on. A module with `declare global` rather than a bare
-// script, so it means the same thing under starchart's root tsconfig (moduleDetection: force
+// script, so it means the same thing under Skyplate's root tsconfig (moduleDetection: force
 // turns every file into a module) as under the fixture's own.
 export {};
 

@@ -4,7 +4,7 @@
  *
  * Semantics follow lib/linguist/heuristics.rb: the first heuristic whose extension list the
  * filename ends with is the only one consulted, its rules are tried in order, and the first
- * rule that matches decides. Linguist reads the first 50 KiB; starchart only ever has the first
+ * rule that matches decides. Linguist reads the first 50 KiB; Skyplate only ever has the first
  * 8 KiB (the walker's head), which settles every rule that looks for declarations near the top
  * and loses only the rare one that needs a marker deep in a file.
  *

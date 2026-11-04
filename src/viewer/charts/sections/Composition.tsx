@@ -81,7 +81,7 @@ function LinesByLanguage() {
     <Figure
       className={span(6)}
       title="Code lines by language"
-      subtitle={`${formatInt(total)} code lines across ${plural(shares.length, "language")}, comments and blanks excluded${unslotted ? ". Gray bars are languages the galaxy groups as Other" : ""}`}
+      subtitle={`${formatInt(total)} code lines across ${plural(shares.length, "language")}, comments and blanks excluded${unslotted ? ". Gray bars are languages the plate groups as Other" : ""}`}
       height={items.length * 28}
       empty={shares.length === 0 ? "No code lines in view. Widen the filters to see languages." : null}
       table={() => ({
@@ -294,7 +294,7 @@ function DirTreemap() {
     <Figure
       className={span(8)}
       title="Directory map"
-      subtitle="Area is size, color the dominant language: the galaxy's first three language colors, every other language in gray. Click a directory to open it as the drawer."
+      subtitle="Area is size, color the dominant language: the plate's first three language colors, every other language in gray. Click a directory to open it as the drawer."
       height={TREEMAP_H}
       legend={legend.length ? <Legend items={legend} /> : undefined}
       empty={empty ? "Nothing to map in view. Widen the filters or close the drawer." : null}

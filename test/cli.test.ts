@@ -1,7 +1,7 @@
 /**
- * The `starchart` command: flags, error exits, a real run, and the static server.
+ * The `skyplate` command: flags, error exits, a real run, and the static server.
  *
- * The CLI is spawned as a user would run it (`bun bin/starchart.ts …`), so exit codes and
+ * The CLI is spawned as a user would run it (`bun bin/skyplate.ts …`), so exit codes and
  * stderr are the real ones; argument parsing and the server are also tested in-process.
  *
  * Run: bun test test/cli.test.ts
@@ -15,8 +15,8 @@ import { UsageError, parseCommand, parseSize } from "../src/cli/args";
 import { slug } from "../src/cli/main";
 import { resolveInside, startServer, type StaticServer } from "../src/cli/serve";
 
-const BIN = join(import.meta.dir, "..", "bin", "starchart.ts");
-const TMP = realpathSync(mkdtempSync(join(tmpdir(), "starchart-cli-test-")));
+const BIN = join(import.meta.dir, "..", "bin", "skyplate.ts");
+const TMP = realpathSync(mkdtempSync(join(tmpdir(), "skyplate-cli-test-")));
 const PROJECT = join(TMP, "tiny");
 
 function run(args: string[], cwd = TMP): { code: number; stdout: string; stderr: string } {
@@ -125,13 +125,13 @@ describe("the command", () => {
     expect(help.stdout).toContain("--max-source-total");
     const v = run(["--version"]);
     expect(v.code).toBe(0);
-    expect(v.stdout).toMatch(/^starchart \d+\.\d+\.\d+\n$/);
+    expect(v.stdout).toMatch(/^skyplate \d+\.\d+\.\d+\n$/);
   });
 
   test("user errors are one line and exit 1", () => {
     const missing = run([join(TMP, "nope")]);
     expect(missing.code).toBe(1);
-    expect(missing.stderr).toBe(`starchart: path not found: ${join(TMP, "nope")}\n`);
+    expect(missing.stderr).toBe(`skyplate: path not found: ${join(TMP, "nope")}\n`);
 
     const file = run([join(TMP, "a-file.txt")]);
     expect(file.code).toBe(1);
@@ -152,7 +152,7 @@ describe("the command", () => {
     writeFileSync(join(keep, "important.txt"), "do not delete");
     const r = run([PROJECT, "--out", keep, "--quiet"]);
     expect(r.code).toBe(1);
-    expect(r.stderr).toContain("not a starchart report");
+    expect(r.stderr).toContain("not a skyplate report");
     expect(readFileSync(join(keep, "important.txt"), "utf8")).toBe("do not delete");
   });
 
@@ -165,7 +165,7 @@ describe("the command", () => {
     writeFileSync(join(proj, "src", "main.ts"), "export function main() { return 42; }\n");
     const r = run([".", "--out", ".", "--quiet", "--no-git"], proj);
     expect(r.code).toBe(1);
-    expect(r.stderr).toBe(`starchart: output folder ${proj} is the project being analyzed, and writing there would replace it; choose a new folder (one inside the project is fine)\n`);
+    expect(r.stderr).toBe(`skyplate: output folder ${proj} is the project being analyzed, and writing there would replace it; choose a new folder (one inside the project is fine)\n`);
     expect(readFileSync(join(proj, "src", "main.ts"), "utf8")).toContain("main()");
   });
 
@@ -185,7 +185,7 @@ describe("the command", () => {
     writeFileSync(join(victim, "package.json"), "{}\n");
     const r = run([PROJECT, "--out", victim, "--quiet", "--no-git"]);
     expect(r.code).toBe(1);
-    expect(r.stderr).toContain("is not a starchart report; choose another --out");
+    expect(r.stderr).toContain("is not a skyplate report; choose another --out");
     expect(readFileSync(join(victim, "src", "important.txt"), "utf8")).toBe("do not delete");
   });
 
@@ -194,16 +194,16 @@ describe("the command", () => {
     const under = run([PROJECT, "--out", join(file, "report")]);
     expect(under.code).toBe(1);
     // No progress, no summary: the check ran before anything was analyzed.
-    expect(under.stderr).toBe(`starchart: output path is inside a file: ${file}\n`);
+    expect(under.stderr).toBe(`skyplate: output path is inside a file: ${file}\n`);
 
     if (process.getuid?.() === 0) return; // root writes anywhere, so there is nothing to refuse
     const locked = join(TMP, "locked");
     mkdirSync(locked, { recursive: true });
     chmodSync(locked, 0o555);
     try {
-      const denied = run([PROJECT, "--out", join(locked, "x.starchart")]);
+      const denied = run([PROJECT, "--out", join(locked, "x.skyplate")]);
       expect(denied.code).toBe(1);
-      expect(denied.stderr).toBe(`starchart: cannot write the report to ${join(locked, "x.starchart")}: ${locked} is not writable\n`);
+      expect(denied.stderr).toBe(`skyplate: cannot write the report to ${join(locked, "x.skyplate")}: ${locked} is not writable\n`);
     } finally {
       chmodSync(locked, 0o755);
     }
@@ -215,16 +215,16 @@ describe("the command", () => {
     expect(r.stderr).toBe("");
     expect(r.code).toBe(0);
     expect(existsSync(join(out, "index.html"))).toBe(true);
-    expect(readFileSync(join(out, "data", "report.js"), "utf8")).toStartWith('window.__starchart.resolve("report", ');
+    expect(readFileSync(join(out, "data", "report.js"), "utf8")).toStartWith('window.__skyplate.resolve("report", ');
   }, 60_000);
 
   test("the default output lands in the current directory, named after the project", () => {
     const r = run([PROJECT, "--no-git"]);
     expect(r.code).toBe(0);
-    expect(existsSync(join(TMP, "tiny-thing.starchart", "data", "report.js"))).toBe(true);
-    expect(r.stderr).toContain("starchart · Tiny Thing");
-    expect(r.stderr).toContain("next: open tiny-thing.starchart/index.html");
-    expect(r.stderr).toContain("starchart serve tiny-thing.starchart");
+    expect(existsSync(join(TMP, "tiny-thing.skyplate", "data", "report.js"))).toBe(true);
+    expect(r.stderr).toContain("skyplate · Tiny Thing");
+    expect(r.stderr).toContain("next: open tiny-thing.skyplate/index.html");
+    expect(r.stderr).toContain("skyplate serve tiny-thing.skyplate");
   }, 60_000);
 
   test("a report inside the project is not analyzed on the next run", () => {
@@ -232,7 +232,7 @@ describe("the command", () => {
     expect(first.code).toBe(0);
     const second = run([".", "--no-git", "--quiet", "--json"], PROJECT);
     expect(second.code).toBe(0);
-    const report = JSON.parse(readFileSync(join(PROJECT, "tiny-thing.starchart", "data", "report.json"), "utf8"));
+    const report = JSON.parse(readFileSync(join(PROJECT, "tiny-thing.skyplate", "data", "report.json"), "utf8"));
     expect(report.files.map((f: { path: string }) => f.path)).toEqual(["README.md", "src/a.py", "src/b.py"]);
   }, 60_000);
 });
@@ -244,7 +244,8 @@ describe("serve", () => {
   beforeAll(() => {
     mkdirSync(join(dir, "data"), { recursive: true });
     writeFileSync(join(dir, "index.html"), "<!doctype html><title>t</title>");
-    writeFileSync(join(dir, "data", "report.js"), "window.__starchart.resolve('report', {});");
+    writeFileSync(join(dir, "data", "report.js"), "window.__skyplate.resolve('report', {});");
+    writeFileSync(join(dir, "THIRD_PARTY_NOTICES"), "THIRD-PARTY NOTICES\n");
     writeFileSync(join(TMP, "outside.txt"), "outside the report");
     server = startServer(dir, 0);
   });
@@ -257,8 +258,14 @@ describe("serve", () => {
     expect(index.headers.get("cache-control")).toBe("no-cache");
     const data = await fetch(server.url + "data/report.js");
     expect(data.headers.get("content-type")).toContain("javascript");
-    expect(await data.text()).toContain("__starchart");
+    expect(await data.text()).toContain("__skyplate");
     expect((await fetch(server.url + "missing.js")).status).toBe(404);
+  });
+
+  test("serves the extensionless notice files as text, so a browser shows them", async () => {
+    const notices = await fetch(server.url + "THIRD_PARTY_NOTICES");
+    expect(notices.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+    expect(await notices.text()).toBe("THIRD-PARTY NOTICES\n");
   });
 
   test("refuses paths that escape the folder", async () => {

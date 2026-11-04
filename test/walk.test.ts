@@ -51,7 +51,7 @@ const SHARED: Record<string, string> = {
 
 let base: string;
 beforeAll(async () => {
-  base = await realpath(await mkdtemp(join(tmpdir(), "starchart-walk-")));
+  base = await realpath(await mkdtemp(join(tmpdir(), "skyplate-walk-")));
 });
 afterAll(async () => {
   await rm(base, { recursive: true, force: true });
@@ -199,9 +199,11 @@ describe("git work tree", () => {
   });
 });
 
-const VITE = "/var/folders/30/cs05wf2173b2bvdj8f58q9k00000gn/T/starchart-session/repos/vite";
+// A clone of vitejs/vite, for a timing check on a real tree; skipped unless one is named. (This
+// was a hardcoded temp path from one machine's session, which no other checkout ever had.)
+const VITE = process.env.SKYPLATE_TEST_VITE ?? "";
 
-describe.skipIf(!existsSync(VITE))("real repository", () => {
+describe.skipIf(!VITE || !existsSync(VITE))("real repository", () => {
   test("vite walks in well under a second", async () => {
     const t0 = performance.now();
     const w = await walkProject(VITE, { includeIgnored: false, exclude: [] });

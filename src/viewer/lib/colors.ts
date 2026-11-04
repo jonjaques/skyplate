@@ -3,8 +3,8 @@
  * and legends stay in ink tokens, with a swatch beside them carrying identity.
  *
  * Values mirror the tokens in styles.css and were validated with the dataviz skill's
- * validate_palette.js on each surface: `light` on the tray (#f6f7f5), `dark` on the dark-theme
- * tray (#161c20) and on the galaxy plate (#0b1016), which is dark in both themes, so the 3D
+ * validate_palette.js on each surface: `light` on the light ground (#f4f6f8), `dark` on the dark
+ * ground (#13181e) and on the galaxy plate (#0b1016), which is dark in both themes, so the 3D
  * view always uses the dark steps. Slot order is the CVD-safety mechanism; never reorder.
  */
 

@@ -366,7 +366,7 @@ export function buildFindings(report: Input, symbols?: CodeSymbols): Finding[] {
   // ── Repository hygiene ──
   // Committed credential-like files are a warning even when they all sit under test or fixture
   // directories (vite has 16 such .env files). Telling a fixture value from a real key means
-  // reading the file, which nothing in starchart does, and real keys do get committed as
+  // reading the file, which nothing in Skyplate does, and real keys do get committed as
   // "test" config; a warning someone dismisses costs less than one that never fired.
   const secrets = files.filter((f) => f.secret);
   if (secrets.length) {

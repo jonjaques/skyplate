@@ -86,7 +86,7 @@ export function AuthorRecordView({ report, model, author, id }: { report: Report
                   <span className="truncate font-mono text-xs">{dir === 0 ? "Root files" : report.dirs[dir]!.path}</span>
                   <span className="figures font-mono text-xs text-ink-3">{plural(n, "commit")}</span>
                 </span>
-                <span className="mt-1 block h-1 bg-rail dark:bg-ink-3" style={{ width: `${Math.max(3, (n / maxDir) * 100)}%` }} aria-hidden />
+                <span className="mt-1 block h-1 bg-measure" style={{ width: `${Math.max(3, (n / maxDir) * 100)}%` }} aria-hidden />
               </button>
             ))}
           </div>

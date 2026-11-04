@@ -1439,7 +1439,7 @@ export const HEURISTICS: readonly Heuristic[] = [
 /** Extensions too common to trust alone; a heuristic must confirm them (generic.yml). */
 export const GENERIC_EXTENSIONS: readonly string[] = [".1",".2",".3",".4",".5",".6",".7",".8",".9",".action",".alg",".app",".cmp",".msg",".network",".resource",".sd",".sol",".srv",".stl",".tag",".target",".url"];
 
-/** Paths of third-party code (vendor.yml, minus entries starchart reads differently). */
+/** Paths of third-party code (vendor.yml, minus entries Skyplate reads differently). */
 export const VENDOR_PATTERNS: readonly string[] = [
   "^[Dd]ependencies/",
   "(^|/)dist/",

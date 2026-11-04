@@ -213,7 +213,7 @@ describe("detectFile language", () => {
     expect(detect("gcc/i386.md", ";; Machine description\n(define_insn \"x\"")).toMatchObject({ language: "gcc-machine-description" });
   });
 
-  test("exact filenames, linguist's and starchart's", () => {
+  test("exact filenames, linguist's and Skyplate's", () => {
     expect(detect("Makefile", "all:\n\techo hi")).toMatchObject({ language: "makefile", reason: "filename", category: "build" });
     expect(detect("Dockerfile", "FROM node")).toMatchObject({ language: "dockerfile", category: "build" });
     expect(detect("Dockerfile.dev", "FROM node")).toMatchObject({ language: "dockerfile", category: "build" });
@@ -246,7 +246,7 @@ describe("detectFile language", () => {
     expect(detect("INSTALL", "#!/bin/sh\necho\n")).toMatchObject({ language: "text", reason: "filename" });
   });
 
-  test("names starchart adds: Cursor rules and Wrangler's .dev.vars", () => {
+  test("names Skyplate adds: Cursor rules and Wrangler's .dev.vars", () => {
     expect(detect(".cursor/rules/style.mdc", "---\ndescription: x\n---\n# Style\n")).toMatchObject({ language: "markdown", category: "docs" });
     expect(detect(".dev.vars", "API_TOKEN=x\n")).toMatchObject({ language: "dotenv", category: "config" });
   });
@@ -272,7 +272,7 @@ describe("detectFile language", () => {
 
   test("negative_pattern applies alongside pattern, a known deviation from linguist", () => {
     // Linguist's parser drops negative_pattern when a rule also has a pattern (parse_rule
-    // returns on the first key). Starchart keeps both, as the YAML evidently means.
+    // returns on the first key). Skyplate keeps both, as the YAML evidently means.
     // The cost, measured over linguist's samples: one file, samples/Tree-sitter Query/
     // func_highlights.scm, whose literal "()" trips the Tree-sitter rule's negative pattern
     // and leaves it to the ranked default, Scheme. Linguist says Tree-sitter Query.
@@ -713,7 +713,7 @@ describe("detectFile flags", () => {
     expect(detect("Assets/Readme.txt.meta", "just notes\n").generated).toBe(false);
   });
 
-  test("vendored by linguist's patterns, minus the ones starchart reads differently", () => {
+  test("vendored by linguist's patterns, minus the ones Skyplate reads differently", () => {
     expect(detect("node_modules/react/index.js", "x").vendored).toBe(true);
     expect(detect("vendor/github.com/x/y.go", "x").vendored).toBe(true);
     expect(detect("third_party/zlib/zlib.h", "x").vendored).toBe(true);

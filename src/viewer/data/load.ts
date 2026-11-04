@@ -1,7 +1,7 @@
 /**
  * Loads report data files written by the CLI.
  *
- * Data ships as classic scripts that call `window.__starchart.resolve(name, payload)` (see
+ * Data ships as classic scripts that call `window.__skyplate.resolve(name, payload)` (see
  * DATA_GLOBAL in src/shared/schema.ts). fetch() would be simpler, but browsers refuse fetch()
  * and module scripts over file://, and a report folder has to work when someone double-clicks
  * its index.html. A plain <script src> still runs there.

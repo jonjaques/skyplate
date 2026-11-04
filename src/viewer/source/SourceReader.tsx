@@ -30,7 +30,7 @@ import { SYMBOL_KIND_LABEL } from "../shell/labels";
 import { openSymbolDefinition } from "../shell/navigate";
 import { LanguageSwatch, PathText, RowButton } from "../shell/parts";
 import { takeReaderFocus, useShell } from "../shell/shell-state";
-import { MOD_KEY } from "../shell/TopBar";
+import { MOD_KEY } from "../shell/nav";
 import { CodeView, type CodeMark, type CodeRange } from "./CodeView";
 import { describeNoSource, describeUnavailable } from "./availability";
 import { grammarFor, htmlToLines, loadHighlighter, plainLines, type Tok } from "./highlight";
@@ -452,7 +452,7 @@ function NothingOpen({ report }: { report: Report }) {
         </h2>
         <p className="mt-1.5 max-w-[62ch] text-ink-2">{body}</p>
         <p className="mt-3 max-w-[62ch] text-ink-2">
-          Pick a star on the plate or a row in the explorer: the accession record shows what was measured, and the galaxy shows
+          Pick a star on the plate or a row in the explorer: the accession record shows what was measured, and the plate shows
           what it imports and what imports it.
         </p>
       </div>

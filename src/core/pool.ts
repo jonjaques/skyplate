@@ -7,7 +7,7 @@
  *
  * Requests queue in submission order and go to whichever worker frees up first, so a batch of
  * one 8 MB file never holds up the batches behind it. The worker is created from a URL next to
- * this module, which is what makes it run straight from source (`bun bin/starchart.ts`)
+ * this module, which is what makes it run straight from source (`bun bin/skyplate.ts`)
  * without a build step.
  *
  * Workers stay ref'd while the pool is open: an unref'd pool lets the process exit in the

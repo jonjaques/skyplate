@@ -326,8 +326,8 @@ function buildHeuristics(h: YamlHeuristics, names: Set<string>) {
 // ─── Vendor / documentation path patterns ────────────────────────────────────────────────────
 
 /**
- * vendor.yml entries that do not mean "third-party code" in starchart's model, and why.
- * Linguist's "vendored" means "exclude from language statistics"; starchart's flag means
+ * vendor.yml entries that do not mean "third-party code" in Skyplate's model, and why.
+ * Linguist's "vendored" means "exclude from language statistics"; Skyplate's flag means
  * "someone else's code", and the category already says what these files are for.
  */
 const VENDOR_DROP: Record<string, string> = {
@@ -487,7 +487,7 @@ ${h.rows.map((r) => `  ${json(r)},`).join("\n")}
 /** Extensions too common to trust alone; a heuristic must confirm them (generic.yml). */
 export const GENERIC_EXTENSIONS: readonly string[] = ${json(genericExt)};
 
-/** Paths of third-party code (vendor.yml, minus entries starchart reads differently). */
+/** Paths of third-party code (vendor.yml, minus entries Skyplate reads differently). */
 export const VENDOR_PATTERNS: readonly string[] = [
 ${vendorJs.map((p) => `  ${json(p)},`).join("\n")}
 ];

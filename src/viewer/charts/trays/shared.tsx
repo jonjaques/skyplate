@@ -14,6 +14,7 @@ import { ArrowUpRight } from "lucide-react";
 import { useMemo, type ReactNode } from "react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../components/ui/tooltip";
 import { cn } from "../../lib/utils";
+import { MetaText } from "../../shell/parts";
 import { useViewer } from "../../state/store";
 import { scopeFiles } from "../data";
 import { openChartsAt, type ChartsSection } from "../jump";
@@ -67,7 +68,11 @@ export function TrayShell({
             title
           )}
         </h3>
-        {aside && <div className="figures hidden min-w-0 truncate font-mono text-xs text-ink-3 @min-[250px]:block">{aside}</div>}
+        {aside && (
+          <div className="hidden min-w-0 truncate text-xs text-ink-3 @min-[250px]:block">
+            <MetaText>{aside}</MetaText>
+          </div>
+        )}
       </div>
       {children}
     </section>

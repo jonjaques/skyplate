@@ -280,6 +280,13 @@ describe("facts", () => {
     expect(measureText("a.md", md, "markdown").facts).toEqual({ headings: 2, links: 3, title: "Intro text" });
   });
 
+  test("an H1 after other headings is a section, not the document's title", () => {
+    // zustand's README: a logo, badges, sections, and later an H1 named "Recipes".
+    const md = ['<p align="center"><img src="./docs/bear.jpg" /></p>', "", "## First create a store", "", "text", "", "# Recipes", ""].join("\n");
+    expect(measureText("README.md", md, "markdown").facts?.title).toBeUndefined();
+    expect(measureText("a.md", "# Title\n\n## Part\n\n# Appendix\n", "markdown").facts?.title).toBe("Title");
+  });
+
   test("notebooks count cells and measure cell sources, not JSON", () => {
     const nb = JSON.stringify({
       cells: [

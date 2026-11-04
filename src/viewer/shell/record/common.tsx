@@ -74,7 +74,7 @@ export function ShowInGalaxy() {
   return (
     <Button variant="outline" size="xs" onClick={go} className="shrink-0 bg-paper text-ink-2 hover:text-ink">
       <Orbit aria-hidden />
-      Show in galaxy
+      Show on the plate
     </Button>
   );
 }

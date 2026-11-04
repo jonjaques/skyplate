@@ -248,7 +248,7 @@ function Collectors({ report, file }: { report: Report; file: FileRec }) {
                 </span>
                 <span className="figures font-mono text-xs text-ink-3">{plural(commits, "commit")}</span>
               </span>
-              <span className="mt-1 block h-1 bg-rail dark:bg-ink-3" style={{ width: `${Math.max(3, (commits / max) * 100)}%` }} aria-hidden />
+              <span className="mt-1 block h-1 bg-measure" style={{ width: `${Math.max(3, (commits / max) * 100)}%` }} aria-hidden />
             </button>
           );
         })}

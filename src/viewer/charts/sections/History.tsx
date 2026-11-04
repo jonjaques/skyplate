@@ -32,7 +32,7 @@ export function HistorySection() {
       <Section id="history" title="History">
         <SectionNote>
           {!report.git
-            ? "No history: this report was generated without git. Run starchart inside a git checkout to chart commits, growth and activity."
+            ? "No history: this report was generated without git. Run skyplate inside a git checkout to chart commits, growth and activity."
             : `Only ${plural(n, "commit")} in this history${report.git.shallow ? " (a shallow clone)" : ""}, so there is no change over time to chart. Re-run on a full clone to see it.`}
         </SectionNote>
       </Section>

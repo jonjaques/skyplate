@@ -1,7 +1,7 @@
 /**
  * Galaxy dev harness server: the plate alone, against any report folder, with hot reload.
  *
- *   PORT=4321 STARCHART_REPORT=path/to/report bun --hot src/viewer/galaxy/dev/serve.ts
+ *   PORT=4321 SKYPLATE_REPORT=path/to/report bun --hot src/viewer/galaxy/dev/serve.ts
  *
  * Dev-only: nothing here is imported by the viewer, so the production bundle never sees it.
  * It exists so the galaxy can be built and measured while the shell around it is still being
@@ -12,7 +12,7 @@ import { serve } from "bun";
 import path from "node:path";
 import harness from "./harness.html";
 
-const reportDir = path.resolve(process.env.STARCHART_REPORT ?? ".starchart/dev");
+const reportDir = path.resolve(process.env.SKYPLATE_REPORT ?? ".skyplate/dev");
 const port = Number(process.env.PORT ?? 4321);
 
 const server = serve({

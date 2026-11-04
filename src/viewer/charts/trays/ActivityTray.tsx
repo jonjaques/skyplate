@@ -185,7 +185,9 @@ export function ActivityTray() {
             {cursor !== null && (
               <line aria-hidden x1={cursor} x2={cursor} y1={0} y2={plotH} className="stroke-ink" strokeWidth={1.5} />
             )}
-            <XAxis ticks={timeTicks(x, width)} y={plotH} x0={0} x1={width} />
+            {/* The domain runs to the end of the last column's week, which is after HEAD on a fresh
+                report; a tick out there labeled a date (Nov 9) after the newest commit (Nov 4). */}
+            <XAxis ticks={timeTicks(x, width).filter((t) => t.pos <= x(toDate(git.last)) + 0.5)} y={plotH} x0={0} x1={width} />
           </svg>
         )}
         <ChartTooltip tip={tip} width={width} height={height} />

@@ -40,7 +40,10 @@ const NAME_GAP = 10;
  * pixels each side covers a 12px label's counters and letter gaps, so no star or lane shows
  * inside a word; a wider stroke would start erasing the region's own stars around the name.
  */
-export const HALO = "[paint-order:stroke_fill] [-webkit-text-stroke:4px_var(--color-plate)] [text-shadow:0_0_4px_var(--color-plate)]";
+// A plate-colored knockout around each glyph (a cartographer's label halo). 6px of stroke, half
+// of it outside the glyph: at 4px the brightest clumps of a 35,000-file plate still showed
+// through the counters of "packages 4,030".
+export const HALO = "[paint-order:stroke_fill] [-webkit-text-stroke:6px_var(--color-plate)] [text-shadow:0_0_6px_var(--color-plate)]";
 
 /**
  * Does any specimen label or group tag, or any leader running from a pinned star to its label,
@@ -286,7 +289,10 @@ export function RegionLabels({ engine }: { engine: GalaxyEngine }) {
           type="button"
           data-region-dir={region.dir}
           className={cn(
-            "pointer-events-auto absolute top-0 left-0 flex items-baseline gap-1.5 rounded-xs px-1 py-px text-xs font-semibold whitespace-nowrap [font-stretch:80%] outline-none",
+            // A soft plate-colored plaque behind the name, on top of the halo: over the brightest
+            // clumps of a large report ("test 17,991" sits in its own cluster, as it should) the
+            // glyph halo alone still let stars through the counters and the count.
+            "pointer-events-auto absolute top-0 left-0 flex items-baseline gap-1.5 rounded-sm bg-plate/60 px-1.5 py-px text-xs font-semibold whitespace-nowrap [font-stretch:80%] outline-none",
             HALO,
             "text-plate-muted transition-[color,opacity] hover:text-plate-ink hover:opacity-100 focus-visible:text-plate-ink focus-visible:opacity-100 focus-visible:ring-1 focus-visible:ring-plate-ink/60",
             region.index === focusRegion && "text-plate-ink",

@@ -1,11 +1,13 @@
 /**
- * Viewer shell: the Specimen Cabinet composition. Drawer rail on the left, top bar, the work
- * area for the active tab, the accession record on the right, and on the Galaxy tab the row of
- * three unit trays under the plate (.impeccable/mocks/decision/assigned.html is the reference).
+ * Viewer shell: the Plate Archive composition. The rail on the left holds the brand, the views
+ * and the drawers; the work area for the active view; the accession record on the right; and on
+ * the Plate view the row of three unit trays under the plate. There is no top bar on wide
+ * screens: each work area opens with its own header (the plate's title, the charts' filters,
+ * the explorer's toolbar), and the plate gets the height a bar would take.
  *
- *   ≥ 1280px   260px rail | work | 340px record
- *   1024+      220px rail | work | 300px record
- *   < 1024     the rail is a sheet behind a top-bar button; the record follows the work area
+ *   ≥ 1280px   264px rail | work | 340px record
+ *   1024+      224px rail | work | 300px record
+ *   < 1024     the rail is a sheet behind the slim top bar's button; the record follows the work
  *   < 768      one column; the plate takes about 60% of the viewport height
  *
  * Inactive tabs unmount. The galaxy is a WebGL scene, and a hidden one would keep its context
@@ -22,6 +24,7 @@ import { cn } from "./lib/utils";
 import { ensureSymbols } from "./state/loaders";
 import { useViewer, type Tab } from "./state/store";
 import { startUrlSync } from "./state/url";
+import { Mark } from "./brand/Brand";
 import { About } from "./shell/About";
 import { Boundary } from "./shell/Boundary";
 import { CommandPalette } from "./shell/CommandPalette";
@@ -58,13 +61,13 @@ export function App() {
         if (report.schemaVersion !== SCHEMA_VERSION) {
           setState({
             status: "error",
-            message: `This report uses data format ${report.schemaVersion}; this viewer reads format ${SCHEMA_VERSION}. Re-run starchart to rebuild it with a matching viewer.`,
+            message: `This report uses data format ${report.schemaVersion}; this viewer reads format ${SCHEMA_VERSION}. Re-run skyplate to rebuild it with a matching viewer.`,
           });
           return;
         }
         try {
           useViewer.getState().setReport(report);
-          document.title = `${report.project.name} · starchart`;
+          document.title = `${report.project.name} · Skyplate`;
           setState({ status: "ready" });
         } catch (error) {
           setState({ status: "error", message: `The report loaded but could not be indexed: ${(error as Error).message}` });
@@ -128,7 +131,14 @@ function Shell({ state }: { state: LoadState }) {
   );
 
   return (
-    <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)} className={cn("gap-0", sheetRail ? "min-h-full" : "h-full")}>
+    // Vertical on wide screens, where the views are a column in the rail (arrow keys move up and
+    // down it); horizontal where they are a row in the top bar.
+    <Tabs
+      value={tab}
+      onValueChange={(v) => setTab(v as Tab)}
+      orientation={sheetRail ? "horizontal" : "vertical"}
+      className={cn("gap-0", sheetRail ? "min-h-full" : "h-full")}
+    >
       {sheetRail ? (
         // Below 1024px the document itself scrolls, under a sticky top bar. An inner scroller
         // kept phone browsers from collapsing their toolbars on scroll, so the plate and trays
@@ -141,7 +151,7 @@ function Shell({ state }: { state: LoadState }) {
           <div className="flex-1">
             <main className="min-w-0">{work}</main>
             {showRecord && (
-              <aside aria-label="Accession record" className="border-t border-ink bg-paper">
+              <aside aria-label="Accession record" className="border-t border-rule bg-paper">
                 {record}
               </aside>
             )}
@@ -149,23 +159,20 @@ function Shell({ state }: { state: LoadState }) {
           <RailSheet />
         </div>
       ) : (
-        <div className={cn("grid h-full min-h-0", bp === "wide" ? "grid-cols-[260px_minmax(0,1fr)]" : "grid-cols-[220px_minmax(0,1fr)]")}>
-          <nav aria-label="Drawers" className="min-h-0 overflow-hidden">
-            <Rail />
+        <div className={cn("grid h-full min-h-0 w-full", bp === "wide" ? "grid-cols-[264px_minmax(0,1fr)]" : "grid-cols-[224px_minmax(0,1fr)]")}>
+          <nav aria-label="Report" className="min-h-0 overflow-hidden border-r border-rule">
+            <Rail ready={ready} loading={state.status === "loading"} />
           </nav>
-          <div className="grid min-h-0 min-w-0 grid-rows-[52px_minmax(0,1fr)]">
-            <TopBar bp={bp} ready={ready} />
-            <div className="flex min-h-0 min-w-0">
-              <main className="relative min-h-0 min-w-0 flex-1">{work}</main>
-              {showRecord && (
-                <aside
-                  aria-label="Accession record"
-                  className={cn("min-h-0 shrink-0 border-l border-rule bg-paper", bp === "wide" ? "w-[340px]" : "w-[300px]")}
-                >
-                  <RecordScroll>{record}</RecordScroll>
-                </aside>
-              )}
-            </div>
+          <div className="flex min-h-0 min-w-0">
+            <main className="relative min-h-0 min-w-0 flex-1">{work}</main>
+            {showRecord && (
+              <aside
+                aria-label="Accession record"
+                className={cn("min-h-0 shrink-0 border-l border-rule bg-paper", bp === "wide" ? "w-[340px]" : "w-[300px]")}
+              >
+                <RecordScroll>{record}</RecordScroll>
+              </aside>
+            )}
           </div>
         </div>
       )}
@@ -202,9 +209,9 @@ function RecordScroll({ children }: { children: ReactNode }) {
 /** One tab's content. Below 1024px each gets a height of its own, since the page scrolls. */
 function WorkArea({ bp }: { bp: Breakpoint }) {
   const stacked = bp === "narrow" || bp === "compact";
-  // The charts fill the screen under the sticky bar: 52px, or 92px below 768px, where the tabs
+  // The charts fill the screen under the sticky bar: 52px, or 99px below 768px, where the views
   // take a second row (TopBar).
-  const screen = bp === "compact" ? "h-[calc(100dvh-92px)]" : "h-[calc(100dvh-52px)]";
+  const screen = bp === "compact" ? "h-[calc(100dvh-99px)]" : "h-[calc(100dvh-52px)]";
   // Radix makes each panel a tab stop (the step from the tab list into its content), and the
   // shared TabsContent sets outline-none, so the global focus ring never showed there and a
   // keyboard reader could not tell where focus had gone. The ring is an inset outline on an
@@ -248,14 +255,14 @@ function GalaxyArea({ bp }: { bp: Breakpoint }) {
   return (
     <div className={cn("flex min-h-0 flex-col", !stacked && "h-full")}>
       <div className={cn("relative min-h-0 overflow-hidden bg-plate", stacked ? "h-[60dvh] min-h-[360px]" : "flex-1")}>
-        <Boundary what="The galaxy" tone="plate">
+        <Boundary what="The plate" tone="plate">
           <GalaxyView />
         </Boundary>
       </div>
       <section
         aria-label="Unit trays"
         className={cn(
-          "grid shrink-0 border-t border-ink bg-tray",
+          "grid shrink-0 border-t border-rule bg-tray",
           bp === "compact" ? "grid-cols-1 [&>*]:h-[216px] [&>*]:border-b [&>*]:border-rule" : "h-[216px] grid-cols-[1.15fr_1fr_1.2fr]",
         )}
       >
@@ -284,10 +291,10 @@ function RailSheet() {
   const setOpen = useShell((s) => s.setRailSheetOpen);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
-      <SheetContent side="left" className="w-[280px] gap-0 border-rail-line bg-rail p-0 text-rail-ink sm:max-w-[280px] [&>button]:text-rail-ink">
+      <SheetContent side="left" className="w-[288px] gap-0 border-rule bg-rail p-0 text-ink sm:max-w-[288px] [&>button]:text-ink-3">
         <SheetTitle className="sr-only">Drawers</SheetTitle>
         <SheetDescription className="sr-only">The project's directories. Open one to focus it.</SheetDescription>
-        <Rail onNavigate={() => setOpen(false)} />
+        <Rail nav={false} onNavigate={() => setOpen(false)} />
       </SheetContent>
     </Sheet>
   );
@@ -295,24 +302,57 @@ function RailSheet() {
 
 // ─── Before the report is in ─────────────────────────────────────────────────────────────────
 
+/**
+ * Where a few stars come up on the plate in turn, like an image developing, while data/report.js
+ * loads and is indexed (seconds on a large report). Positions are fixed, not random: the same
+ * small constellation every time, so the wait looks like this product and not like noise.
+ * Reduced motion holds them still at a glance-readable opacity.
+ */
+const DEVELOPING: [number, number, number, number][] = [
+  // x %, y %, size px, delay s
+  [38, 34, 5, 0],
+  [61, 41, 3, 0.35],
+  [47, 58, 4, 0.7],
+  [29, 63, 2.5, 1.05],
+  [70, 66, 3.5, 1.4],
+  [55, 26, 2.5, 1.75],
+];
+
 function LoadingPlate() {
   return (
-    <div className="absolute inset-0 grid place-items-center" role="status">
-      <p className="text-sm text-plate-muted">Reading the report…</p>
+    <div className="absolute inset-0" role="status">
+      <div aria-hidden className="absolute inset-0">
+        {DEVELOPING.map(([x, y, size, delay]) => (
+          <i
+            key={`${x},${y}`}
+            className="absolute rounded-full bg-plate-ink opacity-40 motion-safe:animate-develop"
+            style={{ left: `${x}%`, top: `${y}%`, width: size, height: size, animationDelay: `${delay}s` }}
+          />
+        ))}
+      </div>
+      <div className="absolute inset-x-0 bottom-[18%] flex flex-col items-center gap-3 text-center">
+        <Mark size={28} onPlate />
+        <p className="text-sm text-plate-muted">Developing the plate…</p>
+      </div>
     </div>
   );
+}
+
+/** A command, set as it would be typed. */
+function Command({ children }: { children: ReactNode }) {
+  return <code className="rounded-sm border border-plate-rule bg-plate-ink/5 px-1.5 py-0.5 font-mono text-[12px] text-plate-ink">{children}</code>;
 }
 
 function MissingReport() {
   return (
     <div className="absolute inset-0 grid place-items-center p-10">
       <div className="max-w-md">
+        <Mark size={40} onPlate className="mb-4 -ml-1.5" />
         <h1 className="text-2xl font-semibold [font-stretch:85%]">No report in this folder</h1>
-        <p className="mt-3 text-plate-muted">
-          The viewer looks for <code className="font-mono text-plate-ink">data/report.js</code> next to this page and did not
-          find it. Run <code className="font-mono text-plate-ink">starchart &lt;path&gt; --open</code> on a project: it writes
-          the report folder and opens it here. For a folder you already have,{" "}
-          <code className="font-mono text-plate-ink">starchart serve &lt;dir&gt;</code> does the same.
+        <p className="mt-3 leading-relaxed text-plate-muted">
+          The viewer looks for <Command>data/report.js</Command> next to this page and did not find it. Run{" "}
+          <Command>skyplate &lt;path&gt; --open</Command> on a project: it writes the report folder and opens it here. For a folder you
+          already have, <Command>skyplate serve &lt;dir&gt;</Command> does the same.
         </p>
       </div>
     </div>
@@ -323,11 +363,11 @@ function BrokenReport({ message }: { message: string }) {
   return (
     <div className="absolute inset-0 grid place-items-center p-10" role="alert">
       <div className="max-w-lg">
+        <Mark size={40} onPlate className="mb-4 -ml-1.5" />
         <h1 className="text-2xl font-semibold [font-stretch:85%]">This report could not be opened</h1>
-        <p className="mt-3 text-plate-muted">{message}</p>
-        <p className="mt-3 text-plate-muted">
-          Re-running <code className="font-mono text-plate-ink">starchart &lt;path&gt;</code> writes a fresh copy of both the
-          data and the viewer.
+        <p className="mt-3 leading-relaxed text-plate-muted">{message}</p>
+        <p className="mt-3 leading-relaxed text-plate-muted">
+          Re-running <Command>skyplate &lt;path&gt;</Command> writes a fresh copy of both the data and the viewer.
         </p>
       </div>
     </div>

@@ -4,7 +4,7 @@
  * (src/viewer/galaxy/clicks.test.ts).
  *
  *   press on the stars   only a press that began on the plate's own canvas can end in a click.
- *                        Radix menus (Gravity, Lanes, the breadcrumb's fold) open on pointerdown
+ *                        Radix menus (Gravity, the breadcrumb's fold; Display is a popover) open on pointerdown
  *                        and set pointer-events: none on the body, but R3F's canvas keeps
  *                        pointer-events: auto, so the release of the press that opened a menu
  *                        landed on the canvas under the button. Judged on the release alone, it

@@ -317,11 +317,11 @@ describe("columnPath", () => {
     expect(columnPath([5, 0, 5], 0, 3, 300, 40).match(/M/g)!.length).toBe(2);
   });
 
-  test("caps a column at 24px however wide its week is", () => {
+  test("caps a column at 8px however wide its week is", () => {
     const d = columnPath([3, 3], 0, 2, 1000, 40);
     const xs = [...d.matchAll(/H([\d.]+)Q([\d.]+)/g)].map((m) => Number(m[2]));
     const starts = [...d.matchAll(/M([\d.]+) /g)].map((m) => Number(m[1]));
-    expect(xs[0]! - starts[0]!).toBeCloseTo(24, 5);
+    expect(xs[0]! - starts[0]!).toBeCloseTo(8, 5);
   });
 });
 

@@ -3,7 +3,7 @@
  *
  *   <out>/index.html, <out>/assets/*      the built viewer (dist/viewer, built on demand),
  *                                         without its source maps
- *   <out>/data/report.js                  window.__starchart.resolve("report", {...})
+ *   <out>/data/report.js                  window.__skyplate.resolve("report", {...})
  *   <out>/data/symbols.js                 when the TypeScript analysis ran
  *   <out>/data/source/0000.js …           source chunks, ~1.5 MB each
  *   <out>/data/assets/<fileId>.<ext>      images ≤ 2 MB, for preview
@@ -30,6 +30,12 @@ import { DATA_GLOBAL, REPORT_FILE, type Category, type CodeSymbols, type Report,
 
 const PROJECT_ROOT = resolve(import.meta.dir, "../..");
 const VIEWER_DIR = join(PROJECT_ROOT, "dist", "viewer");
+
+/**
+ * The notices every report carries at its top level: Skyplate's license, its NOTICE, and the
+ * licenses of the packages bundled into the viewer. build.ts writes all three into dist/viewer.
+ */
+export const NOTICE_FILES = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES"] as const;
 
 export const DEFAULT_MAX_SOURCE_FILE = 512 * 1024;
 export const DEFAULT_MAX_SOURCE_TOTAL = 64 * 1024 * 1024;
@@ -143,18 +149,26 @@ export function assetUrl(id: number, path: string, category: Category, bytes: nu
 /**
  * dist/viewer, built by build.ts when missing (a fresh checkout has no dist/), and only then.
  * A stale build is reported (viewerIsStale) but not rebuilt: build.ts deletes dist/viewer
- * before writing it, so a rebuild here would tear the copy another starchart run is making
+ * before writing it, so a rebuild here would tear the copy another skyplate run is making
  * from it, and a viewer source caught mid-edit would fail this run after its whole analysis.
+ *
+ * A build without the notice files counts as missing: it predates them (every build since writes
+ * all three), and a report must not go out without them, so it is rebuilt once, like a fresh
+ * checkout.
  */
+function viewerComplete(): boolean {
+  return existsSync(join(VIEWER_DIR, "index.html")) && NOTICE_FILES.every((f) => existsSync(join(VIEWER_DIR, f)));
+}
+
 export async function ensureViewer(): Promise<string> {
-  if (existsSync(join(VIEWER_DIR, "index.html"))) return VIEWER_DIR;
+  if (viewerComplete()) return VIEWER_DIR;
   const proc = Bun.spawn([process.execPath, join(PROJECT_ROOT, "build.ts")], {
     cwd: PROJECT_ROOT,
     stdout: "pipe",
     stderr: "pipe",
   });
   const [out, err, code] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
-  if (code !== 0 || !existsSync(join(VIEWER_DIR, "index.html"))) {
+  if (code !== 0 || !viewerComplete()) {
     throw new Error(`building the viewer failed (bun build.ts exited ${code}):\n${(err || out).trim()}`);
   }
   return VIEWER_DIR;
@@ -232,12 +246,26 @@ function readHead(path: string, bytes: number): string {
   }
 }
 
-const REPORT_HEAD = `window.${DATA_GLOBAL}.resolve("report", `;
-const GENERATOR_META = /<meta\s+name=["']generator["']\s+content=["']starchart["']/i;
+/**
+ * The two marks a report folder carries: how data/report.js begins, and the viewer's generator
+ * tag. Each mark is a pair, and a folder must show both halves of one pair.
+ *
+ * The second pair is back-compat, kept on purpose: the tool was called starchart until its
+ * first release, and its reports say window.__starchart and content="starchart". Re-running
+ * into one of those folders (the old default name, or a --out a script still passes) replaces
+ * it as it always did. Both halves have to match together, and with nothing else at the top
+ * level, so the unrelated tool that also calls itself starchart (and the reason for the
+ * rename) cannot have its output deleted here by sharing a word.
+ */
+const REPORT_MARKS: { head: string; generator: RegExp }[] = [
+  { head: `window.${DATA_GLOBAL}.resolve("report", `, generator: /<meta\s+name=["']generator["']\s+content=["']skyplate["']/i },
+  { head: `window.__starchart.resolve("report", `, generator: /<meta\s+name=["']generator["']\s+content=["']starchart["']/i },
+];
+const REPORT_HEAD_BYTES = Math.max(...REPORT_MARKS.map((m) => m.head.length));
 
 /** Top-level names a report folder may hold: the viewer's files, data/, and Finder's litter. */
 function reportEntries(): Set<string> {
-  const names = new Set(["index.html", "assets", "data", ".DS_Store"]);
+  const names = new Set<string>(["index.html", "assets", "data", ".DS_Store", ...NOTICE_FILES]);
   try {
     // A viewer that grows a top-level file (a favicon) must not make its own reports
     // unreplaceable.
@@ -253,7 +281,7 @@ function reportEntries(): Set<string> {
  * deleting, so every marker must hold: nothing at the top level but what a report contains,
  * data/report.js that is a report data script, and the viewer's generator tag. Any one alone
  * is too weak: a project of its own can have a data/report.js (one did, and a run with
- * `--out .` deleted it), and an unrelated page can say "starchart".
+ * `--out .` deleted it), and an unrelated page can name itself the same thing.
  */
 export function isReplaceable(dir: string): boolean {
   let entries: string[];
@@ -265,7 +293,9 @@ export function isReplaceable(dir: string): boolean {
   if (entries.length === 0) return true;
   const allowed = reportEntries();
   if (!entries.every((e) => allowed.has(e))) return false;
-  return readHead(join(dir, REPORT_FILE), REPORT_HEAD.length).startsWith(REPORT_HEAD) && GENERATOR_META.test(readHead(join(dir, "index.html"), 4096));
+  const head = readHead(join(dir, REPORT_FILE), REPORT_HEAD_BYTES);
+  const page = readHead(join(dir, "index.html"), 4096);
+  return REPORT_MARKS.some((m) => head.startsWith(m.head) && m.generator.test(page));
 }
 
 /**
@@ -320,7 +350,7 @@ export function checkOutput(outDir: string, root?: string): void {
   }
   if (existsSync(out)) {
     if (!statSync(out).isDirectory()) throw new Error(`output path is a file: ${out}`);
-    if (!isReplaceable(out)) throw new Error(`output folder ${out} already exists and is not a starchart report; choose another output folder`);
+    if (!isReplaceable(out)) throw new Error(`output folder ${out} already exists and is not a skyplate report; choose another output folder`);
   }
   // The report is staged next to `out` and renamed into place, so what has to be writable is
   // the nearest folder that already exists on the way up from its parent.
@@ -348,7 +378,7 @@ function fileAncestor(p: string): string | undefined {
 
 /**
  * A filesystem error from writing, as one line about the output folder. The raw message names
- * the hidden staging folder (".x.starchart.tmp-8941-mvx4743a"), which the user never asked
+ * the hidden staging folder (".x.skyplate.tmp-8941-mvx4743a"), which the user never asked
  * for and cannot act on.
  */
 function writeError(e: unknown, out: string): Error {
@@ -430,6 +460,13 @@ export async function writeSite(input: SiteInput, outDir: string, opts: { json?:
     // report will step through. The trailer that names the map goes too (dropMapTrailers).
     await cp(viewer, tmp, { recursive: true, filter: (src) => !src.endsWith(".map") });
     await dropMapTrailers(join(tmp, "assets"));
+    // Sharing a report redistributes the viewer and everything bundled into it, so its license,
+    // NOTICE and the bundled packages' licenses travel in every report folder, at the top level
+    // where a reader looks for them. They come with the viewer template (build.ts writes them),
+    // and are checked here rather than trusted, because a report without them is not one to ship.
+    for (const f of NOTICE_FILES) {
+      if (!existsSync(join(tmp, f))) throw new Error(`the viewer build has no ${f}; run "bun run build" and try again`);
+    }
     await mkdir(join(tmp, "data", "source"), { recursive: true });
 
     for (let i = 0; i < input.chunks.length; i++) {
