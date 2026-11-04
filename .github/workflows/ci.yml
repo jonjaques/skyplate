@@ -1,0 +1,28 @@
+# The gate on every PR and on main: the same three commands prepublishOnly runs, so what CI
+# passed is what `npm publish` would ship.
+#
+# Bun is pinned to the version the suite was last run on locally; `bun check` (TypeScript 7)
+# and the async TypeScript API the analyzer uses move with Bun releases, so "latest" would let
+# an unrelated Bun bump turn CI red.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+      - run: bun check
+      - run: bun test

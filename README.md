@@ -16,20 +16,23 @@ that stand for the imports between them. A Gravity control picks what pulls file
 of their clusters (dependencies, complexity, hotspots, churn, recent change or size), and the
 Imports view rearranges every file by the import graph alone.
 
+Skyplate runs on [Bun](https://bun.sh) 1.4 or later. It is published to npm, but it is not a
+Node program: the CLI is TypeScript that Bun runs directly, using Bun's workers and file APIs,
+so `npx` under Node will not run it.
+
 ```sh
-bun install
-bun run build                         # build the viewer template once (dist/viewer)
-bun run skyplate ~/code/some-project  # writes ./some-project.skyplate/
+bunx skyplate ~/code/some-project     # writes ./some-project.skyplate/
+bun add -g skyplate                   # or install the `skyplate` command
 ```
 
 Open `some-project.skyplate/index.html` straight from disk, or serve it:
 
 ```sh
-bun run skyplate serve some-project.skyplate --open
+skyplate serve some-project.skyplate --open
 ```
 
 The folder is self-contained and static, so it can be zipped, attached, or dropped on any
-static host. Run `bun run skyplate --help` for every option. The ones people reach for:
+static host. Run `skyplate --help` for every option. The ones people reach for:
 
 | Option | What it does |
 | --- | --- |
@@ -63,6 +66,9 @@ analysis.
   people involved.
 
 ## Development
+
+From a checkout, `bun install` and then `bun run skyplate <path>` runs the CLI from source; the
+first run builds the viewer template into `dist/viewer` (or run `bun run build`).
 
 ```sh
 bun dev                                         # viewer with hot reload on :4317, serving .skyplate/dev
