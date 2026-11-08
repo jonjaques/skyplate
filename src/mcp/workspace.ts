@@ -26,13 +26,14 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync, statSync, watch, type FSWatcher } from "node:fs";
+import { existsSync, lstatSync, realpathSync, statSync, watch, type FSWatcher } from "node:fs";
 import { homedir } from "node:os";
 import { basename, join, resolve, sep } from "node:path";
 import { PHASE_LABEL, type CliPhase } from "../cli/progress";
 import { isReportDir, openInBrowser, startServer, type StaticServer } from "../cli/serve";
 import { slug } from "../cli/main";
 import { analyzeProject, DEFAULT_OPTIONS, type AnalysisResult, type AnalyzeOptions, type ProgressEvent } from "../core/pipeline";
+import { detectFile } from "../core/languages/detect";
 import { checkOutput, outputPlacement, realPath, reportExcludes, viewerIsStale, writeSite } from "../core/site";
 import type { CodeSymbols, Report } from "../shared/schema";
 import { QueryError } from "./query";
@@ -52,6 +53,8 @@ export interface Snapshot {
   text(file: number): Promise<SourceText>;
   /** The analysis behind a live snapshot, kept so a build can write it without redoing it. */
   result?: AnalysisResult;
+  /** Effective requested options for this snapshot, including after a failed refresh. */
+  options?: string;
   /** When the analysis began (ms): a change after this makes the snapshot stale. */
   startedAt: number;
   finishedAt: number;
@@ -76,9 +79,19 @@ function liveSnapshot(result: AnalysisResult, startedAt: number): Snapshot {
       if (f.binary) return { reason: "binary file" };
       const abs = result.abs[id]!;
       try {
-        const st = statSync(abs);
+        // The walker skips links. A saved file or its parent may have become one since then;
+        // following it here could read credentials that were never part of the analysis.
+        const st = lstatSync(abs);
+        if (!st.isFile() || realpathSync(abs) !== abs) return { reason: "file was replaced or redirected since the analysis; reanalyze before reading it" };
         if (st.size > MAX_TEXT_BYTES) return { reason: `${Math.round(st.size / 1024 / 1024)} MB; too large to read here` };
-        return { text: await Bun.file(abs).text(), origin: "disk", changed: st.mtimeMs > startedAt || undefined };
+        const bytes = new Uint8Array(await Bun.file(abs).arrayBuffer());
+        if (bytes.length > MAX_TEXT_BYTES) return { reason: "file grew beyond the source read limit" };
+        // A previously harmless .npmrc or certificate may now hold a credential. Classify the
+        // bytes we return, not just the snapshot's old flags.
+        const current = detectFile(f.path, bytes.subarray(0, 8192), bytes.length <= 8192);
+        if (current.secret) return { reason: "looks like it holds credentials, so its contents are never shown" };
+        if (current.binary) return { reason: "binary file" };
+        return { text: new TextDecoder().decode(bytes), origin: "disk", changed: st.mtimeMs > startedAt || undefined };
       } catch {
         return { reason: "no longer on disk (deleted or moved since the analysis)" };
       }
@@ -357,15 +370,28 @@ export class Workspace {
     const existing = [...this.projects.values()].find((p) => p.path === path);
     if (existing) {
       let rerun = !!opts.reanalyze;
-      if (existing.kind === "live" && opts.options && effective(opts.options) !== effective(existing.options)) {
-        existing.options = opts.options;
+      const options = { ...existing.options, ...opts.options };
+      if (existing.kind === "live" && opts.options && effective(options) !== effective(existing.options)) {
+        existing.options = options;
         rerun = true;
       }
       if (opts.refresh) existing.refresh = opts.refresh;
-      if (rerun && !existing.busy) this.start(existing, "reanalyze");
+      if (existing.kind === "live") {
+        if (opts.watch === false) {
+          existing.watcher?.close();
+          existing.watcher = undefined;
+          clearTimeout(existing.timer);
+          existing.watchNote = "disabled";
+        } else if (opts.watch === true && !existing.watcher) this.watch(existing);
+      }
+      // A running analysis already captured its options. Queue another run rather than label
+      // its old result as an analysis with the newly requested settings.
+      if (rerun) this.start(existing, "reanalyze");
       return existing;
     }
     const kind = (await isReportFolder(path)) ? "report" : "live";
+    // Another tool call can finish opening the same path while the report probe awaits I/O.
+    if ([...this.projects.values()].some((p) => p.path === path)) return this.open(path, opts);
     const project = new Project(this.uniqueId(path), kind, path, opts.options ?? {}, opts.refresh ?? "on_read");
     this.projects.set(project.id, project);
     if (kind === "live" && opts.watch !== false) this.watch(project);
@@ -434,10 +460,12 @@ export class Workspace {
       const startedAt = Date.now();
       // Changes seen before this run are what it picks up; ones during it still count after.
       const seen = p.changes;
-      const exclude = this.excludesFor(p.path, p.options.exclude ?? []);
-      const result = await analyzeProject(p.path, { ...p.options, exclude }, (e) => job.event(e));
+      const options = p.options;
+      const exclude = this.excludesFor(p.path, options.exclude ?? []);
+      const result = await analyzeProject(p.path, { ...options, exclude }, (e) => job.event(e));
       if (p.closed) return { skipped: "project closed" };
       p.snapshot = liveSnapshot(result, startedAt);
+      p.snapshot.options = effective(options);
       p.changes -= seen;
       if (p.refresh === "on_change" && p.stale) this.schedule(p);
       return { files: result.report.totals.files, ms: result.report.timings.total };
@@ -493,19 +521,16 @@ export class Workspace {
     const off = onLine ? job.on(onLine) : () => {};
     try {
       return await new Promise<boolean>((done) => {
-        const timer = setTimeout(() => done(false), ms);
-        job.done.then(() => {
+        const timer = setTimeout(() => finish(false), ms);
+        const aborted = () => finish(false);
+        const finish = (settled: boolean) => {
           clearTimeout(timer);
-          done(true);
-        });
-        signal?.addEventListener(
-          "abort",
-          () => {
-            clearTimeout(timer);
-            done(false);
-          },
-          { once: true },
-        );
+          signal?.removeEventListener("abort", aborted);
+          done(settled);
+        };
+        job.done.then(() => finish(true));
+        signal?.addEventListener("abort", aborted, { once: true });
+        if (signal?.aborted) finish(false);
       });
     } finally {
       off();
@@ -527,7 +552,9 @@ export class Workspace {
     if (p.busy) return { snapshot: p.snapshot, note: `answered from the previous analysis; a refresh is still running (${p.job!.id}, ${p.job!.view().elapsed})`, job: p.job };
     if (p.job?.state === "failed") return { snapshot: p.snapshot, note: `the latest refresh failed (${p.job.error}); answered from the previous analysis` };
     if (p.stale) {
-      const next = p.refresh === "on_change" ? "a re-analysis starts once the changes settle" : "refresh is manual: call open with reanalyze for fresh data";
+      const next = p.refresh === "on_change"
+        ? "a re-analysis starts once the changes settle"
+        : p.refresh === "on_read" ? "changes arrived during analysis; the next question refreshes again" : "refresh is manual: call open with reanalyze for fresh data";
       return { snapshot: p.snapshot, note: `${p.changes} change(s) since this analysis (last: ${p.lastChange}); ${next}` };
     }
     return { snapshot: p.snapshot };
@@ -551,13 +578,13 @@ export class Workspace {
     } catch (e) {
       throw new QueryError(e instanceof Error ? e.message : String(e));
     }
-    const snap = p?.snapshot;
-    // The live analysis is reused when it is current and was made with the same options;
-    // writing it takes a second, where re-analyzing a large project takes minutes.
-    const reuse = !!(p && snap?.result && !p.stale && !p.busy && effective(options) === effective(p.options));
     const job = this.track(new Job("build", `build ${root} → ${out}`, p?.id));
     this.enqueue(job, async () => {
       const started = Date.now();
+      const snap = p?.snapshot;
+      // Decide when the queued build actually starts. Files or analysis settings can change
+      // while another project is running, making the snapshot captured at request time stale.
+      const reuse = !!(p && snap?.result && !p.stale && !p.busy && effective(options) === snap.options);
       let result: AnalysisResult;
       if (reuse) {
         result = snap!.result!;
