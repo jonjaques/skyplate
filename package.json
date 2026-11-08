@@ -1,6 +1,6 @@
 {
   "name": "skyplate",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Point it at any project and get a static report: a 3D plate of every file, a statistics dashboard, a source reader and TypeScript code intelligence.",
   "keywords": [
     "codebase",
