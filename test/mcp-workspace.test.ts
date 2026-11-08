@@ -16,6 +16,21 @@ function fixture(name: string): string {
   return root;
 }
 
+function git(root: string, args: string[]): string {
+  const r = Bun.spawnSync(["git", ...args], {
+    cwd: root,
+    env: {
+      PATH: process.env.PATH ?? "/usr/bin:/bin",
+      GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1",
+      GIT_AUTHOR_NAME: "Fixture", GIT_AUTHOR_EMAIL: "fixture@example.com",
+      GIT_COMMITTER_NAME: "Fixture", GIT_COMMITTER_EMAIL: "fixture@example.com",
+    },
+    stdout: "pipe", stderr: "pipe",
+  });
+  if (r.exitCode !== 0) throw new Error(r.stderr.toString());
+  return r.stdout.toString().trim();
+}
+
 describe("workspace lifecycle", () => {
   test("concurrent opens share one project and analysis", async () => {
     const ws = new Workspace();
@@ -65,6 +80,46 @@ describe("workspace lifecycle", () => {
       ws.shutdown();
     }
   });
+
+  test.each(["subdirectory", "detached", "branch"])("Git-only changes refresh a watched %s", async (kind) => {
+    const ws = new Workspace();
+    try {
+      const root = fixture(`git-${kind}`);
+      mkdirSync(join(root, "src"));
+      writeFileSync(join(root, "src/a.ts"), "export const a = 1;\n");
+      git(root, ["init", "-q", "-b", "main"]);
+      git(root, ["add", "-A"]);
+      git(root, ["commit", "-q", "-m", "initial"]);
+      let projectDir = join(root, "src");
+      let commitDir = root;
+      if (kind !== "subdirectory") {
+        projectDir = join(TMP, `worktree-${kind}`);
+        git(root, ["worktree", "add", ...(kind === "detached" ? ["--detach"] : ["-b", "linked"]), projectDir, "HEAD"]);
+        commitDir = projectDir;
+      }
+      const p = await ws.open(projectDir, { options: { symbols: false } });
+      await p.job!.done;
+      expect(p.job!.state).toBe("done");
+      const oldHead = p.snapshot!.report.git!.head;
+      expect(p.stale).toBe(false);
+      git(commitDir, ["commit", "--allow-empty", "-q", "-m", "metadata only"]);
+      const head = git(commitDir, ["rev-parse", "HEAD"]).slice(0, 10);
+      expect(head).not.toBe(oldHead);
+      // FSEvents batches notifications on macOS; inotify usually arrives immediately.
+      for (let i = 0; i < 100 && !p.stale; i++) await Bun.sleep(30);
+      expect(p.stale).toBe(true);
+      expect(p.changes).toBeGreaterThan(0);
+      await ws.ready(p, 20_000);
+      expect(p.snapshot!.report.git!.head).toBe(head);
+      await ws.open(projectDir, { watch: false });
+      const changes = p.changes;
+      git(commitDir, ["commit", "--allow-empty", "-q", "-m", "watch disabled"]);
+      await Bun.sleep(200);
+      expect(p.changes).toBe(changes);
+    } finally {
+      ws.shutdown();
+    }
+  }, 30_000);
 
   test("a change in the analysis start's millisecond still makes the snapshot stale", async () => {
     const ws = new Workspace();

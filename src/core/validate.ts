@@ -225,6 +225,7 @@ export function validateReport(report: Report, symbols?: CodeSymbols): string[] 
       if (!Number.isInteger(c.author[i]) || c.author[i]! < 0 || c.author[i]! >= na) fail("commits", `commits.author[${i}] ${c.author[i]} out of range`);
       if (i > 0 && c.time[i]! > c.time[i - 1]!) fail("commits-order", `commit ${i} is newer than commit ${i - 1}; the table must be newest first`);
       for (const f of c.files[i] ?? []) if (!fileOk(f)) fail("commits", `commits.files[${i}] lists ${f}, out of range`);
+      if (c.width && (!Number.isInteger(c.width[i]) || c.width[i]! < (c.files[i]?.length ?? 0))) fail("commits", `commits.width[${i}] ${c.width[i]} must be an integer at least as large as its current-file count`);
     }
     for (const p of git.coupling) if (!fileOk(p.a) || !fileOk(p.b)) fail("coupling", `coupling pair ${p.a}/${p.b} out of range`);
     for (const a of git.truckFactor.authors) if (!Number.isInteger(a) || a < 0 || a >= na) fail("truck-factor", `truck-factor author ${a} out of range`);

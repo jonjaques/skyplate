@@ -45,8 +45,10 @@ straight to `seam` on it. Otherwise:
 - Shortlist 3 to 6 modules where signals stack: a hot module that also has a wide
   `couldHide`, relays, `testsPastInterface`, hidden coupling, cycles across, or a high
   `spread`. One signal alone is a lead, not a candidate.
-- `seam { path }` each shortlisted module. Keep the results: they are the evidence on the
-  cards, and the baseline a later refactor is measured against.
+- Pass each shortlisted row's `selector` unchanged to `seam`. It preserves the ranked
+  membership, including residual parent files and the chosen depth. A plain `seam { path }`
+  includes every descendant and can measure a much larger module. Keep the results as the
+  evidence on the cards and the baseline a later refactor is measured against.
 - Follow the strongest signals one level down: `symbol { id, impact_depth: 2 }` on the
   busiest interface rows and on each relay; `history { view: "coupling", path }` and
   `graph { view: "path" }` on each `coChange` pair with `imports: "none"`.

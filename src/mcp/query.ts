@@ -598,16 +598,17 @@ export function files(report: Report, q: FilesQuery) {
     return true;
   });
 
-  let order: number[];
+  let order = ids;
   if (q.query) {
     const allowed = new Set(ids);
-    const key = q.sort && q.sort !== "path" ? SORT_KEY[q.sort] : undefined;
-    order = rankScored(index(report).paths, q.query, Number.MAX_SAFE_INTEGER, (i) => allowed.has(i), key ? (i) => key(report.files[i]!) : undefined).map((h) => h.i);
-  } else if (!q.sort || q.sort === "path") {
-    order = ids.sort((a, b) => a - b); // file ids are path order
-  } else {
+    order = rankScored(index(report).paths, q.query, Number.MAX_SAFE_INTEGER, (i) => allowed.has(i)).map((h) => h.i);
+  }
+  // Relevance is the default for a query; an explicit sort must order every match before paging.
+  if (q.sort === "path" || (!q.sort && !q.query)) {
+    order.sort((a, b) => a - b); // file ids are path order
+  } else if (q.sort) {
     const key = SORT_KEY[q.sort];
-    order = ids.sort((a, b) => key(report.files[b]!) - key(report.files[a]!) || a - b);
+    order.sort((a, b) => key(report.files[b]!) - key(report.files[a]!) || a - b);
   }
   return {
     matched: order.length,
@@ -1440,6 +1441,13 @@ function reviewModules(report: Report): Set<number> {
   return dirs;
 }
 
+/** Ranking and drilldown must use the same partition, including residual parent modules. */
+function seamModules(report: Report, depth?: number): Set<number> {
+  return depth === undefined
+    ? reviewModules(report)
+    : new Set(report.dirs.filter((d) => d.depth === depth || (d.depth < depth && d.dirs.length === 0)).map((d) => d.id));
+}
+
 interface SymbolUse {
   /** References from outside the module, and from every test file, wiring excluded. */
   uses: number;
@@ -1657,6 +1665,7 @@ const isProdCode = (f: FileRecord) => isOwnCode(f) && f.category !== "test";
  * used a fixed 30.
  */
 const sweepOf = (report: Report) => report.git?.sweepFiles ?? SWEEP_MIN_FILES;
+const LEGACY_WIDTH_NOTE = "original commit widths were not recorded: spread and locality use surviving files, so deleted or excluded paths may hide sweeps";
 
 export const SEAM_SORTS = ["hotspot", "interface", "spread", "hidden", "relays", "tests_past", "code"] as const;
 export type SeamSort = (typeof SEAM_SORTS)[number];
@@ -1669,10 +1678,7 @@ export type SeamSort = (typeof SEAM_SORTS)[number];
 export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: number; sort?: SeamSort; limit?: number; offset?: number }) {
   const limit = q.limit ?? 25;
   const offset = q.offset ?? 0;
-  const dirs =
-    q.depth !== undefined
-      ? new Set(report.dirs.filter((d) => d.depth === q.depth || (d.depth < q.depth! && d.dirs.length === 0)).map((d) => d.id))
-      : reviewModules(report);
+  const dirs = seamModules(report, q.depth);
   if (dirs.size === 0) throw new QueryError("this report has no modules (no resolved imports); pass depth to measure directories at a fixed depth");
   const moduleOf = moduleMap(report, dirs);
   const ix = index(report);
@@ -1708,12 +1714,12 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
   const git = report.git;
   const sweep = sweepOf(report);
   if (git) {
-    git.commits.files.forEach((files) => {
+    git.commits.files.forEach((files, i) => {
       if (files.length === 0) return;
       const touched = new Set(files.map((f) => moduleOf[f]!));
       // Every commit counts toward `commits`; only commits narrower than the sweep width say
       // anything about where a change travels, so spread and leaving rest on those.
-      const wide = files.length > sweep;
+      const wide = (git.commits.width?.[i] ?? files.length) > sweep;
       const codeModules = wide ? undefined : new Set(files.filter((f) => isOwnCode(report.files[f]!)).map((f) => moduleOf[f]!));
       for (const m of touched) {
         const row = rows.get(m);
@@ -1778,6 +1784,7 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
     offset: offset || undefined,
     rows: ordered.slice(offset, offset + limit).map(([d, r]) => ({
       module: report.dirs[d]!.path || "(root)",
+      selector: { path: report.dirs[d]!.path || ".", scope: "module" as const, depth: q.depth },
       files: r.files,
       testFiles: r.testFiles || undefined,
       code: r.code,
@@ -1825,16 +1832,26 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
     },
     notes: [
       ...(S ? [] : ["no code intelligence: interface, relays and tests are not measured (TypeScript/JavaScript only)"]),
+      ...(git && !git.commits.width ? [LEGACY_WIDTH_NOTE] : []),
       ...(git && git.analyzedCommits < MIN_HISTORY ? [`only ${git.analyzedCommits} commits: spread and coupling say little yet`] : []),
       ...(report.symbols?.stats.uninstalledManifests ? ["dependencies are not installed: uses through package names did not resolve, so interface counts are low"] : []),
     ],
   };
 }
 
-/** One module (a directory, file or glob), measured at its seam. */
-export function seam(report: Report, S: CodeSymbols | undefined, raw: string, opts: { limit?: number; offset?: number } = {}) {
+/** One ranked module or a recursive directory, file or glob, measured at its seam. */
+export function seam(report: Report, S: CodeSymbols | undefined, raw: string, opts: { scope?: "path" | "module"; depth?: number; limit?: number; offset?: number } = {}) {
   const max = opts.limit ?? 20;
-  const M = filesMatching(report, raw);
+  if (opts.depth !== undefined && opts.scope !== "module") throw new QueryError('depth requires scope "module"; use the selector returned by seams');
+  let moduleOf: Int32Array | undefined;
+  let M: Set<number>;
+  if (opts.scope === "module") {
+    const dirs = seamModules(report, opts.depth);
+    const dir = dirId(report, raw);
+    if (!dirs.has(dir)) throw new QueryError(`"${raw}" is not in this module partition; use a selector returned by seams`);
+    moduleOf = moduleMap(report, dirs);
+    M = new Set(report.files.filter((f) => moduleOf![f.id] === dir).map((f) => f.id));
+  } else M = filesMatching(report, raw);
   if (M.size === 0) throw new QueryError(`"${raw}" matches no files`);
   const ix = index(report);
   const group = (f: number) => (M.has(f) ? 1 : 0);
@@ -1968,20 +1985,20 @@ export function seam(report: Report, S: CodeSymbols | undefined, raw: string, op
     const rows = new Set<number>();
     for (const f of M) for (const r of neighbors(ix.commits, f)) rows.add(r);
     const sweep = sweepOf(report);
-    // Outside files are grouped by the review partition, so `spread` here counts the same
-    // modules seams does; the measured path itself is one module whatever it spans.
-    const moduleOf = moduleMap(report, reviewModules(report));
+    // A ranked drilldown retains its partition for spread too. An arbitrary path uses the
+    // review partition outside itself and counts its selected files as one module.
+    const localityModules = moduleOf ?? moduleMap(report, reviewModules(report));
     let counted = 0;
     let leaving = 0;
     let others = 0;
     const outside = new Map<string, number>();
     for (const r of rows) {
       const cf = git.commits.files[r]!;
-      if (cf.length > sweep) continue;
+      if ((git.commits.width?.[r] ?? cf.length) > sweep) continue;
       counted++;
       const out = new Set(cf.filter((f) => !M.has(f) && isProdCode(report.files[f]!)).map(dirOf));
-      if (out.size) leaving++;
-      others += new Set(cf.filter((f) => !M.has(f) && isOwnCode(report.files[f]!)).map((f) => moduleOf[f]!)).size;
+      if (cf.some((f) => !M.has(f))) leaving++;
+      others += new Set(cf.filter((f) => !M.has(f) && isOwnCode(report.files[f]!)).map((f) => localityModules[f]!)).size;
       for (const d of out) outside.set(d, (outside.get(d) ?? 0) + 1);
     }
     const crossing = git.coupling.filter((p) => M.has(p.a) !== M.has(p.b) && codePair(report, p));
@@ -2022,6 +2039,7 @@ export function seam(report: Report, S: CodeSymbols | undefined, raw: string, op
   const cycles = report.graph.cycles.filter((c) => c.files.some((f) => M.has(f)) && c.files.some((f) => !M.has(f)));
   return {
     module: raw,
+    selector: { path: raw, scope: opts.scope ?? "path", depth: opts.depth },
     // The module's own tests are clients of its interface, not part of its implementation;
     // counted together, an engine directory's 3,890 code lines read as 7,538.
     implementation: {
@@ -2052,6 +2070,7 @@ export function seam(report: Report, S: CodeSymbols | undefined, raw: string, op
           },
     notes: [
       "interface = symbols code outside uses; external package imports are not in the report, so read the module's import statements for its dependency categories",
+      ...(git && !git.commits.width ? [LEGACY_WIDTH_NOTE] : []),
       ...(git && git.analyzedCommits < MIN_HISTORY ? [`only ${git.analyzedCommits} commits: locality says little yet`] : []),
     ],
   };

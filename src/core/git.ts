@@ -49,6 +49,7 @@
  *   the repository. Every command is read-only; GIT_OPTIONAL_LOCKS=0 keeps it that way.
  */
 
+import { resolve } from "node:path";
 import type { GitInput, GitResult, MineGit } from "./contracts";
 import type { Author, GitSummary } from "../shared/schema";
 import { mergeIdentities } from "./git/authors";
@@ -143,6 +144,16 @@ async function git(root: string, args: string[]): Promise<{ ok: boolean; out: st
   });
   const [out, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
   return { ok: code === 0, out };
+}
+
+/** Resolve both worktree HEAD and shared refs before a live project's first analysis starts. */
+export function gitDirectories(root: string): string[] {
+  if (!Bun.which("git")) return [];
+  const proc = Bun.spawnSync(["git", "-C", root, "rev-parse", "--absolute-git-dir", "--git-common-dir"], {
+    stdin: "ignore", stdout: "pipe", stderr: "ignore", env: gitEnv(),
+  });
+  if (proc.exitCode !== 0) return [];
+  return [...new Set(proc.stdout.toString().trimEnd().split("\n").map((dir) => resolve(root, dir)))];
 }
 
 // ─── Remote URL scrubbing ────────────────────────────────────────────────────────────────────
@@ -534,6 +545,7 @@ function summarize(h: History, meta: Meta): GitResult {
     added: [],
     deleted: [],
     files: [],
+    width: [],
     subject: [],
     type: [],
   };
@@ -545,6 +557,7 @@ function summarize(h: History, meta: Meta): GitResult {
     commits.added.push(h.added[i]!);
     commits.deleted.push(h.deleted[i]!);
     commits.files.push(h.files[i]!.sort((a, b) => a - b));
+    commits.width!.push(h.width[i]!);
     commits.subject.push(truncateSubject(subject));
     commits.type.push(commitType(subject));
   }

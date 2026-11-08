@@ -35,6 +35,9 @@ import {
   type RawCommit,
 } from "../src/core/git/stream";
 import type { GitResult } from "../src/core/contracts";
+import { analyzeProject } from "../src/core/pipeline";
+import { validateReport } from "../src/core/validate";
+import { seam, seams } from "../src/mcp/query";
 
 // ─── Fixture plumbing ────────────────────────────────────────────────────────────────────────
 
@@ -538,6 +541,62 @@ describe("coupling and truck factor", () => {
     expect(pair).toMatchObject({ shared: 3, degree: 0.6 }); // 3 / min(5 README commits, 6 a.ts)
     const sweep = id("sweep/f00.txt");
     expect(RESULT.summary.coupling.some((c) => c.a === sweep || c.b === sweep)).toBe(false);
+  });
+
+  test("locality and coupling exclude sweeps after deleted and excluded paths disappear", async () => {
+    const dir = join(TMP, "sweep-locality");
+    mkdirSync(dir);
+    git(dir, ["init", "-q", "-b", "main"]);
+    write(dir, "a/main.ts", "export const a = 0;\n");
+    write(dir, "b/main.ts", 'import { a } from "../a/main";\nexport const b = a;\n');
+    for (let i = 0; i < 110; i++) write(dir, `gone/${i}.txt`, `${i}\n`);
+    for (let i = 0; i < 90; i++) write(dir, `excluded/${i}.txt`, `${i}\n`);
+    commit(dir, ALICE, "2024-01-01T09:00:00Z", "initial sweep");
+    rmSync(join(dir, "gone"), { recursive: true });
+    commit(dir, ALICE, "2024-01-02T09:00:00Z", "remove old paths");
+    for (let i = 1; i <= 3; i++) {
+      write(dir, "a/main.ts", `export const a = ${i};\n`);
+      write(dir, "b/main.ts", `import { a } from "../a/main";\nexport const b = a + ${i};\n`);
+      commit(dir, ALICE, `2024-01-0${i + 2}T09:00:00Z`, `ordinary change ${i}`);
+    }
+    const { report } = await analyzeProject(dir, { symbols: false, workers: 1, exclude: ["excluded/"] });
+    expect(validateReport(report)).toEqual([]);
+    expect(report.files.map((f) => f.path)).toEqual(["a/main.ts", "b/main.ts"]);
+    const history = report.git!;
+    expect(history.commits.width).toEqual([2, 2, 2, 110, 202]);
+    expect(history.commits.files.at(-1)).toHaveLength(2);
+    expect(history.coupling).toEqual([{ a: 0, b: 1, shared: 3, degree: 0.75 }]);
+    const modules = seams(report, undefined, { depth: 1 });
+    for (const module of modules.rows) expect(module).toMatchObject({ commits: 4, sweeps: 1, spreadBasis: 3, spread: 1 });
+    expect(seam(report, undefined, "a").locality).toMatchObject({ commits: 4, sweeps: 1, spreadBasis: 3, spread: 1 });
+
+    const invalid = structuredClone(report);
+    invalid.git!.commits.width![0] = 1;
+    expect(validateReport(invalid).some((e) => e.includes("commits.width[0]"))).toBe(true);
+    const legacy = structuredClone(report);
+    delete legacy.git!.commits.width;
+    expect(validateReport(legacy)).toEqual([]);
+    expect(seam(legacy, undefined, "a").notes.some((n) => n.includes("original commit widths"))).toBe(true);
+    expect(seams(legacy, undefined, { depth: 1 }).notes.some((n) => n.includes("original commit widths"))).toBe(true);
+  }, 60_000);
+
+  test.each([
+    ["docs", "README.md", "# Example\n"],
+    ["tests", "test/a.test.ts", "export const testValue = 1;\n"],
+  ])("locality counts outside %s in leaving without adding production coupling", async (name, outside, text) => {
+    const dir = join(TMP, `locality-${name}`);
+    mkdirSync(dir);
+    git(dir, ["init", "-q", "-b", "main"]);
+    write(dir, "src/a.ts", "export const a = 1;\n");
+    write(dir, outside, text);
+    commit(dir, ALICE, "2024-01-01T09:00:00Z", "code and outside client");
+    const { report } = await analyzeProject(dir, { symbols: false, workers: 1 });
+    expect(validateReport(report)).toEqual([]);
+    const ranked = seams(report, undefined, { depth: 1 }).rows.find((row) => row.module === "src")!;
+    expect(ranked).toMatchObject({ commits: 1, spreadBasis: 1, leaving: 1 });
+    expect(seam(report, undefined, "src").locality).toMatchObject({
+      commits: 1, spreadBasis: 1, leaving: 1, alsoTouchOutside: 1, changesWith: [], coChange: [],
+    });
   });
 
   test("truck factor follows authorship of files, not commits, and skips the bot", () => {

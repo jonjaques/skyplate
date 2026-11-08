@@ -124,8 +124,10 @@ and `origin` for `read_source`. Preserve `structuredContent.freshnessNote` when 
 
 **Module design.** `seams {}` ranks every module by `hotspotMass` (the sum of its files'
 hotspot scores) with its design signals (interface as used, exports that could be hidden or are
-internal, symbols only tests reach, relays, hidden co-change coupling, spread); `seam { path }`
-measures one module at its interface. For a full
+internal, symbols only tests reach, relays, hidden co-change coupling, spread). Pass a row's
+`selector` unchanged to `seam` to measure that same membership. Its `scope: "module"` excludes
+separately selected child modules; its `depth`, when present, preserves the ranking partition.
+Use `seam { path }` for a file, glob or a whole directory with every descendant. For a full
 review use the `skyplate-architecture-review` skill; to design or verify one deepening, the
 `skyplate-deepen` skill, which also defines the vocabulary those numbers stand for.
 

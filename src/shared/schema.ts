@@ -20,7 +20,7 @@
  * computing the cosmic web itself, and `radius` became the graph's alone.
  *
  * Optional fields added since leave it alone (EdgeTable.typeOnly, GraphSummary.typeLoops,
- * GitSummary.sweepFiles, FileRecord.entry, FileRecord.publicApi): a
+ * GitSummary.sweepFiles, CommitTable.width, FileRecord.entry, FileRecord.publicApi): a
  * report written before one simply lacks it, and every reader treats it as absent. A viewer
  * always reads the data it shipped with; the bump exists for readers of other reports, such
  * as the MCP server's report-folder mode, which refuses versions it does not know.
@@ -419,6 +419,8 @@ export interface CommitTable {
   added: number[];
   deleted: number[];
   files: number[][];
+  /** Original touched-path count, including deleted and excluded paths. Absent in older reports. */
+  width?: number[];
   /** First line of the message, truncated to 120 chars. */
   subject: string[];
   /** Conventional-commit type when the subject follows `type(scope): …`, else "". */

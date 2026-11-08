@@ -106,10 +106,11 @@ beforeAll(async () => {
   write("tests/math.test.ts", 'import { add } from "../src/math";\n\nexport const ok = add(1, 2) === 3;\n');
   // A relay: its whole body is one call into src/, which makes twice part of src's interface.
   write("lib/double.ts", 'import { join } from "node:path";\nimport { label } from "../big/b/two";\nimport { twice } from "../src/math";\n\nexport function double(x: number): number {\n  return twice(x);\n}\n\nexport const four = double(2) + join("a").length + label([]).length;\n');
-  // A module holding over a quarter of the code, in two subdirectories: seams splits it.
+  // The parent keeps a direct file when review splits its two larger subdirectories.
+  write("big/direct.ts", "export function offset(value: number): number { return value + 1; }\n");
   write(
     "big/a/one.ts",
-    "export function scale(values: number[], k: number): number[] {\n  const out: number[] = [];\n  for (const v of values) {\n    if (v < 0) out.push(0);\n    else out.push(v * k);\n  }\n  return out;\n}\n\nexport function mean(values: number[]): number {\n  let sum = 0;\n  for (const v of values) sum += v;\n  return values.length ? sum / values.length : 0;\n}\n",
+    'import { offset } from "../direct";\n\nexport function scale(values: number[], k: number): number[] {\n  const out: number[] = [];\n  for (const v of values) {\n    if (v < 0) out.push(0);\n    else out.push(offset(v * k));\n  }\n  return out;\n}\n\nexport function mean(values: number[]): number {\n  let sum = 0;\n  for (const v of values) sum += v;\n  return values.length ? sum / values.length : 0;\n}\n',
   );
   write(
     "big/b/two.ts",
@@ -178,6 +179,17 @@ describe("a live project", () => {
     expect(owned.files.map((f: any) => f.path)).toEqual(expect.arrayContaining(["src/shapes.ts", "tests/math.test.ts"]));
     const cyc = await json("files", { flag: "in_cycle" });
     expect(cyc.files.map((f: any) => f.path).sort()).toEqual(["src/app.ts", "src/math.ts"]);
+  });
+
+  test("explicit file sorts override query relevance before pagination", async () => {
+    const relevant = await json("files", { query: "src" });
+    expect(relevant.files[0].path).toBe("src/app.ts");
+    const byCode = await json("files", { query: "src", sort: "code" });
+    expect(byCode.files.map((f: any) => f.path)).toEqual(["src/shapes.ts", "src/app.ts", "src/math.ts"]);
+    const page = await json("files", { query: "src", sort: "code", offset: 1, limit: 1 });
+    expect(page.files.map((f: any) => f.path)).toEqual(["src/app.ts"]);
+    const byPath = await json("files", { query: "app", sort: "path" });
+    expect(byPath.files.map((f: any) => f.path)).toEqual(["app.config.ts", "src/app.ts"]);
   });
 
   test("structured answers preserve arrays and freshness warnings", async () => {
@@ -438,7 +450,33 @@ describe("seams", () => {
     expect(snap.graph.modules.map((m) => snap.dirs[m.dir]!.path)).toContain("big"); // the analyzer stops here
     const modules = (await json("seams", { limit: 100 })).rows.map((r: any) => r.module);
     expect(modules).toEqual(expect.arrayContaining(["big/a", "big/b"]));
-    expect(modules).not.toContain("big");
+    expect(modules).toContain("big"); // direct.ts remains in the parent module
+  });
+
+  test("ranked module drilldowns preserve residual parents and the selected partition", async () => {
+    for (const depth of [undefined, 1, 2]) {
+      const ranked = await json("seams", { depth, limit: 100 });
+      for (const row of ranked.rows) {
+        const detail = await json("seam", { path: row.module === "(root)" ? "." : row.module, scope: "module", depth });
+        expect(detail.implementation.code).toBe(row.code);
+        expect(detail.implementation.complexity).toBe(row.complexity);
+        expect(detail.interface.symbols).toBe(row.interface);
+        expect(detail.locality.commits).toBe(row.commits);
+        expect(detail.locality.spread).toBe(row.spread);
+        expect(detail.locality.leaving).toBe(row.leaving);
+        expect(detail.selector).toEqual(row.selector);
+      }
+    }
+    const ranked = await json("seams", { limit: 100 });
+    const parent = ranked.rows.find((row: any) => row.module === "big");
+    expect(parent.selector).toEqual({ path: "big", scope: "module" });
+    const detail = await json("seam", parent.selector);
+    expect(detail.implementation.files).toBe(1);
+    expect(detail.interface.rows.map((row: any) => row.name)).toContain("offset");
+    const recursive = await json("seam", { path: "big" });
+    expect(recursive.implementation.files).toBe(3);
+    expect(recursive.implementation.code).toBeGreaterThan(detail.implementation.code);
+    expect((await call("seam", { path: "big/a", scope: "module", depth: 1 })).error).toBe(true);
   });
 
   test("a module's own tests are clients; siblings' exports are internal; implementation is code only", async () => {

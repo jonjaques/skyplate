@@ -24,7 +24,7 @@ or "wrapper": the point is one language that maps to one set of measures.
 
 | Term | Means | What `seam { path }` gives you |
 | --- | --- | --- |
-| **Module** | anything with an interface and an implementation: a function, file, directory, package | the `path` you measure (directory, file or glob); `seams` lists the analyzer's modules |
+| **Module** | anything with an interface and an implementation: a function, file, directory, package | a recursive `path` (directory, file or glob), or a ranked row's `selector` for its exact review membership |
 | **Interface** | everything a caller must know to use it correctly | `interface.rows`: symbols declared inside that code outside uses, directly (`uses`) or through their members (`viaMembers`, the outside uses of its fields and methods: a type nothing outside names but whose instances it reads is interface with `uses: 0`), the interface *as used*. A row with `exposes` hands callers another type too: a `store` property typed `AppStore #N (40 public members)` is one row, and every caller reading it can reach 40 more. Which of them callers actually use is not recorded (a reference does not say which object it went through), so search for `.store.` to size it. Invariants, ordering, error modes and performance are not counted; read them from the code and its callers |
 | **Implementation** | the body of code behind the interface | `implementation`: production code only (lines, complexity, functions, hottest files); the module's own tests are counted apart in `tests` |
 | **Depth** | leverage at the interface: behavior a caller gets per unit of interface learned | no score, on purpose. Read `interface.symbols` against `implementation`, and `interface.uses` / `callers` / `files` |
@@ -99,6 +99,9 @@ Other fields:
 - In `seams`, `hotspotMass` is the sum of the module's file hotspot scores, so it ranks large
   hot modules first; it is not a 0-1 score.
 - `seams { offset, limit }` pages module rankings. Keep the same sort and depth across pages.
+  Pass a row's `selector` unchanged to `seam` for drilldown. It carries `scope: "module"` and
+  the optional `depth`, so separately selected children stay outside a residual parent module.
+  A plain `seam { path }` includes all descendants instead.
 
 `locality.commits` counts every commit that touched the module. `spread` and `coChange` use
 only commits no wider than `locality.sweepWidth`, the history's own 90th-percentile commit

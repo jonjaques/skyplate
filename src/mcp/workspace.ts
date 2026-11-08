@@ -33,6 +33,7 @@ import { PHASE_LABEL, type CliPhase } from "../cli/progress";
 import { isReportDir, openInBrowser, startServer, type StaticServer } from "../cli/serve";
 import { slug } from "../cli/main";
 import { analyzeProject, DEFAULT_OPTIONS, type AnalysisResult, type AnalyzeOptions, type ProgressEvent } from "../core/pipeline";
+import { gitDirectories } from "../core/git";
 import { detectFile } from "../core/languages/detect";
 import { checkOutput, outputPlacement, realPath, reportExcludes, viewerIsStale, writeSite } from "../core/site";
 import type { CodeSymbols, Report } from "../shared/schema";
@@ -226,6 +227,7 @@ export class Project {
   changes = 0;
   lastChange?: string;
   watcher?: FSWatcher;
+  gitWatchers: FSWatcher[] = [];
   watchNote?: string;
   closed = false;
   lastBuild?: string;
@@ -380,9 +382,7 @@ export class Workspace {
       if (opts.refresh) existing.refresh = opts.refresh;
       if (existing.kind === "live") {
         if (opts.watch === false) {
-          existing.watcher?.close();
-          existing.watcher = undefined;
-          clearTimeout(existing.timer);
+          this.unwatch(existing);
           existing.watchNote = "disabled";
         } else if (opts.watch === true && !existing.watcher) this.watch(existing);
       }
@@ -484,24 +484,46 @@ export class Workspace {
 
   // ── Watching ──
 
+  private unwatch(p: Project): void {
+    p.watcher?.close();
+    p.watcher = undefined;
+    for (const watcher of p.gitWatchers) watcher.close();
+    p.gitWatchers = [];
+    clearTimeout(p.timer);
+  }
+
   private watch(p: Project): void {
+    const changed = (rel: string | undefined) => {
+      if (p.closed || (rel !== undefined && !relevantChange(rel, p.snapshot?.known, p.options.git !== false))) return;
+      p.changedAt = Date.now();
+      p.changes++;
+      p.lastChange = rel ?? "(unnamed change)";
+      if (p.refresh === "on_change") this.schedule(p);
+    };
     try {
+      p.watchNote = undefined;
       p.watcher = watch(p.path, { recursive: true }, (_event, filename) => {
-        const rel = filename ? String(filename).split(sep).join("/") : undefined;
-        if (rel !== undefined && !relevantChange(rel, p.snapshot?.known, p.options.git !== false)) return;
-        p.changedAt = Date.now();
-        p.changes++;
-        p.lastChange = rel ?? "(unnamed change)";
-        if (p.refresh === "on_change") this.schedule(p);
+        changed(filename ? String(filename).split(sep).join("/") : undefined);
       });
-      p.watcher.on("error", (e) => {
+      // Worktrees store HEAD outside their source tree, and refs in the common Git directory.
+      // A project opened below the repo root misses both. Watch those directories so atomic
+      // ref replacements are seen; filter out objects and logs just as for the source watch.
+      // Keep these watches when git is disabled so toggling it on needs no watcher restart.
+      for (const dir of gitDirectories(p.path)) {
+        if (dir === join(p.path, ".git")) continue; // the source watcher already covers it
+        p.gitWatchers.push(watch(dir, { recursive: true }, (_event, filename) => {
+          if (p.options.git === false) return;
+          changed(filename ? `.git/${String(filename).split(sep).join("/")}` : undefined);
+        }));
+      }
+      for (const watcher of [p.watcher, ...p.gitWatchers]) watcher.on("error", (e) => {
         p.watchNote = `watch failed: ${e.message}`;
-        p.watcher?.close();
-        p.watcher = undefined;
+        this.unwatch(p);
       });
     } catch (e) {
       // Recursive watching is not available everywhere (and a huge tree can exhaust inotify
       // watches on Linux); the project still works, it just cannot tell when it went stale.
+      this.unwatch(p);
       p.watchNote = `watch unavailable: ${e instanceof Error ? e.message : String(e)}`;
     }
   }
@@ -641,9 +663,7 @@ export class Workspace {
 
   close(p: Project): void {
     p.closed = true;
-    clearTimeout(p.timer);
-    p.watcher?.close();
-    p.watcher = undefined;
+    this.unwatch(p);
     p.snapshot = undefined;
     this.projects.delete(p.id);
   }

@@ -449,10 +449,10 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Rank modules for a design review",
       description:
-        "Every module (the analyzer's directory modules, or directories at depth) with the signals a deepening review starts from: implementation mass, hotspot, interface as used (symbols code outside uses), exports that could be hidden, symbols only tests reach (tests past the interface), relays (functions that are one call), import fan-in/out, commit spread across modules, co-change with no import (hidden coupling), cycles across. Sorted by one signal; no composite score.",
+        "Every review module (the analyzer's directory modules split for review, or directories at depth) with the signals a deepening review starts from: implementation mass, hotspot, interface as used (symbols code outside uses), exports that could be hidden, symbols only tests reach (tests past the interface), relays (functions that are one call), import fan-in/out, commit spread across modules, co-change with no import (hidden coupling), cycles across. Sorted by one signal; no composite score. Pass a row's selector to seam to preserve its membership.",
       inputSchema: z.object({
         project,
-        depth: z.number().int().min(1).max(20).optional().describe("Measure directories at this depth instead of the analyzer's modules"),
+        depth: z.number().int().min(1).max(20).optional().describe("Measure directories at this depth instead of the adaptive review modules"),
         sort: z.enum(SEAM_SORTS).optional().describe("Default hotspot (with history), else code"),
         limit: limit(25),
         offset: z.number().int().min(0).optional().describe("Skip this many module rows, to page past limit"),
@@ -468,17 +468,19 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Measure one module at its seam",
       description:
-        "One module (a directory, file or glob) measured where its interface lives: implementation (code, complexity), the interface as used with outside call sites, callers and files per symbol, exports used only inside, symbols only tests reach, relays (deletion-test candidates), interfaces it declares and their adapters (implementations, test doubles marked), imports and cycles crossing it, and locality: how often its commits stay inside, what changes with it, and co-change pairs with no import between them.",
+        "One ranked module or recursive path (a directory, file or glob) measured where its interface lives: implementation (code, complexity), the interface as used with outside call sites, callers and files per symbol, exports used only inside, symbols only tests reach, relays (deletion-test candidates), interfaces it declares and their adapters (implementations, test doubles marked), imports and cycles crossing it, and locality: how often its commits stay inside, what changes with it, and co-change pairs with no import between them.",
       inputSchema: z.object({
         project,
-        path: z.string().describe("The module: a directory, a file, or a glob"),
+        path: z.string().describe("A directory, file or glob; with scope module, the path from a seams row's selector"),
+        scope: z.enum(["path", "module"]).optional().describe("Default path expands directories recursively. Module preserves the ranked membership from seams, excluding separately selected children."),
+        depth: z.number().int().min(1).max(20).optional().describe("With scope module, the same depth passed to seams; omit for its adaptive review partition"),
         limit: limit(20),
         offset: z.number().int().min(0).optional().describe("Skip this many interface rows, to page past limit"),
         wait_seconds: waitSeconds(QUERY_WAIT_S),
       }),
       annotations: readOnly,
     },
-    guard((a, ctx) => answer(a.project, a.wait_seconds, ctx, async (s) => seam(s.report, await s.symbols(), a.path, { limit: a.limit, offset: a.offset }))),
+    guard((a, ctx) => answer(a.project, a.wait_seconds, ctx, async (s) => seam(s.report, await s.symbols(), a.path, { scope: a.scope, depth: a.depth, limit: a.limit, offset: a.offset }))),
   );
 
   // ── Structure and history ──
