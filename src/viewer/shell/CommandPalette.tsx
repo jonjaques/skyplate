@@ -34,7 +34,7 @@ import { GRAVITIES, GRAVITY_NEEDS_GIT } from "../../shared/web";
 import { COLOR_BY_LABEL, GRAVITY_HINT, GRAVITY_LABEL, NEEDS_GIT, SIZE_BY_LABEL, SYMBOL_KIND_LABEL } from "./labels";
 import { focusDrawer, openSymbolDefinition, show } from "./navigate";
 import { LanguageSwatch } from "./parts";
-import { queryTerms, rankScored, searchable, type Searchable } from "./search";
+import { queryTerms, rankScored, searchable, type Searchable } from "../../shared/search";
 import { useShell } from "./shell-state";
 import { TAB_ORDER } from "./nav";
 

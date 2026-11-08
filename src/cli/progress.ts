@@ -12,7 +12,7 @@ import type { Phase, ProgressEvent } from "../core/pipeline";
 
 export type CliPhase = Phase | "write";
 
-const LABEL: Record<CliPhase, string> = {
+export const PHASE_LABEL: Record<CliPhase, string> = {
   walk: "Listing files",
   detect: "Detecting languages",
   files: "Measuring files",
@@ -64,7 +64,7 @@ export class Progress {
     if (this.quiet) return;
     const phase = e.phase as CliPhase;
     if (e.status === "start") {
-      this.active.set(phase, { label: LABEL[phase] });
+      this.active.set(phase, { label: PHASE_LABEL[phase] });
       this.draw();
     } else if (e.status === "update") {
       const a = this.active.get(phase);
@@ -77,7 +77,7 @@ export class Progress {
       this.active.delete(phase);
       const mark = e.status === "skip" ? "–" : "✓";
       const time = e.status === "done" && e.ms !== undefined ? `  ${seconds(e.ms)}` : "";
-      this.line(`  ${mark} ${LABEL[phase].padEnd(20)} ${e.message ?? ""}${time}`.trimEnd());
+      this.line(`  ${mark} ${PHASE_LABEL[phase].padEnd(20)} ${e.message ?? ""}${time}`.trimEnd());
     }
   }
 

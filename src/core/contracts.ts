@@ -168,10 +168,20 @@ export interface GraphInput {
   fileCount: number;
   from: number[];
   to: number[];
+  /**
+   * Per edge (aligned with `from` / `to`): the compiler erases it (`import type`). Such an edge
+   * counts in fan-in/out, rank and coupling, and not in cycles. Absent: every edge runs.
+   */
+  typeOnly?: boolean[];
   /** Directory id of each file and the directory tree, for module-level metrics. */
   fileDir: number[];
   dirParent: number[];
   dirDepth: number[];
+  /**
+   * Directories holding a manifest that declares a package (package.json, Cargo.toml, go.mod…),
+   * the root excluded: a monorepo's packages, which module choice keeps whole.
+   */
+  packageDirs?: number[];
 }
 
 export interface GraphResult {

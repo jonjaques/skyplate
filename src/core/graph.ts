@@ -11,14 +11,6 @@
 import type { AnalyzeGraph, GraphInput, GraphResult } from "./contracts";
 import type { Cycle } from "../shared/schema";
 
-/**
- * GraphInput plus, per edge (aligned with `from` / `to`), whether the compiler erases it
- * (`import type`). Optional until the contract carries it; absent means every edge runs.
- */
-export interface GraphEdges extends GraphInput {
-  typeOnly?: boolean[];
-}
-
 const DAMPING = 0.85;
 const MAX_ITERATIONS = 60;
 /** L1 change per node below which PageRank counts as converged. */
@@ -223,6 +215,7 @@ function chooseModules(input: GraphInput, connected: Uint8Array, rank: number[])
     else if (root < 0) root = d;
   }
   if (root < 0) return { moduleOf: new Int32Array(n).fill(-1), modules: [], depth: 0 };
+  const packages = new Set((input.packageDirs ?? []).filter((d) => d !== root && d >= 0 && d < dirCount));
   let total = 0;
   let totalRank = 0;
   for (let f = 0; f < n; f++) {
@@ -238,6 +231,17 @@ function chooseModules(input: GraphInput, connected: Uint8Array, rank: number[])
     }
   }
 
+  // Package directories (packageDirs), and the directories on the way down to them. A package
+  // is a unit its manifest declares, so it never folds into a parent's "rest" however small it
+  // is, and a directory holding packages always qualifies for splitting: in a pnpm monorepo five
+  // of twelve packages (each under 2% of the files) folded into one module named "packages",
+  // and the coupling between them, the thing a package boundary is for, disappeared.
+  const holdsPackage = new Uint8Array(dirCount);
+  for (const p of packages) {
+    if (weight[p]! <= 0) continue;
+    for (let a = dirParent[p]!; a >= 0 && a < dirCount; a = dirParent[a]!) holdsPackage[a] = 1;
+  }
+
   // A module is a directory. When a directory is split, its own files and its minor
   // subdirectories stay together as its "rest" module (`self`), labeled with the directory.
   // Minor means under MINOR_SHARE of the connected files *and* of the PageRank mass: `.vscode/`
@@ -250,9 +254,14 @@ function chooseModules(input: GraphInput, connected: Uint8Array, rank: number[])
     minors: number[];
   }
   const size = (m: Mod) => (m.self ? m.minors.reduce((sum, c) => sum + weight[c]!, direct[m.dir]!) : weight[m.dir]!);
-  const expand = (dir: number, isRoot = false): Mod[] => {
+  // `byPackage` false is the split before packages counted: the fallback when keeping every
+  // package whole would pass MAX_MODULES (Vite's 80 playground fixtures each have a manifest).
+  const expand = (dir: number, isRoot = false, byPackage = true): Mod[] => {
     const kids = children[dir]!.filter((c) => weight[c]! > 0);
-    const isMajor = (c: number) => weight[c]! / total >= MINOR_SHARE || (totalRank > 0 && rankMass[c]! / totalRank >= MINOR_SHARE);
+    const isMajor = (c: number) =>
+      weight[c]! / total >= MINOR_SHARE ||
+      (totalRank > 0 && rankMass[c]! / totalRank >= MINOR_SHARE) ||
+      (byPackage && (packages.has(c) || holdsPackage[c] === 1));
     const major = kids.filter(isMajor);
     if (major.length === 0 && !isRoot) return []; // only crumbs below: not worth splitting
     const keep = major.length === 0 ? kids : major;
@@ -276,8 +285,9 @@ function chooseModules(input: GraphInput, connected: Uint8Array, rank: number[])
       const m = mods[k]!;
       if (m.self) continue;
       const share = size(m) / total;
-      if (share <= SPLIT_SHARE && (mods.length >= target || share < MIN_SPLIT_SHARE)) continue;
-      const parts = expand(m.dir);
+      if (share <= SPLIT_SHARE && (mods.length >= target || share < MIN_SPLIT_SHARE) && !holdsPackage[m.dir]) continue;
+      let parts = expand(m.dir);
+      if (mods.length - 1 + parts.length > MAX_MODULES && holdsPackage[m.dir]) parts = expand(m.dir, false, false);
       if (parts.length < 2 && !(parts.length === 1 && !parts[0]!.self)) continue;
       if (mods.length - 1 + parts.length > MAX_MODULES) continue;
       const depth = dirDepth[m.dir] ?? 0;
@@ -351,8 +361,7 @@ function chooseModules(input: GraphInput, connected: Uint8Array, rank: number[])
 
 // ─── analyzeGraph ────────────────────────────────────────────────────────────────────────────
 
-// Typed through `satisfies` so callers can pass `typeOnly`, which the contract does not name yet.
-export const analyzeGraph = ((input: GraphEdges): GraphResult => {
+export const analyzeGraph = ((input: GraphInput): GraphResult => {
   const n = input.fileCount;
   const g = buildCsr(n, input.from, input.to);
   const fanOut = new Array<number>(n);
@@ -395,6 +404,31 @@ export const analyzeGraph = ((input: GraphEdges): GraphResult => {
     return { id, files: files.sort((a, b) => rank[b]! - rank[a]! || a - b) };
   });
 
+  // Loops that only type-only edges close: components of the full graph that are not one of
+  // the runtime cycles above. Not cycles (nothing runs through them), but the files in one
+  // still have to be read together, and in a TypeScript monorepo they can be all there is:
+  // every one of twelve "cycles" in one was this kind, so dropping them silently would leave a
+  // reader with nothing to say the types are knotted.
+  const typeLoops: number[][] = [];
+  if (runtime !== g) {
+    const all = stronglyConnected(n, g);
+    const byComp = new Map<number, number[]>();
+    for (let v = 0; v < n; v++) {
+      if (all.sizes[all.comp[v]!]! < 2) continue;
+      const list = byComp.get(all.comp[v]!);
+      if (list) list.push(v);
+      else byComp.set(all.comp[v]!, [v]);
+    }
+    for (const files of byComp.values()) {
+      const c = cycle[files[0]!]!;
+      // A runtime cycle is a whole component of the full graph only when the type edges add
+      // nothing to it; anything larger, or any loop without one, is listed here.
+      if (c >= 0 && cycles[c]!.files.length === files.length && files.every((f) => cycle[f] === c)) continue;
+      typeLoops.push(files.sort((a, b) => rank[b]! - rank[a]! || a - b));
+    }
+    typeLoops.sort((a, b) => b.length - a.length || Math.min(...a) - Math.min(...b));
+  }
+
   // Module coupling over the chosen modules.
   const { moduleOf, modules, depth } = chooseModules(input, connected, rank);
   const mCount = modules.length;
@@ -430,6 +464,7 @@ export const analyzeGraph = ((input: GraphEdges): GraphResult => {
       edges: g.out.length,
       connected: connectedCount,
       cycles,
+      ...(typeLoops.length ? { typeLoops } : {}),
       modules: moduleSummary,
       moduleMatrix: matrix,
       moduleDepth: depth,

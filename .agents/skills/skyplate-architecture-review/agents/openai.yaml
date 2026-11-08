@@ -1,0 +1,5 @@
+interface:
+  display_name: "Skyplate Architecture Review"
+  short_description: "Measured review for deepening opportunities"
+policy:
+  allow_implicit_invocation: false

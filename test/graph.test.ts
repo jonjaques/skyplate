@@ -60,6 +60,17 @@ describe("analyzeGraph", () => {
     expect(g.summary.edges).toBe(4);
     // Without the flags every loop is a cycle, as before.
     expect(analyzeGraph(flat(4, edges.map(([a, b]) => [a, b]))).summary.cycles.length).toBe(2);
+    // The loop only the type edge closes is listed apart; the runtime cycle is not repeated there.
+    expect(g.summary.typeLoops?.map((l) => [...l].sort())).toEqual([[0, 1]]);
+    expect(analyzeGraph(flat(4, edges.map(([a, b]) => [a, b]))).summary.typeLoops).toBeUndefined();
+  });
+
+  test("a type edge that grows a runtime cycle into a larger loop lists the larger loop", () => {
+    // 0 ↔ 1 runs; 1 → 2 runs and 2 → 0 is `import type`: the cycle is {0, 1}, the loop {0, 1, 2}.
+    const edges: [number, number, boolean][] = [[0, 1, false], [1, 0, false], [1, 2, false], [2, 0, true]];
+    const g = analyzeGraph({ ...flat(3, edges.map(([a, b]) => [a, b])), typeOnly: edges.map((e) => e[2]) });
+    expect(g.summary.cycles.map((c) => [...c.files].sort())).toEqual([[0, 1]]);
+    expect(g.summary.typeLoops?.map((l) => [...l].sort())).toEqual([[0, 1, 2]]);
   });
 
   test("deep chains and one huge cycle do not overflow the stack", () => {
@@ -101,6 +112,59 @@ describe("analyzeGraph", () => {
     expect(g.summary.moduleMatrix[1]![0]).toBe(2);
     expect(g.summary.moduleMatrix[0]![0]).toBe(3);
     expect(g.summary.moduleMatrix[2]![1]).toBe(1);
+  });
+
+  test("modules keep every package whole, however small, until the cap forbids it", () => {
+    // dirs: 0 "" · 1 packages · 2 packages/core · 3 packages/tiny-a · 4 packages/tiny-b · 5 apps
+    const dirParent = [-1, 0, 1, 1, 1, 0];
+    const dirDepth = [0, 1, 2, 2, 2, 1];
+    // 100 core files in a chain, one file each in the two tiny packages (under 2% apiece), and
+    // 60 app files that import core: the tiny packages fold into "packages" by size alone.
+    const fileDir = [...Array<number>(100).fill(2), 3, 4, ...Array<number>(60).fill(5)];
+    const edges: [number, number][] = [];
+    for (let i = 1; i < 100; i++) edges.push([i, i - 1]);
+    edges.push([100, 0], [101, 100]);
+    for (let i = 102; i < 162; i++) edges.push([i, i % 100]);
+    const base = { fileCount: 162, from: edges.map((e) => e[0]), to: edges.map((e) => e[1]), fileDir, dirParent, dirDepth };
+    const bySize = analyzeGraph(base).summary.modules.map((m) => m.dir);
+    expect(bySize).not.toContain(3);
+    expect(bySize).not.toContain(4);
+    const byPackage = analyzeGraph({ ...base, packageDirs: [2, 3, 4, 5] }).summary.modules.map((m) => m.dir);
+    expect(byPackage).toEqual(expect.arrayContaining([2, 3, 4, 5]));
+    expect(byPackage).not.toContain(1); // nothing left for a "packages" rest module
+  });
+
+  test("a directory of more packages than the module cap splits the old way", () => {
+    // playground/ holds 40 packages: 5 of 30 files and 35 one-file fixtures that import them.
+    // Keeping all 40 whole would pass MAX_MODULES (24), so the split falls back to size: the
+    // five large packages stand alone and the fixtures fold into playground's rest module.
+    // Without the fallback playground/ would not be split at all.
+    const big = 5;
+    const tiny = 35;
+    const dirParent = [-1, 0, ...Array<number>(big + tiny).fill(1)];
+    const dirDepth = [0, 1, ...Array<number>(big + tiny).fill(2)];
+    const fileDir: number[] = [];
+    const edges: [number, number][] = [];
+    for (let p = 0; p < big; p++)
+      for (let k = 0; k < 30; k++) {
+        const f = fileDir.length;
+        fileDir.push(2 + p);
+        if (k > 0) edges.push([f, f - 1]);
+      }
+    for (let t = 0; t < tiny; t++) {
+      edges.push([fileDir.length, (t % big) * 30]);
+      fileDir.push(2 + big + t);
+    }
+    const g = analyzeGraph({
+      fileCount: fileDir.length,
+      from: edges.map((e) => e[0]),
+      to: edges.map((e) => e[1]),
+      fileDir,
+      dirParent,
+      dirDepth,
+      packageDirs: Array.from({ length: big + tiny }, (_, i) => 2 + i),
+    });
+    expect(g.summary.modules.map((m) => m.dir)).toEqual([1, 2, 3, 4, 5, 6]);
   });
 
   test("modules ignore files without edges", () => {

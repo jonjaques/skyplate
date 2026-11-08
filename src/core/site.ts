@@ -25,7 +25,7 @@
 
 import { accessSync, closeSync, constants, existsSync, openSync, readdirSync, readSync, realpathSync, statSync } from "node:fs";
 import { copyFile, cp, mkdir, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
-import { basename, dirname, join, resolve, sep } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { DATA_GLOBAL, REPORT_FILE, type Category, type CodeSymbols, type Report, type SourceIndex } from "../shared/schema";
 
 const PROJECT_ROOT = resolve(import.meta.dir, "../..");
@@ -242,8 +242,25 @@ export interface SiteResult {
   ms: number;
 }
 
-const dataScript = (name: string, payload: unknown) =>
-  `window.${DATA_GLOBAL}.resolve(${JSON.stringify(name)}, ${JSON.stringify(payload)});\n`;
+const dataScriptHead = (name: string) => `window.${DATA_GLOBAL}.resolve(${JSON.stringify(name)}, `;
+const dataScript = (name: string, payload: unknown) => `${dataScriptHead(name)}${JSON.stringify(payload)});\n`;
+
+/**
+ * The payload of a data script dataScript() wrote for `name`, or undefined when `text` is not
+ * one. The MCP server reads report folders back with it (src/mcp/report.ts); the reader sits
+ * beside the writer so the two can only change together. Throws on a script that has the
+ * right head but a damaged payload (a truncated copy), which is not "no report here".
+ */
+export function parseDataScript(text: string, name: string): unknown {
+  const head = dataScriptHead(name);
+  if (!text.startsWith(head)) return undefined;
+  const body = text.trimEnd();
+  if (!body.endsWith(");")) throw new Error(`data script "${name}" is truncated`);
+  return JSON.parse(body.slice(head.length, -2));
+}
+
+/** True when `text` begins like the report data script, without parsing the rest. */
+export const isReportScriptHead = (text: string): boolean => text.startsWith(dataScriptHead("report"));
 
 /** First bytes of a file as text, "" when it cannot be read. Never reads a whole data file. */
 function readHead(path: string, bytes: number): string {
@@ -346,6 +363,27 @@ export function outputPlacement(out: string, root: string): "same" | "contains" 
   if (r.startsWith(o.endsWith(sep) ? o : o + sep)) return "contains";
   if (o.startsWith(r.endsWith(sep) ? r : r + sep)) return "inside";
   return "apart";
+}
+
+/**
+ * The exclude list for analyzing `root` when its report goes to `out`: the caller's patterns,
+ * plus every report folder.
+ *
+ * Reports are never part of the project they describe. The default output lands inside the
+ * project when run as `skyplate .`, and without this the second run would measure the first
+ * run's data files (megabytes of JSON) as the biggest "code" in the repository. Compared
+ * through realpath, as the walker roots itself, so an --out spelled through a symlink is still
+ * recognized as inside.
+ * "*.starchart/" is back-compat, kept on purpose: before the rename the tool was called
+ * starchart and `starchart .` wrote <project>.starchart/ inside the project, so projects that
+ * were analyzed before still carry one, and it is a report, not part of the project.
+ */
+export function reportExcludes(root: string, out: string | undefined, exclude: readonly string[]): string[] {
+  const all = [...exclude, "*.skyplate/", "*.starchart/"];
+  if (out && outputPlacement(out, root) === "inside") {
+    all.push(`/${relative(realPath(root), realPath(out)).split(sep).join("/")}/`);
+  }
+  return all;
 }
 
 /**

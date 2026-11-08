@@ -23,6 +23,7 @@ import {
 import {
   coupling,
   degreeOfAuthorship,
+  sweepWidth,
   truckFactor,
   weekStart,
   type FileAuthors,
@@ -1080,6 +1081,34 @@ describe("derive helpers", () => {
       { a: 0, b: 1, shared: 3, degree: 1 },
       { a: 0, b: 2, shared: 3, degree: 1 },
     ]);
+  });
+
+  test("coupling takes its sweep width from the caller", () => {
+    // The last commit touched 31 paths (28 since deleted): a sweep at 30, an ordinary change at 40.
+    const files = [[0, 1], [0, 1], [0, 1, 2], [0, 2], [0, 2], [0, 1, 2]];
+    const width = [2, 2, 3, 2, 2, 31];
+    const commits = Int32Array.from([6, 4, 4]);
+    expect(coupling(3, files, width, commits, 30)).toEqual([
+      { a: 0, b: 1, shared: 3, degree: 0.75 },
+      { a: 0, b: 2, shared: 3, degree: 0.75 },
+    ]);
+    expect(coupling(3, files, width, commits, 40)).toEqual([
+      { a: 0, b: 1, shared: 4, degree: 1 },
+      { a: 0, b: 2, shared: 4, degree: 1 },
+    ]);
+  });
+
+  test("the sweep width follows the history's own commit sizes, between 30 and 100", () => {
+    // Small commits: p90 is 8, so the floor holds at 30.
+    expect(sweepWidth(Array.from({ length: 100 }, (_, i) => (i % 10) + 1))).toBe(30);
+    // Squash-merge histories, where pull requests land whole: 40- and 64-file changes are
+    // ordinary there, and the rare far wider commits above the 90th percentile still drop out.
+    const squash = Array.from({ length: 100 }, (_, i) => (i < 75 ? 13 : i < 90 ? 40 : 154 + i));
+    expect(sweepWidth(squash)).toBe(40);
+    expect(sweepWidth(Array.from({ length: 100 }, (_, i) => (i < 89 ? 20 : 64)))).toBe(64);
+    // Mostly vendor drops: the ceiling bounds the k² pair walk.
+    expect(sweepWidth(Array.from({ length: 100 }, () => 500))).toBe(100);
+    expect(sweepWidth([])).toBe(30);
   });
 });
 

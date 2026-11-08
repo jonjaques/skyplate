@@ -1,5 +1,7 @@
 /**
- * Fuzzy ranking for the command palette.
+ * Fuzzy ranking for the viewer's command palette and the MCP server's file and symbol search
+ * (src/mcp/), shared so a name an agent searches for ranks where a reader typing it would see
+ * it.
  *
  * cmdk's built-in filter re-scores and re-sorts every item it is given, which means handing it
  * all 50k paths of a large report on each keystroke. Ranking here and passing it only the top

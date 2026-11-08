@@ -81,7 +81,7 @@ export function buildTables(store: SymbolStore, refs: RefStore, fileCount: numbe
     calls.kind.push(k);
     calls.count.push(edges.get(key)!);
     // Distinct callers, counted by the same rule the record's call hierarchy lists them
-    // (callEdges in src/viewer/shell/derived.ts), because the record prints the two together:
+    // (callEdges in src/shared/calls.ts), because the record prints the two together:
     // - import/export rows are bookkeeping (the importing module is not a caller just because
     //   it names the symbol at the top of the file);
     // - extends/implements rows are the type hierarchy, which the record shows on its own. vite's

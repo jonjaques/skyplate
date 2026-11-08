@@ -58,6 +58,7 @@ import {
   languageChurn,
   perFileGit,
   punchcard,
+  sweepWidth,
   truckFactor,
   weeklySeries,
 } from "./git/derive";
@@ -457,6 +458,7 @@ interface Meta {
 
 function summarize(h: History, meta: Meta): GitResult {
   const n = h.commitCount;
+  const sweep = sweepWidth(h.width);
   const { groupOf, authors: merged } = mergeIdentities(h.identities);
   const bot = merged.map((a) => a.bot);
   const author = new Int32Array(n);
@@ -578,7 +580,9 @@ function summarize(h: History, meta: Meta): GitResult {
       excluded ? h.files.map((fs) => fs.filter((f) => !excluded[f])) : h.files,
       h.width,
       h.fileCommits,
+      sweep,
     ),
+    sweepFiles: sweep,
     truckFactor: truckFactor(
       table,
       creator,
