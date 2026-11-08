@@ -457,13 +457,17 @@ describe("seams", () => {
     for (const depth of [undefined, 1, 2]) {
       const ranked = await json("seams", { depth, limit: 100 });
       for (const row of ranked.rows) {
-        const detail = await json("seam", { path: row.module === "(root)" ? "." : row.module, scope: "module", depth });
+        const detail = await json("seam", { ...row.selector, limit: 500 });
+        expect(detail.implementation.files).toBe(row.files);
+        expect(detail.tests.files).toBe(row.testFiles ?? 0);
         expect(detail.implementation.code).toBe(row.code);
         expect(detail.implementation.complexity).toBe(row.complexity);
         expect(detail.interface.symbols).toBe(row.interface);
         expect(detail.locality.commits).toBe(row.commits);
         expect(detail.locality.spread).toBe(row.spread);
         expect(detail.locality.leaving).toBe(row.leaving);
+        expect(detail.locality.coChangeMore).toBeUndefined();
+        expect(row.hiddenCoupling).toBe(detail.locality.coChange.filter((pair: any) => pair.imports === "none").length);
         expect(detail.selector).toEqual(row.selector);
       }
     }

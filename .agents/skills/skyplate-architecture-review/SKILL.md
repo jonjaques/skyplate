@@ -65,9 +65,11 @@ these questions; it reads the code and reports friction, not opinions about styl
   `graph path` that passes through several thin files)?
 - Is a module **shallow**: an interface nearly as complex as its implementation (many
   interface rows, each serving one or two uses, beside little implementation)?
-- Were pure functions extracted only to be tested (`testsPastInterface`) while the bugs hide
-  in how they are called?
-- Does something leak across the seam: the `coChange` pairs with no import, the cycles across?
+- Do tests past the interface depend on implementation choices, or protect algorithm
+  contracts such as determinism, precision and independent CPU/GPU parity? Preserve the latter.
+- Does something leak across the seam? For `coChange` pairs with no import path within four
+  hops, inspect dependency injection, composition and required registries before proposing a
+  merge or extraction. Check the runtime cycles across separately.
 - What is untested, or hard to test through the current interface (interface rows with no
   `testUses`)?
 - **The deletion test** on anything suspected shallow: would deleting it concentrate

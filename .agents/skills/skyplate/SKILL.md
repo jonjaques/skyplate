@@ -20,8 +20,7 @@ are fine.
 ## Is the server attached?
 
 Its tools appear as `open`, `files`, `symbol`… under the `skyplate` server (in Claude Code,
-`mcp__skyplate__open`). If they are missing, tell the user and offer to register it rather than
-working around it:
+`mcp__skyplate__open`). If they are missing, say so. For persistent use, offer to register it:
 
 ```sh
 claude mcp add skyplate -s user -- bunx skyplate mcp        # Claude Code, every project
@@ -31,6 +30,39 @@ codex mcp add skyplate -- bunx skyplate mcp                 # Codex
 It needs Bun 1.4+ (the CLI is TypeScript that Bun runs; `npx` under Node will not work). From
 a checkout of Skyplate, use `bun /path/to/skyplate/bin/skyplate.ts mcp` as the command.
 Adding paths (`skyplate mcp ~/code/app`) opens them at startup.
+
+For one-off analysis or dogfooding a local checkout, a temporary stdio client needs no MCP
+registration or machine settings changes. With that checkout's dependencies already installed,
+replace both absolute paths below and run this recipe. The SDK initializes the server and
+closes its process in `finally`. Preserve the full structured result, including freshness notes.
+
+```sh
+bun --cwd /absolute/path/to/skyplate --eval '
+import { Client } from "@modelcontextprotocol/client";
+import { StdioClientTransport } from "@modelcontextprotocol/client/stdio";
+const client = new Client({ name: "skyplate-dogfood", version: "1" });
+try {
+  await client.connect(new StdioClientTransport({
+    command: "bun", args: [process.cwd() + "/bin/skyplate.ts", "mcp"],
+  }));
+  const opened = await client.callTool({ name: "open", arguments: {
+    path: "/absolute/path/to/project", watch: false, wait_seconds: 120,
+  } }, { timeout: 150000 });
+  console.log(JSON.stringify(opened));
+  if (opened.isError || opened.structuredContent?.data?.project?.state !== "ready") {
+    throw new Error("Open did not finish; inspect the returned error or job before querying.");
+  }
+  const result = await client.callTool({ name: "seams", arguments: { limit: 25 } });
+  console.log(JSON.stringify(result));
+  if (result.isError) throw new Error("seams failed; see the returned error.");
+} finally {
+  await client.close();
+}
+'
+```
+
+Replace the `seams` call with the questions below, keeping dependent calls in the same client
+session. If opening exceeds the wait, use the job workflow below in that session before closing.
 
 If the user would rather not register it, the CLI writes the same data as JSON:
 `bunx skyplate <dir> --json --out <scratch>/x.skyplate --quiet`, then query
@@ -110,7 +142,8 @@ what a directory's change reaches.
 
 **Ownership and risk.** `history { view: "ownership", path: "src/billing" }`,
 `files { flag: "single_owner", sort: "code" }`, `history { view: "coupling", path: "src/api.ts" }`
-for files that change with it (a hidden dependency when there is no import between them),
+for files that change with it (inspect composition and registration before treating a missing
+import as a hidden dependency),
 `history { view: "commits", path: "src/auth", since: "90d" }`.
 
 Result keys differ by tool: `search_symbols` returns `symbols`, `files` returns `files`, and

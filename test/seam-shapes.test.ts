@@ -11,7 +11,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { analyzeProject, type AnalysisResult } from "../src/core/pipeline";
-import { resolveSymbol, seam, symbol } from "../src/mcp/query";
+import { resolveSymbol, seam, seams, symbol } from "../src/mcp/query";
 
 const TMP = realpathSync(mkdtempSync(join(tmpdir(), "skyplate-seam-shapes-")));
 let result: AnalysisResult;
@@ -35,12 +35,40 @@ beforeAll(async () => {
   write("src/api.test.ts", 'import { value } from "./api";\nexport function verify() { return value() === 1; }\n');
   write("src/host.ts", "export function hostValue() { return 1; }\n");
   write("src/host.test.vue", '<script setup lang="ts">\nimport { hostValue } from "./host";\nconst n = hostValue();\n</script>\n<template>{{ n }}</template>\n');
+  write("metrics/production.ts", "export const value = 1;\n");
+  write("metrics/empty.ts", "");
+  write("metrics/package.json", '{"name":"metrics","private":true}\n');
+  write("metrics/values.json", '{"value":1}\n');
+  write("metrics/model.generated.ts", "export const generated = 1;\n");
+  write("metrics/vendor/library.ts", "export const vendored = 1;\n");
+  write("metrics/production.test.ts", 'import { value } from "./production";\nexport const ok = value === 1;\n');
+  write("metrics/generated.test.ts", "/** @generated */\nexport const ok = true;\n");
   result = await analyzeProject(TMP, { git: false, workers: 1 });
 }, 60_000);
 
 afterAll(() => rmSync(TMP, { recursive: true, force: true }));
 
 describe("seam shapes", () => {
+  test("ranked file counts match implementation counts and exclude nonproduction files", () => {
+    const { report, symbols } = result;
+    const byPath = new Map(report.files.map((f) => [f.path, f]));
+    expect(byPath.get("metrics/package.json")!.category).toBe("config");
+    expect(byPath.get("metrics/values.json")!.category).toBe("data");
+    expect(byPath.get("metrics/model.generated.ts")!.generated).toBe(true);
+    expect(byPath.get("metrics/vendor/library.ts")!.vendored).toBe(true);
+    expect(byPath.get("metrics/generated.test.ts")!.generated).toBe(true);
+    expect(byPath.get("metrics/empty.ts")!.code).toBe(0);
+    const ranked = seams(report, symbols, { depth: 1, limit: 100 });
+    const row = ranked.rows.find((r) => r.module === "metrics")!;
+    const detail = seam(report, symbols, row.selector.path, row.selector);
+    expect(detail.implementation.files).toBe(2); // zero-code source files still count
+    expect(detail.tests.files).toBe(1);
+    expect(row.files).toBe(detail.implementation.files);
+    expect(row.testFiles).toBe(detail.tests.files);
+    expect(row.code).toBe(detail.implementation.code);
+    expect(row.complexity).toBe(detail.implementation.complexity);
+  });
+
   test("a property typed as an in-repo interface says what it exposes", () => {
     const box = seam(result.report, result.symbols, "src/box.ts");
     const field = box.interface!.rows.find((r) => r.name === "Box.shape")!;

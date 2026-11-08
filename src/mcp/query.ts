@@ -1650,13 +1650,20 @@ function relayOf(S: CodeSymbols, s: number): { to: number; callers: number } | u
 }
 
 /**
- * Both files are the project's own code or tests. Code changing with DESIGN.md or a README
+ * Both files are the project's own production code. Code changing with DESIGN.md or a README
  * every time is a documentation habit, not a dependency hiding from the import graph, and it
  * made up most of the "hidden coupling" in a repository whose docs are kept current.
  */
 const codePair = (report: Report, p: CouplingPair) => isProdCode(report.files[p.a]!) && isProdCode(report.files[p.b]!);
 /** Own code that is not a test. A test changing with the code it covers, through no direct import, is the test's job, not a hidden dependency. */
 const isProdCode = (f: FileRecord) => isOwnCode(f) && f.category !== "test";
+
+/** One definition for ranking and drilldown: a transitive import can explain co-change too. */
+function couplingImports(imports: Adjacency, a: number, b: number): "direct" | "indirect" | "none" {
+  if (neighbors(imports, a).includes(b) || neighbors(imports, b).includes(a)) return "direct";
+  if (walk(imports, [a], 4).has(b) || walk(imports, [b], 4).has(a)) return "indirect";
+  return "none";
+}
 
 /**
  * Commits wider than this are sweeps: the cutoff the analyzer chose for this history and used
@@ -1691,14 +1698,15 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
     const m = moduleOf[f.id]!;
     const row = rows.get(m);
     if (!row) continue;
-    // Tests are counted apart, as seam does: `seams` showed 7,538 code lines for a module whose
-    // seam said 3,889, and an agent could not tell why.
+    // Match seam's implementation and tests: config, data, generated and vendored files
+    // cannot inflate the file count while contributing nothing to its code or complexity.
+    const own = isOwnCode(f);
     if (f.category === "test") {
-      row.testFiles++;
+      if (own) row.testFiles++;
       continue;
     }
-    row.files++;
-    if (isOwnCode(f)) {
+    if (own) {
+      row.files++;
       row.code += f.code;
       row.complexity += f.complexity;
     }
@@ -1735,7 +1743,7 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
       const ma = moduleOf[p.a]!;
       const mb = moduleOf[p.b]!;
       if (ma === mb || !codePair(report, p)) continue;
-      if (neighbors(ix.imports, p.a).includes(p.b) || neighbors(ix.imports, p.b).includes(p.a)) continue;
+      if (couplingImports(ix.imports, p.a, p.b) !== "none") continue;
       for (const m of [ma, mb]) {
         const row = rows.get(m);
         if (row) row.hidden++;
@@ -1828,7 +1836,8 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
       commits: "every analyzed commit that touched a file here",
       spread: `other modules (with code) the module's commits also touch, on average: how far a change here travels. Over commits of ${sweep} files or fewer, spreadBasis of them; wider ones are sweeps`,
       leaving: "share of those commits that touch any other module at all (the old spread; near 1 in a squash-merge history)",
-      hiddenCoupling: "code files that change with code elsewhere and no import between them",
+      files: "own production code files; tests counted separately; config, data, generated and vendored files excluded",
+      hiddenCoupling: "cross-module production-code pairs that change together with no import path within four hops in either direction",
     },
     notes: [
       ...(S ? [] : ["no code intelligence: interface, relays and tests are not measured (TypeScript/JavaScript only)"]),
@@ -2007,9 +2016,7 @@ export function seam(report: Report, S: CodeSymbols | undefined, raw: string, op
       .slice(0, max)
       .map((p) => {
         const [inF, outF] = M.has(p.a) ? [p.a, p.b] : [p.b, p.a];
-        const direct = neighbors(ix.imports, inF).includes(outF) || neighbors(ix.imports, outF).includes(inF);
-        const near = direct || walk(ix.imports, [inF], 4).has(outF) || walk(ix.imports, [outF], 4).has(inF);
-        return { inside: report.files[inF]!.path, outside: report.files[outF]!.path, shared: p.shared, degree: round(p.degree), imports: direct ? "direct" : near ? "indirect" : "none" };
+        return { inside: report.files[inF]!.path, outside: report.files[outF]!.path, shared: p.shared, degree: round(p.degree), imports: couplingImports(ix.imports, inF, outF) };
       });
     const sweeps = rows.size - counted;
     locality = {
@@ -2028,7 +2035,7 @@ export function seam(report: Report, S: CodeSymbols | undefined, raw: string, op
         ? undefined
         : { spread: rows.size ? `all ${rows.size} of its commits are sweeps (wider than ${sweep} files)` : "no analyzed commit touched it" },
       changesWith: [...outside].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 8).map(([dir, commits]) => ({ dir, commits })),
-      // Changing together with no import between them: a dependency the code does not show.
+      // Import paths can explain co-change; absent paths still need source inspection.
       coChange: pairs,
       coChangeMore: crossing.length > pairs.length ? crossing.length - pairs.length : undefined,
     };

@@ -75,10 +75,16 @@ For runtime impact, pass `runtime_only: true` to `graph`'s `dependents`, `depend
 module rankings. Pass a ranked row's `selector` to `seam` to keep the same module membership
 and depth; a plain `seam { path }` measures the entire directory recursively. Entry-point and
 published-package exports are protected from suggestions to hide them, even when used locally.
+Ranked file counts use the same own production files as the drilldown, with tests counted
+separately. Hidden coupling counts co-change pairs with no import path within four hops in
+either direction, using the same classification in both tools. These are leads for source
+inspection; dependency injection and required registries can explain missing import paths.
 
 Successful calls include `structuredContent.data` for scripts as well as readable text.
 `structuredContent.freshnessNote` explains when a result uses an older analysis. From a
 checkout, run `bun /absolute/path/to/skyplate/bin/skyplate.ts mcp` to use that checkout's tools.
+The [skyplate skill](.agents/skills/skyplate/SKILL.md#is-the-server-attached) includes a temporary
+stdio-client recipe for local dogfooding without persistent MCP registration.
 
 Three agent skills come with it, in [`.agents/skills`](.agents/skills):
 

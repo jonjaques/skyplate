@@ -46,9 +46,9 @@ Shallow and leaky shapes have signatures in that output:
   outside uses it), but TypeScript needs the `export`, so hiding it means restructuring the
   module, not deleting a keyword.
 - **`testsPastInterface`**: symbols that are not interface but that tests use, the module's
-  own tests included (a test is a client wherever it sits): tests reaching past the interface,
-  often to pure functions extracted for testability while the bugs live in how they are
-  called. It overlaps `internalExports` (an internal helper a test calls is both). Fields of
+  own tests included (a test is a client wherever it sits). These can be brittle tests of
+  implementation choices or useful contracts for pure algorithms. Read the assertions before
+  proposing replacement. It overlaps `internalExports` (an internal helper a test calls is both). Fields of
   an interface or type alias are left out: a test building an options object sets them, which
   is not reaching past anything. `testUses` on an interface row counts the tests that do go through the interface,
   and `testFiles` lists every test file that touches the module.
@@ -62,8 +62,11 @@ Shallow and leaky shapes have signatures in that output:
   field typed as an interface, so it may say `AppHost.store` where the code reads
   `this.app.store`. A forward assigned in a constructor (`this.store = this.app.store`)
   leaves no trace and is not found; `exposes` usually catches what it hands on.
-- **`coChange` with `imports: "none"`**: files that change together with nothing in the code
-  saying why. A dependency is crossing the seam out of sight.
+- **`coChange` with `imports: "none"`**: production files that change together with no
+  measured import path within four hops in either direction. Inspect composition, dependency
+  injection, dynamic loading and required registration before calling this hidden coupling.
+  Those relationships can be intentional; the count alone does not justify merging or
+  extracting modules.
 - **`cyclesAcross`**: the seam is not a seam; both sides depend on each other at runtime.
   Loops closed only by `import type` are not listed there (nothing runs through them); `graph
   { view: "cycles", include_type_only: true }` shows them with the edge that closes each, and
@@ -88,14 +91,18 @@ Other fields:
 - Production code only, tests counted apart: `implementation` (tests in `tests`),
   `imports.inbound.files` (test importers in `inbound.testFiles`), `imports.outbound`, and in
   `seams` the `files`, `code` and `complexity` columns (tests in `testFiles`).
+  Implementation and ranked file counts exclude config, data, generated and vendored files;
+  an own source file with zero code lines still counts. Test size counts also exclude generated
+  and vendored files.
 - `imports.outbound` counts the files imported, so a package imported through its barrel
   counts once, as the barrel file.
 - `locality.alsoTouchOutside` is how many of the `spreadBasis` commits (those no wider than
   the sweep width) reached outside at all, and `leaving` is that share. `changesWith` lists
   the directories of the production code those commits touched outside the module.
 - A `coChange` pair's `imports` is `"direct"` (one imports the other), `"indirect"` (within
-  four hops) or `"none"`; pairs with a test file are left out (a test changes with what it
-  covers).
+  four hops in either direction) or `"none"`; pairs with a test file are left out (a test
+  changes with what it covers). `seams.hiddenCoupling` counts the same module's `"none"`
+  pairs across the complete list, including any beyond `coChangeMore`.
 - In `seams`, `hotspotMass` is the sum of the module's file hotspot scores, so it ranks large
   hot modules first; it is not a 0-1 score.
 - `seams { offset, limit }` pages module rankings. Keep the same sort and depth across pages.
@@ -122,8 +129,10 @@ little; say so instead of leaning on it.
 - **The deletion test.** Imagine deleting the module. If complexity vanishes, it was a
   pass-through; if it reappears across N callers, it earns its keep. `symbol { id }` gives N
   (callers, files) and `impact_depth` how far it spreads.
-- **The interface is the test surface.** Callers and tests cross the same seam. A test that
-  needs to reach past it (`testsPastInterface`) says the module is the wrong shape.
+- **Test behavior at the interface and algorithms at their contracts.** Reaching past the
+  interface can reveal a poor module shape, but `testsPastInterface` is a reading cue, not a
+  verdict. Pure-function properties, fingerprint vectors, numerical precision and independent
+  CPU/GPU parity tests can protect contracts that interface tests cannot isolate.
 - **One adapter means a hypothetical seam; two adapters make it real.** Don't add a port
   unless something varies across it, typically production plus a test double. `adapters`
   counts only classes that declare `implements`/`extends`; an object satisfying an interface
@@ -161,12 +170,16 @@ the module's import statements (`rg "^import|require\(" <path>`) and check them 
    HTTP/queue adapter in production, an in-memory adapter in tests.
 4. **True external**: third-party services. Inject it as a port; tests use a mock adapter.
 
-### 3. Plan the tests: replace, don't layer
+### 3. Preserve contracts when changing tests
 
-- Tests at the new interface replace tests on the shallow parts; once they exist, the old ones
-  are waste. `testsPastInterface` and `testFiles` list which tests reach past today.
-- Tests assert observable outcomes through the interface, never internal state, so they
-  survive internal refactors. A test that must change with the implementation tests past it.
+- Use `testsPastInterface` and `testFiles` to find tests worth reading. Replace assertions
+  tied to obsolete implementation choices when the new interface tests cover their behavior.
+  Before removing a test, identify the invariant it protects and where that invariant remains
+  covered, including ordering, cancellation and delayed writes.
+- Preserve direct algorithm contracts, property tests, reference vectors and independent
+  implementation parity checks. Shared interface coverage does not make them redundant.
+  Prefer observable outcomes; a test needing edits during a refactor is not by itself evidence
+  that the test is wrong.
 
 ### 4. Design it twice
 

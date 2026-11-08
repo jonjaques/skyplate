@@ -531,6 +531,42 @@ describe("time series", () => {
 // ─── Coupling and truck factor ───────────────────────────────────────────────────────────────
 
 describe("coupling and truck factor", () => {
+  test("hidden coupling rankings agree with complete module drilldowns through four import hops", async () => {
+    const dir = join(TMP, "hidden-coupling");
+    mkdirSync(dir);
+    git(dir, ["init", "-q", "-b", "main"]);
+    const modules = ["a", "b", "c", "d", "e", "f", "z"];
+    for (let i = 1; i <= 3; i++) {
+      for (const [j, name] of modules.entries()) {
+        // a → b → c → d → e → f spans the four-hop cutoff; z is disconnected.
+        const next = j < 5 ? modules[j + 1] : undefined;
+        write(dir, `${name}/main.ts`, next
+          ? `import { value as next } from "../${next}/main";\nexport const value = next + ${i};\n`
+          : `export const value = ${i};\n`);
+      }
+      commit(dir, ALICE, `2024-01-0${i}T09:00:00Z`, `change every module ${i}`);
+    }
+    const { report } = await analyzeProject(dir, { symbols: false, workers: 1 });
+    expect(validateReport(report)).toEqual([]);
+    const ranked = seams(report, undefined, { depth: 1, sort: "hidden", limit: 100 });
+    expect(ranked.rows).toHaveLength(modules.length);
+    for (const row of ranked.rows) {
+      const detail = seam(report, undefined, row.selector.path, { ...row.selector, limit: 500 });
+      const pairs = detail.locality!.coChange;
+      expect(detail.locality!.coChangeMore).toBeUndefined();
+      expect(pairs).toHaveLength(6);
+      expect(row.hiddenCoupling).toBe(pairs.filter((p) => p.imports === "none").length);
+      if (row.module === "a") {
+        const classification = Object.fromEntries(pairs.map((p) => [p.outside, p.imports]));
+        expect(classification).toEqual({
+          "b/main.ts": "direct", "c/main.ts": "indirect", "d/main.ts": "indirect",
+          "e/main.ts": "indirect", "f/main.ts": "none", "z/main.ts": "none",
+        });
+      }
+    }
+    expect(ranked.rows[0]).toMatchObject({ module: "z", hiddenCoupling: 6 });
+  }, 60_000);
+
   test("co-changed pair found; the wide sweep is ignored", () => {
     const a = id("README.md");
     const b = id("src/a.ts");
