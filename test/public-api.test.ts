@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { analyzeProject, type AnalysisResult } from "../src/core/pipeline";
 import { validateReport } from "../src/core/validate";
-import { searchSymbols } from "../src/mcp/query";
+import { seam, searchSymbols } from "../src/mcp/query";
 
 const TMP = realpathSync(mkdtempSync(join(tmpdir(), "skyplate-public-api-")));
 let result: AnalysisResult;
@@ -29,6 +29,7 @@ function write(path: string, content: string): void {
 beforeAll(async () => {
   write("package.json", JSON.stringify({ name: "mono", private: true, workspaces: ["packages/*"] }));
   write("tsconfig.json", JSON.stringify({ compilerOptions: { strict: true, module: "ESNext", moduleResolution: "bundler", target: "ES2022" }, include: ["packages"] }));
+  write("packages/tool.config.ts", "export const settings = { name: 'tool' };\nexport default settings;\n");
   for (const [name, isPrivate] of [["pub", false], ["priv", true]] as const) {
     write(`packages/${name}/package.json`, JSON.stringify({ name, ...(isPrivate ? { private: true } : {}), exports: { ".": "./src/index.ts" } }));
     write(`packages/${name}/src/index.ts`, `export * from "./lib";\nexport const ${name}Version = "1";\n`);
@@ -64,5 +65,23 @@ describe("published packages", () => {
     const finding = result.report.findings.find((f) => f.id === "unused-exports")!;
     expect(finding.detail).toContain("1 is referenced nowhere at all");
     expect(finding.detail).toContain("3 are a published package's API");
+  });
+
+  test("entry exports stay protected when used locally, in search and findings", () => {
+    const r = searchSymbols(result.report, result.symbols, { unusedKind: "entry-export" });
+    expect(r.symbols.find((s) => s.name === "settings")?.flags).toContain("entry-export");
+    const finding = result.report.findings.find((f) => f.id === "unused-exports")!;
+    expect(finding.detail).toContain("1 is used inside its own file"); // privLocal alone
+  });
+
+  test("module design never recommends hiding published or entry exports", () => {
+    const pub = seam(result.report, result.symbols, "packages/pub");
+    expect(pub.couldHide!.rows).toEqual([]);
+    expect(pub.externalExports!.rows.map((s) => s.name)).toContain("pubLocal");
+    const entry = seam(result.report, result.symbols, "packages/tool.config.ts");
+    expect(entry.couldHide!.rows).toEqual([]);
+    expect(entry.externalExports!.rows.map((s) => s.name)).toContain("settings");
+    const priv = seam(result.report, result.symbols, "packages/priv");
+    expect(priv.couldHide!.rows.map((s) => s.name)).toContain("privLocal");
   });
 });

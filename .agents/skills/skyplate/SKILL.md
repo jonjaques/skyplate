@@ -113,9 +113,14 @@ what a directory's change reaches.
 for files that change with it (a hidden dependency when there is no import between them),
 `history { view: "commits", path: "src/auth", since: "90d" }`.
 
-Result keys differ by tool, named for what they list: `search_symbols` returns `symbols`,
-`files` returns `files`, `seams` returns `rows`, and every list inside a `seam` answer is
-`{ count, rows }` (its interface too).
+Result keys differ by tool: `search_symbols` returns `symbols`, `files` returns `files`, and
+`seams` returns `rows`. Page `seams` with `offset` when `more` is present. In a `seam` answer,
+the interface has `symbols` and `rows`; export lists have `count` and `rows`; `relays` and
+`adapters` are arrays.
+
+For programmatic clients, successful tools also return `structuredContent.data`. It contains
+the query result, or a source object with `path`, `source`, `startLine`, `endLine`, `totalLines`
+and `origin` for `read_source`. Preserve `structuredContent.freshnessNote` when present.
 
 **Module design.** `seams {}` ranks every module by `hotspotMass` (the sum of its files'
 hotspot scores) with its design signals (interface as used, exports that could be hidden or are
@@ -127,6 +132,11 @@ review use the `skyplate-architecture-review` skill; to design or verify one dee
 **Dependencies.** `dependencies { filter: "unused" }` (declared, never imported: CLI tools,
 type packages and plugins land here legitimately) and `dependencies { filter: "undeclared" }`
 (runtime built-ins and standard libraries are left out; `filter: "builtin"` lists them).
+
+**Runtime impact versus type coupling.** Add `runtime_only: true` to `graph`'s `dependents`,
+`dependencies` or `path` view to skip explicit type-only imports. Leave it off when changing
+a type's contract, since its consumers still need to compile. The flag does not remove
+ordinary imports merely because the compiler might erase their uses.
 
 **A report for a person.** `build_report {}` writes the 3D plate, dashboard, explorer and
 source reader to a folder in the user's cache directory, reusing the live analysis when it is
@@ -182,6 +192,11 @@ edits instead, and `"manual"` only when asked (`open { path, reanalyze: true }`)
 embedded copy. Files that look like credentials (`.env`, keys, keystores) are measured but
 their contents are never returned by any tool; do not try to read them another way on
 Skyplate's behalf.
+
+Reopening a live project with analysis options changes only the supplied options. A change
+requested during analysis queues another run. `watch: false` and `watch: true` also apply to
+an already open project. A report rebuilt while a lazy source or symbol read is in progress
+returns an error asking you to reopen it, so its file IDs cannot be mixed across versions.
 
 ## Boundaries
 

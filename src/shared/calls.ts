@@ -13,7 +13,7 @@
  * so a report swap drops them with the old data.
  */
 
-import { REF_KINDS, type CodeSymbols, type SymbolKind } from "./schema";
+import { REF_KINDS, SymbolFlag, type CodeSymbols, type FileRecord, type SymbolKind } from "./schema";
 
 /** Compressed sparse rows: neighbors of node i are targets[offsets[i] .. offsets[i + 1]). */
 export interface Adjacency {
@@ -276,4 +276,12 @@ export function unreferenced(symbols: CodeSymbols): Uint8Array {
   for (let s = 0; s < count; s++) mask[s] = symbols.symbols.callers[s] === 0 && !used[s] ? 1 : 0;
   unreferencedCache.set(symbols, mask);
   return mask;
+}
+
+/** Local use does not make an entry export private: its loader may still import the name. */
+export function unusedExportKind(symbols: CodeSymbols, s: number, file: FileRecord): "unreferenced" | "entry-export" | "public-api" | "used-in-own-file" | undefined {
+  if (!(symbols.symbols.flags[s]! & SymbolFlag.unusedExport)) return undefined;
+  if (file.publicApi) return "public-api";
+  if (file.entry) return "entry-export";
+  return unreferenced(symbols)[s] ? "unreferenced" : "used-in-own-file";
 }

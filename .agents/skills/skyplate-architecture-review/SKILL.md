@@ -41,7 +41,7 @@ straight to `seam` on it. Otherwise:
   modules are the analyzer's, with package roots kept whole and any module over a quarter of
   the code split into its subdirectories, so a monorepo reads package by package and a large
   app by its parts. Also sort by `hidden`, `tests_past` and `spread`: a module can be cold and
-  still leak.
+  still leak. Use `offset` to read later pages when `more` is present.
 - Shortlist 3 to 6 modules where signals stack: a hot module that also has a wide
   `couldHide`, relays, `testsPastInterface`, hidden coupling, cycles across, or a high
   `spread`. One signal alone is a lead, not a candidate.
@@ -134,6 +134,8 @@ re-measure after the change.
 
 - A number is not a finding until the code agrees. Say "relay" only after reading it: calls
   into packages are invisible to the reference table.
+- `externalExports` are entry-point or published-package exports whose external consumers
+  are not measured. Do not propose hiding them from their low in-repo reference counts.
 - Locality claims need history. Under ten analyzed commits, or in a shallow clone, say the
   co-change numbers are thin. Commits wider than the history's own sweep width (its
   90th-percentile commit size, 30 to 100 files) are left out of spread and co-change; when

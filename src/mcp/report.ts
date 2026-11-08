@@ -12,12 +12,24 @@
  * chunks, and an agent reading files at random should not pull the whole source into memory.
  */
 
-import { existsSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, realpathSync, statSync } from "node:fs";
+import { join, sep } from "node:path";
+import { detectFile } from "../core/languages/detect";
 import { isReportScriptHead, parseDataScript } from "../core/site";
 import { REPORT_FILE, SCHEMA_VERSION, type CodeSymbols, type Report, type SourceChunk } from "../shared/schema";
 
 const CHUNK_CACHE = 4;
+
+/** Report URLs are data, not permission to follow a path or symlink outside the report. */
+function dataFile(dir: string, url: string): string {
+  if (typeof url !== "string" || !url.startsWith("data/") || /[\\\0]/.test(url) || url.split("/").some((p) => !p || p === "." || p === "..")) {
+    throw new Error("invalid report data path");
+  }
+  const root = realpathSync(dir);
+  const file = realpathSync(join(root, url));
+  if (!file.startsWith(root + sep)) throw new Error("report data path leaves the report folder");
+  return file;
+}
 
 export interface ReportFolder {
   dir: string;
@@ -33,7 +45,7 @@ export interface ReportFolder {
 export async function isReportFolder(dir: string): Promise<boolean> {
   const file = join(dir, REPORT_FILE);
   if (!existsSync(file)) return false;
-  return isReportScriptHead(await Bun.file(file).slice(0, 64).text());
+  return isReportScriptHead(await Bun.file(dataFile(dir, REPORT_FILE)).slice(0, 64).text());
 }
 
 export function reportMtime(dir: string): number {
@@ -45,10 +57,14 @@ export function reportMtime(dir: string): number {
 }
 
 export async function readReportFolder(dir: string): Promise<ReportFolder> {
-  const file = join(dir, REPORT_FILE);
+  const file = dataFile(dir, REPORT_FILE);
   const mtimeMs = reportMtime(dir);
   const report = parseDataScript(await Bun.file(file).text(), "report") as Report | undefined;
   if (!report) throw new Error(`${dir} is not a skyplate report folder (no report data in ${REPORT_FILE})`);
+  const assertCurrent = () => {
+    if (reportMtime(dir) !== mtimeMs) throw new Error("report changed on disk; reopen it before querying");
+  };
+  assertCurrent();
   // Older reports are not migrated: a viewer of the same version is what reads them, and a
   // shape this code does not know would answer questions wrongly rather than fail.
   if (report.schemaVersion !== SCHEMA_VERSION) {
@@ -68,9 +84,14 @@ export async function readReportFolder(dir: string): Promise<ReportFolder> {
       return hit;
     }
     const url = report.source!.chunks[i]!;
-    hit = Bun.file(join(dir, url))
+    hit = Bun.file(dataFile(dir, url))
       .text()
-      .then((text) => (parseDataScript(text, `source/${i}`) as SourceChunk).files);
+      .then((text) => {
+        assertCurrent();
+        const chunk = parseDataScript(text, `source/${i}`) as SourceChunk | undefined;
+        if (!chunk || chunk.chunk !== i || !chunk.files || typeof chunk.files !== "object") throw new Error(`invalid source chunk ${i}`);
+        return chunk.files;
+      });
     hit.catch(() => chunks.delete(i)); // a failed read is retried next time, not cached
     chunks.set(i, hit);
     while (chunks.size > CHUNK_CACHE) chunks.delete(chunks.keys().next().value!);
@@ -82,13 +103,21 @@ export async function readReportFolder(dir: string): Promise<ReportFolder> {
     report,
     mtimeMs,
     symbols() {
+      assertCurrent();
       if (!report.symbols) return Promise.resolve(undefined);
-      symbols ??= Bun.file(join(dir, report.symbols.url))
+      symbols ??= Bun.file(dataFile(dir, report.symbols.url))
         .text()
-        .then((text) => parseDataScript(text, "symbols") as CodeSymbols);
+        .then((text) => {
+          assertCurrent();
+          const parsed = parseDataScript(text, "symbols") as CodeSymbols | undefined;
+          if (!parsed) throw new Error("invalid symbols data script");
+          return parsed;
+        })
+        .catch((error) => { symbols = undefined; throw error; });
       return symbols;
     },
     async text(id) {
+      assertCurrent();
       const f = report.files[id];
       if (!f) return { reason: "no such file" };
       if (f.secret) return { reason: "looks like it holds credentials, so its contents are never embedded or shown" };
@@ -104,7 +133,10 @@ export async function readReportFolder(dir: string): Promise<ReportFolder> {
         };
       }
       const text = (await loadChunk(f.src))[id];
-      return text === undefined ? { reason: "missing from its source chunk" } : { text };
+      if (typeof text !== "string") return { reason: "missing from its source chunk" };
+      const current = detectFile(f.path, new TextEncoder().encode(text).subarray(0, 8192));
+      if (current.secret) return { reason: "looks like it holds credentials, so its contents are never shown" };
+      return { text };
     },
   };
 }

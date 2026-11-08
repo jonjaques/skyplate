@@ -36,6 +36,7 @@ import {
   partitionTypeRefs,
   selfCalls,
   unreferenced,
+  unusedExportKind,
   type Adjacency,
   type CallEdge,
 } from "../shared/calls";
@@ -799,11 +800,7 @@ export interface SymbolsQuery {
  * same flag in both.
  */
 export function unusedKind(report: Report, S: CodeSymbols, s: number): "unreferenced" | "entry-export" | "public-api" | "used-in-own-file" | undefined {
-  if (!(S.symbols.flags[s]! & SymbolFlag.unusedExport)) return undefined;
-  const f = report.files[S.symbols.file[s]!]!;
-  if (f.publicApi) return "public-api";
-  if (!unreferenced(S)[s]) return "used-in-own-file";
-  return f.entry ? "entry-export" : "unreferenced";
+  return unusedExportKind(S, s, report.files[S.symbols.file[s]!]!);
 }
 
 export function searchSymbols(report: Report, Sx: CodeSymbols | undefined, q: SymbolsQuery) {
@@ -1063,7 +1060,7 @@ export function symbolsInRange(report: Report, S: CodeSymbols | undefined, file:
 export const GRAPH_VIEWS = ["dependents", "dependencies", "path", "cycles", "modules", "hubs"] as const;
 export type GraphView = (typeof GRAPH_VIEWS)[number];
 
-function walk(adj: Adjacency, start: Iterable<number>, depth: number): Map<number, number> {
+function walk(adj: Adjacency, start: Iterable<number>, depth: number, accept?: (from: number, to: number) => boolean): Map<number, number> {
   const seen = new Map<number, number>();
   let frontier = [...start];
   for (const s of frontier) seen.set(s, 0);
@@ -1071,6 +1068,7 @@ function walk(adj: Adjacency, start: Iterable<number>, depth: number): Map<numbe
     const next: number[] = [];
     for (const s of frontier)
       for (const x of neighbors(adj, s)) {
+        if (accept && !accept(s, x)) continue;
         if (seen.has(x)) continue;
         seen.set(x, d);
         next.push(x);
@@ -1080,22 +1078,25 @@ function walk(adj: Adjacency, start: Iterable<number>, depth: number): Map<numbe
   return seen;
 }
 
-export function graph(report: Report, q: { view: GraphView; path?: string; to?: string; depth?: number; limit?: number; includeTypeOnly?: boolean }) {
+export function graph(report: Report, q: { view: GraphView; path?: string; to?: string; depth?: number; limit?: number; includeTypeOnly?: boolean; runtimeOnly?: boolean }) {
   const ix = index(report);
   const limit = q.limit ?? 40;
+  const runtime = (from: number, to: number) => !ix.typeOnly.has(from * report.files.length + to);
   switch (q.view) {
     case "dependents":
     case "dependencies": {
       if (q.path === undefined) throw new QueryError(`${q.view} needs a path (a file, a directory or a glob)`);
       const start = filesMatching(report, q.path);
       const depth = q.depth ?? 3;
-      const reach = walk(q.view === "dependents" ? ix.importedBy : ix.imports, start, depth);
+      const accept = q.runtimeOnly ? (q.view === "dependents" ? (from: number, to: number) => runtime(to, from) : runtime) : undefined;
+      const reach = walk(q.view === "dependents" ? ix.importedBy : ix.imports, start, depth, accept);
       for (const s of start) reach.delete(s);
       const rows = [...reach].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
       return {
         view: q.view,
         from: q.path,
         depth,
+        runtimeOnly: q.runtimeOnly || undefined,
         total: rows.length,
         byDepth: Array.from({ length: depth }, (_, i) => rows.filter(([, d]) => d === i + 1).length),
         files: rows.slice(0, limit).map(([f, d]) => ({ path: report.files[f]!.path, depth: d })),
@@ -1112,6 +1113,7 @@ export function graph(report: Report, q: { view: GraphView; path?: string; to?: 
         const next: number[] = [];
         for (const s of frontier)
           for (const x of neighbors(ix.imports, s)) {
+            if (q.runtimeOnly && !runtime(s, x)) continue;
             if (prev.has(x)) continue;
             prev.set(x, s);
             next.push(x);
@@ -1119,8 +1121,8 @@ export function graph(report: Report, q: { view: GraphView; path?: string; to?: 
         frontier = next;
       }
       if (!prev.has(b)) {
-        const back = walk(ix.imports, [b], Infinity).has(a);
-        return { view: "path", from: report.files[a]!.path, to: report.files[b]!.path, found: false, note: back ? "no import path this way, but the reverse exists: swap path and to" : "neither file reaches the other through imports" };
+        const back = walk(ix.imports, [b], Infinity, q.runtimeOnly ? runtime : undefined).has(a);
+        return { view: "path", from: report.files[a]!.path, to: report.files[b]!.path, found: false, runtimeOnly: q.runtimeOnly || undefined, note: back ? "no import path this way, but the reverse exists: swap path and to" : "neither file reaches the other through the selected imports" };
       }
       const ids: number[] = [];
       for (let x = b; x !== -1; x = prev.get(x)!) ids.unshift(x);
@@ -1128,6 +1130,7 @@ export function graph(report: Report, q: { view: GraphView; path?: string; to?: 
       return {
         view: "path",
         found: true,
+        runtimeOnly: q.runtimeOnly || undefined,
         hops: ids.length - 1,
         chain: ids.map((x) => report.files[x]!.path),
         // A chain through an `import type` couples the files but never runs end to end.
@@ -1485,26 +1488,34 @@ function symbolUses(report: Report, S: CodeSymbols, group: (file: number) => num
     const u = at(s);
     u.uses++;
     u.files.add(file);
-    u.callers.add(r.from[i]!);
     if (isTestFile(report, file)) {
       u.testUses++;
       u.testFiles.add(file);
-    }
+    } else if (r.from[i]! >= 0) u.callers.add(r.from[i]!);
   }
   const host = S.hostUses;
   if (host) {
     for (let i = 0; i < host.symbol.length; i++) {
       const s = host.symbol[i]!;
-      if (group(host.file[i]!) === group(declFile[s]!)) continue;
+      const file = host.file[i]!;
       const u = at(s);
+      if (group(file) === group(declFile[s]!) && !isTestFile(report, file)) {
+        u.inside++;
+        u.insideFiles.add(file);
+        continue;
+      }
       u.uses++;
-      u.files.add(host.file[i]!);
+      u.files.add(file);
+      if (isTestFile(report, file)) {
+        u.testUses++;
+        u.testFiles.add(file);
+      }
     }
   }
   return out;
 }
 
-type UseClass = "interface" | "could-hide" | "internal" | "unused";
+type UseClass = "interface" | "external" | "could-hide" | "internal" | "unused";
 
 /**
  * Where a module's symbol stands, from its production uses:
@@ -1518,7 +1529,7 @@ type UseClass = "interface" | "could-hide" | "internal" | "unused";
  * directly is both internal and tested past the interface. Asking it first, as one class,
  * moved 117 of an engine's internal and could-hide symbols into "tests past" and hid them.
  */
-function useClasses(S: CodeSymbols, uses: Map<number, SymbolUse>, symbols: number[]): Map<number, UseClass> {
+function useClasses(report: Report, S: CodeSymbols, uses: Map<number, SymbolUse>, symbols: number[]): Map<number, UseClass> {
   const t = S.symbols;
   const memberUse = new Map<number, number>();
   for (const s of symbols) {
@@ -1532,7 +1543,11 @@ function useClasses(S: CodeSymbols, uses: Map<number, SymbolUse>, symbols: numbe
     const u = uses.get(s);
     const prod = u ? u.uses - u.testUses : 0;
     const exported = (t.flags[s]! & SymbolFlag.exported) !== 0;
+    const file = report.files[t.file[s]!]!;
     if (prod > 0 || (memberUse.get(s) ?? 0) > 0) out.set(s, "interface");
+    // The measured interface counts in-repo clients. Declared consumers outside that graph
+    // stay separate, but must never become suggestions to hide or delete an export.
+    else if (exported && (file.entry || file.publicApi)) out.set(s, "external");
     else if (exported && u && [...u.insideFiles].some((f) => f !== t.file[s])) out.set(s, "internal");
     // Free to lose `export` only if no test imports it either: seven of an engine's nineteen
     // could-hide symbols were imported by tests, which `export` is there for.
@@ -1651,8 +1666,9 @@ export type SeamSort = (typeof SEAM_SORTS)[number];
  * with the signals a deepening review starts from, sorted by one of them. A ranking for where
  * to look, not a verdict: the skill reads the numbers, then the code.
  */
-export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: number; sort?: SeamSort; limit?: number }) {
+export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: number; sort?: SeamSort; limit?: number; offset?: number }) {
   const limit = q.limit ?? 25;
+  const offset = q.offset ?? 0;
   const dirs =
     q.depth !== undefined
       ? new Set(report.dirs.filter((d) => d.depth === q.depth || (d.depth < q.depth! && d.dirs.length === 0)).map((d) => d.id))
@@ -1727,7 +1743,7 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
     for (let s = 0; s < t.name.length; s++) {
       if (t.kind[s] !== "module" && !isTestFile(report, t.file[s]!) && rows.has(moduleOf[t.file[s]!]!)) mine.push(s);
     }
-    const classes = useClasses(S, uses, mine);
+    const classes = useClasses(report, S, uses, mine);
     for (const s of mine) {
       const row = rows.get(moduleOf[t.file[s]!]!)!;
       const c = classes.get(s);
@@ -1759,7 +1775,8 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
         ? `directories at depth ${q.depth}`
         : "the analyzer's modules (package roots kept whole), with any module over a quarter of the code split into its subdirectories",
     sortedBy: sort,
-    rows: ordered.slice(0, limit).map(([d, r]) => ({
+    offset: offset || undefined,
+    rows: ordered.slice(offset, offset + limit).map(([d, r]) => ({
       module: report.dirs[d]!.path || "(root)",
       files: r.files,
       testFiles: r.testFiles || undefined,
@@ -1793,7 +1810,7 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
             ...(S ? {} : { interface: "no code intelligence: only TypeScript and JavaScript are analyzed by the compiler, and none was here (or the pass was skipped)" }),
             ...(git ? {} : { commits: "no git history (not a repository, or analyzed with --no-git)" }),
           },
-    more: ordered.length > limit ? ordered.length - limit : undefined,
+    more: ordered.length > offset + limit ? ordered.length - offset - limit : undefined,
     legend: {
       hotspotMass: "sum of the module's file hotspot scores (each 0-1); the sort key for hotspot",
       interface: "symbols declared here that code outside uses, directly or through their members",
@@ -1848,7 +1865,7 @@ export function seam(report: Report, S: CodeSymbols | undefined, raw: string, op
     const t = S.symbols;
     const uses = symbolUses(report, S, group);
     const declared = [...M].flatMap((f) => neighbors(sx.inFile, f)).filter((s) => t.kind[s] !== "module" && !isTestFile(report, t.file[s]!));
-    const classes = useClasses(S, uses, declared);
+    const classes = useClasses(report, S, uses, declared);
     const of = (c: UseClass) => declared.filter((s) => classes.get(s) === c);
     const viaMembers = (s: number) => memberUses(S, uses, sx.children, s);
     const weight = (s: number) => (uses.get(s) ? uses.get(s)!.uses - uses.get(s)!.testUses : 0) + viaMembers(s);
@@ -1933,6 +1950,7 @@ export function seam(report: Report, S: CodeSymbols | undefined, raw: string, op
         more: iface.length > (opts.offset ?? 0) + max ? iface.length - (opts.offset ?? 0) - max : undefined,
       },
       couldHide: capped(couldHide.map((s) => ({ id: s, name: sx.qualified[s], at: symbolAt(report, S, s), insideUses: uses.get(s)!.inside }))),
+      externalExports: capped(of("external").map((s) => ({ id: s, name: sx.qualified[s], at: symbolAt(report, S, s), reason: report.files[t.file[s]!]!.publicApi ? "public-api" : "entry-export" }))),
       internalExports: capped(internal.map((s) => ({ id: s, name: sx.qualified[s], at: symbolAt(report, S, s), siblingFiles: [...uses.get(s)!.insideFiles].filter((f) => f !== t.file[s]).length }))),
       testsPastInterface: capped(testsPast.map((s) => ({ id: s, name: sx.qualified[s], at: symbolAt(report, S, s), testFiles: [...uses.get(s)!.testFiles].map((f) => report.files[f]!.path) }))),
       testFiles: [...testFiles].map((f) => report.files[f]!.path).sort(),

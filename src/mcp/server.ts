@@ -132,7 +132,11 @@ function overrides(a: AnalysisArgs): AnalysisOverrides | undefined {
 // ─── Results ─────────────────────────────────────────────────────────────────────────────────
 
 const text = (t: string): CallToolResult => ({ content: [{ type: "text", text: t }] });
-const ok = (value: unknown, note?: string): CallToolResult => text(note ? `note: ${note}\n${render(value)}` : render(value));
+const ok = (value: unknown, note?: string): CallToolResult => ({
+  ...text(note ? `note: ${note}\n${render(value)}` : render(value)),
+  // Scripts should not have to strip a human freshness warning before parsing an answer.
+  structuredContent: { data: value, ...(note ? { freshnessNote: note } : {}) },
+});
 const failed = (message: string): CallToolResult => ({ content: [{ type: "text", text: message }], isError: true });
 
 /** Wrap a handler so every thrown error becomes a tool error the model can read. */
@@ -451,11 +455,12 @@ export function createServer(ws: Workspace): McpServer {
         depth: z.number().int().min(1).max(20).optional().describe("Measure directories at this depth instead of the analyzer's modules"),
         sort: z.enum(SEAM_SORTS).optional().describe("Default hotspot (with history), else code"),
         limit: limit(25),
+        offset: z.number().int().min(0).optional().describe("Skip this many module rows, to page past limit"),
         wait_seconds: waitSeconds(QUERY_WAIT_S),
       }),
       annotations: readOnly,
     },
-    guard((a, ctx) => answer(a.project, a.wait_seconds, ctx, async (s) => seams(s.report, await s.symbols(), { depth: a.depth, sort: a.sort, limit: a.limit }))),
+    guard((a, ctx) => answer(a.project, a.wait_seconds, ctx, async (s) => seams(s.report, await s.symbols(), { depth: a.depth, sort: a.sort, limit: a.limit, offset: a.offset }))),
   );
 
   server.registerTool(
@@ -491,12 +496,13 @@ export function createServer(ws: Workspace): McpServer {
         to: z.string().optional().describe("For path: the file to reach"),
         depth: z.number().int().min(1).max(50).optional().describe("For dependents / dependencies: levels to follow (default 3)"),
         include_type_only: z.boolean().optional().describe("For cycles: also list loops closed only by type-only imports, with the edges that close them"),
+        runtime_only: z.boolean().optional().describe("For dependents, dependencies and path: skip type-only imports (default false, all code imports)"),
         limit: limit(40),
         wait_seconds: waitSeconds(QUERY_WAIT_S),
       }),
       annotations: readOnly,
     },
-    guard((a, ctx) => answer(a.project, a.wait_seconds, ctx, (s) => graph(s.report, { view: a.view, path: a.path, to: a.to, depth: a.depth, limit: a.limit, includeTypeOnly: a.include_type_only }))),
+    guard((a, ctx) => answer(a.project, a.wait_seconds, ctx, (s) => graph(s.report, { view: a.view, path: a.path, to: a.to, depth: a.depth, limit: a.limit, includeTypeOnly: a.include_type_only, runtimeOnly: a.runtime_only }))),
   );
 
   server.registerTool(
@@ -563,6 +569,7 @@ export function createServer(ws: Workspace): McpServer {
       annotations: readOnly,
     },
     guard(async (a, ctx) => {
+      if (a.end_line !== undefined && a.end_line < (a.start_line ?? 1)) return failed("end_line must be at least start_line");
       const p = await ws.ensure(a.project);
       const { snapshot, note } = await ws.ready(p, seconds(a.wait_seconds, QUERY_WAIT_S), progress(ctx), ctx.mcpReq.signal);
       if (!snapshot) return ok({ project: p.id, state: "analyzing", next: "call status with project and wait_seconds, then ask again" });
@@ -584,7 +591,17 @@ export function createServer(ws: Workspace): McpServer {
       if (declared) head.push(`declared here: ${declared.join("; ")}`);
       const body = lines.slice(from - 1, to).map((l, i) => `${String(from + i).padStart(width)}  ${l}`);
       const tail = to < lines.length ? [`… ${lines.length - to} more lines; continue with start_line ${to + 1}`] : [];
-      return text([...head, "", ...body, ...tail].join("\n"));
+      return {
+        ...text([...head, "", ...body, ...tail].join("\n")),
+        structuredContent: {
+          data: {
+            path: f.path, startLine: from, endLine: to, totalLines: lines.length,
+            source: lines.slice(from - 1, to).join("\n"), origin: got.origin,
+            changedSinceAnalysis: !!got.changed, declarations: declared,
+          },
+          ...(note ? { freshnessNote: note } : {}),
+        },
+      };
     }),
   );
 

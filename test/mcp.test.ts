@@ -70,6 +70,7 @@ async function call(name: string, args: Record<string, unknown> = {}): Promise<{
   const r = await client.callTool({ name, arguments: args });
   const text = (r.content as { type: string; text: string }[]).map((c) => c.text).join("\n");
   seen.push(text);
+  if (r.structuredContent) seen.push(JSON.stringify(r.structuredContent));
   return { text, error: !!r.isError };
 }
 
@@ -177,6 +178,43 @@ describe("a live project", () => {
     expect(owned.files.map((f: any) => f.path)).toEqual(expect.arrayContaining(["src/shapes.ts", "tests/math.test.ts"]));
     const cyc = await json("files", { flag: "in_cycle" });
     expect(cyc.files.map((f: any) => f.path).sort()).toEqual(["src/app.ts", "src/math.ts"]);
+  });
+
+  test("structured answers preserve arrays and freshness warnings", async () => {
+    const response = await client.callTool({ name: "findings", arguments: {} });
+    const payload = response.structuredContent as { data: unknown };
+    expect(payload.data).toEqual(JSON.parse((response.content[0] as { text: string }).text));
+    const p = ws.resolve("demo");
+    const previous = p.changedAt;
+    p.refresh = "manual";
+    p.changedAt = p.snapshot!.startedAt + 1;
+    try {
+      const stale = await client.callTool({ name: "overview", arguments: {} });
+      expect(stale.structuredContent).toHaveProperty("freshnessNote", expect.stringContaining("refresh is manual"));
+    } finally {
+      p.changedAt = previous;
+      p.refresh = "on_read";
+    }
+  });
+
+  test("runtime traversal omits type-only edges in both directions", async () => {
+    expect((await json("graph", { view: "dependencies", path: "types/b.ts" })).total).toBe(1);
+    expect((await json("graph", { view: "dependencies", path: "types/b.ts", runtime_only: true })).total).toBe(0);
+    expect((await json("graph", { view: "dependents", path: "types/a.ts", runtime_only: true })).total).toBe(0);
+    expect((await json("graph", { view: "dependents", path: "types/b.ts", runtime_only: true })).total).toBe(1);
+    const blocked = await json("graph", { view: "path", path: "types/b.ts", to: "types/a.ts", runtime_only: true });
+    expect(blocked).toMatchObject({ found: false, runtimeOnly: true });
+    expect(blocked.note).toContain("reverse exists");
+    expect((await json("graph", { view: "path", path: "types/a.ts", to: "types/b.ts", runtime_only: true })).found).toBe(true);
+  });
+
+  test("module ranking pages without repeating or hiding the remainder", async () => {
+    const all = await json("seams", { limit: 100 });
+    const first = await json("seams", { limit: 1 });
+    const next = await json("seams", { offset: 1, limit: 100 });
+    expect([...first.rows, ...next.rows]).toEqual(all.rows);
+    expect(first.more).toBe(all.modules - 1);
+    expect(next.more).toBeUndefined();
   });
 
   test("a file's record joins the graph, history and symbols", async () => {
@@ -297,6 +335,9 @@ describe("a live project", () => {
     const env = await call("read_source", { path: ".env" });
     expect(env.error).toBe(true);
     expect(env.text).toContain("credentials");
+    const structured = await client.callTool({ name: "read_source", arguments: { path: "src/math.ts", start_line: 3, end_line: 5 } });
+    expect(structured.structuredContent).toMatchObject({ data: { path: "src/math.ts", startLine: 3, endLine: 5, source: "export function add(a: number, b: number): number {\n  return a + b;\n}" } });
+    expect((await call("read_source", { path: "src/math.ts", start_line: 5, end_line: 3 })).error).toBe(true);
   });
 
   test("the report is valid, and a loop closed only by import type is not a cycle", async () => {
@@ -404,8 +445,9 @@ describe("seams", () => {
     const src = await json("seam", { path: "src" });
     // add's only outside user is a test: past the interface. twice is used from lib/.
     expect(src.testsPastInterface.rows.map((r: any) => r.name)).toEqual(["add"]);
-    // log is exported from app.ts for math.ts, a sibling inside src: implementation, not interface.
-    expect(src.internalExports.rows.map((r: any) => r.name)).toContain("log");
+    // total is exported for a sibling; log also belongs to a declared entry point.
+    expect(src.internalExports.rows.map((r: any) => r.name)).toContain("total");
+    expect(src.externalExports.rows.map((r: any) => r.name)).toContain("log");
     expect(src.couldHide.rows.map((r: any) => r.name)).not.toContain("log");
     expect(src.implementation.files).toBe(3);
     expect(src.tests).toEqual({ files: 0, code: 0 });

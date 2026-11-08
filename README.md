@@ -70,6 +70,15 @@ a report folder; builds go to the user cache directory unless told otherwise, ne
 project. Paths given after `mcp` are opened at startup, and `--refresh on_change` re-analyzes
 after every burst of edits rather than on the next question.
 
+For runtime impact, pass `runtime_only: true` to `graph`'s `dependents`, `dependencies` or
+`path` view to omit explicit type-only imports. `seams` supports `offset` and `limit` for
+module rankings. Entry-point and published-package exports are protected from suggestions
+to hide them, even when they are also used locally.
+
+Successful calls include `structuredContent.data` for scripts as well as readable text.
+`structuredContent.freshnessNote` explains when a result uses an older analysis. From a
+checkout, run `bun /absolute/path/to/skyplate/bin/skyplate.ts mcp` to use that checkout's tools.
+
 Three agent skills come with it, in [`.agents/skills`](.agents/skills):
 
 | Skill | For |

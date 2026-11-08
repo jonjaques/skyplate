@@ -66,6 +66,21 @@ describe("workspace lifecycle", () => {
     }
   });
 
+  test("a change in the analysis start's millisecond still makes the snapshot stale", async () => {
+    const ws = new Workspace();
+    try {
+      const p = await ws.open(fixture("same-millisecond"), { watch: false, options: { git: false, symbols: false } });
+      await p.job!.done;
+      p.changedAt = p.snapshot!.startedAt;
+      p.changes = 1;
+      expect(p.stale).toBe(true);
+      await ws.ready(p, 5000);
+      expect(p.stale).toBe(false);
+    } finally {
+      ws.shutdown();
+    }
+  });
+
   test("a queued build checks freshness when it starts", async () => {
     const ws = new Workspace();
     try {

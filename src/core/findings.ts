@@ -25,7 +25,7 @@
  */
 
 import { SymbolFlag, type CodeSymbols, type Finding, type Report, type Severity } from "../shared/schema";
-import { unreferenced } from "../shared/calls";
+import { unusedExportKind } from "../shared/calls";
 import { duplicateGroups, isOwnCode, MIN_HISTORY, wastedBytes } from "./stats";
 
 const YEAR = 365 * 86_400;
@@ -326,7 +326,6 @@ export function buildFindings(report: Input, symbols?: CodeSymbols): Finding[] {
     const s = symbols.symbols;
     const unusedByFile = new Map<number, number>();
     const deadByFile = new Map<number, number>();
-    const nowhere = unreferenced(symbols);
     let unused = 0;
     let dead = 0;
     // An export of a declared entry point (FileRecord.entry: a config a tool loads, a script a
@@ -350,9 +349,10 @@ export function buildFindings(report: Input, symbols?: CodeSymbols): Finding[] {
       }
       unused++;
       unusedByFile.set(s.file[i]!, (unusedByFile.get(s.file[i]!) ?? 0) + 1);
-      if (report.files[s.file[i]!]!.publicApi) publicApi++;
-      else if (nowhere[i] && report.files[s.file[i]!]!.entry) inEntries++;
-      else if (nowhere[i]) {
+      const kind = unusedExportKind(symbols, i, report.files[s.file[i]!]!);
+      if (kind === "public-api") publicApi++;
+      else if (kind === "entry-export") inEntries++;
+      else if (kind === "unreferenced") {
         dead++;
         deadByFile.set(s.file[i]!, (deadByFile.get(s.file[i]!) ?? 0) + 1);
       }

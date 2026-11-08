@@ -84,11 +84,11 @@ function liveSnapshot(result: AnalysisResult, startedAt: number): Snapshot {
         const st = lstatSync(abs);
         if (!st.isFile() || realpathSync(abs) !== abs) return { reason: "file was replaced or redirected since the analysis; reanalyze before reading it" };
         if (st.size > MAX_TEXT_BYTES) return { reason: `${Math.round(st.size / 1024 / 1024)} MB; too large to read here` };
-        const bytes = new Uint8Array(await Bun.file(abs).arrayBuffer());
+        const bytes = new Uint8Array(await Bun.file(abs).slice(0, MAX_TEXT_BYTES + 1).arrayBuffer());
         if (bytes.length > MAX_TEXT_BYTES) return { reason: "file grew beyond the source read limit" };
         // A previously harmless .npmrc or certificate may now hold a credential. Classify the
         // bytes we return, not just the snapshot's old flags.
-        const current = detectFile(f.path, bytes.subarray(0, 8192), bytes.length <= 8192);
+        const current = detectFile(f.path, bytes.subarray(0, 8192));
         if (current.secret) return { reason: "looks like it holds credentials, so its contents are never shown" };
         if (current.binary) return { reason: "binary file" };
         return { text: new TextDecoder().decode(bytes), origin: "disk", changed: st.mtimeMs > startedAt || undefined };
@@ -243,7 +243,9 @@ export class Project {
   get stale(): boolean {
     if (!this.snapshot) return false;
     if (this.kind === "report") return reportMtime(this.path) !== this.snapshot.mtimeMs;
-    return this.changedAt > this.snapshot.startedAt;
+    // Filesystem events can share the analysis start's millisecond. The counter retains
+    // changes seen during that run even when the wall clock cannot distinguish them.
+    return this.changes > 0 || this.changedAt > this.snapshot.startedAt;
   }
 
   get busy(): boolean {

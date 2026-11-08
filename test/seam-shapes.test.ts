@@ -30,6 +30,11 @@ beforeAll(async () => {
     'import type { Shape } from "./kinds";\nimport { Circle } from "./kinds";\n\nexport class Box {\n  shape: Shape = { kind: "box", sides: 4 };\n  private circle = new Circle();\n  get area() { return this.circle.radius; }\n}\n',
   );
   write("src/use.ts", 'import { Box } from "./box";\n\nconst b = new Box();\nexport const report = `${b.shape.kind} ${b.area}`;\n');
+  write("src/api.ts", "export function value() { return 1; }\n");
+  write("src/client.ts", 'import { value } from "./api";\nexport function run() { return value(); }\n');
+  write("src/api.test.ts", 'import { value } from "./api";\nexport function verify() { return value() === 1; }\n');
+  write("src/host.ts", "export function hostValue() { return 1; }\n");
+  write("src/host.test.vue", '<script setup lang="ts">\nimport { hostValue } from "./host";\nconst n = hostValue();\n</script>\n<template>{{ n }}</template>\n');
   result = await analyzeProject(TMP, { git: false, workers: 1 });
 }, 60_000);
 
@@ -50,5 +55,18 @@ describe("seam shapes", () => {
   test("symbol carries the same unused-export class search_symbols does", () => {
     const id = resolveSymbol(result.report, result.symbols, { name: "Orphan" });
     expect(symbol(result.report, result.symbols, id).unusedExport).toBe("unreferenced");
+  });
+
+  test("test callers stay out of the production interface caller count", () => {
+    const api = seam(result.report, result.symbols, "src/api.ts");
+    expect(api.interface).toMatchObject({ callers: 1, files: 1, uses: 1 });
+    expect(api.interface!.rows[0]!.testUses).toBe(1);
+  });
+
+  test("test component imports are test uses, even inside the measured module", () => {
+    const host = seam(result.report, result.symbols, "src/host*");
+    expect(host.interface!.rows).toEqual([]);
+    expect(host.testsPastInterface!.rows.map((s) => s.name)).toContain("hostValue");
+    expect(host.testFiles).toContain("src/host.test.vue");
   });
 });

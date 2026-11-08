@@ -35,9 +35,13 @@ or "wrapper": the point is one language that maps to one set of measures.
 
 Shallow and leaky shapes have signatures in that output:
 
-- **`couldHide`**: exported, used only in its own file, and imported by no test. It can lose
-  `export` for free. An export only tests import stays out of it and appears in
+- **`couldHide`**: exported, used only in its own file, and imported by no test. Declared entry
+  points and published APIs stay out of this list, even when used locally. Check dynamic
+  consumers before removing `export`. An export only tests import appears in
   `testsPastInterface`.
+- **`externalExports`**: exports with a declared entry-point or published-package consumer,
+  but no measured production client outside this module. These are protected from hiding
+  recommendations; they do not inflate the interface measured from in-repo uses.
 - **`internalExports`**: exported for sibling files of the module only. Not interface (nothing
   outside uses it), but TypeScript needs the `export`, so hiding it means restructuring the
   module, not deleting a keyword.
@@ -94,6 +98,7 @@ Other fields:
   covers).
 - In `seams`, `hotspotMass` is the sum of the module's file hotspot scores, so it ranks large
   hot modules first; it is not a 0-1 score.
+- `seams { offset, limit }` pages module rankings. Keep the same sort and depth across pages.
 
 `locality.commits` counts every commit that touched the module. `spread` and `coChange` use
 only commits no wider than `locality.sweepWidth`, the history's own 90th-percentile commit
