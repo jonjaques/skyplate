@@ -25,6 +25,7 @@
  */
 
 import { SymbolFlag, type CodeSymbols, type Finding, type Report, type Severity } from "../shared/schema";
+import { unusedExportKind } from "../shared/calls";
 import { duplicateGroups, isOwnCode, MIN_HISTORY, wastedBytes } from "./stats";
 
 const YEAR = 365 * 86_400;
@@ -113,6 +114,32 @@ export function buildFindings(report: Input, symbols?: CodeSymbols): Finding[] {
       detail: `Files in a cycle can only be understood, tested and changed together (${plural(inCycles, "file")} sit in one). The largest cycle's most central member is ${path(central)}; breaking its imports untangles the most.`,
       files: largest.files.slice(0, 20),
       metric: { label: "Files in the largest cycle", value: largest.files.length },
+    });
+  }
+
+  // ── Loops through types ──
+  // One step below a runtime cycle at the same size: nothing breaks at evaluation, but the
+  // files still have to be read together. With cycles computed over runtime edges, a
+  // TypeScript monorepo whose every loop ran through `import type` had no finding left to say
+  // its types were knotted.
+  const loops = report.graph.typeLoops ?? [];
+  if (loops.length) {
+    const largest = loops[0]!;
+    const inside = new Set(largest);
+    const e = report.edges;
+    const typed = (e.typeOnly ?? []).filter((row) => inside.has(e.from[row]!) && inside.has(e.to[row]!));
+    const shown = typed.slice(0, 3).map((row) => `${path(e.from[row]!)} → ${path(e.to[row]!)}`);
+    const more = typed.length > shown.length ? ` and ${fmt(typed.length - shown.length)} more` : "";
+    out.push({
+      id: "type-only-loops",
+      severity: largest.length >= 10 ? "notice" : "info",
+      title:
+        loops.length === 1
+          ? `One import loop closes only through \`import type\`, tying ${plural(largest.length, "file")} together`
+          : `${fmt(loops.length)} import loops close only through \`import type\`; the largest ties ${plural(largest.length, "file")} together`,
+      detail: `Nothing runs through them, so no evaluation order breaks, but the files in one still have to be understood together. The largest closes through ${plural(typed.length, "type-only import")}: ${shown.join(", ")}${more}. The loop exists only through those, so it ends when they do, usually by moving the types they name; no module needs reordering.`,
+      files: largest.slice(0, 20),
+      metric: { label: "Files in the largest type-only loop", value: largest.length },
     });
   }
 
@@ -298,7 +325,16 @@ export function buildFindings(report: Input, symbols?: CodeSymbols): Finding[] {
   if (symbols) {
     const s = symbols.symbols;
     const unusedByFile = new Map<number, number>();
+    const deadByFile = new Map<number, number>();
     let unused = 0;
+    let dead = 0;
+    // An export of a declared entry point (FileRecord.entry: a config a tool loads, a script a
+    // runtime runs, a package's exports) is read by whatever loads it: unreferenced, not dead.
+    // Counted apart so "referenced nowhere" means deletable.
+    let inEntries = 0;
+    // A published package's API (FileRecord.publicApi) is used by its consumers, not by this
+    // repository: an export there is neither dead nor something to make private.
+    let publicApi = 0;
     // Exports declared in test files are counted apart rather than as dead code: specs export
     // fixtures and helpers to one another, and a test runner (not an import) is what uses
     // them. symbols.stats.unusedExports counts them, so the detail names the difference
@@ -313,15 +349,33 @@ export function buildFindings(report: Input, symbols?: CodeSymbols): Finding[] {
       }
       unused++;
       unusedByFile.set(s.file[i]!, (unusedByFile.get(s.file[i]!) ?? 0) + 1);
+      const kind = unusedExportKind(symbols, i, report.files[s.file[i]!]!);
+      if (kind === "public-api") publicApi++;
+      else if (kind === "entry-export") inEntries++;
+      else if (kind === "unreferenced") {
+        dead++;
+        deadByFile.set(s.file[i]!, (deadByFile.get(s.file[i]!) ?? 0) + 1);
+      }
     }
     if (unused > 0) {
-      const top = [...unusedByFile].sort((a, b) => b[1] - a[1] || a[0] - b[0]);
+      // Files with dead exports first (nothing references them at all), then the ones whose
+      // exports are only used at home: the first kind is deletable, the second only needs to
+      // lose `export`, and a list ranked by the total put the second kind on top.
+      const top = [...unusedByFile].sort((a, b) => (deadByFile.get(b[0]) ?? 0) - (deadByFile.get(a[0]) ?? 0) || b[1] - a[1] || a[0] - b[0]);
       const tests = unusedInTests > 0 ? ` Another ${plural(unusedInTests, "is", "are")} declared in test files and not counted here.` : "";
+      const local = unused - dead - inEntries - publicApi;
+      const parts = [
+        dead > 0 ? `${fmt(dead)} ${dead === 1 ? "is" : "are"} referenced nowhere at all` : "",
+        local > 0 ? `${fmt(local)} ${local === 1 ? "is" : "are"} used inside ${local === 1 ? "its" : "their"} own file and only need${local === 1 ? "s" : ""} to lose \`export\`` : "",
+        inEntries > 0 ? `${fmt(inEntries)} ${inEntries === 1 ? "belongs" : "belong"} to declared entry points (configs, scripts, package exports), which whatever loads them may read` : "",
+        publicApi > 0 ? `${fmt(publicApi)} ${publicApi === 1 ? "is" : "are"} a published package's API, for its consumers outside this repository` : "",
+      ].filter(Boolean);
+      const split = `Of these, ${parts.join("; ")}.`;
       out.push({
         id: "unused-exports",
         severity: unused >= 20 ? "notice" : "info",
         title: `${plural(unused, "exported symbol")} ${unused === 1 ? "is" : "are"} never used outside ${unused === 1 ? "its" : "their"} own file`,
-        detail: `Dead exports widen the surface a change has to consider. Some may be public API used outside this repository; ${path(top[0]![0])} has the most (${fmt(top[0]![1])}).${tests}`,
+        detail: `${split} Dead exports widen the surface a change has to consider. Some may be public API used outside this repository; ${path(top[0]![0])} has the most (${fmt(top[0]![1])}).${tests}`,
         files: top.slice(0, 20).map(([f]) => f),
         metric: { label: "Unused exports", value: unused },
       });

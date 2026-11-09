@@ -10,10 +10,10 @@
  */
 
 import { existsSync, statSync } from "node:fs";
-import { basename, relative, resolve, sep } from "node:path";
+import { basename, relative, resolve } from "node:path";
 import pkg from "../../package.json" with { type: "json" };
 import { analyzeProject } from "../core/pipeline";
-import { checkOutput, outputPlacement, realPath, viewerIsStale, writeSite } from "../core/site";
+import { checkOutput, reportExcludes, viewerIsStale, writeSite } from "../core/site";
 import type { Severity } from "../shared/schema";
 import { USAGE, UsageError, parseCommand, type AnalyzeCommand, type ServeCommand } from "./args";
 import { Progress, seconds } from "./progress";
@@ -64,6 +64,11 @@ export async function main(argv: string[]): Promise<number> {
       return 0;
     }
     if (cmd.kind === "serve") return await serveCommand(cmd);
+    if (cmd.kind === "mcp") {
+      // Loaded only for this command: the MCP SDK has no business in a plain report run.
+      const { runMcp } = await import("../mcp/main");
+      return await runMcp(cmd);
+    }
     return await analyzeCommand(cmd);
   } catch (e) {
     if (e instanceof UsageError) {
@@ -99,18 +104,8 @@ async function analyzeCommand(cmd: AnalyzeCommand): Promise<number> {
   // otherwise find it only after minutes of work.
   if (out) checkOut(out, root);
 
-  // Reports are never part of the project they describe. The default output lands inside the
-  // project when run as `skyplate .`, and without this the second run would measure the
-  // first run's data files (megabytes of JSON) as the biggest "code" in the repository.
-  // Compared through realpath, as the walker roots itself, so an --out spelled through a
-  // symlink is still recognized as inside.
-  // "*.starchart/" is back-compat, kept on purpose: before the rename the tool was called
-  // starchart and `starchart .` wrote <project>.starchart/ inside the project, so projects that
-  // were analyzed before still carry one, and it is a report, not part of the project.
-  const exclude = [...cmd.options.exclude, "*.skyplate/", "*.starchart/"];
-  if (out && outputPlacement(out, root) === "inside") {
-    exclude.push(`/${relative(realPath(root), realPath(out)).split(sep).join("/")}/`);
-  }
+  // Report folders stay out of the analysis, this run's included (reportExcludes says why).
+  const exclude = reportExcludes(root, out, cmd.options.exclude);
 
   const progress = new Progress(process.stderr, cmd.quiet);
   const started = performance.now();

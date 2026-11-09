@@ -12,6 +12,8 @@ what breaks if you change it carelessly.
 | --- | --- |
 | Analyze a project | `bun run skyplate <path> [--out dir]` |
 | Serve a report | `bun run skyplate serve <dir> [--open]` |
+| MCP server for agents (stdio) | `bun run skyplate mcp [path...]` |
+| Smoke-test an MCP server over stdio | `bun scripts/mcp-smoke.ts <skyplate-binary> <project-dir>` |
 | Viewer dev server (HMR, :4317) | `bun dev` (serves report data from `.skyplate/dev`, or `SKYPLATE_REPORT=<dir>`) |
 | Build the viewer template | `bun run build` → `dist/viewer` (the CLI copies it into every report) |
 | Regenerate the mark, wordmark and favicon | `bun scripts/brand.ts` (needs `woff2_decompress`: `brew install woff2`) |
@@ -29,9 +31,17 @@ bin/skyplate.ts           CLI entry → src/cli/ (args, progress, serve)
 src/shared/schema.ts      THE contract between analyzer and viewer (Report, CodeSymbols…)
 src/shared/web.ts         the cosmic web layout (pure; both sides import it, see below)
 src/shared/dmath.ts       sin, cos, atan2, roots from + − × ÷ and sqrt: the same bits in every engine
+src/shared/calls.ts       what the call table means (callers, callees, heritage); viewer and MCP
+src/shared/search.ts      fuzzy ranking: the command palette and the MCP server's search
+src/mcp/                  `skyplate mcp`: main (stdio), server (tools), workspace (projects,
+                          queue, watch, builds), query (answers), report (reads a report folder)
+.agents/skills/           agent skills for the MCP server: skyplate (the tools),
+                          skyplate-architecture-review, skyplate-deepen (design, adapted from
+                          mattpocock/skills, MIT); .claude/skills/* are symlinks to them
 src/core/contracts.ts     function types each analyzer module exports
 src/core/                 analyzer: walk, languages/, metrics, facts, imports/, graph, git/,
-                          ts/ (TypeScript 7 compiler API), stats, findings, layout, site,
+                          ts/ (TypeScript 7 compiler API), entries (declared entry points),
+                          stats, findings, layout, site,
                           pipeline (orchestrates), worker + pool (per-file analysis), validate
 src/viewer/               React app: state/ (zustand store, loaders, URL), model/ (derived
                           indexes), galaxy/ (engine, shaders, hoverIntent, clicks, groups:
@@ -63,12 +73,22 @@ src/index.ts              dev server
 - **The npm package ships the CLI's source and a pre-built viewer, nothing else** (`files` in
   `package.json`). So `dependencies` holds only what `bin/`, `src/cli`, `src/core` and
   `src/shared` import at runtime (today `typescript`, `ignore`, `d3-force-3d`); the viewer's
-  packages are `devDependencies` because `dist/viewer` arrives already bundled. A new bare import
-  in those four directories goes in `dependencies`, or installed copies fail with a missing
-  module that `bun test` in a checkout never sees. CI packs, installs and runs the tarball on
-  every PR for that reason; repeat it with `bun pm pack` and an install before a release.
+  packages are `devDependencies` because `dist/viewer` arrives already bundled. `src/mcp` ships
+  too and adds `@modelcontextprotocol/server` and `zod`; the SDK's client is a devDependency,
+  for tests only. A new bare import in those five directories goes in `dependencies`, or
+  installed copies fail with a missing module that `bun test` in a checkout never sees. CI
+  packs, installs and runs the tarball on every PR for that reason (the CLI, then
+  `scripts/mcp-smoke.ts`); repeat it with `bun pm pack` and an install before a release.
 - **Secrets are never embedded.** `Detection.secret` files are measured but carry no content
-  and no hash. Keep it that way.
+  and no hash, and the MCP server never returns their text, live or from a report. Keep it
+  that way.
+- **The MCP server answers by the viewer's rules.** What counts as a caller, a code edge versus
+  a link, own code, and how a name ranks are shared (`src/shared/calls.ts`, `search.ts`,
+  `isOwnCode`), so an agent and a reader of the same report read the same numbers; change them
+  there, never in a copy. stdout is the protocol channel under `skyplate mcp`: nothing on that
+  path may write to it. Analysis runs in a queue, one at a time, and long work is a job that
+  answers after `wait_seconds` rather than outliving a client's deadline. Builds default to the
+  user cache directory, never into the project.
 - **TypeScript analysis uses the async API** (`typescript/unstable/async`). The sync client
   reads Node-internal pipe handles that Bun does not have.
 - **Never write into an analyzed project.** The CLI refuses to replace a folder that isn't a

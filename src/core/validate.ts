@@ -161,6 +161,12 @@ export function validateReport(report: Report, symbols?: CodeSymbols): string[] 
   }
   for (const c of cat.keys()) if (!catListed.has(c)) fail("categories", `files use category ${c}, which report.categories does not list`);
 
+  const ENTRY_SOURCES = new Set(["package main", "package bin", "package exports", "package script", "knip entry", "workflow step", "agent hook", "t3 script", "tool config", "type declarations"]);
+  for (const f of files) {
+    if (f.entry !== undefined && !ENTRY_SOURCES.has(f.entry)) fail("files", `${f.path} has entry ${f.entry}`);
+    if (f.publicApi !== undefined && f.publicApi !== true) fail("files", `${f.path} has publicApi ${f.publicApi}`);
+  }
+
   // ── Edges and graph ──
   const e = report.edges;
   if (e.from.length !== e.to.length || e.from.length !== e.kind.length) fail("edges", `edge columns differ in length: ${e.from.length}/${e.to.length}/${e.kind.length}`);
@@ -175,11 +181,22 @@ export function validateReport(report: Report, symbols?: CodeSymbols): string[] 
     if (pairs.has(key)) fail("edges", `edge ${i} (${a} → ${b}) is a duplicate`);
     pairs.add(key);
   }
+  if (e.typeOnly) {
+    let prev = -1;
+    for (const row of e.typeOnly) {
+      if (!Number.isInteger(row) || row <= prev || row >= e.from.length) fail("edges", `typeOnly row ${row} is out of range or out of order`);
+      else if (e.kind[row] === "link") fail("edges", `typeOnly row ${row} is a doc link, which has no types to erase`);
+      prev = row;
+    }
+  }
   // Every counted statement lands in exactly one of the three graph totals, and doc links in
   // none, so the per-file counts must add up to them; a file that counts its links would not.
   const statements = files.reduce((s, f) => s + f.imports, 0);
   const counted = report.graph.resolved + report.graph.external + report.graph.unresolved;
   if (statements !== counted) fail("imports", `files' imports sum to ${statements}, but graph resolved + external + unresolved is ${counted}`);
+  for (const loop of report.graph.typeLoops ?? []) {
+    if (loop.length < 2 || loop.some((f) => !fileOk(f))) fail("cycles", `a type-only loop lists ${loop.length} file(s), some out of range`);
+  }
   report.graph.cycles.forEach((c, i) => {
     if (c.id !== i) fail("cycles", `cycles[${i}].id is ${c.id}`);
     for (const f of c.files) if (!fileOk(f) || files[f]!.cycle !== i) fail("cycles", `cycles[${i}] lists file ${f}, whose cycle is ${files[f]?.cycle}`);
@@ -208,6 +225,7 @@ export function validateReport(report: Report, symbols?: CodeSymbols): string[] 
       if (!Number.isInteger(c.author[i]) || c.author[i]! < 0 || c.author[i]! >= na) fail("commits", `commits.author[${i}] ${c.author[i]} out of range`);
       if (i > 0 && c.time[i]! > c.time[i - 1]!) fail("commits-order", `commit ${i} is newer than commit ${i - 1}; the table must be newest first`);
       for (const f of c.files[i] ?? []) if (!fileOk(f)) fail("commits", `commits.files[${i}] lists ${f}, out of range`);
+      if (c.width && (!Number.isInteger(c.width[i]) || c.width[i]! < (c.files[i]?.length ?? 0))) fail("commits", `commits.width[${i}] ${c.width[i]} must be an integer at least as large as its current-file count`);
     }
     for (const p of git.coupling) if (!fileOk(p.a) || !fileOk(p.b)) fail("coupling", `coupling pair ${p.a}/${p.b} out of range`);
     for (const a of git.truckFactor.authors) if (!Number.isInteger(a) || a < 0 || a >= na) fail("truck-factor", `truck-factor author ${a} out of range`);

@@ -48,6 +48,17 @@ describe("extractImports", () => {
     expect(specs("from .café import x\nimport naïve, ok\nfrom . import (été,)\n", "python")).toEqual(["0:import:.café", "1:import:naïve", "1:import:ok", "2:import:.été"]);
   });
 
+  test("new URL(relative, import.meta.url) references the file it loads", () => {
+    const ts = [
+      "const worker = new Worker(new URL('../workers/universe.worker.ts', import.meta.url), { type: 'module' });",
+      'const asset = new URL("./logo.svg", import.meta.url);',
+      'const remote = new URL("https://example.com/x.js", import.meta.url);', // not a file here
+      'const page = new URL("./page.html", location.href);', //                  not the module's
+      '// new URL("./commented.ts", import.meta.url)',
+    ].join("\n");
+    expect(specs(ts, "typescript")).toEqual(["0:reference:../workers/universe.worker.ts", "1:reference:./logo.svg"]);
+  });
+
   test("type-only imports are flagged; `type` as a binding name is not", () => {
     const ts = [
       'import type { A } from "./a";',

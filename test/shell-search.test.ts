@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { rank, rankScored, scoreTerm, searchable, SUBSTRING_FLOOR } from "../src/viewer/shell/search";
+import { rank, rankScored, scoreTerm, searchable, SUBSTRING_FLOOR } from "../src/shared/search";
 
 const score = (term: string, target: string) => scoreTerm(term, target.toLowerCase(), target, target.lastIndexOf("/") + 1);
 

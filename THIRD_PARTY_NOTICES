@@ -1,6 +1,6 @@
 THIRD-PARTY NOTICES
 
-Skyplate 0.1.0's report viewer bundles the open-source software below into the
+Skyplate 0.2.0's report viewer bundles the open-source software below into the
 files every report ships (assets/app.js, assets/app.css and assets/highlight.js), so a
 report carries it wherever the report goes. Each package is listed with its version and
 declared license, then its license text as the package publishes it.

@@ -23,6 +23,7 @@ import {
 import {
   coupling,
   degreeOfAuthorship,
+  sweepWidth,
   truckFactor,
   weekStart,
   type FileAuthors,
@@ -34,6 +35,9 @@ import {
   type RawCommit,
 } from "../src/core/git/stream";
 import type { GitResult } from "../src/core/contracts";
+import { analyzeProject } from "../src/core/pipeline";
+import { validateReport } from "../src/core/validate";
+import { seam, seams } from "../src/mcp/query";
 
 // ─── Fixture plumbing ────────────────────────────────────────────────────────────────────────
 
@@ -527,6 +531,42 @@ describe("time series", () => {
 // ─── Coupling and truck factor ───────────────────────────────────────────────────────────────
 
 describe("coupling and truck factor", () => {
+  test("hidden coupling rankings agree with complete module drilldowns through four import hops", async () => {
+    const dir = join(TMP, "hidden-coupling");
+    mkdirSync(dir);
+    git(dir, ["init", "-q", "-b", "main"]);
+    const modules = ["a", "b", "c", "d", "e", "f", "z"];
+    for (let i = 1; i <= 3; i++) {
+      for (const [j, name] of modules.entries()) {
+        // a → b → c → d → e → f spans the four-hop cutoff; z is disconnected.
+        const next = j < 5 ? modules[j + 1] : undefined;
+        write(dir, `${name}/main.ts`, next
+          ? `import { value as next } from "../${next}/main";\nexport const value = next + ${i};\n`
+          : `export const value = ${i};\n`);
+      }
+      commit(dir, ALICE, `2024-01-0${i}T09:00:00Z`, `change every module ${i}`);
+    }
+    const { report } = await analyzeProject(dir, { symbols: false, workers: 1 });
+    expect(validateReport(report)).toEqual([]);
+    const ranked = seams(report, undefined, { depth: 1, sort: "hidden", limit: 100 });
+    expect(ranked.rows).toHaveLength(modules.length);
+    for (const row of ranked.rows) {
+      const detail = seam(report, undefined, row.selector.path, { ...row.selector, limit: 500 });
+      const pairs = detail.locality!.coChange;
+      expect(detail.locality!.coChangeMore).toBeUndefined();
+      expect(pairs).toHaveLength(6);
+      expect(row.hiddenCoupling).toBe(pairs.filter((p) => p.imports === "none").length);
+      if (row.module === "a") {
+        const classification = Object.fromEntries(pairs.map((p) => [p.outside, p.imports]));
+        expect(classification).toEqual({
+          "b/main.ts": "direct", "c/main.ts": "indirect", "d/main.ts": "indirect",
+          "e/main.ts": "indirect", "f/main.ts": "none", "z/main.ts": "none",
+        });
+      }
+    }
+    expect(ranked.rows[0]).toMatchObject({ module: "z", hiddenCoupling: 6 });
+  }, 60_000);
+
   test("co-changed pair found; the wide sweep is ignored", () => {
     const a = id("README.md");
     const b = id("src/a.ts");
@@ -537,6 +577,62 @@ describe("coupling and truck factor", () => {
     expect(pair).toMatchObject({ shared: 3, degree: 0.6 }); // 3 / min(5 README commits, 6 a.ts)
     const sweep = id("sweep/f00.txt");
     expect(RESULT.summary.coupling.some((c) => c.a === sweep || c.b === sweep)).toBe(false);
+  });
+
+  test("locality and coupling exclude sweeps after deleted and excluded paths disappear", async () => {
+    const dir = join(TMP, "sweep-locality");
+    mkdirSync(dir);
+    git(dir, ["init", "-q", "-b", "main"]);
+    write(dir, "a/main.ts", "export const a = 0;\n");
+    write(dir, "b/main.ts", 'import { a } from "../a/main";\nexport const b = a;\n');
+    for (let i = 0; i < 110; i++) write(dir, `gone/${i}.txt`, `${i}\n`);
+    for (let i = 0; i < 90; i++) write(dir, `excluded/${i}.txt`, `${i}\n`);
+    commit(dir, ALICE, "2024-01-01T09:00:00Z", "initial sweep");
+    rmSync(join(dir, "gone"), { recursive: true });
+    commit(dir, ALICE, "2024-01-02T09:00:00Z", "remove old paths");
+    for (let i = 1; i <= 3; i++) {
+      write(dir, "a/main.ts", `export const a = ${i};\n`);
+      write(dir, "b/main.ts", `import { a } from "../a/main";\nexport const b = a + ${i};\n`);
+      commit(dir, ALICE, `2024-01-0${i + 2}T09:00:00Z`, `ordinary change ${i}`);
+    }
+    const { report } = await analyzeProject(dir, { symbols: false, workers: 1, exclude: ["excluded/"] });
+    expect(validateReport(report)).toEqual([]);
+    expect(report.files.map((f) => f.path)).toEqual(["a/main.ts", "b/main.ts"]);
+    const history = report.git!;
+    expect(history.commits.width).toEqual([2, 2, 2, 110, 202]);
+    expect(history.commits.files.at(-1)).toHaveLength(2);
+    expect(history.coupling).toEqual([{ a: 0, b: 1, shared: 3, degree: 0.75 }]);
+    const modules = seams(report, undefined, { depth: 1 });
+    for (const module of modules.rows) expect(module).toMatchObject({ commits: 4, sweeps: 1, spreadBasis: 3, spread: 1 });
+    expect(seam(report, undefined, "a").locality).toMatchObject({ commits: 4, sweeps: 1, spreadBasis: 3, spread: 1 });
+
+    const invalid = structuredClone(report);
+    invalid.git!.commits.width![0] = 1;
+    expect(validateReport(invalid).some((e) => e.includes("commits.width[0]"))).toBe(true);
+    const legacy = structuredClone(report);
+    delete legacy.git!.commits.width;
+    expect(validateReport(legacy)).toEqual([]);
+    expect(seam(legacy, undefined, "a").notes.some((n) => n.includes("original commit widths"))).toBe(true);
+    expect(seams(legacy, undefined, { depth: 1 }).notes.some((n) => n.includes("original commit widths"))).toBe(true);
+  }, 60_000);
+
+  test.each([
+    ["docs", "README.md", "# Example\n"],
+    ["tests", "test/a.test.ts", "export const testValue = 1;\n"],
+  ])("locality counts outside %s in leaving without adding production coupling", async (name, outside, text) => {
+    const dir = join(TMP, `locality-${name}`);
+    mkdirSync(dir);
+    git(dir, ["init", "-q", "-b", "main"]);
+    write(dir, "src/a.ts", "export const a = 1;\n");
+    write(dir, outside, text);
+    commit(dir, ALICE, "2024-01-01T09:00:00Z", "code and outside client");
+    const { report } = await analyzeProject(dir, { symbols: false, workers: 1 });
+    expect(validateReport(report)).toEqual([]);
+    const ranked = seams(report, undefined, { depth: 1 }).rows.find((row) => row.module === "src")!;
+    expect(ranked).toMatchObject({ commits: 1, spreadBasis: 1, leaving: 1 });
+    expect(seam(report, undefined, "src").locality).toMatchObject({
+      commits: 1, spreadBasis: 1, leaving: 1, alsoTouchOutside: 1, changesWith: [], coChange: [],
+    });
   });
 
   test("truck factor follows authorship of files, not commits, and skips the bot", () => {
@@ -1080,6 +1176,34 @@ describe("derive helpers", () => {
       { a: 0, b: 1, shared: 3, degree: 1 },
       { a: 0, b: 2, shared: 3, degree: 1 },
     ]);
+  });
+
+  test("coupling takes its sweep width from the caller", () => {
+    // The last commit touched 31 paths (28 since deleted): a sweep at 30, an ordinary change at 40.
+    const files = [[0, 1], [0, 1], [0, 1, 2], [0, 2], [0, 2], [0, 1, 2]];
+    const width = [2, 2, 3, 2, 2, 31];
+    const commits = Int32Array.from([6, 4, 4]);
+    expect(coupling(3, files, width, commits, 30)).toEqual([
+      { a: 0, b: 1, shared: 3, degree: 0.75 },
+      { a: 0, b: 2, shared: 3, degree: 0.75 },
+    ]);
+    expect(coupling(3, files, width, commits, 40)).toEqual([
+      { a: 0, b: 1, shared: 4, degree: 1 },
+      { a: 0, b: 2, shared: 4, degree: 1 },
+    ]);
+  });
+
+  test("the sweep width follows the history's own commit sizes, between 30 and 100", () => {
+    // Small commits: p90 is 8, so the floor holds at 30.
+    expect(sweepWidth(Array.from({ length: 100 }, (_, i) => (i % 10) + 1))).toBe(30);
+    // Squash-merge histories, where pull requests land whole: 40- and 64-file changes are
+    // ordinary there, and the rare far wider commits above the 90th percentile still drop out.
+    const squash = Array.from({ length: 100 }, (_, i) => (i < 75 ? 13 : i < 90 ? 40 : 154 + i));
+    expect(sweepWidth(squash)).toBe(40);
+    expect(sweepWidth(Array.from({ length: 100 }, (_, i) => (i < 89 ? 20 : 64)))).toBe(64);
+    // Mostly vendor drops: the ceiling bounds the k² pair walk.
+    expect(sweepWidth(Array.from({ length: 100 }, () => 500))).toBe(100);
+    expect(sweepWidth([])).toBe(30);
   });
 });
 

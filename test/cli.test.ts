@@ -110,6 +110,19 @@ describe("arguments", () => {
     expect(() => parseCommand(["--max-commits", "many"])).toThrow(UsageError);
   });
 
+  test("mcp takes startup paths, a refresh mode and the analysis options", () => {
+    const m = parseCommand(["mcp", "a", "b", "--refresh", "on_change", "--no-git"]);
+    expect(m).toMatchObject({ kind: "mcp", paths: ["a", "b"], refresh: "on_change" });
+    if (m.kind !== "mcp") throw new Error("expected mcp");
+    expect(m.options.git).toBe(false);
+    expect(parseCommand(["mcp"])).toMatchObject({ kind: "mcp", paths: [], refresh: "on_read" });
+    expect(() => parseCommand(["mcp", "--refresh", "sometimes"])).toThrow(UsageError);
+    // stdout is the protocol: options that write or serve a report belong to the tools.
+    expect(() => parseCommand(["mcp", "--out", "x"])).toThrow(UsageError);
+    expect(() => parseCommand(["mcp", "--open"])).toThrow(UsageError);
+    expect(() => parseCommand([".", "--refresh", "manual"])).toThrow(UsageError);
+  });
+
   test("default report names are filesystem-safe", () => {
     expect(slug("Vite ⚡")).toBe("vite");
     expect(slug("Café Ops")).toBe("cafe-ops");

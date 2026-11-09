@@ -119,9 +119,32 @@ export function languageChurn(
 
 // ─── Change coupling ─────────────────────────────────────────────────────────────────────────
 
-export const COUPLING_MAX_FILES = 30; //  commits wider than this are sweeps, not coupling
+export const SWEEP_MIN_FILES = 30; //    a commit wider than this may be a sweep, never narrower
+export const SWEEP_MAX_FILES = 100; //   always a sweep past this; also bounds the k² pair walk
 export const COUPLING_MIN_SHARED = 3; //  below this a pair is coincidence
 export const COUPLING_KEEP = 500;
+
+/**
+ * How wide a commit can be and still say which files change together: the history's own 90th
+ * percentile of commit width, clamped to [SWEEP_MIN_FILES, SWEEP_MAX_FILES].
+ *
+ * A fixed 30 was right for histories of small commits and wrong for squash-merge ones, where a
+ * pull request lands as one commit: in a pnpm monorepo 71 of 287 commits passed 30 files (p75
+ * 30, p90 64), so coupling and every locality figure rested on a minority of the history. The
+ * percentile keeps a repository's ordinary large changes and still drops its rare outliers
+ * (reformats, renames, vendor drops). The floor keeps a history of tiny commits from calling a
+ * 12-file change a sweep; the ceiling bounds the pair walk, which is k² per commit.
+ *
+ * Weighting wide commits down (1/(n-1) per pair) instead of dropping them was considered and
+ * not taken: `shared` is a commit count that the findings and the viewer print as one ("4
+ * commits together"), and a fractional count would read as a bug there.
+ */
+export function sweepWidth(width: readonly number[]): number {
+  if (width.length === 0) return SWEEP_MIN_FILES;
+  const sorted = Float64Array.from(width).sort();
+  const p90 = sorted[Math.floor(0.9 * (sorted.length - 1))]!;
+  return Math.min(SWEEP_MAX_FILES, Math.max(SWEEP_MIN_FILES, p90));
+}
 
 interface Candidate extends CouplingPair {
   score: number;
@@ -147,11 +170,12 @@ export function coupling(
   files: number[][],
   width: number[],
   fileCommits: Int32Array,
+  maxFiles: number = SWEEP_MIN_FILES,
 ): CouplingPair[] {
   const eligible: number[] = [];
   const perFile = new Int32Array(fileCount + 1);
   for (let c = 0; c < files.length; c++) {
-    if (width[c]! > COUPLING_MAX_FILES || files[c]!.length < 2) continue;
+    if (width[c]! > maxFiles || files[c]!.length < 2) continue;
     eligible.push(c);
     for (const f of files[c]!) perFile[f + 1]!++;
   }

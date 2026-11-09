@@ -47,6 +47,57 @@ Skyplate was called starchart before its first release. It still replaces a repo
 earlier starchart run wrote, and still leaves `*.starchart/` folders inside a project out of the
 analysis.
 
+## For coding agents
+
+`skyplate mcp` is an [MCP](https://modelcontextprotocol.io) server that hands an agent the same
+analysis without writing a report: point it at any directory and it analyzes it in memory,
+watches it, and re-analyzes after files change. It can also read an existing report folder,
+and build and serve new ones.
+
+```sh
+claude mcp add skyplate -s user -- bunx skyplate mcp     # Claude Code
+codex mcp add skyplate -- bunx skyplate mcp              # Codex
+```
+
+Its tools answer the questions the report does: `overview`, `findings`, `files` (filter and
+rank by any measure), `file` and `dir` records, `search_symbols` and `symbol` (callers with call
+sites, callees, the type hierarchy, every reference, change impact), `graph` (dependents, import
+paths, cycles, module coupling, hubs), `history` (authors, commits, co-change, activity,
+ownership), `seams` and `seam` (modules measured at their interfaces: what code outside actually
+uses, what could be hidden, what only tests reach, relays, co-change no import explains),
+`dependencies` and `read_source`. `build_report` and `serve_report` write and serve
+a report folder; builds go to the user cache directory unless told otherwise, never into the
+project. Paths given after `mcp` are opened at startup, and `--refresh on_change` re-analyzes
+after every burst of edits rather than on the next question.
+
+For runtime impact, pass `runtime_only: true` to `graph`'s `dependents`, `dependencies` or
+`path` view to omit explicit type-only imports. `seams` supports `offset` and `limit` for
+module rankings. Pass a ranked row's `selector` to `seam` to keep the same module membership
+and depth; a plain `seam { path }` measures the entire directory recursively. Entry-point and
+published-package exports are protected from suggestions to hide them, even when used locally.
+Ranked file counts use the same own production files as the drilldown, with tests counted
+separately. Hidden coupling counts co-change pairs with no import path within four hops in
+either direction, using the same classification in both tools. These are leads for source
+inspection; dependency injection and required registries can explain missing import paths.
+
+Successful calls include `structuredContent.data` for scripts as well as readable text.
+`structuredContent.freshnessNote` explains when a result uses an older analysis. From a
+checkout, run `bun /absolute/path/to/skyplate/bin/skyplate.ts mcp` to use that checkout's tools.
+The [skyplate skill](.agents/skills/skyplate/SKILL.md#is-the-server-attached) includes a temporary
+stdio-client recipe for local dogfooding without persistent MCP registration.
+
+Three agent skills come with it, in [`.agents/skills`](.agents/skills):
+
+| Skill | For |
+| --- | --- |
+| [`skyplate`](.agents/skills/skyplate/SKILL.md) | when and how to use the tools |
+| [`skyplate-architecture-review`](.agents/skills/skyplate-architecture-review/SKILL.md) | a measured architecture review: modules ranked, code read behind the strongest signals, deepening candidates in an HTML report with the evidence (run it by name) |
+| [`skyplate-deepen`](.agents/skills/skyplate-deepen/SKILL.md) | the deep-module vocabulary tied to what `seam` counts, design-it-twice for one module, and a before/after re-measure |
+
+The two design skills adapt Matt Pocock's `improve-codebase-architecture` and `codebase-design`
+([mattpocock/skills](https://github.com/mattpocock/skills), MIT). Install all three with
+`npx skills add jonjaques/skyplate`.
+
 ## What it measures
 
 - **Every file, classified.** All ~800 GitHub Linguist languages and formats by filename,
@@ -73,7 +124,8 @@ first run builds the viewer template into `dist/viewer` (or run `bun run build`)
 ```sh
 bun dev                                         # viewer with hot reload on :4317, serving .skyplate/dev
 bun run skyplate <path> --out .skyplate/dev     # point the dev server at a real report
-bun test                                        # analyzer, pipeline, CLI and viewer-logic tests
+bun test                                        # analyzer, pipeline, CLI, MCP and viewer-logic tests
+bun run skyplate mcp <path>                     # the MCP server on stdio, from source
 bun check                                       # typecheck (TypeScript 7)
 bun scripts/brand.ts                            # regenerate the mark, wordmark and favicon
 ```

@@ -1124,6 +1124,15 @@ const GENERATED_FILENAMES = new Set(["gradlew", "gradlew.bat", "mvnw", "mvnw.cmd
 // so it is vendored. Case-sensitive, as CocoaPods writes it.
 const PODS_DIR = /(?:^|\/)Pods\//;
 
+// Agent skill libraries: `npx skills add` and the coding agents themselves install skills into
+// one dot-directory per agent (.claude/skills, .agents/skills, .codex/skills, .cursor/skills…).
+// They are instructions and templates written elsewhere and checked in for the agent, not the
+// project's code: one skill's template.js put `renderer` and `scene` at the top of a project's
+// unused exports. A skill a project writes for itself is flagged too; it stays measured and
+// listed, only out of the own-code figures. A repository whose product is skills keeps them in
+// a plain `skills/`, which this does not match.
+const AGENT_SKILLS_DIR = /(?:^|\/)\.[^/]+\/skills\//;
+
 // Markers generators write in a file's opening comment. Only the first lines are searched, so
 // a mention of "@generated" deep inside ordinary code (this file, say) never counts.
 // Shouted DO NOT EDIT is a generator's voice; lowercase "do not edit" in a hand-written config
@@ -1235,7 +1244,7 @@ export const detectFile: DetectFile = (path, head) => {
   // A head shorter than the walker's read size is the whole file, so end-of-file signals
   // (vim footer modelines, sourceMappingURL trailers, JSON validity) can be trusted.
   const complete = head.length < HEAD_BYTES;
-  const vendored = vendorPattern().test(path) || PODS_DIR.test(path);
+  const vendored = vendorPattern().test(path) || PODS_DIR.test(path) || AGENT_SKILLS_DIR.test(path);
 
   const pdf = head.length >= 5 && at(head, 0, "%PDF-");
   const decoded = pdf ? { text: "", binary: true } : decodeHead(head);

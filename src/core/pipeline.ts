@@ -34,6 +34,7 @@ import {
   type CodeSymbols,
   type DirRecord,
   type EdgeKind,
+  type EdgeTable,
   type ExternalDependency,
   type FileRecord,
   type GitSummary,
@@ -45,6 +46,7 @@ import {
 } from "../shared/schema";
 import { walkProject } from "./walk";
 import { getLanguage } from "./languages/registry";
+import { findEntries, publishedEntries } from "./entries";
 import { readManifests, readProjectInfo } from "./manifests";
 import { createResolver } from "./imports/resolve";
 import { analyzeGraph } from "./graph";
@@ -168,6 +170,13 @@ class Phases {
     this.emit({ phase, status: "skip", message });
   }
 }
+
+/**
+ * Manifests that declare a package, so their directory is a package root for module choice
+ * (GraphInput.packageDirs). Dependency lists without a package of their own (requirements.txt,
+ * Pipfile, environment.yml, Gemfile, a version catalog) say what a folder uses, not what it is.
+ */
+const PACKAGE_MANIFESTS = new Set(["package.json", "Cargo.toml", "go.mod", "pyproject.toml", "setup.cfg", "composer.json", "deno.json", "Package.swift", "pubspec.yaml", "mix.exs", "pom.xml", "gemspec", "vcpkg.json"]);
 
 const nf = new Intl.NumberFormat("en-US");
 const plural = (n: number, one: string, many = `${one}s`) => `${nf.format(n)} ${n === 1 ? one : many}`;
@@ -648,6 +657,8 @@ export async function analyzeProject(
       return text;
     };
     const { manifests, dependencies } = readManifests(paths, readText);
+    const idOfPath = new Map(paths.map((p, i) => [p, i]));
+    for (const [path, source] of findEntries(paths, readText)) files[idOfPath.get(path)!]!.entry = source;
     const info = readProjectInfo(paths, readText);
     const rootNames = manifests.filter((m) => !m.path.includes("/") && m.name).map((m) => m.name!);
     const name = projectName(root, files, info.readme, rootNames);
@@ -667,12 +678,20 @@ export async function analyzeProject(
     // Script imports in files the compiler never reads (Vue, Markdown, …), for hosts.ts.
     const hostImports: HostImport[] = [];
     let hostFiles = 0;
-    const addEdge = (from: number, to: number, kind: EdgeKind) => {
+    // Pairs with at least one import the compiler keeps. A pair every one of whose imports is
+    // type-only is an edge, but one that never runs (see EdgeTable.typeOnly); the extractor
+    // marked those all along and nothing carried the mark here, so loops closed by an
+    // `import type` were reported as import cycles.
+    const runtimePairs = new Set<number>();
+    // `export … from` edges, for the published API walk below.
+    const reexports: number[][] = Array.from({ length: n }, () => []);
+    const addEdge = (from: number, to: number, kind: EdgeKind, typeOnly: boolean) => {
       if (from === to || to < 0 || to >= n) return;
       const key = from * n + to;
       const k = KIND_ORDER.indexOf(kind);
       const prev = pairKind.get(key);
       if (prev === undefined || k < prev) pairKind.set(key, k);
+      if (!typeOnly) runtimePairs.add(key);
     };
     for (let id = 0; id < n; id++) {
       const list = rawImports[id]!;
@@ -694,8 +713,10 @@ export async function analyzeProject(
         if ("file" in r) {
           if (counted) resolved++;
           if (names?.length) hostImports.push({ from: id, to: r.file, line: imp.line, names });
-          addEdge(id, r.file, imp.kind);
-          for (const sib of r.also ?? []) addEdge(id, sib, imp.kind);
+          const typeOnly = (imp as ExtractedImport).typeOnly === true;
+          addEdge(id, r.file, imp.kind, typeOnly);
+          if ((imp as ExtractedImport).reexport && r.file !== id) reexports[id]!.push(r.file);
+          for (const sib of r.also ?? []) addEdge(id, sib, imp.kind, typeOnly);
         } else if ("external" in r) {
           if (!counted) continue;
           external++;
@@ -711,22 +732,41 @@ export async function analyzeProject(
       if (host) hostFiles++;
     }
     for (const [key, set] of importers) externals.get(key)!.importers = set.size;
+    // A published package's API: its entry files and everything they re-export, followed
+    // through (`export * from "./a"` in index.ts, then a's own `export * from "./b"`).
+    {
+      const stack = [...publishedEntries(paths, readText)].map((p) => idOfPath.get(p)!);
+      for (const id of stack) files[id]!.publicApi = true;
+      while (stack.length) {
+        for (const next of reexports[stack.pop()!]!) {
+          if (files[next]!.publicApi) continue;
+          files[next]!.publicApi = true;
+          stack.push(next);
+        }
+      }
+    }
     const edgeKeys = [...pairKind.keys()].sort((a, b) => a - b);
-    const edges = { from: [] as number[], to: [] as number[], kind: [] as EdgeKind[] };
+    const edges: EdgeTable = { from: [], to: [], kind: [] };
+    const typeOnlyRows: number[] = [];
     const codeFrom: number[] = [];
     const codeTo: number[] = [];
+    const codeTypeOnly: boolean[] = [];
     for (const key of edgeKeys) {
       const from = Math.floor(key / n);
       const to = key - from * n;
       const kind = KIND_ORDER[pairKind.get(key)!]!;
+      const typeOnly = kind !== LINK && !runtimePairs.has(key);
+      if (typeOnly) typeOnlyRows.push(edges.from.length);
       edges.from.push(from);
       edges.to.push(to);
       edges.kind.push(kind);
       if (kind !== LINK) {
         codeFrom.push(from);
         codeTo.push(to);
+        codeTypeOnly.push(typeOnly);
       }
     }
+    if (typeOnlyRows.length) edges.typeOnly = typeOnlyRows;
     const externalList = [...externals.values()].sort(
       (a, b) => b.importers - a.importers || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) || (a.ecosystem < b.ecosystem ? -1 : 1),
     );
@@ -735,13 +775,17 @@ export async function analyzeProject(
     // ── Graph ── (code edges only: docs linking each other would otherwise top PageRank and
     // form "cycles" that say nothing about how the code depends on itself)
     phases.start("graph");
+    const dirIdOf = new Map(dirs.map((d) => [d.path, d.id]));
+    const packageDirs = manifests.filter((m) => PACKAGE_MANIFESTS.has(m.kind)).map((m) => dirIdOf.get(parentOf(m.path)) ?? -1).filter((d) => d > 0);
     const g = analyzeGraph({
       fileCount: n,
       from: codeFrom,
       to: codeTo,
+      typeOnly: codeTypeOnly,
       fileDir,
       dirParent: dirs.map((d) => d.parent),
       dirDepth: dirs.map((d) => d.depth),
+      packageDirs: [...new Set(packageDirs)],
     });
     for (let id = 0; id < n; id++) {
       const f = files[id]!;

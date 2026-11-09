@@ -3,6 +3,7 @@
  *
  *   skyplate [path=.] [options]          analyze a project and write a report folder
  *   skyplate serve <dir> [--port N] [--open]
+ *   skyplate mcp [path...] [options]     an MCP server on stdio (src/mcp/)
  *
  * parseArgs has no negated booleans that work across runtimes (`allowNegative` is recent in
  * Node and not something Bun promises), so --no-git and friends are declared as their own
@@ -18,6 +19,9 @@ Usage
   skyplate [path] [options]              analyze <path> (default: .) and write a report folder
   skyplate serve <dir> [--port N] [--open]
                                           serve an existing report folder over http
+  skyplate mcp [path...] [--refresh <mode>]
+                                          run an MCP server on stdio for coding agents;
+                                          paths are opened (analyzed) at startup
 
 Output
   -o, --out <dir>          report folder (default: ./<project-name>.skyplate)
@@ -34,6 +38,11 @@ What to analyze
       --max-commits <n>    newest commits to analyze (default: ${DEFAULT_OPTIONS.maxCommits})
       --no-symbols         skip the TypeScript/JavaScript code-intelligence pass
       --ts-max-files <n>   skip that pass when more TS/JS files than this (default: ${DEFAULT_OPTIONS.tsMaxFiles})
+
+MCP server
+      --refresh <mode>     when live projects re-analyze after files change: on_read
+                           (next question, default), on_change, or manual
+                           (the "What to analyze" options apply to startup paths)
 
 What the report contains
       --no-source          embed no file contents or image previews (for sharing)
@@ -76,7 +85,17 @@ export interface ServeCommand {
   open: boolean;
 }
 
-export type Command = AnalyzeCommand | ServeCommand | { kind: "help" } | { kind: "version" };
+export interface McpCommand {
+  kind: "mcp";
+  /** Projects or report folders to open at startup. */
+  paths: string[];
+  refresh: "on_read" | "on_change" | "manual";
+  options: AnalyzeCommand["options"];
+}
+
+export type Command = AnalyzeCommand | ServeCommand | McpCommand | { kind: "help" } | { kind: "version" };
+
+const REFRESH_MODES = ["on_read", "on_change", "manual"] as const;
 
 export class UsageError extends Error {}
 
@@ -126,6 +145,7 @@ export function parseCommand(argv: string[]): Command {
         "max-source-file": { type: "string" },
         "max-source-total": { type: "string" },
         "redact-paths": { type: "boolean" },
+        refresh: { type: "string" },
         help: { type: "boolean", short: "h" },
         version: { type: "boolean", short: "v" },
       },
@@ -141,6 +161,30 @@ export function parseCommand(argv: string[]): Command {
     if (positionals.length !== 2) throw new UsageError("serve takes exactly one report folder: skyplate serve <dir>");
     return { kind: "serve", dir: positionals[1]!, port: parsePort(v.port), open: !!v.open };
   }
+  if (v.refresh !== undefined && positionals[0] !== "mcp") throw new UsageError("--refresh is an option of skyplate mcp");
+  const options = {
+    includeIgnored: !!v["include-ignored"],
+    exclude: v.exclude ?? [],
+    git: !v["no-git"],
+    source: !v["no-source"],
+    symbols: !v["no-symbols"],
+    maxCommits: v["max-commits"] !== undefined ? parseCount(v["max-commits"], "--max-commits") : DEFAULT_OPTIONS.maxCommits,
+    maxSourceFile: v["max-source-file"] !== undefined ? parseSize(v["max-source-file"], "--max-source-file") : DEFAULT_OPTIONS.maxSourceFile,
+    maxSourceTotal: v["max-source-total"] !== undefined ? parseSize(v["max-source-total"], "--max-source-total") : DEFAULT_OPTIONS.maxSourceTotal,
+    tsMaxFiles: v["ts-max-files"] !== undefined ? parseCount(v["ts-max-files"], "--ts-max-files", 0) : DEFAULT_OPTIONS.tsMaxFiles,
+    redactPaths: !!v["redact-paths"],
+  };
+
+  if (positionals[0] === "mcp") {
+    // stdout is the protocol channel, so nothing that writes a report or serves one belongs here;
+    // build_report and serve_report are the server's own tools for that.
+    for (const flag of ["out", "open", "serve", "port", "json", "quiet"] as const) {
+      if (v[flag] !== undefined) throw new UsageError(`--${flag} is not an option of skyplate mcp (its build_report and serve_report tools do that)`);
+    }
+    const refresh = v.refresh ?? "on_read";
+    if (!(REFRESH_MODES as readonly string[]).includes(refresh)) throw new UsageError(`--refresh expects ${REFRESH_MODES.join(", ")}, not "${refresh}"`);
+    return { kind: "mcp", paths: positionals.slice(1), refresh: refresh as McpCommand["refresh"], options };
+  }
   if (positionals.length > 1) throw new UsageError(`expected one project path, got ${positionals.length}: ${positionals.join(" ")}`);
 
   return {
@@ -152,17 +196,6 @@ export function parseCommand(argv: string[]): Command {
     port: parsePort(v.port),
     json: !!v.json,
     quiet: !!v.quiet,
-    options: {
-      includeIgnored: !!v["include-ignored"],
-      exclude: v.exclude ?? [],
-      git: !v["no-git"],
-      source: !v["no-source"],
-      symbols: !v["no-symbols"],
-      maxCommits: v["max-commits"] !== undefined ? parseCount(v["max-commits"], "--max-commits") : DEFAULT_OPTIONS.maxCommits,
-      maxSourceFile: v["max-source-file"] !== undefined ? parseSize(v["max-source-file"], "--max-source-file") : DEFAULT_OPTIONS.maxSourceFile,
-      maxSourceTotal: v["max-source-total"] !== undefined ? parseSize(v["max-source-total"], "--max-source-total") : DEFAULT_OPTIONS.maxSourceTotal,
-      tsMaxFiles: v["ts-max-files"] !== undefined ? parseCount(v["ts-max-files"], "--ts-max-files", 0) : DEFAULT_OPTIONS.tsMaxFiles,
-      redactPaths: !!v["redact-paths"],
-    },
+    options,
   };
 }

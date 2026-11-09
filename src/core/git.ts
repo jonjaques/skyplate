@@ -49,6 +49,7 @@
  *   the repository. Every command is read-only; GIT_OPTIONAL_LOCKS=0 keeps it that way.
  */
 
+import { resolve } from "node:path";
 import type { GitInput, GitResult, MineGit } from "./contracts";
 import type { Author, GitSummary } from "../shared/schema";
 import { mergeIdentities } from "./git/authors";
@@ -58,6 +59,7 @@ import {
   languageChurn,
   perFileGit,
   punchcard,
+  sweepWidth,
   truckFactor,
   weeklySeries,
 } from "./git/derive";
@@ -142,6 +144,16 @@ async function git(root: string, args: string[]): Promise<{ ok: boolean; out: st
   });
   const [out, code] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
   return { ok: code === 0, out };
+}
+
+/** Resolve both worktree HEAD and shared refs before a live project's first analysis starts. */
+export function gitDirectories(root: string): string[] {
+  if (!Bun.which("git")) return [];
+  const proc = Bun.spawnSync(["git", "-C", root, "rev-parse", "--absolute-git-dir", "--git-common-dir"], {
+    stdin: "ignore", stdout: "pipe", stderr: "ignore", env: gitEnv(),
+  });
+  if (proc.exitCode !== 0) return [];
+  return [...new Set(proc.stdout.toString().trimEnd().split("\n").map((dir) => resolve(root, dir)))];
 }
 
 // ─── Remote URL scrubbing ────────────────────────────────────────────────────────────────────
@@ -457,6 +469,7 @@ interface Meta {
 
 function summarize(h: History, meta: Meta): GitResult {
   const n = h.commitCount;
+  const sweep = sweepWidth(h.width);
   const { groupOf, authors: merged } = mergeIdentities(h.identities);
   const bot = merged.map((a) => a.bot);
   const author = new Int32Array(n);
@@ -532,6 +545,7 @@ function summarize(h: History, meta: Meta): GitResult {
     added: [],
     deleted: [],
     files: [],
+    width: [],
     subject: [],
     type: [],
   };
@@ -543,6 +557,7 @@ function summarize(h: History, meta: Meta): GitResult {
     commits.added.push(h.added[i]!);
     commits.deleted.push(h.deleted[i]!);
     commits.files.push(h.files[i]!.sort((a, b) => a - b));
+    commits.width!.push(h.width[i]!);
     commits.subject.push(truncateSubject(subject));
     commits.type.push(commitType(subject));
   }
@@ -578,7 +593,9 @@ function summarize(h: History, meta: Meta): GitResult {
       excluded ? h.files.map((fs) => fs.filter((f) => !excluded[f])) : h.files,
       h.width,
       h.fileCommits,
+      sweep,
     ),
+    sweepFiles: sweep,
     truckFactor: truckFactor(
       table,
       creator,

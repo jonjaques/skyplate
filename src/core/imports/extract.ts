@@ -29,6 +29,12 @@ import { getLexRules, type LexRules } from "../languages/syntax";
 export interface ExtractedImport extends RawImport {
   typeOnly?: true;
   /**
+   * `export … from`: the module passes the target's exports on as its own. A published
+   * package's API is its entry plus everything its entry re-exports this way, and `export *`
+   * leaves no reference to say which symbols that covers (src/core/pipeline.ts, publicApi).
+   */
+  reexport?: true;
+  /**
    * What the statement takes from the module, as the module exports it (see importedNames),
    * recorded only for scripts the TypeScript analysis never reads: the <script> blocks of
    * Vue, Svelte, Astro and HTML files, VitePress Markdown and MDX. The compiler sees every
@@ -170,6 +176,11 @@ const JS_EXPORT_FROM = /(?<![\p{ID_Continue}$.])export\s+(type\s+)?(\*\s*(?:as\s
 const JS_DYNAMIC = /(?<![\p{ID_Continue}$.])import\s*\(\s*(["'`])/gu;
 const JS_REQUIRE = /(?<![\p{ID_Continue}$.])require\s*\(\s*(["'`])/gu;
 const TRIPLE_SLASH = /^[ \t]*\/\/\/[ \t]*<reference\s+(path|types)\s*=\s*(["'])([^"'\n]*)\2/gm;
+// `new URL("./worker.ts", import.meta.url)`: how Vite, webpack 5, Parcel and Node load a worker
+// or an asset relative to the module. No import names the file, so a worker loaded this way
+// read as a file nothing imports.
+const JS_NEW_URL = /(?<![\p{ID_Continue}$.])new\s+URL\s*\(\s*(["'`])/gu;
+const META_URL = /^\s*,\s*import\.meta\.url\b/;
 
 /**
  * `{ type A, type B as C }` and nothing else: every specifier is erased. `{ type }` imports a
@@ -196,6 +207,7 @@ function extractJs(ctx: Ctx, start: number, end: number): void {
     const spec = stringAt(ctx, lastPos(m));
     if (spec === undefined) return;
     const imp = add(ctx, spec, "import", m.index, !!m[1] || allTypeSpecifiers(m[2]!));
+    if (imp) imp.reexport = true;
     if (ctx.names) addNames(imp, importedNames(m[2]!));
   });
   each(ctx, JS_DYNAMIC, start, end, (m) => {
@@ -205,6 +217,13 @@ function extractJs(ctx: Ctx, start: number, end: number): void {
   each(ctx, JS_REQUIRE, start, end, (m) => {
     const spec = stringAt(ctx, lastPos(m));
     if (spec !== undefined) add(ctx, spec, "require", m.index);
+  });
+  each(ctx, JS_NEW_URL, start, end, (m) => {
+    const q = lastPos(m);
+    const spec = stringAt(ctx, q);
+    if (spec === undefined || !/^\.\.?\//.test(spec)) return; // relative to the module only
+    const close = ctx.mask.indexOf(ctx.mask[q]!, q + 1);
+    if (META_URL.test(ctx.mask.slice(close + 1, close + 80))) add(ctx, spec, "reference", m.index);
   });
   // Triple-slash directives live in comments, so they are matched in the original text and
   // kept only where the mask confirms a comment (not a string that happens to contain one).

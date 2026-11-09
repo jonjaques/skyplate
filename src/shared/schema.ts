@@ -15,9 +15,15 @@
  */
 
 /**
- * Bumped when the report's shape changes. 2: Layouts lost the barred-spiral tree (`tree`,
- * `dirCenters`, `dirRadius`) when the viewer began computing the cosmic web itself, and
- * `radius` became the graph's alone.
+ * Bumped when the report's shape changes in a way an older reader would misread. 2: Layouts
+ * lost the barred-spiral tree (`tree`, `dirCenters`, `dirRadius`) when the viewer began
+ * computing the cosmic web itself, and `radius` became the graph's alone.
+ *
+ * Optional fields added since leave it alone (EdgeTable.typeOnly, GraphSummary.typeLoops,
+ * GitSummary.sweepFiles, CommitTable.width, FileRecord.entry, FileRecord.publicApi): a
+ * report written before one simply lacks it, and every reader treats it as absent. A viewer
+ * always reads the data it shipped with; the bump exists for readers of other reports, such
+ * as the MCP server's report-folder mode, which refuses versions it does not know.
  */
 export const SCHEMA_VERSION = 2 as const;
 
@@ -259,7 +265,35 @@ export interface FileRecord {
   src: number;
   /** Relative URL (from the report root) of a copied asset, e.g. images for preview. */
   asset?: string;
+  /**
+   * Something outside the import graph runs or loads this file, and the repository says so
+   * (src/core/entries.ts): a package.json main / bin / exports target, a file a script runs,
+   * a knip `entry`, a tool config found by its name, or a `.d.ts` the compiler loads for the
+   * whole program. A file nothing imports is dead unless
+   * it is one of these. Absent for every other file.
+   */
+  entry?: EntrySource;
+  /**
+   * Its exports are a published package's API: it is the entry of a package.json without
+   * `"private": true` (main / module / exports), or such an entry re-exports it (`export …
+   * from`, followed through). An export here nothing in the repository uses may still be used
+   * by the package's consumers, so it is not dead. Absent for every other file.
+   */
+  publicApi?: true;
 }
+
+/** Who declares a file an entry point (FileRecord.entry). */
+export type EntrySource =
+  | "package main"
+  | "package bin"
+  | "package exports"
+  | "package script"
+  | "knip entry"
+  | "workflow step"
+  | "agent hook"
+  | "t3 script"
+  | "tool config"
+  | "type declarations";
 
 // ─── Dependencies ────────────────────────────────────────────────────────────────────────────
 
@@ -270,6 +304,14 @@ export interface EdgeTable {
   from: number[];
   to: number[];
   kind: EdgeKind[];
+  /**
+   * Rows (ascending indices into the columns above) where every import between the two files
+   * is erased by the compiler: `import type`, `import { type A }` with every specifier typed,
+   * `export type … from`. Real coupling, counted in fan-in/out, rank and modules, but nothing
+   * runs, so these edges close no cycle (GraphSummary.cycles leaves them out). Omitted when
+   * there are none.
+   */
+  typeOnly?: number[];
 }
 
 export interface ExternalDependency {
@@ -298,6 +340,11 @@ export interface Manifest {
   dependencies: number;
 }
 
+/**
+ * An import cycle at runtime: a strongly connected component of the code graph without its
+ * type-only edges (EdgeTable.typeOnly). A loop that only `import type` closes is erased before
+ * anything runs, so it cannot break evaluation order and is not listed.
+ */
 export interface Cycle {
   id: number;
   /** File ids in the strongly connected component, sorted by rank descending. */
@@ -313,6 +360,13 @@ export interface GraphSummary {
   external: number;
   unresolved: number;
   cycles: Cycle[];
+  /**
+   * Loops that type-only edges close (EdgeTable.typeOnly): strongly connected components of the
+   * code graph with those edges in that are not exactly one of `cycles`. No evaluation order
+   * breaks, but the files of one are understood together. File ids sorted by rank, largest
+   * loop first. Omitted when there are none.
+   */
+  typeLoops?: number[][];
   /**
    * Directory-level coupling, Robert C. Martin style, for directories at the report's module
    * depth (see `moduleDepth`). Ca = afferent (incoming), Ce = efferent (outgoing).
@@ -365,6 +419,8 @@ export interface CommitTable {
   added: number[];
   deleted: number[];
   files: number[][];
+  /** Original touched-path count, including deleted and excluded paths. Absent in older reports. */
+  width?: number[];
   /** First line of the message, truncated to 120 chars. */
   subject: string[];
   /** Conventional-commit type when the subject follows `type(scope): …`, else "". */
@@ -407,6 +463,14 @@ export interface GitSummary {
    */
   languageChurn: { months: number[]; series: Record<string, number[]> };
   coupling: CouplingPair[];
+  /**
+   * Commits touching more files than this (deleted ones included) were sweeps and left out of
+   * `coupling`: the repository's own 90th-percentile commit width, but never under 30 or over
+   * 100. A fixed 30 suits merge-commit histories; in a squash-merge repository a quarter of the
+   * commits are ordinary pull requests wider than that. Absent in reports written before it was
+   * recorded, which used 30.
+   */
+  sweepFiles?: number;
   /**
    * Truck factor (Avelino et al. 2016, greedy): the fewest authors whose departure leaves more
    * than half the files without an active owner. `authors` lists them in removal order.

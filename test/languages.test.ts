@@ -728,6 +728,14 @@ describe("detectFile flags", () => {
     expect(detect("Pods/Target Support Files/Pods-App/Pods-App-umbrella.h", "#import <UIKit/UIKit.h>\n").vendored).toBe(true);
     expect(detect("src/pods/list.ts", "export {}\n").vendored).toBe(false); // Kubernetes pods, say
   });
+
+  test("agent skill libraries under a dot-directory are vendored; a skills repository is not", () => {
+    expect(detect(".claude/skills/webgpu/templates/scene.js", "export const scene = 1;\n").vendored).toBe(true);
+    expect(detect(".agents/skills/tool/SKILL.md", "# Tool\n").vendored).toBe(true);
+    expect(detect("apps/web/.codex/skills/x/run.ts", "export {}\n").vendored).toBe(true);
+    expect(detect("skills/tool/SKILL.md", "# Tool\n").vendored).toBe(false);
+    expect(detect(".claude/settings.json", "{}\n").vendored).toBe(false);
+  });
 });
 
 // ─── Linguist samples (opt-in) ───────────────────────────────────────────────────────────────
