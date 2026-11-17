@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { PARAMS, TOOLS } from "../src/core/bench/privacy";
-import { parseHunks } from "../src/mcp/changes";
+import { parseHunks, workingTreeChanges } from "../src/mcp/changes";
 import { changeImpact, locateCode, mapCodebase } from "../src/mcp/query";
 import { createServer } from "../src/mcp/server";
 import { Workspace } from "../src/mcp/workspace";
@@ -165,11 +165,27 @@ test("an unknown argument is an error that names the real ones, not a silently d
 test("symbol pages through reference locations", async () => {
   const sites = (r: any) => r.references.byFile.flatMap((f: any) => f.at.map((at: string) => `${f.path}:${at}`));
   const all = await call("symbol", { name: "renderInvoice" });
-  const rest = await call("symbol", { name: "renderInvoice", references_offset: 2 });
+  const rest = await call("symbol", { name: "renderInvoice", offset: 2 });
   expect(all.references.stored).toBeGreaterThan(2);
   expect(rest.references.offset).toBe(2);
   expect(sites(rest)).toEqual(sites(all).slice(2));
   expect(rest.references.nextOffset).toBeUndefined();
+});
+
+test("every list an answer cuts pages with offset and says where the next page starts", async () => {
+  const first = await call("history", { view: "commits", limit: 3 });
+  expect(first.more).toBeGreaterThan(0);
+  expect(first.nextOffset).toBe(3);
+  const second = await call("history", { view: "commits", limit: 3, offset: first.nextOffset });
+  expect(second.offset).toBe(3);
+  expect(second.commits.map((c: any) => c.hash)).not.toContain(first.commits[0].hash);
+  const deps = await call("graph", { view: "dependents", path: "src/billing/invoice.ts", limit: 1 });
+  expect(deps.nextOffset).toBe(1);
+  const rest = await call("graph", { view: "dependents", path: "src/billing/invoice.ts", limit: 10, offset: 1 });
+  expect(rest.files.length).toBe(deps.total - 1);
+  expect(rest.nextOffset).toBeUndefined();
+  const pkgs = await call("dependencies", { limit: 1, offset: 0 });
+  expect(pkgs.dependencies).toHaveLength(1);
 });
 
 test("parseHunks reads added, rewritten and removed line ranges per file", () => {
@@ -177,6 +193,61 @@ test("parseHunks reads added, rewritten and removed line ranges per file", () =>
   const ranges = parseHunks(diff);
   expect(ranges.get("src/a.ts")).toEqual([[3, 4], [11, 11]]);
   expect(ranges.has("old.ts")).toBe(false);
+  // An added line that reads "++ b/spoof.ts" arrives as "+++ b/spoof.ts": it is content of the
+  // hunk, not the next file's header, so the second hunk still belongs to src/a.ts.
+  const spoof = ["--- a/src/a.ts", "+++ b/src/a.ts", "@@ -1,0 +2,2 @@", "+const t = `", "+++ b/spoof.ts", "@@ -9 +10 @@", "-old", "+new"].join("\n");
+  const read = parseHunks(spoof);
+  expect([...read.keys()]).toEqual(["src/a.ts"]);
+  expect(read.get("src/a.ts")).toEqual([[2, 3], [10, 10]]);
+});
+
+test("reading the working tree never runs a diff driver the repository names", async () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "skyplate-textconv-")));
+  const marker = join(dir, "..", `${dir.split("/").pop()}-ran`);
+  const sh = (...args: string[]) => {
+    const r = Bun.spawnSync(["git", ...args], { cwd: dir, env: { PATH: process.env.PATH!, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", GIT_AUTHOR_NAME: "Ada", GIT_AUTHOR_EMAIL: "ada@example.com", GIT_COMMITTER_NAME: "Ada", GIT_COMMITTER_EMAIL: "ada@example.com" }, stdout: "pipe", stderr: "pipe" });
+    if (r.exitCode) throw new Error(r.stderr.toString());
+  };
+  try {
+    writeFileSync(join(dir, "a.ts"), "export const a = 1;\n");
+    sh("init", "-q", "-b", "main");
+    sh("add", "-A");
+    sh("commit", "-qm", "initial");
+    // A checked-in attribute names a driver; a configured driver is a program git would run.
+    writeFileSync(join(dir, ".gitattributes"), "*.ts diff=evil\n");
+    sh("config", "diff.evil.textconv", `touch '${marker}'; cat`);
+    writeFileSync(join(dir, "a.ts"), "export const a = 2;\n");
+    const tree = await workingTreeChanges(dir);
+    expect(tree.files.find((f) => f.path === "a.ts")?.ranges).toEqual([[1, 1]]);
+    expect(existsSync(marker)).toBe(false);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+    rmSync(marker, { force: true });
+  }
+});
+
+test("a working-tree review keeps a changed class with its changed method, and names a new file's declarations", async () => {
+  const dir = join(TMP, "shapes");
+  mkdirSync(join(dir, "src"), { recursive: true });
+  writeFileSync(join(dir, "package.json"), JSON.stringify({ name: "shapes", private: true }));
+  writeFileSync(join(dir, "tsconfig.json"), JSON.stringify({ compilerOptions: { strict: true }, include: ["src"] }));
+  writeFileSync(join(dir, "src/shape.ts"), "export class Shape {\n  area() { return 1; }\n}\nexport function make() { return new Shape(); }\n");
+  writeFileSync(join(dir, "src/added.ts"), "export function added() { return 1; }\n");
+  await call("open", { path: dir, watch: false, wait_seconds: 120 });
+  const snap = ws.resolve(dir).snapshot!;
+  const S = await snap.symbols();
+  const review = (files: any[]) => changeImpact(snap.report, S, { workingTree: { files, deleted: [] } }) as any;
+  const names = (r: any) => r.workingTree.changedSymbols.rows.map((x: any) => x.name).sort();
+  // `class Shape` became `abstract class Shape` in the same hunk as an edit to area().
+  const both = review([{ path: "src/shape.ts", status: "modified", ranges: [[1, 2]] }]);
+  expect(names(both)).toEqual(["Shape", "Shape.area"]);
+  expect(both.compilerUsers.rows).toContainEqual(expect.objectContaining({ name: "make" }));
+  // Only the method's own line: the class gives way to it.
+  expect(names(review([{ path: "src/shape.ts", status: "modified", ranges: [[2, 2]] }]))).toEqual(["Shape.area"]);
+  // A new file has no ranges and is changed throughout.
+  const fresh = review([{ path: "src/added.ts", status: "added" }]);
+  expect(names(fresh)).toEqual(["added"]);
+  expect(fresh.workingTree.changedSymbols.count).toBe(1);
 });
 
 test("change_impact reviews the uncommitted diff: changed declarations, their users, what is missing", async () => {
@@ -269,6 +340,8 @@ test("benchmark writes an anonymous file that includes how this session used the
     // An argument the tool does not take: rejected before any handler, and still counted, once.
     expect((await ask("seams", { path: "src/billing" })).isError).toBe(true);
     expect((await ask("symbol", { name: "noSuchSymbolAnywhere" })).isError).toBe(true);
+    expect((await ask("locate_code", {})).isError).toBe(true);
+    expect((await ask("map_codebase", { depth: -1 })).isError).toBe(true);
     const r = await ask("benchmark", { out, wait_seconds: 120 });
     expect(r.isError).toBeFalsy();
     const result = (r.structuredContent as { data: any }).data.result;
@@ -286,7 +359,11 @@ test("benchmark writes an anonymous file that includes how this session used the
     expect(call("locate_code").parameters).toContainEqual({ code: "query", value: 1 });
     expect(call("change_impact").errors).toContainEqual({ code: "none", value: 1 });
     expect(call("seams").errors).toEqual([{ code: "invalid_parameters", value: 1 }]);
-    expect(call("seams").parameters).toEqual([{ code: "unknown_parameter", value: 1 }]);
+    expect(call("seams").parameters).toContainEqual({ code: "unknown_parameter", value: 1 });
+    expect(call("seams").parameters).not.toContainEqual(expect.objectContaining({ code: "path" }));
+    // Rejected before any handler ran: a missing argument and a value below its minimum count too.
+    expect(call("locate_code").errors).toContainEqual({ code: "invalid_parameters", value: 1 });
+    expect(call("map_codebase").errors).toContainEqual({ code: "invalid_parameters", value: 1 });
     expect(call("symbol").errors).toContainEqual({ code: "query_error", value: 1 });
     expect(session.transitions).toContainEqual({ previous: "locate_code", next: "change_impact", count: 1 });
     expect(md).toContain("| locate_code |");

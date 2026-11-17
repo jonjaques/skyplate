@@ -36,9 +36,8 @@ are stable: a fixed defect keeps its number and moves to [Fixed](#fixed).
 | [S8](#s8) | An extensionless local `#include <header>` is called a system header | medium | S | proposed for 0.3.0 |
 | [S9](#s9) | Rust uses written `crate_name::item` without a `use` are not seen | medium | M | open |
 | [M3](#m3) | Owners in a shallow clone are the snapshot's author | medium | S | mitigated |
-| [M4](#m4) | `history`, `dependencies` and `graph` cannot page past their limit | medium | S | proposed for 0.3.0 |
 
-Fixed in 0.3.0: [T3](#t3), [T5](#t5), [M1](#m1), [M2](#m2).
+Fixed in 0.3.0: [T3](#t3), [T5](#t5), [M1](#m1), [M2](#m2), [M4](#m4).
 
 "Proposed for 0.3.0" is a recommendation: these are small, and each is a case where an agent
 acts on a wrong answer. The release scope is in [README.md](README.md#030).
@@ -355,21 +354,6 @@ Mitigated in 0.3.0.
 - **Done when.** A depth-limited fixture gives no owner for lines that only the boundary commit
   touched.
 
-### M4
-
-**`history`, `dependencies` and `graph` cannot page past their limit.** Severity medium. Size S.
-Proposed for 0.3.0.
-
-- **What an agent sees.** A `more` count with no way to reach the rest: these tools take no
-  `offset`, and `limit` stops at 500. A cycle lists 15 members and the number left over. `files`,
-  `seams`, `seam` and `symbol` page; these do not.
-- **Where.** The `history`, `dependencies` and `graph` registrations in `src/mcp/server.ts` and
-  the cycle rows in `src/mcp/query.ts`.
-- **Fix.** An `offset` on each (and on cycle members) that returns the next offset, as `symbol`
-  does for references since 0.3.0. Add the new parameter to `PARAMS` in
-  `src/core/bench/privacy.ts`.
-- **Done when.** Every list in every answer can be read to its end.
-
 ## Fixed
 
 ### T3
@@ -382,7 +366,7 @@ walks the whole base chain with a cycle guard (tests: chain, loop, diamond in
 ### T5
 
 **`symbol` returned at most 2,500 reference locations and could not page.** Fixed in 0.3.0.
-`references_offset` pages through every site and the answer returns `nextOffset`; the
+`offset` pages through every site and the answer returns `nextOffset`; the
 [3,000-site fixture](../../evals/typescript/fixtures/pagination/x.ts) now returns all 3,000 in two pages. The `offset`
 an agent tried was dropped silently, which is M1.
 
@@ -396,3 +380,12 @@ strict, and an unknown argument is an error that lists the arguments the tool ta
 
 **`map_codebase` rejected `depth: 0` and a small `token_budget`.** Fixed in 0.3.0, found by
 agents in the adoption runs. Both are accepted, with a budget down to 100 tokens.
+
+### M4
+
+**`history`, `dependencies` and `graph` could not page past their limit.** Fixed in 0.3.0. They
+returned a `more` count with no way to reach the rest, and `limit` stops at 500. Every list an
+answer cuts now pages the same way, with `offset` in and `nextOffset` out, in every tool
+(`symbol`'s reference locations included, so `references_offset` is gone), and a cycles answer
+that holds one cycle lists all its members. Lists inside a single row, such as the 15 members
+per cycle in a list of many, are still capped; narrow with `path` to read one in full.

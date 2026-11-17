@@ -45,7 +45,7 @@ export const PARAMS = [
   ...["author", "category", "content", "depth", "dir", "ecosystem", "end_line", "exclude", "exported", "files_per_finding", "filter", "flag", "git", "id"],
   ...["impact_depth", "include_generated", "include_ignored", "include_tests", "include_type_only", "include_vendored", "job", "json", "kind", "language"],
   ...["limit", "max_commits", "max_source_file", "max_source_total", "min_files", "name", "offset", "open_browser", "out", "owner", "path", "paths", "port"],
-  ...["project", "query", "reanalyze", "redact_paths", "references", "references_offset", "refresh", "runtime_only", "scope", "serve", "severity", "since"],
+  ...["project", "query", "reanalyze", "redact_paths", "references", "refresh", "runtime_only", "scope", "serve", "severity", "since"],
   ...["skeleton", "sort", "source", "start_line", "stop", "symbols", "to", "token_budget", "ts_max_files", "type", "until", "unused_exports", "unused_kind"],
   ...["view", "wait_seconds", "watch", "weeks", "working_tree", "unknown_parameter"],
 ] as const;

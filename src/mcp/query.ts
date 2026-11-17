@@ -166,6 +166,17 @@ const nonEmpty = <T,>(rows: T[]): T[] | undefined => (rows.length ? rows : undef
 const neighbors = (adj: Adjacency, node: number): number[] => Array.from(adj.targets.subarray(adj.offsets[node]!, adj.offsets[node + 1]!));
 const degree = (adj: Adjacency, node: number): number => adj.offsets[node + 1]! - adj.offsets[node]!;
 
+/**
+ * One page of a list an answer can cut, the same shape in every tool: the rows from `offset`, how
+ * many are left after them, and the `nextOffset` that reads the next page. An agent that sees
+ * `more` always has a way to the end (docs/roadmap/defects.md, M4).
+ */
+function page<T>(rows: readonly T[], offset: number | undefined, limit: number) {
+  const from = offset ?? 0;
+  const left = rows.length - from - limit;
+  return { offset: from || undefined, rows: rows.slice(from, from + limit), more: left > 0 ? left : undefined, nextOffset: left > 0 ? from + limit : undefined };
+}
+
 interface SymIndex {
   /** Reference rows per symbol, in table order (by file, then position). */
   refsOf: Adjacency;
@@ -612,12 +623,14 @@ export function files(report: Report, q: FilesQuery) {
     const key = SORT_KEY[q.sort];
     order.sort((a, b) => key(report.files[b]!) - key(report.files[a]!) || a - b);
   }
+  const p = page(order, offset, limit);
   return {
     matched: order.length,
     hiddenGeneratedOrVendored: hidden || undefined,
-    offset: offset || undefined,
-    files: order.slice(offset, offset + limit).map((id) => fileRow(report, report.files[id]!)),
-    more: order.length > offset + limit ? order.length - offset - limit : undefined,
+    offset: p.offset,
+    files: p.rows.map((id) => fileRow(report, report.files[id]!)),
+    more: p.more,
+    nextOffset: p.nextOffset,
   };
 }
 
@@ -856,13 +869,14 @@ export function searchSymbols(report: Report, Sx: CodeSymbols | undefined, q: Sy
     const all = searchSymbols(report, S, { ...q, unusedKind: undefined, unusedExports: true, limit: 1, offset: 0 }).unusedExports!;
     tally.splice(0, 4, all.unreferenced!, all["used-in-own-file"]!, all["entry-export"]!, all["public-api"]!);
   } else if (nowhere) for (const s of order) tally[kindOf(s)]!++;
+  const pg = page(order, q.offset, limit);
   return {
     matched: order.length,
     // Named after the row flags: `unreferenced`, `used-in-own-file` (rows carry no flag),
     // `entry-export`, `public-api`.
     unusedExports: nowhere ? { unreferenced: tally[0], "used-in-own-file": tally[1], "entry-export": tally[2], "public-api": tally[3] } : undefined,
     offset: q.offset || undefined,
-    symbols: order.slice(q.offset ?? 0, (q.offset ?? 0) + limit).map((s) => {
+    symbols: pg.rows.map((s) => {
       const row = symbolRow(report, S, ix, s);
       if (!nowhere) return row;
       const k = kindOf(s);
@@ -871,7 +885,8 @@ export function searchSymbols(report: Report, Sx: CodeSymbols | undefined, q: Sy
       const doc = t.doc[s] ? clip(t.doc[s]!, 200) : undefined;
       return k === 1 ? { ...row, doc } : { ...row, doc, flags: [...(row.flags ?? []), (["unreferenced", "", "entry-export", "public-api"] as const)[k]] };
     }),
-    more: order.length > (q.offset ?? 0) + limit ? order.length - (q.offset ?? 0) - limit : undefined,
+    more: pg.more,
+    nextOffset: pg.nextOffset,
   };
 }
 
@@ -1087,7 +1102,7 @@ function walk(adj: Adjacency, start: Iterable<number>, depth: number, accept?: (
   return seen;
 }
 
-export function graph(report: Report, q: { view: GraphView; path?: string; to?: string; depth?: number; limit?: number; includeTypeOnly?: boolean; runtimeOnly?: boolean }) {
+export function graph(report: Report, q: { view: GraphView; path?: string; to?: string; depth?: number; limit?: number; offset?: number; includeTypeOnly?: boolean; runtimeOnly?: boolean }) {
   const ix = index(report);
   const limit = q.limit ?? 40;
   const runtime = (from: number, to: number) => !ix.typeOnly.has(from * report.files.length + to);
@@ -1101,6 +1116,7 @@ export function graph(report: Report, q: { view: GraphView; path?: string; to?: 
       const reach = walk(q.view === "dependents" ? ix.importedBy : ix.imports, start, depth, accept);
       for (const s of start) reach.delete(s);
       const rows = [...reach].sort((a, b) => a[1] - b[1] || a[0] - b[0]);
+      const p = page(rows, q.offset, limit);
       return {
         view: q.view,
         from: q.path,
@@ -1108,8 +1124,10 @@ export function graph(report: Report, q: { view: GraphView; path?: string; to?: 
         runtimeOnly: q.runtimeOnly || undefined,
         total: rows.length,
         byDepth: Array.from({ length: depth }, (_, i) => rows.filter(([, d]) => d === i + 1).length),
-        files: rows.slice(0, limit).map(([f, d]) => ({ path: report.files[f]!.path, depth: d })),
-        more: rows.length > limit ? rows.length - limit : undefined,
+        offset: p.offset,
+        files: p.rows.map(([f, d]) => ({ path: report.files[f]!.path, depth: d })),
+        more: p.more,
+        nextOffset: p.nextOffset,
       };
     }
     case "path": {
@@ -1153,11 +1171,18 @@ export function graph(report: Report, q: { view: GraphView; path?: string; to?: 
       // Loops the type-only edges close: components over every code edge that are not one of
       // the runtime cycles above. Breaking one means moving a type, not reordering a module.
       const typed = typeLoops(report).filter((comp) => !only || comp.some((f) => only.has(f)));
+      const p = page(rows, q.offset, limit);
+      // A cycle's members are listed in full when the answer holds one cycle (path narrows to
+      // it, or limit is 1); in a list of many, 15 each keeps the list readable.
+      const members = p.rows.length === 1 ? Infinity : 15;
       return {
         view: "cycles",
         // Runtime cycles: what breaks evaluation order. Type-only imports close none of these.
         total: rows.length,
-        cycles: rows.slice(0, limit).map((c) => ({ size: c.files.length, files: c.files.slice(0, 15).map((f) => report.files[f]!.path), more: c.files.length > 15 ? c.files.length - 15 : undefined })),
+        offset: p.offset,
+        cycles: p.rows.map((c) => ({ size: c.files.length, files: c.files.slice(0, members).map((f) => report.files[f]!.path), more: c.files.length > members ? c.files.length - members : undefined })),
+        more: p.more,
+        nextOffset: p.nextOffset,
         typeOnlyLoops: typed.length || undefined,
         typeOnly: q.includeTypeOnly && typed.length
           ? typed.slice(0, limit).map((comp) => {
@@ -1241,6 +1266,7 @@ export interface HistoryQuery {
   type?: string;
   weeks?: number;
   limit?: number;
+  offset?: number;
 }
 
 export function history(report: Report, q: HistoryQuery) {
@@ -1282,7 +1308,8 @@ export function history(report: Report, q: HistoryQuery) {
         .filter((a) => !authorIds || authorIds.has(a.id))
         .sort((a, b) => b.commits - a.commits || a.id - b.id)
         .map((a) => ({ name: a.name, email: a.email, commits: a.commits, added: a.added, deleted: a.deleted, owns: a.owned, first: day(a.first), last: day(a.last), bot: a.bot || undefined }));
-      return { view: "authors", total: rows.length, authors: rows.slice(0, limit), more: rows.length > limit ? rows.length - limit : undefined };
+      const p = page(rows, q.offset, limit);
+      return { view: "authors", total: rows.length, offset: p.offset, authors: p.rows, more: p.more, nextOffset: p.nextOffset };
     }
     case "commits": {
       const since = q.since ? parseSince(q.since) : -Infinity;
@@ -1298,26 +1325,32 @@ export function history(report: Report, q: HistoryQuery) {
         if (inPath && !c.files[r]!.some((f) => inPath.has(f))) continue;
         rows.push(r);
       }
+      const p = page(rows, q.offset, limit);
       return {
         view: "commits",
         total: rows.length,
-        commits: rows.slice(0, limit).map((r) => {
+        offset: p.offset,
+        commits: p.rows.map((r) => {
           const row = commitRow(report, r);
           return inPath ? { ...row, touched: c.files[r]!.filter((f) => inPath.has(f)).slice(0, 5).map((f) => report.files[f]!.path) } : row;
         }),
-        more: rows.length > limit ? rows.length - limit : undefined,
+        more: p.more,
+        nextOffset: p.nextOffset,
       };
     }
     case "coupling": {
       let pairs: CouplingPair[] = git.coupling;
       if (inPath) pairs = pairs.filter((p) => inPath.has(p.a) || inPath.has(p.b));
       pairs = [...pairs].sort((a, b) => b.degree - a.degree || b.shared - a.shared);
+      const pg = page(pairs, q.offset, limit);
       return {
         view: "coupling",
         // degree = commits touching both / commits of the less-changed file.
         total: pairs.length,
-        pairs: pairs.slice(0, limit).map((p) => ({ a: report.files[p.a]!.path, b: report.files[p.b]!.path, shared: p.shared, degree: round(p.degree) })),
-        more: pairs.length > limit ? pairs.length - limit : undefined,
+        offset: pg.offset,
+        pairs: pg.rows.map((p) => ({ a: report.files[p.a]!.path, b: report.files[p.b]!.path, shared: p.shared, degree: round(p.degree) })),
+        more: pg.more,
+        nextOffset: pg.nextOffset,
       };
     }
     case "activity": {
@@ -1790,6 +1823,7 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
   const sort = q.sort ?? (git ? "hotspot" : "code");
   // A directory split for review keeps its slot for its own files; with none, it is not a module.
   const ordered = [...rows].filter(([, r]) => r.files + r.testFiles > 0).sort((a, b) => key[sort](b[1]) - key[sort](a[1]) || a[0] - b[0]);
+  const pg = page(ordered, offset, limit);
   return {
     modules: ordered.length,
     partition:
@@ -1798,7 +1832,7 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
         : "the analyzer's modules (package roots kept whole), with any module over a quarter of the code split into its subdirectories",
     sortedBy: sort,
     offset: offset || undefined,
-    rows: ordered.slice(offset, offset + limit).map(([d, r]) => ({
+    rows: pg.rows.map(([d, r]) => ({
       module: report.dirs[d]!.path || "(root)",
       selector: { path: report.dirs[d]!.path || ".", scope: "module" as const, depth: q.depth },
       files: r.files,
@@ -1833,7 +1867,8 @@ export function seams(report: Report, S: CodeSymbols | undefined, q: { depth?: n
             ...(S ? {} : { interface: "no code intelligence: only TypeScript and JavaScript are analyzed by the compiler, and none was here (or the pass was skipped)" }),
             ...(git ? {} : { commits: "no git history (not a repository, or analyzed with --no-git)" }),
           },
-    more: ordered.length > offset + limit ? ordered.length - offset - limit : undefined,
+    more: pg.more,
+    nextOffset: pg.nextOffset,
     legend: {
       hotspotMass: "sum of the module's file hotspot scores (each 0-1); the sort key for hotspot",
       interface: "symbols declared here that code outside uses, directly or through their members",
@@ -1956,6 +1991,7 @@ export function seam(report: Report, S: CodeSymbols | undefined, raw: string, op
     // Every list below is present whenever code intelligence ran, empty when nothing qualified,
     // so "none" and "not measured" read differently (an agent checking that cyclesAcross was
     // empty after a refactor could not tell the two apart when empty lists were left out).
+    const ifacePage = page(iface, opts.offset, max);
     symbolsPart = {
       interface: {
         symbols: iface.length,
@@ -1964,7 +2000,7 @@ export function seam(report: Report, S: CodeSymbols | undefined, raw: string, op
         callers: callers.size,
         files: outsideFiles.size,
         offset: opts.offset || undefined,
-        rows: iface.slice(opts.offset ?? 0, (opts.offset ?? 0) + max).map((s) => {
+        rows: ifacePage.rows.map((s) => {
           const u = uses.get(s);
           const members = viaMembers(s);
           return {
@@ -1981,7 +2017,8 @@ export function seam(report: Report, S: CodeSymbols | undefined, raw: string, op
             complexity: t.complexity[s] || undefined,
           };
         }),
-        more: iface.length > (opts.offset ?? 0) + max ? iface.length - (opts.offset ?? 0) - max : undefined,
+        more: ifacePage.more,
+        nextOffset: ifacePage.nextOffset,
       },
       couldHide: capped(couldHide.map((s) => ({ id: s, name: sx.qualified[s], at: symbolAt(report, S, s), insideUses: uses.get(s)!.inside }))),
       externalExports: capped(of("external").map((s) => ({ id: s, name: sx.qualified[s], at: symbolAt(report, S, s), reason: report.files[t.file[s]!]!.publicApi ? "public-api" : "entry-export" }))),
@@ -2102,7 +2139,7 @@ export const isBuiltin = (ecosystem: string): boolean => ecosystem === "node" ||
 /** References that name their own source (a Dockerfile's FROM image, a URL import): undeclared by definition. */
 const SELF_DECLARED = new Set(["docker", "url"]);
 
-export function dependencies(report: Report, q: { ecosystem?: string; scope?: string; filter?: "unused" | "undeclared" | "builtin"; query?: string; limit?: number }) {
+export function dependencies(report: Report, q: { ecosystem?: string; scope?: string; filter?: "unused" | "undeclared" | "builtin"; query?: string; limit?: number; offset?: number }) {
   const limit = q.limit ?? 50;
   const needle = q.query?.toLowerCase();
   const rows = report.externals
@@ -2118,13 +2155,16 @@ export function dependencies(report: Report, q: { ecosystem?: string; scope?: st
     .sort((a, b) => b.importers - a.importers || a.name.localeCompare(b.name));
   const ecosystems = new Map<string, number>();
   for (const d of report.externals) ecosystems.set(d.ecosystem, (ecosystems.get(d.ecosystem) ?? 0) + 1);
+  const pg = page(rows, q.offset, limit);
   return {
     ecosystems: Object.fromEntries(ecosystems),
     builtins: report.externals.filter((d) => isBuiltin(d.ecosystem)).length || undefined,
     manifests: report.manifests.map((m) => ({ path: m.path, kind: m.kind, name: m.name, version: m.version, dependencies: m.dependencies })),
     matched: rows.length,
-    dependencies: rows.slice(0, limit).map((d) => ({ name: d.name, ecosystem: d.ecosystem, version: d.version, scope: d.scope, importers: d.importers, declaredIn: d.declaredIn.length ? d.declaredIn : undefined })),
-    more: rows.length > limit ? rows.length - limit : undefined,
+    offset: q.offset || undefined,
+    dependencies: pg.rows.map((d) => ({ name: d.name, ecosystem: d.ecosystem, version: d.version, scope: d.scope, importers: d.importers, declaredIn: d.declaredIn.length ? d.declaredIn : undefined })),
+    more: pg.more,
+    nextOffset: pg.nextOffset,
   };
 }
 
@@ -2463,11 +2503,26 @@ export interface ImpactQuery {
  */
 function symbolsInRanges(S: CodeSymbols, ix: SymIndex, file: number, ranges: [number, number][]): number[] {
   const t = S.symbols;
-  const hit = neighbors(ix.inFile, file).filter((s) => t.kind[s] !== "module" && ranges.some(([a, b]) => t.line[s]! + 1 <= b && t.endLine[s]! + 1 >= a));
+  const span = (s: number): [number, number] => [t.line[s]! + 1, t.endLine[s]! + 1];
+  const hit = neighbors(ix.inFile, file).filter((s) => t.kind[s] !== "module" && ranges.some(([a, b]) => span(s)[0] <= b && span(s)[1] >= a));
   const hitSet = new Set(hit);
-  const outer = new Set<number>();
-  for (const s of hit) for (let p = t.parent[s]!; p >= 0; p = t.parent[p]!) if (hitSet.has(p)) outer.add(p);
-  return hit.filter((s) => !outer.has(s));
+  const inner = new Map<number, number[]>();
+  for (const s of hit) for (let p = t.parent[s]!; p >= 0; p = t.parent[p]!) if (hitSet.has(p)) { const list = inner.get(p); if (list) list.push(s); else inner.set(p, [s]); }
+  // An enclosing declaration gives way to the members that changed inside it, unless a changed
+  // line of its own falls outside them: `class A` becoming `abstract class A` in the same hunk
+  // as an edit to `A.run` changes both, and each has its own users.
+  const ownChange = (p: number) => {
+    const [from, to] = span(p);
+    const covered = inner.get(p)!.map(span).sort((x, y) => x[0] - y[0]);
+    for (const [a, b] of ranges) {
+      let line = Math.max(a, from);
+      const end = Math.min(b, to);
+      for (const [c, d] of covered) if (c <= line && d >= line) line = d + 1;
+      if (line <= end) return true;
+    }
+    return false;
+  };
+  return hit.filter((s) => !inner.has(s) || ownChange(s));
 }
 
 /**
@@ -2508,8 +2563,10 @@ export function changeImpact(report: Report, S: CodeSymbols | undefined, q: Impa
       }
       selected.add(f);
       changedFiles.push(f);
-      if (S && sx && c.ranges) changedSymbols.push(...symbolsInRanges(S, sx, f, c.ranges));
-      else whole.add(f);
+      // A file with no ranges (new, untracked, or a name the hunks could not be matched to) is
+      // changed throughout: every declaration in it is a changed one, not just a seed.
+      if (S && sx) changedSymbols.push(...symbolsInRanges(S, sx, f, c.ranges ?? [[1, Number.MAX_SAFE_INTEGER]]));
+      if (!c.ranges) whole.add(f);
     }
     if (!selected.size && !tree.deleted.length && !notAnalyzed.length) throw new QueryError("the working tree has no changes against HEAD; pass paths or symbols for a change you plan");
   }

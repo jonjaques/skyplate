@@ -109,25 +109,26 @@ rates.
   `working_tree: true`, a review of the uncommitted diff), registered first. Instructions,
   descriptions and the three skills lead with the moment, not the data.
 - **Strict arguments.** An argument a tool does not take is an error that names the ones it
-  does ([M1](defects.md#m1)).
+  does ([M1](defects.md#m1)), and every rejected call is counted in the benchmark.
+- **One way to page.** Every list an answer cuts takes `offset` and returns `nextOffset`, in
+  every tool ([T5](defects.md#t5), [M4](defects.md#m4)).
 - **A first answer in two steps** ([E2](enhancements.md#e2), first step): the structure pass
   answers while history and symbols run.
 - **`skyplate bench`** and the `benchmark` tool: an anonymous measurement of one analysis, safe
   to hand back from a private repository ([docs/benchmark.md](../benchmark.md)).
 - **Fixed:** [T3](defects.md#t3), [T5](defects.md#t5), [M1](defects.md#m1),
-  [M2](defects.md#m2). **Mitigated:** [M3](defects.md#m3).
+  [M2](defects.md#m2), [M4](defects.md#m4). **Mitigated:** [M3](defects.md#m3).
 - **The studies and their evals** in the repository, so the numbers above can be rerun.
 
 ### Proposed before tagging
 
-Small, and each removes a case where an agent acts on a wrong answer or cannot finish a list:
+Small, and each removes a case where an agent acts on a wrong answer:
 
 | | Item | Size |
 | --- | --- | --- |
 | [T7](defects.md#t7) | Check that declared packages resolve, not that some ancestor has `node_modules` | S |
 | [S3](defects.md#s3) | Python `if TYPE_CHECKING` imports become type-only edges | M |
 | [S2](defects.md#s2) | Mark projected package edges with the members they stand for | S |
-| [M4](defects.md#m4) | `offset` on `history`, `dependencies`, `graph` and cycle members | S |
 | [T9](defects.md#t9) | Complexity stops at nested function boundaries | S |
 | [S8](defects.md#s8) | Extensionless local includes resolve in the repository | S |
 | [E12](enhancements.md#e12) | An issue form for sending a benchmark back | S |

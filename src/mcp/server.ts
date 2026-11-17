@@ -90,6 +90,10 @@ Ask the question first: project accepts an id or directory/report path and auto-
 const project = z.string().optional().describe("Project id or directory/report path; auto-opens paths. Omit for the only open project, or a marked server working directory.");
 const waitSeconds = (n: number) => z.number().min(0).max(600).optional().describe(`Seconds to wait for running work before answering with its state (default ${n})`);
 const limit = (n: number) => z.number().int().min(1).max(500).optional().describe(`Rows to return (default ${n})`);
+// Every list an answer can cut pages the same way: `more` says how many are left and `nextOffset`
+// is the value to pass here. Agents reach for `offset` by that name (they tried it on symbol
+// before it existed), so no tool spells it differently.
+const offset = (rows: string) => z.number().int().min(0).optional().describe(`Skip this many ${rows}: pass a previous answer's nextOffset to read the next page`);
 // The floor is low on purpose: in a measured session an agent asked for 300 and lost a call to
 // a validation error. A small budget cuts rows; it never drops totals or the follow-up.
 const tokenBudget = z.number().int().min(100).max(12000).optional().describe("Approximate response tokens, estimated as characters / 4 (default 1800); cuts rows, preserves totals and next.");
@@ -141,21 +145,40 @@ function overrides(a: AnalysisArgs): AnalysisOverrides | undefined {
  * argument had been honored. An unknown key is an error that names the real ones, which is what
  * lets the caller fix the call instead of trusting a wrong answer.
  *
- * The same moment is recorded as usage. The SDK rejects the call before any handler runs, so
- * this error map is the only place the server sees it, and "agents keep passing `path` to
- * seams" is exactly what a benchmark from the field should be able to say (as a count against
- * the tool: the key itself is the caller's text and is not kept).
+ * The rejection is counted as usage by `countRejections`, with every other argument error.
  */
-function argsFor(usage: ToolRecorder) {
-  return function toolArgs<T extends z.ZodRawShape>(tool: string, shape: T) {
-    const known = Object.keys(shape).join(", ");
-    return z.strictObject(shape, {
-      error: (iss) => {
-        if (iss.code !== "unrecognized_keys") return undefined;
-        usage.record({ tool, durationMs: 0, responseBytes: 0, errorCode: "invalid_parameters", parameterKeys: ["unknown_parameter"] });
-        return `unknown argument ${iss.keys.map((k) => `"${k}"`).join(", ")}; this tool takes: ${known}`;
-      },
-    });
+function toolArgs<T extends z.ZodRawShape>(shape: T) {
+  const known = Object.keys(shape).join(", ");
+  return z.strictObject(shape, {
+    error: (iss) => iss.code === "unrecognized_keys" ? `unknown argument ${iss.keys.map((k) => `"${k}"`).join(", ")}; this tool takes: ${known}` : undefined,
+  });
+}
+
+/**
+ * Count every call the SDK rejects for its arguments: an unknown key, a missing `query`, a
+ * `depth` below its minimum. The SDK validates before any handler runs, so `guarded` never sees
+ * these, and "agents keep passing `path` to seams" or "keep sending depth 0" is exactly what a
+ * benchmark from the field should be able to say. Keys only, as everywhere: a key the tool does
+ * not take is the caller's own text and is recorded as `unknown_parameter`.
+ *
+ * `validateToolInput` is the SDK's one validation step per call, and it is not public API, so
+ * test/mcp-adoption.test.ts fails if an SDK update renames it rather than letting the count
+ * go quietly to zero.
+ */
+function countRejections(server: McpServer, usage: ToolRecorder): void {
+  type Validate = (tool: { inputSchema?: unknown }, args: unknown, name: string) => Promise<unknown>;
+  const sdk = server as unknown as { validateToolInput?: Validate };
+  const validate = sdk.validateToolInput?.bind(server);
+  if (!validate) return;
+  sdk.validateToolInput = async (tool, args, name) => {
+    try {
+      return await validate(tool, args, name);
+    } catch (e) {
+      const shape = (tool.inputSchema as { shape?: Record<string, unknown> } | undefined)?.shape ?? {};
+      const keys = Object.keys(args && typeof args === "object" ? args : {}).map((k) => (Object.hasOwn(shape, k) ? k : "unknown_parameter"));
+      usage.record({ tool: name, durationMs: 0, responseBytes: 0, errorCode: "invalid_parameters", parameterKeys: keys });
+      throw e;
+    }
   };
 }
 
@@ -247,7 +270,7 @@ const seconds = (s: number | undefined, fallback: number) => Math.round((s ?? fa
 export function createServer(ws: Workspace): McpServer {
   const server = new McpServer({ name: "skyplate", version: pkg.version }, { instructions: INSTRUCTIONS });
   const guard = guarded(ws.usage);
-  const toolArgs = argsFor(ws.usage);
+  countRejections(server, ws.usage);
 
   /** Run `fn` against a project's snapshot, or say the analysis is still running. */
   async function answer(
@@ -282,7 +305,7 @@ export function createServer(ws: Workspace): McpServer {
       title: "Which directories matter for this task?",
       description:
         "Before exploring or refactoring, map a repository or subtree several levels deep in one bounded answer: directory size, languages, entry points, used exports, hotspots and git attention. Collapses small branches. Replaces repeated tree/ls listings; read source for behavior.",
-      inputSchema: toolArgs("map_codebase", {
+      inputSchema: toolArgs({
         project,
         path: z.string().optional().describe("Subtree, default root"),
         depth: z.number().int().min(0).max(10).optional().describe("Levels below path (default 3); 0 is the directory alone"),
@@ -303,7 +326,7 @@ export function createServer(ws: Workspace): McpServer {
       title: "Find where a feature lives",
       description:
         'Where is "rate limiting" or "invoice pdf" implemented? One call ranks directories and files by path terms, symbols, doc comments, declared packages and what a text search cannot see: the files touched by commits whose subject mentions the terms. Evidence is given for each match. Also scans bounded source for contents and verified package imports. Literal terms, not embeddings. Excludes secret, generated and vendored files.',
-      inputSchema: toolArgs("locate_code", {
+      inputSchema: toolArgs({
         project,
         query: z.string().min(1).max(300).describe("A concept or a few terms; every term is matched literally"),
         path: z.string().optional().describe("Limit to this directory, file or glob"),
@@ -337,7 +360,7 @@ export function createServer(ws: Workspace): McpServer {
       title: "What can this change reach, and what did my edits touch?",
       description:
         "Before a rename, move, deletion or refactor, get a blast radius briefing for files and/or symbols in one call instead of a round of searches: dependents and compiler users by module, test candidates, files that usually change together, owners, cycles, public API and hotspot warnings. After editing, pass working_tree: true to review the uncommitted diff before saying done: the declarations it changed, callers and dependents outside it, tests to run, files that usually change with these and are missing from it, exports left unused. Static evidence, not coverage; external/dynamic consumers may be missing.",
-      inputSchema: toolArgs("change_impact", {
+      inputSchema: toolArgs({
         project,
         paths: z.array(z.string()).max(100).optional().describe("Files, directories or globs being changed"),
         symbols: z
@@ -369,7 +392,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Choose a project or saved report",
       description: "Choose a repository or report and get its overview. Live projects are analyzed and watched; reports are read as saved. Use explicit analysis options here, or pass project to a question to open it automatically. Long work returns a job after wait_seconds.",
-      inputSchema: toolArgs("open", {
+      inputSchema: toolArgs({
         path: z.string().describe("Project directory or report folder"),
         reanalyze: z.boolean().optional().describe("Analyze again even if the snapshot looks current"),
         refresh: z
@@ -400,7 +423,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Is the analysis ready?",
       description: "Check open projects, analysis/build jobs and report servers. Pass project or job to wait up to wait_seconds; resume the original question when ready.",
-      inputSchema: toolArgs("status", {
+      inputSchema: toolArgs({
         project: z.string().optional().describe("Project id or path to wait on"),
         job: z.string().optional().describe("Job id to wait on (from open or build_report)"),
         wait_seconds: waitSeconds(LONG_WAIT_S),
@@ -427,7 +450,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Release a project from memory",
       description: "Finished with a repository? Stop watching it and release its analysis. Report servers keep running until serve_report stop.",
-      inputSchema: toolArgs("close", { project }),
+      inputSchema: toolArgs({ project }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     },
     guard("close", async (a) => {
@@ -444,7 +467,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Size up the repository and its risks",
       description: "How large is this repository, and where is risk concentrated? Return size, languages, hotspots, import hubs, cycles, ownership, compiler totals and warnings. Use map_codebase for a directory map.",
-      inputSchema: toolArgs("overview", { project, wait_seconds: waitSeconds(QUERY_WAIT_S) }),
+      inputSchema: toolArgs({ project, wait_seconds: waitSeconds(QUERY_WAIT_S) }),
       annotations: readOnly,
     },
     guard("overview", (a, ctx) => answer(a.project, a.wait_seconds, ctx, (s) => overview(s.report), "structure")),
@@ -455,7 +478,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Find risks worth investigating",
       description: "What deserves attention before a refactor? Return measured findings with evidence paths: hotspots, ownership gaps, cycles, large files, unused exports and duplicates. Findings are leads to inspect, not instructions to delete code.",
-      inputSchema: toolArgs("findings", {
+      inputSchema: toolArgs({
         project,
         severity: z.enum(SEVERITIES).optional().describe("Only this severity and worse (default info: all)"),
         id: z.string().optional().describe("One finding by id"),
@@ -472,7 +495,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Find files by name, size or risk",
       description: "Find and rank files by path, language, owner, complexity, churn, hotspot or imports. Use flags for entry points, cycles and dead-file candidates. Excludes generated/vendor files by default. Use locate_code when you know a concept rather than a filename.",
-      inputSchema: toolArgs("files", {
+      inputSchema: toolArgs({
         project,
         path: z.string().optional().describe('A directory (everything under it), a file, or a glob such as "src/**/*.test.ts"'),
         query: z.string().optional().describe("Fuzzy path search, ranked like the viewer's command palette"),
@@ -487,7 +510,7 @@ export function createServer(ws: Workspace): McpServer {
         include_vendored: z.boolean().optional(),
         sort: z.enum(FILE_SORTS).optional().describe("Largest first; default path order, or relevance with query"),
         limit: limit(30),
-        offset: z.number().int().min(0).optional(),
+        offset: offset("files"),
         wait_seconds: waitSeconds(QUERY_WAIT_S),
       }),
       annotations: readOnly,
@@ -517,7 +540,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Inspect a file and its neighborhood",
       description: "Before editing a known file, get its imports, dependents, symbols, owners, recent commits, co-change, cycles and findings. Use read_source for implementation and change_impact for a combined change briefing.",
-      inputSchema: toolArgs("file", {
+      inputSchema: toolArgs({
         project,
         path: z.string().describe("Repo-relative path (absolute paths under the project root work too)"),
         limit: limit(25),
@@ -533,7 +556,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Inspect a directory and its main files",
       description: "Which files matter inside this directory? Return size, languages, owners, hotspots, hubs, child sizes and module coupling. Use map_codebase for several levels in one bounded answer.",
-      inputSchema: toolArgs("dir", {
+      inputSchema: toolArgs({
         project,
         path: z.string().optional().describe('Repo-relative directory; "" or omitted is the project root'),
         limit: limit(30),
@@ -551,7 +574,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Find declarations or unused exports",
       description: "Find TS/JS symbols by name, path, kind or export/reference status; return ids for symbol. For dead code, unused_exports finds exports with no measured outside-file use; unused_kind separates unreferenced, internal use, entry exports and public API. Check dynamic consumers before deletion.",
-      inputSchema: toolArgs("search_symbols", {
+      inputSchema: toolArgs({
         project,
         query: z.string().optional().describe("Name to search for"),
         kind: z.enum(SYMBOL_KINDS).optional(),
@@ -565,7 +588,7 @@ export function createServer(ws: Workspace): McpServer {
         include_tests: z.boolean().optional().describe("Include symbols declared in test files (default true)"),
         sort: z.enum(SYMBOL_SORTS).optional().describe("Default relevance with query, else refs"),
         limit: limit(30),
-        offset: z.number().int().min(0).optional().describe("Skip this many rows, to page past limit"),
+        offset: offset("symbols"),
         wait_seconds: waitSeconds(QUERY_WAIT_S),
       }),
       annotations: readOnly,
@@ -593,7 +616,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Find callers, references and rename impact",
       description: "Who calls or references this TS/JS declaration, and what would a rename or signature change affect? Compiler-resolved, so unlike a text search it follows import aliases and re-exports and leaves out comments, strings and other symbols with the same name. Return signature, doc, call sites, every reference by file (paged), inheritance, members and callers through base methods. impact_depth follows transitive users. Select by id or exact name narrowed by path/kind.",
-      inputSchema: toolArgs("symbol", {
+      inputSchema: toolArgs({
         project,
         id: z.number().int().min(0).optional().describe("Symbol id from search_symbols or another symbol result"),
         name: z.string().optional().describe('Name, or "Class.member"'),
@@ -601,7 +624,7 @@ export function createServer(ws: Workspace): McpServer {
         kind: z.enum(SYMBOL_KINDS).optional().describe("Narrow a name to a kind"),
         references: z.boolean().optional().describe("List references by file (default true)"),
         impact_depth: z.number().int().min(0).max(6).optional().describe("Also follow callers this many levels out: what a change here can reach (default 0, off)"),
-        references_offset: z.number().int().min(0).optional().describe("Skip this many reference locations: pass a previous answer's references.nextOffset to page through every site"),
+        offset: offset("reference locations (references.nextOffset)"),
         limit: limit(20),
         wait_seconds: waitSeconds(QUERY_WAIT_S),
       }),
@@ -611,7 +634,7 @@ export function createServer(ws: Workspace): McpServer {
       answer(a.project, a.wait_seconds, ctx, async (s) => {
         const S = await s.symbols();
         const id = resolveSymbol(s.report, S, { id: a.id, name: a.name, path: a.path, kind: a.kind });
-        return symbol(s.report, S, id, { limit: a.limit, references: a.references, referencesOffset: a.references_offset, impactDepth: a.impact_depth });
+        return symbol(s.report, S, id, { limit: a.limit, references: a.references, referencesOffset: a.offset, impactDepth: a.impact_depth });
       }),
     ),
   );
@@ -623,12 +646,12 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Find modules worth refactoring",
       description: "Where would a refactor help? Rank modules by hotspot, interface size, tests reaching internals, relays, commit spread, cycles or co-change without a measured import path. No composite quality score. Pass each selector unchanged to seam for the same membership.",
-      inputSchema: toolArgs("seams", {
+      inputSchema: toolArgs({
         project,
         depth: z.number().int().min(1).max(20).optional().describe("Measure directories at this depth instead of the adaptive review modules"),
         sort: z.enum(SEAM_SORTS).optional().describe("Default hotspot (with history), else code"),
         limit: limit(25),
-        offset: z.number().int().min(0).optional().describe("Skip this many module rows, to page past limit"),
+        offset: offset("module rows"),
         wait_seconds: waitSeconds(QUERY_WAIT_S),
       }),
       annotations: readOnly,
@@ -641,13 +664,13 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Measure a module before and after a refactor",
       description: "Is this module hiding complexity behind its interface? Measure implementation, outside users, exports that could be hidden, internal exports, test access, relays, adapters, crossing imports/cycles and co-change. Accepts a seams selector or recursive path. Remeasure the same selector after editing.",
-      inputSchema: toolArgs("seam", {
+      inputSchema: toolArgs({
         project,
         path: z.string().describe("A directory, file or glob; with scope module, the path from a seams row's selector"),
         scope: z.enum(["path", "module"]).optional().describe("Default path expands directories recursively. Module preserves the ranked membership from seams, excluding separately selected children."),
         depth: z.number().int().min(1).max(20).optional().describe("With scope module, the same depth passed to seams; omit for its adaptive review partition"),
         limit: limit(20),
-        offset: z.number().int().min(0).optional().describe("Skip this many interface rows, to page past limit"),
+        offset: offset("interface rows"),
         wait_seconds: waitSeconds(QUERY_WAIT_S),
       }),
       annotations: readOnly,
@@ -662,7 +685,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Trace dependents, import paths or cycles",
       description: "What depends on this code? Follow imports or dependents, find the shortest import path, list cycles, rank hubs or inspect module coupling. Type-only imports count as coupling; runtime_only skips them. cycles lists runtime loops; include_type_only adds type-closed loops.",
-      inputSchema: toolArgs("graph", {
+      inputSchema: toolArgs({
         project,
         view: z.enum(GRAPH_VIEWS),
         path: z.string().optional().describe("The file, directory or glob the view is about (the start, for path)"),
@@ -671,11 +694,12 @@ export function createServer(ws: Workspace): McpServer {
         include_type_only: z.boolean().optional().describe("For cycles: also list loops closed only by type-only imports, with the edges that close them"),
         runtime_only: z.boolean().optional().describe("For dependents, dependencies and path: skip type-only imports (default false, all code imports)"),
         limit: limit(40),
+        offset: offset("files or cycles"),
         wait_seconds: waitSeconds(QUERY_WAIT_S),
       }),
       annotations: readOnly,
     },
-    guard("graph", (a, ctx) => answer(a.project, a.wait_seconds, ctx, (s) => graph(s.report, { view: a.view, path: a.path, to: a.to, depth: a.depth, limit: a.limit, includeTypeOnly: a.include_type_only, runtimeOnly: a.runtime_only }), "structure")),
+    guard("graph", (a, ctx) => answer(a.project, a.wait_seconds, ctx, (s) => graph(s.report, { view: a.view, path: a.path, to: a.to, depth: a.depth, limit: a.limit, offset: a.offset, includeTypeOnly: a.include_type_only, runtimeOnly: a.runtime_only }), "structure")),
   );
 
   server.registerTool(
@@ -683,7 +707,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Find owners and files that change together",
       description: "Who knows this code, why did it change, and what usually changes with it? Query git summary, authors, filtered commit subjects, coupling, weekly activity or ownership. coupling degree is shared commits divided by the less-changed file's commits; it is evidence, not a dependency.",
-      inputSchema: toolArgs("history", {
+      inputSchema: toolArgs({
         project,
         view: z.enum(HISTORY_VIEWS),
         path: z.string().optional().describe("Limit to a file, directory or glob"),
@@ -694,13 +718,14 @@ export function createServer(ws: Workspace): McpServer {
         type: z.string().optional().describe('For commits: conventional-commit type, e.g. "fix"'),
         weeks: z.number().int().min(1).max(520).optional().describe("For activity: weeks to show (default 26)"),
         limit: limit(30),
+        offset: offset("authors, commits or pairs"),
         wait_seconds: waitSeconds(QUERY_WAIT_S),
       }),
       annotations: readOnly,
     },
     guard("history", (a, ctx) =>
       answer(a.project, a.wait_seconds, ctx, (s) =>
-        history(s.report, { view: a.view, path: a.path, author: a.author, since: a.since, until: a.until, query: a.query, type: a.type, weeks: a.weeks, limit: a.limit }),
+        history(s.report, { view: a.view, path: a.path, author: a.author, since: a.since, until: a.until, query: a.query, type: a.type, weeks: a.weeks, limit: a.limit, offset: a.offset }),
       ),
     ),
   );
@@ -710,18 +735,19 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Check external packages and unused dependencies",
       description: "Which external packages are declared or imported? Return manifests and package counts. unused may include CLI tools, type packages and plugins; undeclared excludes runtime built-ins and standard libraries; builtin lists those separately. Inspect scripts before removing a dependency.",
-      inputSchema: toolArgs("dependencies", {
+      inputSchema: toolArgs({
         project,
         ecosystem: z.string().optional().describe('e.g. "npm", "pypi", "go", "cargo"'),
         scope: z.enum(["runtime", "dev", "peer", "optional", "build", "unknown"]).optional(),
         filter: z.enum(["unused", "undeclared", "builtin"]).optional(),
         query: z.string().optional().describe("Package name substring"),
         limit: limit(50),
+        offset: offset("dependencies"),
         wait_seconds: waitSeconds(QUERY_WAIT_S),
       }),
       annotations: readOnly,
     },
-    guard("dependencies", (a, ctx) => answer(a.project, a.wait_seconds, ctx, (s) => dependencies(s.report, { ecosystem: a.ecosystem, scope: a.scope, filter: a.filter, query: a.query, limit: a.limit }), "structure")),
+    guard("dependencies", (a, ctx) => answer(a.project, a.wait_seconds, ctx, (s) => dependencies(s.report, { ecosystem: a.ecosystem, scope: a.scope, filter: a.filter, query: a.query, limit: a.limit, offset: a.offset }), "structure")),
   );
 
   server.registerTool(
@@ -729,7 +755,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Read the implementation at a useful line",
       description: "Read a known file range with line numbers and declarations, avoiding whole-file reads. Live projects read current disk contents; reports return embedded source. Secret files are never shown. At most 400 lines per call.",
-      inputSchema: toolArgs("read_source", {
+      inputSchema: toolArgs({
         project,
         path: z.string(),
         start_line: z.number().int().min(1).optional().describe("First line, 1-based (default 1)"),
@@ -782,7 +808,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "Create a report to share or inspect",
       description: "Need a report for a person? Write the plate, charts, explorer and source reader, reusing current analysis. Defaults to the user cache; explicit out chooses another location and may replace an existing report. Set source false and redact_paths true for sharing. Returns a job after wait_seconds.",
-      inputSchema: toolArgs("build_report", {
+      inputSchema: toolArgs({
         project,
         path: z.string().optional().describe("A project directory to build without opening it"),
         out: z.string().optional().describe("Report folder to write (default: <user cache>/skyplate/reports/<name>-<hash>.skyplate)"),
@@ -821,7 +847,7 @@ export function createServer(ws: Workspace): McpServer {
     {
       title: "View or stop serving a saved report",
       description: "View a built report over localhost HTTP and get its URL; optionally open the browser. dir defaults to the project report or last build. stop ends the named server, or all report servers without dir.",
-      inputSchema: toolArgs("serve_report", {
+      inputSchema: toolArgs({
         project,
         dir: z.string().optional().describe("Report folder to serve"),
         port: z.number().int().min(0).max(65535).optional().describe("Default 4747, or any free port"),
@@ -848,7 +874,7 @@ export function createServer(ws: Workspace): McpServer {
       title: "Write an anonymous benchmark to hand back to Skyplate's maintainers",
       description:
         "Is Skyplate slow, wrong or failing on a repository that cannot be shared? Measure one analysis and write a local JSON and Markdown file holding only numbers and Skyplate's own vocabulary: phase timings, resolution rates, caps that took effect, answer sizes, coded anomalies and this session's tool usage. No path, name, code, author or date. Nothing is uploaded: tell the user where the files are, and let them read benchmark.md and decide whether to share. Analyzes the project again; returns a job after wait_seconds.",
-      inputSchema: toolArgs("benchmark", {
+      inputSchema: toolArgs({
         project,
         out: z.string().optional().describe("A new folder for benchmark.json and benchmark.md (default: <user cache>/skyplate/benchmarks/benchmark-<random>); never inside the project"),
         skeleton: z

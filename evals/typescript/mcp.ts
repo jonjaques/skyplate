@@ -37,7 +37,7 @@ try {
     let offset = 0;
     let returned = 0;
     for (;;) {
-      const page = await call("symbol", { project: root, name: "many", limit: 500, references_offset: offset });
+      const page = await call("symbol", { project: root, name: "many", limit: 500, offset });
       if (page.isError) throw new Error("Reference page failed");
       const refs = page.data?.references as { byFile: { path: string; at: string[] }[]; nextOffset?: number; total: number; stored: number } | undefined;
       if (!refs) throw new Error("No reference locations in symbol answer");

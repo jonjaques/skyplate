@@ -44,7 +44,7 @@ totals survive. Narrow the subtree or raise the budget when useful.
    Compare the same seam selector if an interface changed, then run the repository's
    required checks and the relevant test candidates.
 4. For a rename, read every site: `symbol { name, limit }` lists references by file and
-   returns `references.nextOffset` while more remain. Pass it back as `references_offset`.
+   returns `references.nextOffset` while more remain. Pass it back as `offset`.
 
 Test candidates come from imports and references, not runtime coverage. Compiler evidence
 covers TS/JS; dynamic and external consumers can be absent. Entry exports and public APIs are
@@ -67,7 +67,8 @@ describe a stale result as current. `open` is for explicit options, e.g. `watch:
 `max_commits: 100`, not a required handshake before every question.
 
 Successful calls return `structuredContent.data`. Preserve the full envelope, including
-freshness notes. Secret files are never returned. Analysis does not write into the project.
+freshness notes. Every list an answer cuts says how many rows are left (`more`) and where the
+next page starts (`nextOffset`); pass that back as `offset` to read on, in any tool. Secret files are never returned. Analysis does not write into the project.
 
 ## When Skyplate itself is slow, wrong or failing
 

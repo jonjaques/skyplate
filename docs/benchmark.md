@@ -356,10 +356,11 @@ codes. It uploads nothing. The agent's job is to tell the user where the files a
 `session.calls` has, per tool: `count`, `durationMs` and `responseBytes` distributions,
 error-code counters and present-argument-key counters (each key once per call).
 `session.transitions` has `previous`, `next` and `count` for adjacent calls. A call rejected
-for an argument the tool does not take is counted too, as `invalid_parameters` against the
-tool with the key recorded as `unknown_parameter`: which tools agents guess wrong is the
-most useful thing this section can say, and the guessed key is the caller's text, so it is
-not kept. Unknown tool, argument or error names become `unknown_tool`, `unknown_parameter`
+for its arguments (a key the tool does not take, a missing required argument, a value out of
+range) is counted too, as `invalid_parameters` against the tool, with the keys it was sent.
+A key the tool does not take is recorded as `unknown_parameter`: which tools agents guess
+wrong is the most useful thing this section can say, and the guessed key is the caller's
+text, so it is not kept. Unknown tool, argument or error names become `unknown_tool`, `unknown_parameter`
 or `unknown_error`. This still reveals coarse workflow preferences and error rates.
 
 Every tool call goes through one wrapper in `src/mcp/server.ts` (`guarded`), which is where

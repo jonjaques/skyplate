@@ -26,7 +26,11 @@ refer to [docs/roadmap](docs/roadmap/README.md).
   written. `--skeleton` adds the anonymous tree and import graph, and
   `skyplate bench synth` rebuilds a synthetic repository from it. See
   [docs/benchmark.md](docs/benchmark.md).
-- **`symbol` pages its references** with `references_offset` and returns `nextOffset` (T5).
+- **Every list an answer cuts can be read to its end.** `files`, `search_symbols`, `symbol`
+  (its reference locations), `seams`, `seam`, `graph`, `history` and `dependencies` all take
+  `offset` and return `nextOffset` while `more` rows remain. `symbol` used to stop at 2,500
+  locations (T5), and `graph`, `history` and `dependencies` could not page at all (M4). A
+  `graph` cycles answer that holds one cycle lists all its members.
 - **The roadmap**, [defects](docs/roadmap/defects.md) and
   [enhancements](docs/roadmap/enhancements.md), with the studies behind them, and
   [evals/](evals/) to rerun every number.
@@ -35,7 +39,8 @@ refer to [docs/roadmap](docs/roadmap/README.md).
 
 - **An argument a tool does not take is now an error** that lists the ones it does. It used to
   be dropped, which answered a different question without saying so (M1). A client that sends
-  extra arguments will see the error.
+  extra arguments will see the error. Every call rejected for its arguments is counted in the
+  benchmark's session usage.
 - **A first analysis answers in two steps.** A structure pass (no history, symbols or layout)
   answers `map_codebase`, `locate_code`, `overview`, `files`, `file`, `dir`, `graph`,
   `dependencies` and `read_source`, with a note, while the full analysis runs. On a cold

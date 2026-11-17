@@ -245,7 +245,7 @@ and zero unresolved candidates.
 | T2 | `probes/host-*`, `probes/alias-only.ts`; `probes.ts` | Direct control protected; host-only star, rename, and local alias exports remain unused |
 | T3 | `probes/heritage.ts`; `probes.ts` | `Leaf.run` and `Base.run` impact have zero symbols; fixed on the current branch |
 | T4 | `failures/`; `faults.ts` | Two files, six symbols, one reference, zero unresolved, four unused exports; warning without structured incompleteness |
-| T5 | `pagination/x.ts`; `mcp.ts --mode pagination` | 3,000 stored locations, 2,500 returned, 500 inaccessible; old `offset` ignored; fixed with `references_offset` |
+| T5 | `pagination/x.ts`; `mcp.ts --mode pagination` | 3,000 stored locations, 2,500 returned, 500 inaccessible; old `offset` ignored; fixed with `offset` (named `references_offset` until the paging interface was unified) |
 | T6 | `cap/x.ts`, `seam-cap/`; `faults.ts` | Caps 100 → 0 change recursion from used-in-own-file to unreferenced and seam interface/uses/callers/files from 1 → 0 |
 | T7 | `missing-deps/`; `faults.ts` | Missing React yields zero refs, two unresolved; unrelated ancestor node_modules suppresses absence warning |
 | T8 | `prototype-probe/index.js`; `faults.ts` | Prototype method recorded with zero refs; real Express miss also retained in oracle evidence |
