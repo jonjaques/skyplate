@@ -46,7 +46,7 @@ declarations Skyplate records ([evals/typescript/](../../evals/typescript/)):
 
 The denominator is only what Skyplate extracts: members of type and object literals are not
 symbols ([T1](defects.md#t1)). Without `node_modules`, the same Skyplate symbols kept 38% of
-their references, with no warning ([T7](defects.md#t7)).
+their references, with no warning ([T7](defects.md#t7); since 0.3.0 the report warns).
 
 **Imports**, every extracted statement, 20 resolved edges per repository checked by hand
 ([evals/structure/](../../evals/structure/)):
@@ -112,38 +112,37 @@ rates.
   does ([M1](defects.md#m1)), and every rejected call is counted in the benchmark.
 - **One way to page.** Every list an answer cuts takes `offset` and returns `nextOffset`, in
   every tool ([T5](defects.md#t5), [M4](defects.md#m4)).
-- **A first answer in two steps** ([E2](enhancements.md#e2), first step): the structure pass
-  answers while history and symbols run.
+- **A first answer in two steps** ([E2](enhancements.md#e2)): the structure pass answers while
+  history and symbols run, and the viewer's layout is computed only when a report is written
+  (94% less time for a full MCP analysis of a synthetic 6,000-file tree).
 - **`skyplate bench`** and the `benchmark` tool: an anonymous measurement of one analysis, safe
-  to hand back from a private repository ([docs/benchmark.md](../benchmark.md)).
-- **Fixed:** [T3](defects.md#t3), [T5](defects.md#t5), [M1](defects.md#m1),
-  [M2](defects.md#m2), [M4](defects.md#m4). **Mitigated:** [M3](defects.md#m3).
+  to hand back from a private repository ([docs/benchmark.md](../benchmark.md)), and a "Share a
+  benchmark" issue form to hand it back through ([E12](enhancements.md#e12)).
+- **Fixed:** [T3](defects.md#t3), [T5](defects.md#t5), [T7](defects.md#t7), [T9](defects.md#t9),
+  [S3](defects.md#s3), [S8](defects.md#s8), [M1](defects.md#m1), [M2](defects.md#m2),
+  [M4](defects.md#m4). **Mitigated:** [S2](defects.md#s2) (capped projections are marked),
+  [M3](defects.md#m3).
 - **The studies and their evals** in the repository, so the numbers above can be rerun.
 
-### Proposed before tagging
+### Release candidate
 
-Small, and each removes a case where an agent acts on a wrong answer:
+The package is at `0.3.0-rc.0` and is not published. The TypeScript and structure evals were
+rerun on it (`results/2026-11-17-rc.0/` in each), and show the fixes above. More development
+lands before 0.3.0 is tagged.
 
-| | Item | Size |
-| --- | --- | --- |
-| [T7](defects.md#t7) | Check that declared packages resolve, not that some ancestor has `node_modules` | S |
-| [S3](defects.md#s3) | Python `if TYPE_CHECKING` imports become type-only edges | M |
-| [S2](defects.md#s2) | Mark projected package edges with the members they stand for | S |
-| [T9](defects.md#t9) | Complexity stops at nested function boundaries | S |
-| [S8](defects.md#s8) | Extensionless local includes resolve in the repository | S |
-| [E12](enhancements.md#e12) | An issue form for sending a benchmark back | S |
-| [E2](enhancements.md#e2) step 1 | Compute the layout only when a report is written | S |
+### Before tagging 0.3.0
 
-Then, on the release candidate: rerun the adoption eval (adding Claude Code with the
-instruction, and one after-edit review task), the TypeScript and structure evals, the
-first-answer timing and the benchmark verification; compare each with its 2026-11-16 results;
-bump `version`; pack, install and smoke-test the tarball (CI does this on every PR).
+- Rerun the adoption eval on the final candidate, adding Claude Code with the instruction and an
+  after-edit review task (`change_impact { working_tree: true }`), which no measured agent has
+  exercised yet; compare with 2026-11-16.
+- Rerun the first-answer timing and the benchmark verification, and compare.
+- Set the version, then pack, install and smoke-test the tarball (CI does this on every PR).
 
 ## After 0.3.0, in order
 
 1. **[E1](enhancements.md#e1), answers that say how much they know,** with E2's next two steps.
-   This changes what every existing answer is worth, and closes T4, T6 and the rest of T7, S2
-   and S6.
+   This changes what every existing answer is worth, and closes T4, T6 and the rest of S2 and
+   S6.
 2. **The recall holes the compiler and manifests already let us close:**
    [T1](defects.md#t1), [T2](defects.md#t2), [T8](defects.md#t8), [S4](defects.md#s4) with
    [S5](defects.md#s5) (one Cargo adapter), [S6](defects.md#s6), [S9](defects.md#s9),

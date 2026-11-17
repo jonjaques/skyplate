@@ -16,7 +16,8 @@ run takes, and what the method does not establish.
 ## Conventions
 
 - **Results are dated and never overwritten.** A rerun goes in `results/<date>/` beside the
-  earlier ones, so a change can be read against its baseline. Update the roadmap's numbers from
+  earlier ones (with a suffix, such as `2026-11-17-rc.0`, for a second run on one day), so a
+  change can be read against its baseline. Update the roadmap's numbers from
   the new results.
 - **Corpora are cloned outside the repository**, at the commit the README records, and nothing
   is ever written into a corpus or into this checkout. Every script writes only to an `--out`

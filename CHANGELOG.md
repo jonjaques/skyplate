@@ -6,6 +6,8 @@ refer to [docs/roadmap](docs/roadmap/README.md).
 
 ## 0.3.0 (unreleased)
 
+The package is at `0.3.0-rc.0` on the release branch and is not published.
+
 ### Added
 
 - **Three task tools for agents**, registered first so hosts that show only tool names still
@@ -31,6 +33,11 @@ refer to [docs/roadmap](docs/roadmap/README.md).
   `offset` and return `nextOffset` while `more` rows remain. `symbol` used to stop at 2,500
   locations (T5), and `graph`, `history` and `dependencies` could not page at all (M4). A
   `graph` cycles answer that holds one cycle lists all its members.
+- **A "Share a benchmark" issue form**, the return path for a benchmark its owner chooses to
+  send (E12).
+- **`edges.packages` in the Report**: for each import of a package directory, how many member
+  files it stands for and how many got an edge (optional; older reports still load). Answers
+  from `file`, `graph` and `change_impact` say when a list rests on a capped projection (S2).
 - **The roadmap**, [defects](docs/roadmap/defects.md) and
   [enhancements](docs/roadmap/enhancements.md), with the studies behind them, and
   [evals/](evals/) to rerun every number.
@@ -41,6 +48,8 @@ refer to [docs/roadmap](docs/roadmap/README.md).
   be dropped, which answered a different question without saying so (M1). A client that sends
   extra arguments will see the error. Every call rejected for its arguments is counted in the
   benchmark's session usage.
+- **The MCP server computes the viewer's layout only when it writes a report.** No answer
+  reads it; a full MCP analysis of a synthetic 6,000-file tree took 94% less time.
 - **A first analysis answers in two steps.** A structure pass (no history, symbols or layout)
   answers `map_codebase`, `locate_code`, `overview`, `files`, `file`, `dir`, `graph`,
   `dependencies` and `read_source`, with a note, while the full analysis runs. On a cold
@@ -58,3 +67,12 @@ refer to [docs/roadmap](docs/roadmap/README.md).
 
 - Impact through inherited members follows the whole base chain, with a cycle guard, instead
   of one level (T3).
+- "Dependencies installed" means the declared packages resolve along Node's search path, not
+  that some ancestor directory has a `node_modules`; a package nested in an unrelated install
+  now warns that its types are missing (T7).
+- A nested function's decisions no longer count toward the enclosing function's complexity
+  (T9).
+- Python imports under `if TYPE_CHECKING:` are type-only edges, so they close no runtime cycle
+  (S3).
+- An extensionless `#include <header>` the repository holds resolves to it instead of being
+  called a system header (S8).

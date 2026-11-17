@@ -1,0 +1,179 @@
+[
+  {
+    "tsMaxRefs": 100,
+    "stats": {
+      "files": 2,
+      "symbols": 4,
+      "references": 2,
+      "unresolved": 0,
+      "unusedExports": 1,
+      "truncated": 0,
+      "ms": 23
+    },
+    "warnings": [],
+    "seam": {
+      "module": "lib",
+      "selector": {
+        "path": "lib",
+        "scope": "path"
+      },
+      "implementation": {
+        "files": 1,
+        "code": 1,
+        "complexity": 1,
+        "functions": 1,
+        "hottest": []
+      },
+      "tests": {
+        "files": 0,
+        "code": 0
+      },
+      "imports": {
+        "inbound": {
+          "files": 0,
+          "testFiles": 0,
+          "from": []
+        },
+        "outbound": {
+          "files": 0,
+          "to": []
+        },
+        "cyclesAcross": [],
+        "viaBarrel": "fewer importing files than interface.files: callers reach it through a re-exporting file"
+      },
+      "interface": {
+        "symbols": 1,
+        "declared": 1,
+        "uses": 1,
+        "callers": 1,
+        "files": 1,
+        "rows": [
+          {
+            "id": 3,
+            "name": "api",
+            "kind": "function",
+            "at": "lib/a.ts:1",
+            "uses": 1,
+            "files": 1,
+            "complexity": 1
+          }
+        ]
+      },
+      "couldHide": {
+        "count": 0,
+        "rows": []
+      },
+      "externalExports": {
+        "count": 0,
+        "rows": []
+      },
+      "internalExports": {
+        "count": 0,
+        "rows": []
+      },
+      "testsPastInterface": {
+        "count": 0,
+        "rows": []
+      },
+      "testFiles": [],
+      "unusedExports": {
+        "count": 0,
+        "rows": []
+      },
+      "relays": [],
+      "adapters": [],
+      "interfacesWithoutDeclaredAdapters": 0,
+      "owners": [],
+      "unmeasured": {
+        "locality": "no git history (not a repository, or analyzed with --no-git)"
+      },
+      "notes": [
+        "interface = symbols code outside uses; external package imports are not in the report, so read the module's import statements for its dependency categories"
+      ]
+    }
+  },
+  {
+    "tsMaxRefs": 0,
+    "stats": {
+      "files": 2,
+      "symbols": 4,
+      "references": 0,
+      "unresolved": 0,
+      "unusedExports": 1,
+      "truncated": 2,
+      "ms": 24
+    },
+    "warnings": [
+      "TypeScript: 2 references over the limit of 0 were dropped"
+    ],
+    "seam": {
+      "module": "lib",
+      "selector": {
+        "path": "lib",
+        "scope": "path"
+      },
+      "implementation": {
+        "files": 1,
+        "code": 1,
+        "complexity": 1,
+        "functions": 1,
+        "hottest": []
+      },
+      "tests": {
+        "files": 0,
+        "code": 0
+      },
+      "imports": {
+        "inbound": {
+          "files": 0,
+          "testFiles": 0,
+          "from": []
+        },
+        "outbound": {
+          "files": 0,
+          "to": []
+        },
+        "cyclesAcross": []
+      },
+      "interface": {
+        "symbols": 0,
+        "declared": 1,
+        "uses": 0,
+        "callers": 0,
+        "files": 0,
+        "rows": []
+      },
+      "couldHide": {
+        "count": 0,
+        "rows": []
+      },
+      "externalExports": {
+        "count": 0,
+        "rows": []
+      },
+      "internalExports": {
+        "count": 0,
+        "rows": []
+      },
+      "testsPastInterface": {
+        "count": 0,
+        "rows": []
+      },
+      "testFiles": [],
+      "unusedExports": {
+        "count": 0,
+        "rows": []
+      },
+      "relays": [],
+      "adapters": [],
+      "interfacesWithoutDeclaredAdapters": 0,
+      "owners": [],
+      "unmeasured": {
+        "locality": "no git history (not a repository, or analyzed with --no-git)"
+      },
+      "notes": [
+        "interface = symbols code outside uses; external package imports are not in the report, so read the module's import statements for its dependency categories"
+      ]
+    }
+  }
+]

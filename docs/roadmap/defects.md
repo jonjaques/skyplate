@@ -7,8 +7,7 @@ capabilities are in [enhancements.md](enhancements.md); the order of work is in
 **Severity** is the chance that an agent or a reader makes a wrong decision from the answer:
 deletes live code, misses a caller, trusts a cycle that never runs. It is not a security
 rating. **Size** is engineering size: S is days, M one to three weeks, L more. **Status** is
-`open`, `proposed for 0.3.0`, `mitigated` (the answer now warns, the cause remains) or
-`fixed in 0.3.0`.
+`open`, `mitigated` (the answer now says so, the cause remains) or `fixed in 0.3.0`.
 
 Each defect has a minimal repro. Most were found by the November 2026 measurements in
 [research/](research/), and their fixtures live under [evals/](../../evals/). Line numbers are
@@ -23,24 +22,18 @@ are stable: a fixed defect keeps its number and moves to [Fixed](#fixed).
 | [T2](#t2) | A Vue, Svelte or Astro import through a barrel or alias does not protect the export | high | M | open |
 | [T4](#t4) | A failed tsconfig project keeps ordinary "unused" verdicts | high | M | open |
 | [T6](#t6) | Capped reference locations change seam and unused classifications | medium | M | open |
-| [T7](#t7) | Any ancestor `node_modules` counts as "dependencies installed" | high | S | proposed for 0.3.0 |
 | [T8](#t8) | `this.method()` on a JavaScript prototype method is not bound | medium | M | open |
-| [T9](#t9) | Decisions in a nested function count toward the enclosing one | medium | S | proposed for 0.3.0 |
 | [S1](#s1) | Declared dependencies and imported names do not join outside npm | high | L (M for Maven) | open |
-| [S2](#s2) | A package import is projected onto at most 17 files, unmarked | high | S to mark, L to fix | proposed for 0.3.0 (marking) |
-| [S3](#s3) | Python `if TYPE_CHECKING` imports are runtime edges | high | M | proposed for 0.3.0 |
+| [S2](#s2) | A package import is projected onto at most 17 files of the package | high | L | mitigated |
 | [S4](#s4) | A Cargo `[[bin]] path` is ignored when choosing the crate root | high | M | open |
 | [S5](#s5) | Native entry points outside JavaScript are not discovered | high | M per ecosystem | open |
 | [S6](#s6) | Python namespace packages and imported submodules lose internal edges | high | M | open |
 | [S7](#s7) | Text detected as Shift_JIS is decoded as Windows-1252 | medium | S to M | open |
-| [S8](#s8) | An extensionless local `#include <header>` is called a system header | medium | S | proposed for 0.3.0 |
 | [S9](#s9) | Rust uses written `crate_name::item` without a `use` are not seen | medium | M | open |
 | [M3](#m3) | Owners in a shallow clone are the snapshot's author | medium | S | mitigated |
 
-Fixed in 0.3.0: [T3](#t3), [T5](#t5), [M1](#m1), [M2](#m2), [M4](#m4).
-
-"Proposed for 0.3.0" is a recommendation: these are small, and each is a case where an agent
-acts on a wrong answer. The release scope is in [README.md](README.md#030).
+Fixed in 0.3.0: [T3](#t3), [T5](#t5), [T7](#t7), [T9](#t9), [S3](#s3), [S8](#s8), [M1](#m1),
+[M2](#m2), [M4](#m4).
 
 ## TypeScript and JavaScript
 
@@ -128,27 +121,6 @@ the capped rows.** Severity medium, high for seam and delete advice. Size M. Ope
 - **Done when.** Every seam count and unused class is invariant from a cap of zero to uncapped;
   only location completeness changes.
 
-### T7
-
-**Any `node_modules` in any ancestor directory counts as "dependencies installed".** Severity
-high: missing package types erase whole interfaces. Size S. Proposed for 0.3.0. Part of
-[E1](enhancements.md#e1).
-
-- **What an agent sees.** No warning while package types fail to resolve and references
-  disappear. Without installed dependencies the same 26 Skyplate symbols kept 142 of 375
-  references (38%); eight zustand store members account for the loss
-  (`ViewerState.selection` went from 58 to 0). Agents often meet a repository before anyone
-  ran an install.
-- **Where.** `src/core/pipeline.ts:209` walks up to any ancestor and treats the existence of a
-  `node_modules` directory as success.
-- **Repro.** A nested package that declares and imports React, with no React installed, inside
-  a parent whose `node_modules` holds something else: zero references, two unresolved
-  identifiers, no warning. Fixture [`missing-deps/`](../../evals/typescript/fixtures/missing-deps/).
-- **Fix.** Check that the declared packages resolve from the applicable workspace root, and
-  report compiler and import resolution failures as missing dependencies.
-- **Done when.** The fixture warns, and the uninstalled-manifest count is right with and
-  without an unrelated ancestor `node_modules`.
-
 ### T8
 
 **`this.lookup()` on a JavaScript prototype method is not bound.** Severity medium, high for
@@ -164,20 +136,6 @@ CommonJS refactoring. Size M. Open.
   match method names globally.
 - **Done when.** The repro and Express's `View.lookup` have their call, and no new false
   reference appears in the Express comparison.
-
-### T9
-
-**Decisions inside a nested function count toward the enclosing function.** Severity medium for
-hotspot and relay ranking. Size S. Proposed for 0.3.0.
-
-- **What an agent sees.** An uncalled inner arrow with one `if` makes its parent's complexity 2.
-- **Where.** `src/core/ts/references.ts:123` changes the counter only at recorded scopes, and
-  inner functions are deliberately not recorded (`src/core/ts/declarations.ts:4`).
-- **Repro.** `function outer() { const neverCalled = () => { if (x) return 1; return 2 };
-  return 0 }`. Probe [`nested-complexity.ts`](../../evals/typescript/fixtures/probes/nested-complexity.ts).
-- **Fix.** Reset attribution at every function boundary. If containment complexity is wanted,
-  report it as its own aggregate.
-- **Done when.** The probe gives `outer` a complexity of 1.
 
 ## Structure and history
 
@@ -209,9 +167,9 @@ Severity high for cleanup advice. Size L across ecosystems, M for Maven alone. O
 
 ### S2
 
-**A package import is projected onto at most 17 files of the package, with no mark.** Severity
-high for impact and centrality. Size S to mark, L for package nodes. Marking proposed for
-0.3.0. Part of [E1](enhancements.md#e1).
+**A package import is projected onto at most 17 files of the package.** Severity high for impact
+and centrality. Size L for package nodes. Mitigated in 0.3.0: the projection is marked. Part of
+[E1](enhancements.md#e1).
 
 - **What an agent sees.** A Go import of a 24-file package becomes 17 file edges. Kubernetes
   keeps 75.6% of its package edges (531,462 of 702,926), chi 391 of 531, and which files gain
@@ -219,27 +177,14 @@ high for impact and centrality. Size S to mark, L for package nodes. Marking pro
 - **Where.** `src/core/imports/resolve.ts:24`, `:119`, `:855`; `src/core/pipeline.ts:717`;
   `src/shared/schema.ts:302`.
 - **Repro.** A 24-file Go package and one importer ([`repros.json`](../../evals/structure/fixtures/repros.json) case `go-cap`).
-- **Fix.** Now: record total and omitted members on the edge and say so in answers. Later:
-  package nodes with real membership, and package centrality computed separately.
-- **Done when.** Every projected edge says how many members it stands for; later, chi and
-  Kubernetes package import recall is 100% against build metadata.
-
-### S3
-
-**Python imports under `if TYPE_CHECKING` are runtime edges.** Severity high: false cycles.
-Size M. Proposed for 0.3.0.
-
-- **What an agent sees.** Requests' eight-file "runtime cycle" exists only because of
-  type-checking imports: 18 guarded statements make 12 file pairs that no runtime import
-  shares, and without those pairs the cycle is gone.
-- **Where.** `src/core/imports/extract.ts:426` never sets type-only for Python; the graph and
-  findings then treat the edge as runtime (`src/core/graph.ts:381`, `src/core/findings.ts:101`).
-- **Repro.** `a.py` imports `b` only under `if TYPE_CHECKING`, `b.py` imports `a` at runtime
-  ([`repros.json`](../../evals/structure/fixtures/repros.json) case `python-type-guard`; `type-guards.py` measures Requests).
-- **Fix.** Recognize `typing.TYPE_CHECKING` (and its imported aliases) as a guard and mark the
-  edges type-only, through the contract TypeScript already uses.
-- **Done when.** The repro shows a type loop and no runtime cycle, and Requests' runtime cycle is
-  gone while its type loop remains.
+- **Now (0.3.0).** The Report's `edges.packages` table records, per importing file and package
+  directory, how many members the import stands for, how many got an edge, and whether the cap
+  cut it. `file`, `graph` and `change_impact` answers say so when what they list rests on a
+  capped projection ("17 file edges for 24 members"). The `go-cap` repro shows it
+  ([results](../../evals/structure/results/2026-11-17-rc.0/repros.json)).
+- **Fix.** Package nodes with real membership, and package centrality computed separately.
+- **Done when.** chi and Kubernetes package import recall is 100% against build metadata, and
+  fan-in no longer depends on filename order.
 
 ### S4
 
@@ -305,20 +250,6 @@ to M. Open.
   measurement and source storage.
 - **Done when.** UTF-8, UTF-16 with BOM, Windows-1252, Shift_JIS, EUC-KR and GB18030 specimens
   round-trip end to end.
-
-### S8
-
-**An extensionless local `#include <header>` is called a system header.** Severity medium. Size
-S for this case. Proposed for 0.3.0.
-
-- **What an agent sees.** A project header reported external.
-- **Where.** `src/core/imports/resolve.ts:1188`.
-- **Repro.** `main.c` includes `<projectheader>` and `include/projectheader` exists
-  ([`repros.json`](../../evals/structure/fixtures/repros.json) case `c-extensionless`).
-- **Fix.** Call only known headers builtin; otherwise look in the repository, and label a
-  suffix match as a guess. Build-aware include paths (`compile_commands.json`) are a larger,
-  separate step.
-- **Done when.** The repro resolves to the repository file.
 
 ### S9
 
@@ -389,3 +320,38 @@ answer cuts now pages the same way, with `offset` in and `nextOffset` out, in ev
 (`symbol`'s reference locations included, so `references_offset` is gone), and a cycles answer
 that holds one cycle lists all its members. Lists inside a single row, such as the 15 members
 per cycle in a list of many, are still capped; narrow with `path` to read one in full.
+
+### T7
+
+**Any `node_modules` in any ancestor directory counted as "dependencies installed".** Fixed in
+0.3.0. A package nested in an unrelated install, or an incomplete install, lost its package
+types with no warning. Each declared package is now looked up along Node's upward search from
+its manifest (npm aliases by their install name), capped at 10,000 probes per analysis with a
+warning when the cap cuts the check short. A Yarn Plug'n'Play manifest alone no longer counts:
+the compiler pass cannot read it either. The [`missing-deps`](../../evals/typescript/fixtures/missing-deps/)
+fixture now reports one uninstalled manifest and warns, with and without an unrelated ancestor
+`node_modules` ([results](../../evals/typescript/results/2026-11-17-rc.0/missing-deps.json)).
+
+### T9
+
+**Decisions inside a nested function counted toward the enclosing function.** Fixed in 0.3.0.
+Attribution resets at every function boundary and class static block; an unrecorded inner
+function gets no complexity of its own. The
+[`nested-complexity.ts`](../../evals/typescript/fixtures/probes/nested-complexity.ts) probe's
+outer function went from 2 to 1.
+
+### S3
+
+**Python imports under `if TYPE_CHECKING` were runtime edges.** Fixed in 0.3.0. Guarded imports
+(bare, `typing.`-qualified or aliased, nested and multi-line; `else` stays runtime) are
+type-only edges, through the contract `import type` already uses. The `python-type-guard` repro
+shows a type loop and no runtime cycle, and Requests' eight-file runtime cycle is gone while
+its type loop remains.
+
+### S8
+
+**An extensionless local `#include <header>` was called a system header.** Fixed in 0.3.0. An
+angle include the repository holds resolves to it; known C and C++ standard headers stay system
+headers even with a local namesake; one the repository does not hold stays an external system
+header. The `c-extensionless` repro resolves to `include/projectheader`, and `c-search-order` is
+unchanged.

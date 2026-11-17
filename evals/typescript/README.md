@@ -377,3 +377,10 @@ positions. An unused-export verdict means no observed in-repo consumer, not safe
 Zero unresolved candidates do not certify completeness. Dependency versions installed
 from ranges can drift despite pinned corpus commits; retain installation state when
 investigating future differences. The original installed dependency trees were not saved.
+
+## Release candidate rerun
+
+`results/2026-11-17-rc.0/` is this eval's quick pieces rerun on `0.3.0-rc.0`, after the fixes
+for T7 (`missing-deps.json`: one uninstalled manifest and a warning, with and without an
+unrelated ancestor `node_modules`) and T9 (`probe-rows.json`: the nested-complexity probe's
+outer function at 1, not 2). Compare it with `results/2026-11-17/` to see exactly what moved.

@@ -1,0 +1,748 @@
+[
+  {
+    "name": "python-submodule",
+    "result": [
+      {
+        "spec": "pkg",
+        "kind": "import",
+        "line": 0,
+        "file": 1,
+        "target": "pkg/__init__.py"
+      }
+    ],
+    "manifests": {
+      "manifests": [],
+      "dependencies": []
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 1,
+        "connected": 2,
+        "cycles": [],
+        "modules": [
+          {
+            "dir": 0,
+            "ca": 0,
+            "ce": 1,
+            "instability": 1
+          },
+          {
+            "dir": 1,
+            "ca": 1,
+            "ce": 0,
+            "instability": 0
+          }
+        ],
+        "moduleMatrix": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "moduleDepth": 1,
+        "resolved": 1,
+        "external": 0,
+        "unresolved": 0
+      },
+      "dependencies": [],
+      "entries": []
+    }
+  },
+  {
+    "name": "python-namespace",
+    "result": [
+      {
+        "spec": "acme",
+        "kind": "import",
+        "line": 0,
+        "external": {
+          "name": "acme",
+          "ecosystem": "pypi"
+        }
+      }
+    ],
+    "manifests": {
+      "manifests": [],
+      "dependencies": []
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 0,
+        "connected": 0,
+        "cycles": [],
+        "modules": [],
+        "moduleMatrix": [],
+        "moduleDepth": 0,
+        "resolved": 0,
+        "external": 1,
+        "unresolved": 0
+      },
+      "dependencies": [
+        {
+          "name": "acme",
+          "ecosystem": "pypi",
+          "declaredIn": [],
+          "scope": "unknown",
+          "importers": 1
+        }
+      ],
+      "entries": []
+    }
+  },
+  {
+    "name": "rust-custom-bin",
+    "result": [
+      {
+        "spec": "helper",
+        "kind": "include",
+        "line": 0,
+        "unresolved": true
+      },
+      {
+        "spec": "crate::helper::run",
+        "kind": "import",
+        "line": 1,
+        "unresolved": true
+      }
+    ],
+    "manifests": {
+      "manifests": [
+        {
+          "path": "Cargo.toml",
+          "kind": "Cargo.toml",
+          "ecosystem": "cargo",
+          "name": "demo",
+          "version": "0.1.0",
+          "dependencies": 0
+        }
+      ],
+      "dependencies": []
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 0,
+        "connected": 0,
+        "cycles": [],
+        "modules": [],
+        "moduleMatrix": [],
+        "moduleDepth": 0,
+        "resolved": 0,
+        "external": 0,
+        "unresolved": 2
+      },
+      "dependencies": [],
+      "entries": []
+    }
+  },
+  {
+    "name": "jvm-no-explicit-import",
+    "result": [],
+    "manifests": {
+      "manifests": [],
+      "dependencies": []
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 0,
+        "connected": 0,
+        "cycles": [],
+        "modules": [],
+        "moduleMatrix": [],
+        "moduleDepth": 0,
+        "resolved": 0,
+        "external": 0,
+        "unresolved": 0
+      },
+      "dependencies": [],
+      "entries": []
+    }
+  },
+  {
+    "name": "jvm-coordinate",
+    "result": [
+      {
+        "spec": "org.slf4j.Logger",
+        "kind": "import",
+        "line": 0,
+        "external": {
+          "name": "org.slf4j.Logger",
+          "ecosystem": "maven"
+        }
+      }
+    ],
+    "manifests": {
+      "manifests": [
+        {
+          "path": "pom.xml",
+          "kind": "pom.xml",
+          "ecosystem": "maven",
+          "dependencies": 1
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "org.slf4j:slf4j-api",
+          "ecosystem": "maven",
+          "version": "2.0.0",
+          "declaredIn": [
+            "pom.xml"
+          ],
+          "scope": "runtime",
+          "importers": 0
+        }
+      ]
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 0,
+        "connected": 0,
+        "cycles": [],
+        "modules": [],
+        "moduleMatrix": [],
+        "moduleDepth": 0,
+        "resolved": 0,
+        "external": 1,
+        "unresolved": 0
+      },
+      "dependencies": [
+        {
+          "name": "org.slf4j.Logger",
+          "ecosystem": "maven",
+          "declaredIn": [],
+          "scope": "unknown",
+          "importers": 1
+        },
+        {
+          "name": "org.slf4j:slf4j-api",
+          "ecosystem": "maven",
+          "version": "2.0.0",
+          "declaredIn": [
+            "pom.xml"
+          ],
+          "scope": "runtime",
+          "importers": 0
+        }
+      ],
+      "entries": []
+    }
+  },
+  {
+    "name": "python-dist-name",
+    "result": [
+      {
+        "spec": "yaml",
+        "kind": "import",
+        "line": 0,
+        "external": {
+          "name": "yaml",
+          "ecosystem": "pypi"
+        }
+      }
+    ],
+    "manifests": {
+      "manifests": [
+        {
+          "path": "pyproject.toml",
+          "kind": "pyproject.toml",
+          "ecosystem": "pypi",
+          "name": "app",
+          "version": "0.1",
+          "dependencies": 1
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "pyyaml",
+          "ecosystem": "pypi",
+          "declaredIn": [
+            "pyproject.toml"
+          ],
+          "scope": "runtime",
+          "importers": 0
+        }
+      ]
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 0,
+        "connected": 0,
+        "cycles": [],
+        "modules": [],
+        "moduleMatrix": [],
+        "moduleDepth": 0,
+        "resolved": 0,
+        "external": 1,
+        "unresolved": 0
+      },
+      "dependencies": [
+        {
+          "name": "yaml",
+          "ecosystem": "pypi",
+          "declaredIn": [],
+          "scope": "unknown",
+          "importers": 1
+        },
+        {
+          "name": "pyyaml",
+          "ecosystem": "pypi",
+          "declaredIn": [
+            "pyproject.toml"
+          ],
+          "scope": "runtime",
+          "importers": 0
+        }
+      ],
+      "entries": []
+    }
+  },
+  {
+    "name": "go-cap",
+    "result": [
+      {
+        "spec": "example.com/test/pkg",
+        "kind": "import",
+        "line": 1,
+        "file": 2,
+        "also": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        "package": {
+          "dir": "pkg",
+          "members": 24,
+          "capped": true
+        },
+        "target": "pkg/f00.go",
+        "siblings": [
+          "pkg/f01.go",
+          "pkg/f02.go",
+          "pkg/f03.go",
+          "pkg/f04.go",
+          "pkg/f05.go",
+          "pkg/f06.go",
+          "pkg/f07.go",
+          "pkg/f08.go",
+          "pkg/f09.go",
+          "pkg/f10.go",
+          "pkg/f11.go",
+          "pkg/f12.go",
+          "pkg/f13.go",
+          "pkg/f14.go",
+          "pkg/f15.go",
+          "pkg/f16.go"
+        ]
+      }
+    ],
+    "manifests": {
+      "manifests": [
+        {
+          "path": "go.mod",
+          "kind": "go.mod",
+          "ecosystem": "go",
+          "name": "example.com/test",
+          "dependencies": 0
+        }
+      ],
+      "dependencies": []
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 17,
+        "connected": 18,
+        "cycles": [],
+        "modules": [
+          {
+            "dir": 1,
+            "ca": 0,
+            "ce": 1,
+            "instability": 1
+          },
+          {
+            "dir": 2,
+            "ca": 1,
+            "ce": 0,
+            "instability": 0
+          }
+        ],
+        "moduleMatrix": [
+          [
+            0,
+            17
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "moduleDepth": 1,
+        "resolved": 1,
+        "external": 0,
+        "unresolved": 0
+      },
+      "dependencies": [],
+      "entries": []
+    }
+  },
+  {
+    "name": "c-extensionless",
+    "result": [
+      {
+        "spec": "<projectheader>",
+        "kind": "include",
+        "line": 0,
+        "file": 0,
+        "target": "include/projectheader"
+      }
+    ],
+    "manifests": {
+      "manifests": [],
+      "dependencies": []
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 1,
+        "connected": 2,
+        "cycles": [],
+        "modules": [
+          {
+            "dir": 0,
+            "ca": 0,
+            "ce": 1,
+            "instability": 1
+          },
+          {
+            "dir": 1,
+            "ca": 1,
+            "ce": 0,
+            "instability": 0
+          }
+        ],
+        "moduleMatrix": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "moduleDepth": 1,
+        "resolved": 1,
+        "external": 0,
+        "unresolved": 0
+      },
+      "dependencies": [],
+      "entries": []
+    }
+  },
+  {
+    "name": "c-search-order",
+    "result": [
+      {
+        "spec": "api.h",
+        "kind": "include",
+        "line": 0,
+        "file": 2,
+        "target": "src/unrelated/api.h"
+      }
+    ],
+    "manifests": {
+      "manifests": [],
+      "dependencies": []
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 1,
+        "connected": 2,
+        "cycles": [],
+        "modules": [
+          {
+            "dir": 2,
+            "ca": 0,
+            "ce": 1,
+            "instability": 1
+          },
+          {
+            "dir": 3,
+            "ca": 1,
+            "ce": 0,
+            "instability": 0
+          }
+        ],
+        "moduleMatrix": [
+          [
+            0,
+            1
+          ],
+          [
+            0,
+            0
+          ]
+        ],
+        "moduleDepth": 2,
+        "resolved": 1,
+        "external": 0,
+        "unresolved": 0
+      },
+      "dependencies": [],
+      "entries": []
+    }
+  },
+  {
+    "name": "python-type-guard",
+    "result": [
+      {
+        "spec": "typing",
+        "kind": "import",
+        "line": 0,
+        "external": {
+          "name": "typing",
+          "ecosystem": "python-stdlib"
+        }
+      },
+      {
+        "spec": "b",
+        "kind": "import",
+        "line": 2,
+        "typeOnly": true,
+        "file": 1,
+        "target": "b.py"
+      }
+    ],
+    "manifests": {
+      "manifests": [],
+      "dependencies": []
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 2,
+        "connected": 2,
+        "cycles": [],
+        "typeLoops": [
+          [
+            0,
+            1
+          ]
+        ],
+        "modules": [
+          {
+            "dir": 0,
+            "ca": 0,
+            "ce": 0,
+            "instability": 0
+          }
+        ],
+        "moduleMatrix": [
+          [
+            2
+          ]
+        ],
+        "moduleDepth": 0,
+        "resolved": 2,
+        "external": 1,
+        "unresolved": 0
+      },
+      "dependencies": [
+        {
+          "name": "typing",
+          "ecosystem": "python-stdlib",
+          "declaredIn": [],
+          "scope": "unknown",
+          "importers": 1
+        }
+      ],
+      "entries": []
+    }
+  },
+  {
+    "name": "rust-qualified",
+    "result": [],
+    "manifests": {
+      "manifests": [
+        {
+          "path": "Cargo.toml",
+          "kind": "Cargo.toml",
+          "ecosystem": "cargo",
+          "name": "demo",
+          "version": "0.1.0",
+          "dependencies": 1
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "textwrap",
+          "ecosystem": "cargo",
+          "version": "0.16",
+          "declaredIn": [
+            "Cargo.toml"
+          ],
+          "scope": "runtime",
+          "importers": 0
+        }
+      ]
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 0,
+        "connected": 0,
+        "cycles": [],
+        "modules": [],
+        "moduleMatrix": [],
+        "moduleDepth": 0,
+        "resolved": 0,
+        "external": 0,
+        "unresolved": 0
+      },
+      "dependencies": [
+        {
+          "name": "textwrap",
+          "ecosystem": "cargo",
+          "version": "0.16",
+          "declaredIn": [
+            "Cargo.toml"
+          ],
+          "scope": "runtime",
+          "importers": 0
+        }
+      ],
+      "entries": []
+    }
+  },
+  {
+    "name": "swift-entry",
+    "result": [],
+    "manifests": {
+      "manifests": [
+        {
+          "path": "Package.swift",
+          "kind": "Package.swift",
+          "ecosystem": "swiftpm",
+          "name": "demo",
+          "dependencies": 0
+        }
+      ],
+      "dependencies": []
+    },
+    "entries": [],
+    "pipeline": {
+      "graph": {
+        "edges": 0,
+        "connected": 0,
+        "cycles": [],
+        "modules": [],
+        "moduleMatrix": [],
+        "moduleDepth": 0,
+        "resolved": 0,
+        "external": 1,
+        "unresolved": 0
+      },
+      "dependencies": [
+        {
+          "name": "PackageDescription",
+          "ecosystem": "swift",
+          "declaredIn": [],
+          "scope": "unknown",
+          "importers": 1
+        }
+      ],
+      "entries": []
+    }
+  },
+  {
+    "name": "known-graph",
+    "graph": {
+      "fanIn": [
+        0,
+        2,
+        2,
+        0
+      ],
+      "fanOut": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "rank": [
+        0.08108108108108109,
+        1,
+        1,
+        0.08108108108108109
+      ],
+      "cycle": [
+        -1,
+        0,
+        0,
+        -1
+      ],
+      "summary": {
+        "edges": 4,
+        "connected": 4,
+        "cycles": [
+          {
+            "id": 0,
+            "files": [
+              1,
+              2
+            ]
+          }
+        ],
+        "modules": [
+          {
+            "dir": 1,
+            "ca": 0,
+            "ce": 2,
+            "instability": 1
+          },
+          {
+            "dir": 2,
+            "ca": 2,
+            "ce": 0,
+            "instability": 0
+          }
+        ],
+        "moduleMatrix": [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "moduleDepth": 1
+      }
+    }
+  }
+]

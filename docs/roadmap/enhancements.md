@@ -18,7 +18,7 @@ missing) or `done`.
 
 | ID | Enhancement | Size | Status | Closes |
 | --- | --- | --- | --- | --- |
-| [E1](#e1) | Every answer says how much it knows | M | started | T4, T6, T7, S2, S6 in part, M3 |
+| [E1](#e1) | Every answer says how much it knows | M | started | T4, T6, S2, S6 in part, M3 |
 | [E2](#e2) | A first answer in seconds, at any size | L to XL | started | |
 | [E3](#e3) | Context for a task, under a budget | M | started | |
 | [E4](#e4) | Change impact that explains itself, and the tests to run | M to L | started | |
@@ -27,9 +27,9 @@ missing) or `done`.
 | [E7](#e7) | Function-level history, joined to callers | L | not started | |
 | [E8](#e8) | Bounded callback flow for TypeScript | L | not started | |
 | [E9](#e9) | History that sees through renames, reformats and sweeps | M | not started | |
-| [E10](#e10) | Type-only and build-conditional edges in every language | M to L | not started | S3 |
+| [E10](#e10) | Type-only and build-conditional edges in every language | M to L | started | |
 | [E11](#e11) | Compiler questions at a position | M | not started | |
-| [E12](#e12) | A way to send a benchmark back | S | not started | |
+| [E12](#e12) | A way to send a benchmark back | S | done | |
 | [E13](#e13) | Further out: SCIP, architecture evidence, contracts, clones, scale | each M to L | not started | |
 | [E14](#e14) | A smaller tool surface | M | not started | |
 
@@ -37,7 +37,7 @@ missing) or `done`.
 
 ### E1
 
-**Every answer says how much it knows.** Size M. Started. Closes T4, T6, T7, S2 and the "zero
+**Every answer says how much it knows.** Size M. Started. Closes T4, T6, S2 and the "zero
 unresolved" half of S6; makes M3's note structural.
 
 - **Today.** What Skyplate records is right (no false reference in 2,766), but what it does not
@@ -70,12 +70,12 @@ unresolved" half of S6; makes M3's note structural.
 - **Exists (0.3.0).** A structure pass (no history, symbols or layout) is published as a
   partial snapshot, and structure tools answer from it. Cold on a depth-50 Kubernetes clone,
   `map_codebase` answered in 2.1 s and `locate_code` in 24 ms while history ran
-  ([evals/first-answer/](../../evals/first-answer/)).
+  ([evals/first-answer/](../../evals/first-answer/)). The MCP server's analyses skip the
+  viewer's layout, and `build_report` computes it only when it writes a report: a full MCP
+  analysis of a synthetic 6,000-file tree took 94% less time (median of five runs).
 - **Next, in order.**
-  1. Compute the layout only when a report is written: the full MCP analysis still runs it.
-     Size S.
-  2. Walk the tree once: a first `open` walks it twice, about 1.5 s on Skyplate itself. Size S.
-  3. A cache outside the project of per-file facts keyed by content and resolution context,
+  1. Walk the tree once: a first `open` walks it twice, about 1.5 s on Skyplate itself. Size S.
+  2. A cache outside the project of per-file facts keyed by content and resolution context,
      compiler-project snapshots and git checkpoints, so a one-file edit is not a full run, and
      a bounded, resumable history walk. Size L to XL. Glean shows why derived facts need owners
      and invalidation ([incremental indexing](https://glean.software/blog/incremental/)).
@@ -195,8 +195,8 @@ for all. Not started.
 
 ### E10
 
-**Type-only and build-conditional edges in every language.** Size M to L. Not started. S3 is
-the first case.
+**Type-only and build-conditional edges in every language.** Size M to L. Started: Python's
+`if TYPE_CHECKING` imports are type-only since 0.3.0 (S3).
 
 - **Today.** The import graph is the union of every build configuration: C conditionals, Go
   build tags and Cargo features can be mutually exclusive, so a cycle over the union may never
@@ -218,13 +218,12 @@ the first case.
 
 ### E12
 
-**A way to send a benchmark back.** Size S. Not started.
+**A way to send a benchmark back.** Size S. Done in 0.3.0.
 
-- **Today.** `skyplate bench` writes an anonymous file and `docs/benchmark.md` says the owner
-  decides whether to share it, but there is no place to send it.
-- **Next.** A GitHub issue form that asks for `benchmark.md` (and optionally the JSON), restates
-  what the file does and does not contain, and labels the issue for triage. No upload, no
-  network call from Skyplate.
+- **Shipped.** The "Share a benchmark" issue form
+  ([.github/ISSUE_TEMPLATE/benchmark.yml](../../.github/ISSUE_TEMPLATE/benchmark.yml)) restates
+  what the file holds, takes `benchmark.md` as pasted and the JSON as an attachment, requires a
+  consent checkbox, and labels the issue `benchmark`. Skyplate itself sends nothing.
 - **Measure.** Benchmarks arrive, and their anomaly codes can be triaged into this file and
   [defects.md](defects.md).
 

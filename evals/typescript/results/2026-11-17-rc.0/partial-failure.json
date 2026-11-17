@@ -1,0 +1,748 @@
+{
+  "report": {
+    "schemaVersion": 2,
+    "tool": {
+      "name": "skyplate",
+      "version": "0.3.0-rc.0"
+    },
+    "generatedAt": "2026-11-17T17:51:51.195Z",
+    "timings": {
+      "walk": 5,
+      "detect": 12,
+      "files": 3,
+      "imports": 2,
+      "graph": 0,
+      "layout": 2,
+      "typescript": 29,
+      "stats": 0,
+      "findings": 0,
+      "total": 47
+    },
+    "project": {
+      "name": "failures",
+      "root": "."
+    },
+    "options": {
+      "git": false,
+      "source": true,
+      "includeIgnored": false,
+      "maxCommits": 20000
+    },
+    "totals": {
+      "files": 4,
+      "dirs": 3,
+      "bytes": 216,
+      "lines": 4,
+      "code": 4,
+      "comment": 0,
+      "blank": 0,
+      "binaryFiles": 0,
+      "generatedFiles": 0,
+      "vendoredFiles": 0,
+      "ignored": 0,
+      "languages": 2
+    },
+    "languages": [
+      {
+        "id": "json-with-comments",
+        "name": "JSON with Comments",
+        "type": "data",
+        "files": 2,
+        "bytes": 108,
+        "lines": 2,
+        "code": 2,
+        "comment": 0,
+        "blank": 0,
+        "slot": 0
+      },
+      {
+        "id": "typescript",
+        "name": "TypeScript",
+        "type": "programming",
+        "files": 2,
+        "bytes": 108,
+        "lines": 2,
+        "code": 2,
+        "comment": 0,
+        "blank": 0,
+        "slot": 1
+      }
+    ],
+    "categories": [
+      {
+        "category": "code",
+        "files": 2,
+        "bytes": 108,
+        "lines": 2
+      },
+      {
+        "category": "config",
+        "files": 2,
+        "bytes": 108,
+        "lines": 2
+      }
+    ],
+    "dirs": [
+      {
+        "id": 0,
+        "path": "",
+        "name": "failures",
+        "parent": -1,
+        "depth": 0,
+        "dirs": [
+          1,
+          2
+        ],
+        "files": [],
+        "totalFiles": 4,
+        "totalBytes": 216,
+        "totalLines": 4,
+        "totalCode": 4,
+        "dominantLanguage": "typescript"
+      },
+      {
+        "id": 1,
+        "path": "bad",
+        "name": "bad",
+        "parent": 0,
+        "depth": 1,
+        "dirs": [],
+        "files": [
+          0,
+          1
+        ],
+        "totalFiles": 2,
+        "totalBytes": 107,
+        "totalLines": 2,
+        "totalCode": 2,
+        "dominantLanguage": "typescript"
+      },
+      {
+        "id": 2,
+        "path": "good",
+        "name": "good",
+        "parent": 0,
+        "depth": 1,
+        "dirs": [],
+        "files": [
+          2,
+          3
+        ],
+        "totalFiles": 2,
+        "totalBytes": 109,
+        "totalLines": 2,
+        "totalCode": 2,
+        "dominantLanguage": "typescript"
+      }
+    ],
+    "files": [
+      {
+        "id": 0,
+        "path": "bad/bad.ts",
+        "name": "bad.ts",
+        "dir": 1,
+        "ext": "ts",
+        "language": "typescript",
+        "category": "code",
+        "detection": "heuristic",
+        "bytes": 53,
+        "binary": false,
+        "generated": false,
+        "vendored": false,
+        "minified": false,
+        "secret": false,
+        "lines": 1,
+        "code": 1,
+        "comment": 0,
+        "blank": 0,
+        "longestLine": 53,
+        "complexity": 1,
+        "maxDepth": 1,
+        "functions": 1,
+        "todos": 0,
+        "imports": 0,
+        "fanIn": 0,
+        "fanOut": 0,
+        "rank": 0,
+        "cycle": -1,
+        "hash": "c1327a375776fafb",
+        "hotspot": 0,
+        "src": 0
+      },
+      {
+        "id": 1,
+        "path": "bad/tsconfig.json",
+        "name": "tsconfig.json",
+        "dir": 1,
+        "ext": "json",
+        "language": "json-with-comments",
+        "category": "config",
+        "detection": "filename",
+        "bytes": 54,
+        "binary": false,
+        "generated": false,
+        "vendored": false,
+        "minified": false,
+        "secret": false,
+        "lines": 1,
+        "code": 1,
+        "comment": 0,
+        "blank": 0,
+        "longestLine": 54,
+        "complexity": 0,
+        "maxDepth": 2,
+        "functions": 0,
+        "todos": 0,
+        "imports": 0,
+        "fanIn": 0,
+        "fanOut": 0,
+        "rank": 0,
+        "cycle": -1,
+        "hash": "3bc13b9ac2313afb",
+        "hotspot": 0,
+        "src": 0,
+        "facts": {
+          "keys": 2
+        }
+      },
+      {
+        "id": 2,
+        "path": "good/good.ts",
+        "name": "good.ts",
+        "dir": 2,
+        "ext": "ts",
+        "language": "typescript",
+        "category": "code",
+        "detection": "heuristic",
+        "bytes": 55,
+        "binary": false,
+        "generated": false,
+        "vendored": false,
+        "minified": false,
+        "secret": false,
+        "lines": 1,
+        "code": 1,
+        "comment": 0,
+        "blank": 0,
+        "longestLine": 55,
+        "complexity": 1,
+        "maxDepth": 1,
+        "functions": 1,
+        "todos": 0,
+        "imports": 0,
+        "fanIn": 0,
+        "fanOut": 0,
+        "rank": 0,
+        "cycle": -1,
+        "hash": "1e1116d35ee32778",
+        "hotspot": 0,
+        "src": 0
+      },
+      {
+        "id": 3,
+        "path": "good/tsconfig.json",
+        "name": "tsconfig.json",
+        "dir": 2,
+        "ext": "json",
+        "language": "json-with-comments",
+        "category": "config",
+        "detection": "filename",
+        "bytes": 54,
+        "binary": false,
+        "generated": false,
+        "vendored": false,
+        "minified": false,
+        "secret": false,
+        "lines": 1,
+        "code": 1,
+        "comment": 0,
+        "blank": 0,
+        "longestLine": 54,
+        "complexity": 0,
+        "maxDepth": 2,
+        "functions": 0,
+        "todos": 0,
+        "imports": 0,
+        "fanIn": 0,
+        "fanOut": 0,
+        "rank": 0,
+        "cycle": -1,
+        "hash": "3bc13b9ac2313afb",
+        "hotspot": 0,
+        "src": 0,
+        "facts": {
+          "keys": 2
+        }
+      }
+    ],
+    "edges": {
+      "from": [],
+      "to": [],
+      "kind": []
+    },
+    "graph": {
+      "edges": 0,
+      "connected": 0,
+      "cycles": [],
+      "modules": [],
+      "moduleMatrix": [],
+      "moduleDepth": 0,
+      "resolved": 0,
+      "external": 0,
+      "unresolved": 0
+    },
+    "externals": [],
+    "manifests": [],
+    "stats": {
+      "linesPerFile": {
+        "count": 2,
+        "sum": 2,
+        "min": 1,
+        "max": 1,
+        "mean": 1,
+        "median": 1,
+        "p90": 1,
+        "p99": 1,
+        "gini": 0,
+        "log2Bins": [
+          2
+        ]
+      },
+      "complexityPerFile": {
+        "count": 2,
+        "sum": 2,
+        "min": 1,
+        "max": 1,
+        "mean": 1,
+        "median": 1,
+        "p90": 1,
+        "p99": 1,
+        "gini": 0,
+        "log2Bins": [
+          2
+        ]
+      },
+      "commentRatio": 0,
+      "testRatio": 0,
+      "duplicates": [
+        {
+          "hash": "3bc13b9ac2313afb",
+          "bytes": 54,
+          "files": [
+            1,
+            3
+          ]
+        }
+      ]
+    },
+    "findings": [
+      {
+        "id": "unused-exports",
+        "severity": "info",
+        "title": "4 exported symbols are never used outside their own file",
+        "detail": "Of these, 3 are referenced nowhere at all; 1 is used inside its own file and only needs to lose `export`. Dead exports widen the surface a change has to consider. Some may be public API used outside this repository; bad/bad.ts has the most (2).",
+        "files": [
+          0,
+          2
+        ],
+        "metric": {
+          "label": "Unused exports",
+          "value": 4
+        }
+      },
+      {
+        "id": "most-referenced",
+        "severity": "info",
+        "title": "good is the most widely used symbol: 1 reference from 1 file",
+        "detail": "Heavily referenced symbols are the project's vocabulary; renaming or changing their signature touches every caller.",
+        "files": [
+          2
+        ],
+        "metric": {
+          "label": "References",
+          "value": 1
+        }
+      }
+    ],
+    "layout": {
+      "graph": [
+        -3.36,
+        -6.15,
+        -1.67,
+        -3.13,
+        -4.23,
+        1.42,
+        2.5,
+        4.61,
+        1.55,
+        2.26,
+        9.17,
+        -1.73
+      ],
+      "radius": 9.6
+    },
+    "source": {
+      "chunks": [
+        "data/source/0000.js"
+      ],
+      "embedded": 4,
+      "skipped": {
+        "binary": 0,
+        "tooLarge": 0,
+        "overBudget": 0,
+        "disabled": 0
+      },
+      "maxFileBytes": 524288,
+      "maxTotalBytes": 67108864
+    },
+    "symbols": {
+      "url": "data/symbols.js",
+      "engine": {
+        "name": "typescript",
+        "version": "7.0.2"
+      },
+      "stats": {
+        "files": 2,
+        "symbols": 6,
+        "references": 1,
+        "unresolved": 0,
+        "unusedExports": 4,
+        "truncated": 0,
+        "ms": 28
+      }
+    },
+    "warnings": [
+      "TypeScript: resolving references in bad/tsconfig.json failed: eval injected checker failure in bad project"
+    ]
+  },
+  "symbols": {
+    "engine": {
+      "name": "typescript",
+      "version": "7.0.2"
+    },
+    "projects": [
+      {
+        "config": "bad/tsconfig.json",
+        "files": 1,
+        "ms": 1
+      },
+      {
+        "config": "good/tsconfig.json",
+        "files": 1,
+        "ms": 1
+      }
+    ],
+    "symbols": {
+      "name": [
+        "bad.ts",
+        "bad",
+        "x",
+        "good.ts",
+        "good",
+        "y"
+      ],
+      "kind": [
+        "module",
+        "function",
+        "variable",
+        "module",
+        "function",
+        "variable"
+      ],
+      "file": [
+        0,
+        0,
+        0,
+        2,
+        2,
+        2
+      ],
+      "line": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "col": [
+        0,
+        16,
+        45,
+        0,
+        16,
+        46
+      ],
+      "endLine": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "parent": [
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "flags": [
+        0,
+        2049,
+        2049,
+        0,
+        2049,
+        2049
+      ],
+      "signature": [
+        "",
+        "",
+        "",
+        "",
+        "() => number",
+        "number"
+      ],
+      "doc": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "complexity": [
+        0,
+        1,
+        0,
+        0,
+        1,
+        0
+      ],
+      "params": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "refs": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      "callers": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ],
+      "files": [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0
+      ]
+    },
+    "refs": {
+      "symbol": [
+        4
+      ],
+      "file": [
+        2
+      ],
+      "line": [
+        0
+      ],
+      "col": [
+        48
+      ],
+      "len": [
+        4
+      ],
+      "kind": [
+        2
+      ],
+      "from": [
+        5
+      ]
+    },
+    "calls": {
+      "from": [
+        5
+      ],
+      "to": [
+        4
+      ],
+      "kind": [
+        2
+      ],
+      "count": [
+        1
+      ]
+    },
+    "fileRefStart": [
+      0,
+      0,
+      0,
+      1,
+      1
+    ],
+    "moduleSymbol": [
+      0,
+      -1,
+      3,
+      -1
+    ],
+    "stats": {
+      "files": 2,
+      "symbols": 6,
+      "references": 1,
+      "unresolved": 0,
+      "unusedExports": 4,
+      "truncated": 0,
+      "ms": 28
+    }
+  },
+  "events": [
+    {
+      "phase": "walk",
+      "status": "start"
+    },
+    {
+      "phase": "walk",
+      "status": "done",
+      "ms": 5,
+      "message": "4 files"
+    },
+    {
+      "phase": "detect",
+      "status": "start",
+      "total": 4
+    },
+    {
+      "phase": "detect",
+      "status": "update",
+      "done": 4,
+      "total": 4
+    },
+    {
+      "phase": "detect",
+      "status": "done",
+      "ms": 12,
+      "message": "4 files"
+    },
+    {
+      "phase": "git",
+      "status": "skip",
+      "message": "disabled (--no-git)"
+    },
+    {
+      "phase": "typescript",
+      "status": "start"
+    },
+    {
+      "phase": "files",
+      "status": "start",
+      "total": 4
+    },
+    {
+      "phase": "files",
+      "status": "update",
+      "done": 4,
+      "total": 4
+    },
+    {
+      "phase": "files",
+      "status": "done",
+      "ms": 3,
+      "message": "4 files, 4 lines"
+    },
+    {
+      "phase": "imports",
+      "status": "start"
+    },
+    {
+      "phase": "imports",
+      "status": "done",
+      "ms": 2,
+      "message": "0 imports, 0 edges"
+    },
+    {
+      "phase": "graph",
+      "status": "start"
+    },
+    {
+      "phase": "graph",
+      "status": "done",
+      "ms": 0,
+      "message": "0 connected files, 0 cycles"
+    },
+    {
+      "phase": "layout",
+      "status": "start"
+    },
+    {
+      "phase": "layout",
+      "status": "done",
+      "ms": 2,
+      "message": "4 positions"
+    },
+    {
+      "phase": "typescript",
+      "status": "update",
+      "message": "2 project(s), 2 files"
+    },
+    {
+      "phase": "typescript",
+      "status": "update",
+      "message": "resolving references in bad/tsconfig.json failed: eval injected checker failure in bad project"
+    },
+    {
+      "phase": "typescript",
+      "status": "update",
+      "message": "bad/tsconfig.json: 1 files, 0 references, 1 ms"
+    },
+    {
+      "phase": "typescript",
+      "status": "update",
+      "message": "good/tsconfig.json: 1 files, 1 references, 1 ms"
+    },
+    {
+      "phase": "typescript",
+      "status": "done",
+      "ms": 29,
+      "message": "6 symbols, 1 reference"
+    },
+    {
+      "phase": "stats",
+      "status": "start"
+    },
+    {
+      "phase": "stats",
+      "status": "done",
+      "ms": 0,
+      "message": "2 languages, 1 duplicate set"
+    },
+    {
+      "phase": "findings",
+      "status": "start"
+    },
+    {
+      "phase": "findings",
+      "status": "done",
+      "ms": 0,
+      "message": "2 findings"
+    }
+  ]
+}

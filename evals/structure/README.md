@@ -198,3 +198,11 @@ including source inventories and proposals that are not empirical measurements.
 | Kubernetes phases, wall, RSS | `run.ts` in three modes, `tables.py` | historical `measurements.json.gz`, `kubernetes-cli.log`, `kubernetes-cap50.log`, `kubernetes-nogit.log` |
 | Non-TypeScript agent questions | Manual interpretation plus `mcp.ts` | `fixtures/questions.json`, historical `mcp-timings.json`; source/graph repros above |
 | Ranked frontier proposals | Recommendations, not measured results | The study's cited observations above; no runner claims to validate the proposed future behavior |
+
+## Release candidate rerun
+
+`results/2026-11-17-rc.0/` is this eval's quick pieces rerun on `0.3.0-rc.0`, after the fixes
+for S2 (`go-cap` records 24 members behind 17 projected edges), S3 (`python-type-guard` is a
+type loop, not a runtime cycle) and S8 (`c-extensionless` resolves to `include/projectheader`);
+the other repros are unchanged. Compare it with `results/2026-11-17/` to see exactly what
+moved.
