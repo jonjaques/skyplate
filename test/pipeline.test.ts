@@ -272,6 +272,80 @@ describe("git", () => {
 });
 
 describe("code intelligence", () => {
+  test("missing declared packages warn with or without unrelated ancestor node_modules", async () => {
+    const parent = join(TMP, "missing-packages");
+    const dir = join(parent, "project");
+    mkdirSync(dir, { recursive: true });
+    cpSync(join(import.meta.dir, "../evals/typescript/fixtures/missing-deps"), dir, { recursive: true });
+    for (const ancestorInstalled of [false, true]) {
+      if (ancestorInstalled) mkdirSync(join(parent, "node_modules/unrelated"), { recursive: true });
+      const analysis = await analyzeProject(dir, { workers: 1, git: false, source: false });
+      expect(analysis.symbols!.stats.uninstalledManifests).toBe(1);
+      expect(analysis.report.warnings.some((warning) => warning.startsWith("Dependencies are not installed"))).toBe(true);
+      expect(validateReport(analysis.report, analysis.symbols)).toEqual([]);
+    }
+  }, 60_000);
+
+  test("installation checks resolve every declared package from local and hoisted directories", async () => {
+    const parent = join(TMP, "installed-packages");
+    const dir = join(parent, "project");
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, "index.ts"), "export function outer() { return 0; }\n");
+    writeFileSync(join(dir, "package.json"), "\uFEFF" + JSON.stringify({
+      dependencies: { local: "1", alias: "npm:actual-package@1" },
+      devDependencies: { "@scope/tool": "1" },
+      peerDependencies: { peer: "1" },
+      optionalDependencies: { optional: "1" },
+    }));
+    for (const name of ["local", "alias"]) mkdirSync(join(dir, "node_modules", name), { recursive: true });
+    for (const name of ["@scope/tool", "peer", "optional"]) mkdirSync(join(parent, "node_modules", name), { recursive: true });
+    const installed = await analyzeProject(dir, { workers: 1, git: false, source: false });
+    expect(installed.symbols!.stats.uninstalledManifests).toBeUndefined();
+    expect(installed.report.warnings.some((warning) => warning.startsWith("Dependencies are not installed"))).toBe(false);
+    rmSync(join(parent, "node_modules/peer"), { recursive: true });
+    const partial = await analyzeProject(dir, { workers: 1, git: false, source: false });
+    expect(partial.symbols!.stats.uninstalledManifests).toBe(1);
+    expect(validateReport(partial.report, partial.symbols)).toEqual([]);
+  }, 60_000);
+
+  test("workspace manifests cannot borrow an installation from a sibling package", async () => {
+    const dir = join(TMP, "workspace-installations");
+    for (const name of ["installed", "missing"]) {
+      const child = join(dir, "packages", name);
+      mkdirSync(child, { recursive: true });
+      writeFileSync(join(child, "package.json"), JSON.stringify({ name, dependencies: { library: "1" } }));
+      writeFileSync(join(child, "index.ts"), "export const value = 1;\n");
+    }
+    mkdirSync(join(dir, "node_modules/unrelated"), { recursive: true });
+    mkdirSync(join(dir, "packages/installed/node_modules/library"), { recursive: true });
+    const analysis = await analyzeProject(dir, { workers: 1, git: false, source: false });
+    expect(analysis.symbols!.stats.uninstalledManifests).toBe(1);
+    expect(validateReport(analysis.report, analysis.symbols)).toEqual([]);
+  }, 60_000);
+
+  test("a package.json that is not valid JSON is skipped, not fatal, and not counted as uninstalled", async () => {
+    const dir = join(TMP, "broken-manifest");
+    mkdirSync(join(dir, "broken"), { recursive: true });
+    writeFileSync(join(dir, "index.ts"), "export const value = 1;\n");
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ dependencies: { library: "1" } }));
+    writeFileSync(join(dir, "broken/package.json"), '{ "dependencies": { "library": "1" }, <<<<<<< HEAD\n');
+    const analysis = await analyzeProject(dir, { workers: 1, git: false, source: false });
+    expect(analysis.symbols!.stats.uninstalledManifests).toBe(1);
+    expect(validateReport(analysis.report, analysis.symbols)).toEqual([]);
+  }, 60_000);
+
+  test("installation checks report when a huge installed manifest exhausts their budget", async () => {
+    const dir = join(TMP, "installation-budget");
+    mkdirSync(dir, { recursive: true });
+    const dependencies = Object.fromEntries(Array.from({ length: 10_001 }, (_, index) => [`package-${index}`, "1"]));
+    writeFileSync(join(dir, "package.json"), JSON.stringify({ dependencies }));
+    writeFileSync(join(dir, "index.ts"), "export const value = 1;\n");
+    for (const name of Object.keys(dependencies)) mkdirSync(join(dir, "node_modules", name), { recursive: true });
+    const analysis = await analyzeProject(dir, { workers: 1, git: false, source: false });
+    expect(analysis.report.warnings.some((warning) => warning.includes("Dependency installation checks stopped"))).toBe(true);
+    expect(analysis.symbols!.stats.uninstalledManifests).toBeUndefined();
+  }, 60_000);
+
   test("symbols exist for the TypeScript functions", () => {
     const s = result.symbols!.symbols;
     for (const name of ["add", "twice", "log", "main"]) {
@@ -348,11 +422,10 @@ describe("code intelligence", () => {
 
     // Nothing installed for package.json, and it shows: the counts say so, in a warning.
     expect(s.stats.uninstalledManifests).toBe(1);
-    expect(r.report.warnings.some((w) => w.startsWith("Dependencies are not installed (1 package.json without node_modules)"))).toBe(true);
+    expect(r.report.warnings.some((w) => w.startsWith("Dependencies are not installed (1 package.json with missing packages)"))).toBe(true);
     expect(validateReport(r.report, s)).toEqual([]);
 
-    // Installed (an empty node_modules is enough to say someone ran the installer): no caveat.
-    mkdirSync(join(dir, "node_modules"));
+    mkdirSync(join(dir, "node_modules/some-ui-kit"), { recursive: true });
     const installed = await analyzeProject(dir, { workers: 1, git: false, source: false });
     expect(installed.symbols!.stats.uninstalledManifests).toBeUndefined();
     expect(installed.report.warnings.some((w) => w.startsWith("Dependencies are not installed"))).toBe(false);

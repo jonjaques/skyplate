@@ -728,11 +728,11 @@ export interface CodeSymbols {
      */
     hostFiles?: number;
     /**
-     * package.json files that declare dependencies with no node_modules beside or above them
-     * (and no Yarn Plug'n'Play manifest): the dependencies were never installed, so the checker
-     * had no declarations for them and every name taken from one is in `unresolved`. In a
-     * monorepo that can include its own workspace packages imported by package name, so refs,
-     * callers and files are lower bounds and an unusedExport flag can be wrong. Omitted when 0.
+     * package.json files with a declared package missing from their Node search path. Package
+     * directory presence is installation evidence, not proof its types resolve; PnP manifests
+     * alone do not establish it. Missing packages can leave refs, callers and files as lower
+     * bounds and an unusedExport flag can be wrong. Omitted when 0. A warning reports an
+     * exhausted installation-check budget, in which case this count may be incomplete too.
      */
     uninstalledManifests?: number;
   };

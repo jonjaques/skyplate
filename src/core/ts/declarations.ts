@@ -128,6 +128,9 @@ export function collectDeclarations(
       nameLen,
     });
     decls.scopes.set(d.node.index, id);
+    // Variables and wrapped components are named outside their function node. Keep the
+    // actual boundary too, so nested callbacks cannot inherit their decision counter.
+    if (d.fn) decls.scopes.set(d.fn.index, id);
     if (d.nameNode) decls.names.add(d.nameNode.index);
     if (d.parent === -1 && !topLevel.has(d.name)) topLevel.set(d.name, id);
     return id;

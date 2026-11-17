@@ -23,7 +23,7 @@
  */
 
 import type { AnalysisDiagnostics } from "./bench/diagnostics";
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import pkg from "../../package.json" with { type: "json" };
 import type { Detection, ImportResolution, RawImport } from "./contracts";
@@ -207,29 +207,61 @@ const parentOf = (p: string) => {
 };
 
 /**
- * package.json manifests that declare dependencies with nothing installed for them: no
- * node_modules in the manifest's folder or any folder above it, and no Yarn Plug'n'Play
- * manifest (.pnp.cjs) either. Node's resolution climbs past the project root, so the search
- * does too: a package analyzed on its own inside an installed monorepo is installed. A fresh
- * clone is the usual case, and it is invisible in the report otherwise: the checker resolves
- * nothing imported from a package, and the counts quietly drop.
+ * A node_modules directory can belong to an unrelated ancestor or an incomplete install.
+ * Check declared install names, not the merged external names (npm aliases install under
+ * their keys), and climb past the analyzed root just as Node does for a hoisted workspace.
+ * Bound filesystem probes across the whole analysis; an unchecked package is unknown, not
+ * evidence that its manifest is installed or missing. PnP files alone prove neither, and
+ * loading them would execute the analyzed project's code.
  */
-function uninstalledManifests(root: string, manifests: Manifest[]): number {
+function uninstalledManifests(root: string, manifests: Manifest[], readText: (path: string) => string | undefined): { missing: number; limited: boolean } {
+  const maxProbes = 10_000;
+  let probes = 0;
   const installed = new Map<string, boolean>();
-  const look = (dir: string): boolean => {
-    let hit = installed.get(dir);
+  const look = (dir: string, name: string): boolean | undefined => {
+    const key = `${dir}\0${name}`;
+    let hit = installed.get(key);
     if (hit === undefined) {
-      hit = existsSync(join(dir, "node_modules")) || existsSync(join(dir, ".pnp.cjs")) || existsSync(join(dir, ".pnp.js"));
-      if (!hit && dirname(dir) !== dir) hit = look(dirname(dir));
-      installed.set(dir, hit);
+      hit = false;
+      if (basename(dir) !== "node_modules") {
+        if (probes >= maxProbes) return undefined;
+        probes++;
+        try {
+          hit = statSync(join(dir, "node_modules", name)).isDirectory();
+        } catch {
+          hit = false;
+        }
+      }
+      if (!hit && dirname(dir) !== dir) hit = look(dirname(dir), name);
+      if (hit !== undefined) installed.set(key, hit);
     }
     return hit;
   };
-  let n = 0;
-  for (const m of manifests) {
-    if (m.kind === "package.json" && m.dependencies > 0 && !look(dirname(join(root, m.path)))) n++;
+  let missing = 0;
+  for (const manifest of manifests) {
+    if (manifest.kind !== "package.json") continue;
+    const text = readText(manifest.path);
+    if (!text) continue;
+    // readManifests parsed this same text with the same strict JSON.parse and dropped any file
+    // it rejected, so only valid manifests reach this point.
+    const json = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text) as Record<string, unknown>;
+    const names = new Set<string>();
+    for (const section of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+      const declared = json[section];
+      if (declared && typeof declared === "object" && !Array.isArray(declared)) {
+        for (const name of Object.keys(declared)) names.add(name);
+      }
+    }
+    for (const name of names) {
+      const found = look(dirname(join(root, manifest.path)), name);
+      if (found === undefined) return { missing, limited: true };
+      if (!found) {
+        missing++;
+        break;
+      }
+    }
   }
-  return n;
+  return { missing, limited: false };
 }
 
 const CONFIG_FILE = /^(?:tsconfig|jsconfig)[\w.-]*\.json$/i;
@@ -673,7 +705,8 @@ export async function analyzeProject(
       return text;
     };
     const { manifests, dependencies } = readManifests(paths, readText);
-    const uninstalled = uninstalledManifests(root, manifests);
+    const { missing: uninstalled, limited: installationLimited } = uninstalledManifests(root, manifests, readText);
+    if (installationLimited) warnings.push("Dependency installation checks stopped after 10,000 package directory probes; some declared dependencies were not checked and the missing-manifest count may be incomplete.");
     diagnostics?.add("uninstalled_manifests", uninstalled);
     const idOfPath = new Map(paths.map((p, i) => [p, i]));
     for (const [path, source] of findEntries(paths, readText)) files[idOfPath.get(path)!]!.entry = source;
@@ -859,7 +892,7 @@ export async function analyzeProject(
         if (missed > 0 && missed >= 0.1 * (references + missed)) {
           diagnostics?.add("dependencies_missing", uninstalled);
           warnings.push(
-            `Dependencies are not installed (${plural(uninstalled, "package.json", "package.json files")} without node_modules), so TypeScript could not resolve ${nf.format(missed)} names, against ${nf.format(references)} it did. Reference and caller counts are lower bounds and some exports flagged unused may be used; install the dependencies and re-run for complete code intelligence.`,
+            `Dependencies are not installed (${plural(uninstalled, "package.json", "package.json files")} with missing packages), so TypeScript could not resolve ${nf.format(missed)} names, against ${nf.format(references)} it did. Reference and caller counts are lower bounds and some exports flagged unused may be used; install the dependencies and re-run for complete code intelligence.`,
           );
         }
       }
