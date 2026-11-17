@@ -74,9 +74,8 @@ export interface AnalyzeOptions {
   /**
    * Compute the import-graph layout the viewer morphs to. Only a report needs it, and it was
    * two thirds of a history-free analysis of a 32k-file repository (5.2 s of 7.7 s), so a caller
-   * that will never write this result as a report turns it off (the MCP server's structure
-   * pass). Off leaves `layout.graph` empty: such a result fails validateReport and must not be
-   * written.
+   * that needs only answers turns it off (the MCP server's analyses). Off leaves `layout.graph`
+   * empty: complete it with withReportLayout before writing a report.
    */
   layout: boolean;
   maxCommits: number;
@@ -1056,6 +1055,62 @@ export async function analyzeProject(
     // yet, so their subprocesses finish on their own (bin/skyplate.ts exits on failure
     // rather than waiting for them).
     if (diagnostics) diagnostics.workers = { size: pool.size, ...pool.diagnostics };
+    pool.close();
+  }
+}
+
+/**
+ * Complete a layout-less analysis for writing, without changing the snapshot answering MCP queries.
+ * It rebuilds analyzeProject's `layoutInput` from the finished report (code edges are the
+ * report's non-link edges, in the same order), so a change to one must reach the other: the
+ * "same report as the CLI pipeline" test in test/mcp-workspace.test.ts compares the two.
+ */
+export async function withReportLayout(result: AnalysisResult, onProgress?: (e: ProgressEvent) => void): Promise<AnalysisResult> {
+  const report = result.report;
+  if (report.timings.layout !== undefined) return result;
+  const started = performance.now();
+  const phases = new Phases((event) => {
+    try {
+      onProgress?.(event);
+    } catch {
+      // A broken progress sink must not take the analysis down.
+    }
+  });
+  const pool = new WorkerPool(1);
+  try {
+    phases.start("layout");
+    const from: number[] = [];
+    const to: number[] = [];
+    for (let edge = 0; edge < report.edges.from.length; edge++) {
+      if (report.edges.kind[edge] === LINK) continue;
+      from.push(report.edges.from[edge]!);
+      to.push(report.edges.to[edge]!);
+    }
+    const response = await pool.run({
+      type: "layout",
+      input: {
+        fileCount: report.files.length,
+        fileDir: report.files.map((file) => file.dir),
+        dirParent: report.dirs.map((dir) => dir.parent),
+        dirDirs: report.dirs.map((dir) => dir.dirs),
+        dirFiles: report.dirs.map((dir) => dir.files),
+        from,
+        to,
+        fanIn: report.files.map((file) => file.fanIn),
+        rank: report.files.map((file) => file.rank),
+      },
+    });
+    if (response.type !== "layout") throw new Error("analysis worker answered the layout job with " + response.type);
+    phases.end("layout", plural(report.files.length, "position"));
+    return {
+      ...result,
+      report: {
+        ...report,
+        layout: response.layout,
+        timings: { ...report.timings, ...phases.timings, total: report.timings.total! + Math.round(performance.now() - started) },
+      },
+    };
+  } finally {
     pool.close();
   }
 }

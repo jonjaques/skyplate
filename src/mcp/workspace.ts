@@ -33,7 +33,7 @@ import { PHASE_LABEL, type CliPhase } from "../cli/progress";
 import { isReportDir, openInBrowser, startServer, type StaticServer } from "../cli/serve";
 import { slug } from "../cli/main";
 import { checkBenchmarkOut, defaultBenchmarkOut, runBenchmark, ToolRecorder, writeBenchmark } from "../core/bench";
-import { analyzeProject, DEFAULT_OPTIONS, type AnalysisResult, type AnalyzeOptions, type ProgressEvent } from "../core/pipeline";
+import { analyzeProject, DEFAULT_OPTIONS, withReportLayout, type AnalysisResult, type AnalyzeOptions, type ProgressEvent } from "../core/pipeline";
 import { gitDirectories } from "../core/git";
 import { detectFile } from "../core/languages/detect";
 import { checkOutput, outputPlacement, realPath, reportExcludes, viewerIsStale, writeSite } from "../core/site";
@@ -553,7 +553,7 @@ export class Workspace {
           p.structureMs = p.structureAt - startedAt;
           landed();
         }
-        const result = await analyzeProject(p.path, { ...options, exclude }, (e) => job.event(e));
+        const result = await analyzeProject(p.path, { ...options, exclude, layout: false }, (e) => job.event(e));
         if (p.closed) return { skipped: "project closed" };
         p.snapshot = liveSnapshot(result, startedAt);
         p.snapshot.options = effective(options);
@@ -784,7 +784,7 @@ export class Workspace {
       const reuse = !!(p && snap?.result && !p.stale && !p.busy && effective(options) === snap.options);
       let result: AnalysisResult;
       if (reuse) {
-        result = snap!.result!;
+        result = await withReportLayout(snap!.result!, (e) => job.event(e));
       } else {
         const exclude = this.excludesFor(root, options.exclude ?? [], out);
         result = await analyzeProject(root, { ...options, exclude }, (e) => job.event(e));

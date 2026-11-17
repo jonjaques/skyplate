@@ -19,6 +19,7 @@ import { join } from "node:path";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { parseDataScript } from "../src/core/site";
 import { parseSince } from "../src/mcp/query";
+import { readReportFolder } from "../src/mcp/report";
 import { createServer } from "../src/mcp/server";
 import { render } from "../src/mcp/text";
 import { relevantChange, Workspace } from "../src/mcp/workspace";
@@ -364,9 +365,10 @@ describe("a live project", () => {
     expect((await call("read_source", { path: "src/math.ts", start_line: 5, end_line: 3 })).error).toBe(true);
   });
 
-  test("the report is valid, and a loop closed only by import type is not a cycle", async () => {
+  test("only viewer layout is absent, and a loop closed only by import type is not a cycle", async () => {
     const snap = ws.resolve("demo").snapshot!;
-    expect(validateReport(snap.report, await snap.symbols())).toEqual([]);
+    expect(snap.report.layout.graph).toEqual([]);
+    expect(validateReport(snap.report, await snap.symbols())).toEqual([`layout.graph has 0 numbers, expected ${snap.report.files.length * 3}`]);
     expect(snap.report.edges.typeOnly?.length).toBe(1);
     const cycles = await json("graph", { view: "cycles" });
     expect(cycles.total).toBe(1); // math ↔ app, which runs
@@ -529,6 +531,9 @@ describe("a built report", () => {
     expect(r.result).toMatchObject({ out: OUT, reusedAnalysis: true });
     expect(existsSync(join(OUT, "index.html"))).toBe(true);
     expect(existsSync(join(OUT, "data", "report.js"))).toBe(true);
+    const folder = await readReportFolder(OUT);
+    expect(folder.report.layout.graph).toHaveLength(folder.report.files.length * 3);
+    expect(validateReport(folder.report, await folder.symbols())).toEqual([]);
   }, 120_000);
 
   test("build_report refuses to replace a folder that is not a report", async () => {
