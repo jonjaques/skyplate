@@ -172,6 +172,7 @@ export function validateReport(report: Report, symbols?: CodeSymbols, onRule?: (
   const e = report.edges;
   if (e.from.length !== e.to.length || e.from.length !== e.kind.length) fail("edges", `edge columns differ in length: ${e.from.length}/${e.to.length}/${e.kind.length}`);
   const pairs = new Set<number>();
+  const projectedByPackage = e.packages ? new Map<number, number>() : undefined;
   for (let i = 0; i < e.from.length; i++) {
     const a = e.from[i]!;
     const b = e.to[i]!;
@@ -181,6 +182,10 @@ export function validateReport(report: Report, symbols?: CodeSymbols, onRule?: (
     const key = a * nf + b;
     if (pairs.has(key)) fail("edges", `edge ${i} (${a} → ${b}) is a duplicate`);
     pairs.add(key);
+    if (projectedByPackage && fileOk(a) && fileOk(b) && e.kind[i] !== "link") {
+      const pkg = a * nd + files[b]!.dir;
+      projectedByPackage.set(pkg, (projectedByPackage.get(pkg) ?? 0) + 1);
+    }
   }
   if (e.typeOnly) {
     let prev = -1;
@@ -188,6 +193,30 @@ export function validateReport(report: Report, symbols?: CodeSymbols, onRule?: (
       if (!Number.isInteger(row) || row <= prev || row >= e.from.length) fail("edges", `typeOnly row ${row} is out of range or out of order`);
       else if (e.kind[row] === "link") fail("edges", `typeOnly row ${row} is a doc link, which has no types to erase`);
       prev = row;
+    }
+  }
+  if (e.packages) {
+    const table = e.packages;
+    const length = table.from.length;
+    if ([table.dir, table.members, table.projected, table.capped].some((column) => column.length !== length)) fail("edges", "package projection columns differ in length");
+    const seen = new Set<number>();
+    for (let row = 0; row < length; row++) {
+      const from = table.from[row]!;
+      const dir = table.dir[row]!;
+      if (!fileOk(from) || !dirOk(dir)) {
+        fail("edges", `package projection ${row} has an out-of-range file or directory`);
+        continue;
+      }
+      const key = from * nd + dir;
+      if (seen.has(key)) fail("edges", `package projection ${row} duplicates file ${from} and directory ${dir}`);
+      seen.add(key);
+      const members = table.members[row]!;
+      const projected = table.projected[row]!;
+      const self = files[from]!.dir === dir ? 1 : 0;
+      if (!Number.isInteger(members) || members < 1 || members > dirs[dir]!.files.length || !Number.isInteger(projected) || projected < 0 || projected > members || projected > (projectedByPackage!.get(key) ?? 0)) {
+        fail("edges", `package projection ${row} has invalid member or projected edge counts`);
+      }
+      if (typeof table.capped[row] !== "boolean" || (table.capped[row] ? members <= projected : members > projected + self)) fail("edges", `package projection ${row} has an inconsistent cap mark`);
     }
   }
   // Every counted statement lands in exactly one of the three graph totals, and doc links in

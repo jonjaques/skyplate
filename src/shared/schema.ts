@@ -19,7 +19,7 @@
  * lost the barred-spiral tree (`tree`, `dirCenters`, `dirRadius`) when the viewer began
  * computing the cosmic web itself, and `radius` became the graph's alone.
  *
- * Optional fields added since leave it alone (EdgeTable.typeOnly, GraphSummary.typeLoops,
+ * Optional fields added since leave it alone (EdgeTable.typeOnly, EdgeTable.packages, GraphSummary.typeLoops,
  * GitSummary.sweepFiles, CommitTable.width, FileRecord.entry, FileRecord.publicApi): a
  * report written before one simply lacks it, and every reader treats it as absent. A viewer
  * always reads the data it shipped with; the bump exists for readers of other reports, such
@@ -306,12 +306,27 @@ export interface EdgeTable {
   kind: EdgeKind[];
   /**
    * Rows (ascending indices into the columns above) where every import between the two files
-   * is erased by the compiler: `import type`, `import { type A }` with every specifier typed,
-   * `export type … from`. Real coupling, counted in fan-in/out, rank and modules, but nothing
+   * is type-only: `import type`, `import { type A }` with every specifier typed,
+   * `export type … from`, or Python imports guarded by TYPE_CHECKING. Real coupling,
+   * counted in fan-in/out, rank and modules, but nothing
    * runs, so these edges close no cycle (GraphSummary.cycles leaves them out). Omitted when
    * there are none.
    */
   typeOnly?: number[];
+  /** Directory imports projected onto file edges. Absent in older reports. */
+  packages?: PackageImportTable;
+}
+
+/** One row per importing file and package directory, not per projected edge. */
+export interface PackageImportTable {
+  from: number[];
+  dir: number[];
+  /** All eligible member files, including the importer if it belongs to the package. */
+  members: number[];
+  /** Members that received a file edge; self-edges are never emitted. */
+  projected: number[];
+  /** The sibling limit dropped members, rather than only excluding a self-edge. */
+  capped: boolean[];
 }
 
 export interface ExternalDependency {

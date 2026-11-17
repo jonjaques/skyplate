@@ -42,6 +42,7 @@ import {
   type LanguageSummary,
   type Layouts,
   type Manifest,
+  type PackageImportTable,
   type Report,
   type SourceIndex,
 } from "../shared/schema";
@@ -733,6 +734,8 @@ export async function analyzeProject(
     // marked those all along and nothing carried the mark here, so loops closed by an
     // `import type` were reported as import cycles.
     const runtimePairs = new Set<number>();
+    const packageImports: PackageImportTable = { from: [], dir: [], members: [], projected: [], capped: [] };
+    const packagePairs = new Set<number>();
     // `export … from` edges, for the published API walk below.
     const reexports: number[][] = Array.from({ length: n }, () => []);
     const addEdge = (from: number, to: number, kind: EdgeKind, typeOnly: boolean) => {
@@ -769,6 +772,18 @@ export async function analyzeProject(
           addEdge(id, r.file, imp.kind, typeOnly);
           if ((imp as ExtractedImport).reexport && r.file !== id) reexports[id]!.push(r.file);
           for (const sib of r.also ?? []) addEdge(id, sib, imp.kind, typeOnly);
+          if (r.package) {
+            const dir = files[r.file]!.dir;
+            const key = id * dirs.length + dir;
+            if (!packagePairs.has(key)) {
+              packagePairs.add(key);
+              packageImports.from.push(id);
+              packageImports.dir.push(dir);
+              packageImports.members.push(r.package.members);
+              packageImports.projected.push(Number(r.file !== id) + (r.also ?? []).filter((sib) => sib !== id).length);
+              packageImports.capped.push(r.package.capped);
+            }
+          }
         } else if ("external" in r) {
           if (!counted) continue;
           external++;
@@ -819,6 +834,7 @@ export async function analyzeProject(
       }
     }
     if (typeOnlyRows.length) edges.typeOnly = typeOnlyRows;
+    if (packageImports.from.length) edges.packages = packageImports;
     const externalList = [...externals.values()].sort(
       (a, b) => b.importers - a.importers || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) || (a.ecosystem < b.ecosystem ? -1 : 1),
     );

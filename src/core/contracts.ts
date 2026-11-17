@@ -156,7 +156,7 @@ export type ImportResolution =
    * C# namespaces, Terraform modules) resolve to a representative file plus `also`, a capped
    * list of its siblings, so package-level edges can still be drawn.
    */
-  | { file: number; also?: number[] }
+  | { file: number; also?: number[]; package?: { dir: string; members: number; capped: boolean } }
   | { external: { name: string; ecosystem: string } } //  a package / stdlib module
   | { unresolved: true };
 

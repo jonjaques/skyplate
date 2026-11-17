@@ -21,8 +21,8 @@ import { getLexRules, type LexRules } from "../languages/syntax";
 // ─── Shared machinery ────────────────────────────────────────────────────────────────────────
 
 /**
- * A RawImport that may also say the compiler erases it (`import type`, `export type … from`,
- * or a list whose every specifier is written `type X`). Such an edge is real coupling but
+ * A RawImport that may also say it is type-only (`import type`, `export type … from`, a list
+ * whose every specifier is written `type X`, or Python under TYPE_CHECKING). Real coupling but
  * never runs, so it cannot make an import cycle bite at module evaluation; the graph keeps it
  * out of cycle detection. The flag rides on the contract's RawImport as an extra field until
  * the contract names it, which is why it is optional and only ever `true`.
@@ -425,9 +425,67 @@ const PY_IMPORT = /^[ \t]*import[ \t]+([^\n#;]{1,2000})/gm;
 const PY_NAME = /^[\p{ID_Start}_]\p{ID_Continue}*$/u;
 const PY_DOTTED = /^[\p{ID_Start}_][\p{ID_Continue}.]*$/u;
 
+function pythonTypeOnlyLines(ctx: Ctx, start: number, end: number): Set<number> {
+  const names = new Map<string, number>([["TYPE_CHECKING", -1]]);
+  const modules = new Map<string, number>([["typing", -1]]);
+  each(ctx, PY_FROM, start, end, (match) => {
+    if (match[1] !== "typing") return;
+    for (const part of match[2]!.replace(/[()\\]/g, " ").split(",")) {
+      const [name, alias = name] = part.trim().split(/\s+as\s+/);
+      if (name === "TYPE_CHECKING" && alias && PY_NAME.test(alias)) names.set(alias, Math.min(names.get(alias) ?? Infinity, match.index));
+    }
+  });
+  each(ctx, PY_IMPORT, start, end, (match) => {
+    for (const part of match[1]!.split(",")) {
+      const [name, alias = name] = part.trim().split(/\s+as\s+/);
+      if (name === "typing" && alias && PY_NAME.test(alias)) modules.set(alias, Math.min(modules.get(alias) ?? Infinity, match.index));
+    }
+  });
+  const typed = new Set<number>();
+  const guards: number[] = [];
+  const lines = ctx.mask.slice(start, end).split("\n");
+  const firstLine = lineOf(ctx, start);
+  let statement = "";
+  let statementLine = 0;
+  let brackets = 0;
+  for (let line = 0; line < lines.length; line++) {
+    const text = lines[line]!;
+    // Continuation lines can close at column zero without leaving the surrounding suite.
+    // String bodies are masked too, so a docstring's contents must not dedent a guard.
+    if (!statement && /^[\s\x01'"]*$/.test(text)) continue;
+    if (!statement) statementLine = line;
+    statement += text + "\n";
+    for (const char of text) {
+      if (char === "(" || char === "[" || char === "{") brackets++;
+      else if (char === ")" || char === "]" || char === "}") brackets--;
+    }
+    if (brackets > 0 || /\\\s*$/.test(text)) continue;
+    let indent = 0;
+    for (const char of statement) {
+      if (char === " ") indent++;
+      else if (char === "\t") indent += 8 - indent % 8;
+      else break;
+    }
+    while (guards.length && indent <= guards[guards.length - 1]!) guards.pop();
+    if (guards.length) for (let row = statementLine; row <= line; row++) typed.add(firstLine + row);
+    const header = /^(?:if|elif)\s+([\s\S]+):\s*$/.exec(statement.trim());
+    if (header) {
+      let condition = header[1]!.trim();
+      while (condition.startsWith("(") && condition.endsWith(")")) condition = condition.slice(1, -1).trim();
+      const position = ctx.lineStarts[firstLine + statementLine]!;
+      const qualified = /^(.*)\.TYPE_CHECKING$/.exec(condition);
+      if ((names.get(condition) ?? Infinity) < position || (qualified && (modules.get(qualified[1]!) ?? Infinity) < position)) guards.push(indent);
+    }
+    statement = "";
+  }
+  return typed;
+}
+
 function extractPython(ctx: Ctx, start: number, end: number): void {
+  const typed = pythonTypeOnlyLines(ctx, start, end);
   each(ctx, PY_FROM, start, end, (m) => {
     const mod = m[1]!;
+    const typeOnly = typed.has(lineOf(ctx, m.index));
     if (/^\.+$/.test(mod)) {
       // `from . import a, b` imports sibling modules (or names from __init__): emit one
       // specifier per name so the resolver can find `a.py` before falling back to `.`.
@@ -436,17 +494,17 @@ function extractPython(ctx: Ctx, start: number, end: number): void {
       for (const part of names) {
         const name = part.trim().split(/\s+as\s+/)[0]?.trim();
         if (name && name !== "*" && PY_NAME.test(name)) {
-          add(ctx, mod + name, "import", m.index);
+          add(ctx, mod + name, "import", m.index, typeOnly);
           any = true;
         }
       }
-      if (!any) add(ctx, mod, "import", m.index);
-    } else add(ctx, mod, "import", m.index);
+      if (!any) add(ctx, mod, "import", m.index, typeOnly);
+    } else add(ctx, mod, "import", m.index, typeOnly);
   });
   each(ctx, PY_IMPORT, start, end, (m) => {
     for (const part of m[1]!.split(",")) {
       const name = part.trim().split(/\s+/)[0];
-      if (name && PY_DOTTED.test(name)) add(ctx, name, "import", m.index);
+      if (name && PY_DOTTED.test(name)) add(ctx, name, "import", m.index, typed.has(lineOf(ctx, m.index)));
     }
   });
 }

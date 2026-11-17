@@ -88,6 +88,8 @@ interface Index {
   paths: Searchable;
   /** from * fileCount + to for every type-only edge (EdgeTable.typeOnly). */
   typeOnly: Set<number>;
+  packageImports: Adjacency;
+  packageImportedBy: Adjacency;
 }
 
 const indexes = new WeakMap<Report, Index>();
@@ -137,6 +139,8 @@ function index(report: Report): Index {
     for (const id of f.files ?? []) fileFindings.set(id, [...(fileFindings.get(id) ?? []), row]);
     for (const id of f.dirs ?? []) dirFindings.set(id, [...(dirFindings.get(id) ?? []), row]);
   });
+  const packages = report.edges.packages;
+  const capped = packages ? packages.from.map((_, row) => row).filter((row) => packages.capped[row]) : [];
   ix = {
     path: new Map(report.files.map((f) => [f.path, f.id])),
     dirPath: new Map(report.dirs.map((d) => [d.path, d.id])),
@@ -152,9 +156,34 @@ function index(report: Report): Index {
     duplicates: new Map(report.stats.duplicates.map((d, row) => [d.hash, row])),
     paths: searchable(report.files.map((f) => f.path)),
     typeOnly: new Set((report.edges.typeOnly ?? []).map((row) => report.edges.from[row]! * n + report.edges.to[row]!)),
+    packageImports: csr(n, capped.map((row) => packages!.from[row]!), capped),
+    packageImportedBy: csr(report.dirs.length, capped.map((row) => packages!.dir[row]!), capped),
   };
   indexes.set(report, ix);
   return ix;
+}
+
+function packageProjectionNote(report: Report, start: Iterable<number>, direction: "dependencies" | "dependents", reach?: Map<number, number>, depth = Infinity): string | undefined {
+  const packages = report.edges.packages;
+  if (!packages) return undefined;
+  const ix = index(report);
+  const rows = new Set<number>();
+  const take = (file: number) => {
+    // A capped package member may have no incoming edge at all. Match its directory, not
+    // only the selected projection, so an empty dependents list cannot imply no consumers.
+    const candidates = direction === "dependencies" ? neighbors(ix.packageImports, file) : neighbors(ix.packageImportedBy, report.files[file]!.dir);
+    for (const row of candidates) rows.add(row);
+  };
+  for (const file of start) take(file);
+  if (reach) for (const [file, distance] of reach) if (distance < depth) take(file);
+  if (!rows.size) return undefined;
+  let members = 0;
+  let projected = 0;
+  for (const row of rows) {
+    members += packages.members[row]!;
+    projected += packages.projected[row]!;
+  }
+  return `Capped package import projection: ${projected} file edges for ${members} members across ${rows.size} package ${rows.size === 1 ? "import" : "imports"}. Other members have no projected edge; dependents and dependencies may be understated.`;
 }
 
 /** Loops only type-only edges close (GraphSummary.typeLoops, computed by the analyzer). */
@@ -708,8 +737,8 @@ export function file(report: Report, S: CodeSymbols | undefined, raw: string, op
       importStatements: f.imports,
       cycle: cycle ? { size: cycle.files.length, files: cycle.files.slice(0, 12).map((i) => report.files[i]!.path) } : undefined,
     },
-    imports: list(neighbors(ix.imports, id)),
-    importedBy: list(neighbors(ix.importedBy, id)),
+    imports: { ...list(neighbors(ix.imports, id)), note: packageProjectionNote(report, [id], "dependencies") },
+    importedBy: { ...list(neighbors(ix.importedBy, id)), note: packageProjectionNote(report, [id], "dependents") },
     // Edges the compiler erases (`import type`): coupling, but nothing runs through them.
     typeOnlyImports: nonEmpty(neighbors(ix.imports, id).filter((x) => isTypeOnly(report, id, x)).map((x) => report.files[x]!.path).slice(0, max)),
     typeOnlyImportedBy: nonEmpty(neighbors(ix.importedBy, id).filter((x) => isTypeOnly(report, x, id)).map((x) => report.files[x]!.path).slice(0, max)),
@@ -1122,6 +1151,7 @@ export function graph(report: Report, q: { view: GraphView; path?: string; to?: 
         from: q.path,
         depth,
         runtimeOnly: q.runtimeOnly || undefined,
+        note: packageProjectionNote(report, start, q.view, reach, depth),
         total: rows.length,
         byDepth: Array.from({ length: depth }, (_, i) => rows.filter(([, d]) => d === i + 1).length),
         offset: p.offset,
@@ -1149,7 +1179,9 @@ export function graph(report: Report, q: { view: GraphView; path?: string; to?: 
       }
       if (!prev.has(b)) {
         const back = walk(ix.imports, [b], Infinity, q.runtimeOnly ? runtime : undefined).has(a);
-        return { view: "path", from: report.files[a]!.path, to: report.files[b]!.path, found: false, runtimeOnly: q.runtimeOnly || undefined, note: back ? "no import path this way, but the reverse exists: swap path and to" : "neither file reaches the other through the selected imports" };
+        const note = back ? "no import path this way, but the reverse exists: swap path and to" : "neither file reaches the other through the selected imports";
+        const projection = packageProjectionNote(report, prev.keys(), "dependencies");
+        return { view: "path", from: report.files[a]!.path, to: report.files[b]!.path, found: false, runtimeOnly: q.runtimeOnly || undefined, note: projection ? `${note}. ${projection}` : note };
       }
       const ids: number[] = [];
       for (let x = b; x !== -1; x = prev.get(x)!) ids.unshift(x);
@@ -1162,6 +1194,7 @@ export function graph(report: Report, q: { view: GraphView; path?: string; to?: 
         chain: ids.map((x) => report.files[x]!.path),
         // A chain through an `import type` couples the files but never runs end to end.
         typeOnlyHops: typeHops.length ? typeHops : undefined,
+        note: packageProjectionNote(report, ids.slice(0, -1), "dependencies"),
       };
     }
     case "cycles": {
@@ -2727,7 +2760,7 @@ export function changeImpact(report: Report, S: CodeSymbols | undefined, q: Impa
       selected: { files: selected.size, paths: selectedRows, symbols: S ? targets.map((s) => ({ ...symbolRow(s), references: S.symbols.refs[s]!, inFiles: S.symbols.files[s]! })) : [] },
       workingTree,
       depth,
-      dependents: { files: reached.size, modules: modules.size, rows: moduleRows },
+      dependents: { files: reached.size, modules: modules.size, rows: moduleRows, note: packageProjectionNote(report, selected, "dependents", reached, depth) },
       compilerUsers: { count: callerDepth.size, rows: callerRows },
       tests: { count: tests.size, rows: testRows, basis: "Import/reference candidates, not runtime coverage or a complete test plan. Read the repository's test commands." },
       coChange: { count: pairs.length, rows: coChange, basis: tree ? "Files that usually change with the changed ones and are not in this diff." : undefined },

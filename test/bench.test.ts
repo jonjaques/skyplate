@@ -233,3 +233,15 @@ test("read, embedding, compiler and Rust extraction limits remain visible withou
   expect(rust.limits.find((c) => c.code === "rust_use_cap")!.value).toBe(8);
   expect(rust.limits.find((c) => c.code === "rust_statement_cap")!.value).toBe(1);
 }, 30000);
+
+test("package projections reuse the anonymous cap counter without leaking package names", async () => {
+  const fixture = join(temp, "package-cap");
+  const moduleName = `example.invalid/${tokens[16]}`;
+  mkdirSync(join(fixture, sub), { recursive: true });
+  writeFileSync(join(fixture, "go.mod"), `module ${moduleName}\n`);
+  writeFileSync(join(fixture, "main.go"), `package main\nimport "${moduleName}/${sub}"\n`);
+  for (let member = 0; member < 24; member++) writeFileSync(join(fixture, sub, `${tokens[6]}${member}.go`), `package ${sub}\n`);
+  const measured = await runBenchmark(fixture, { analysis: { git: false, symbols: false, workers: 1 } });
+  assertPrivate(measured);
+  expect(measured.limits.find((counter) => counter.code === "package_sibling_cap")!.value).toBe(coarse(7));
+});
