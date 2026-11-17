@@ -30,7 +30,7 @@ are stable: a fixed defect keeps its number and moves to [Fixed](#fixed).
 | [S2](#s2) | A package import is projected onto at most 17 files, unmarked | high | S to mark, L to fix | proposed for 0.3.0 (marking) |
 | [S3](#s3) | Python `if TYPE_CHECKING` imports are runtime edges | high | M | proposed for 0.3.0 |
 | [S4](#s4) | A Cargo `[[bin]] path` is ignored when choosing the crate root | high | M | open |
-| [S5](#s5) | No entry points outside JavaScript | high | M per ecosystem | open |
+| [S5](#s5) | Native entry points outside JavaScript are not discovered | high | M per ecosystem | open |
 | [S6](#s6) | Python namespace packages and imported submodules lose internal edges | high | M | open |
 | [S7](#s7) | Text detected as Shift_JIS is decoded as Windows-1252 | medium | S to M | open |
 | [S8](#s8) | An extensionless local `#include <header>` is called a system header | medium | S | proposed for 0.3.0 |
@@ -182,7 +182,7 @@ hotspot and relay ranking. Size S. Proposed for 0.3.0.
 
 ## Structure and history
 
-Found by running the CLI on seven public repositories in seven languages, hand-checking 140
+Found by running the CLI on seven public repositories (nine languages), hand-checking 140
 import edges and building git histories by hand
 ([research/structure-and-history.md](research/structure-and-history.md),
 [evals/structure/](../../evals/structure/)). The graph algorithms and the history arithmetic
@@ -230,8 +230,9 @@ high for impact and centrality. Size S to mark, L for package nodes. Marking pro
 **Python imports under `if TYPE_CHECKING` are runtime edges.** Severity high: false cycles.
 Size M. Proposed for 0.3.0.
 
-- **What an agent sees.** Requests' eight-file "runtime cycle" is made entirely of type-checking
-  imports: 18 guarded statements, 12 guarded-only file pairs.
+- **What an agent sees.** Requests' eight-file "runtime cycle" exists only because of
+  type-checking imports: 18 guarded statements make 12 file pairs that no runtime import
+  shares, and without those pairs the cycle is gone.
 - **Where.** `src/core/imports/extract.ts:426` never sets type-only for Python; the graph and
   findings then treat the edge as runtime (`src/core/graph.ts:381`, `src/core/findings.ts:101`).
 - **Repro.** `a.py` imports `b` only under `if TYPE_CHECKING`, `b.py` imports `a` at runtime
@@ -258,11 +259,12 @@ recall. Size M. Open.
 
 ### S5
 
-**No entry points outside JavaScript.** Severity high for dead-file advice, medium for
-navigation. Size M per ecosystem. Open.
+**Native entry points outside JavaScript are not discovered.** Severity high for dead-file
+advice, medium for navigation. Size M per ecosystem. Open.
 
 - **What an agent sees.** Cargo names eleven targets in ripgrep; Skyplate finds none, so runnable
-  files sit in the dead-file candidates.
+  files sit in the dead-file candidates. Files a CI workflow step runs are found in any
+  language; what is missing is each ecosystem's own declaration of its entries.
 - **Where.** `src/core/entries.ts:56`, `:158`, `:247`; `src/mcp/query.ts:549`.
 - **Repro.** The `rust-custom-bin` manifest declares `cli/main.rs`; `findEntries` returns
   nothing ([`repros.json`](../../evals/structure/fixtures/repros.json)).

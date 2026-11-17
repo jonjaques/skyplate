@@ -67,7 +67,7 @@ async function ask(name: string, argv: Record<string, unknown>) {
   if (result.isError) throw new Error(`MCP ${name} returned a tool error`);
   const data = result.structuredContent?.data;
   if (!data) throw new Error(`MCP ${name} had no structured data`);
-  calls.push({ tool: name, callMs: elapsed() - before, sinceStartMs: elapsed(), partial: /structure pass only/i.test(result.structuredContent?.freshnessNote ?? ""), state: data.state ?? null });
+  calls.push({ tool: name, callMs: elapsed() - before, sinceStartMs: elapsed(), partial: /structure pass/i.test(result.structuredContent?.freshnessNote ?? ""), state: data.state ?? null });
   return data;
 }
 let failure: string | null = null;

@@ -10,6 +10,11 @@ export function checkoutEntry(checkout: string): string {
   return entry;
 }
 
+// This checkout is always protected, whatever inputs a mode names: a run's raw output holds
+// the machine's private instructions and session data, and must never land where git can
+// pick it up.
+const CHECKOUT = resolve(import.meta.dir, "../../..");
+
 // Resolve symlinked parents before checking containment. A lexical path check would let
 // an output symlink place logs inside one of the read-only inputs.
 export function freshOutput(value: string, inputs: string[]): string {
@@ -19,7 +24,7 @@ export function freshOutput(value: string, inputs: string[]): string {
     realpathSync(dirname(output)),
     relative(dirname(output), output),
   );
-  for (const input of inputs) {
+  for (const input of [CHECKOUT, ...inputs]) {
     const rel = relative(realpathSync(input), canonical);
     if (!rel || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith("../"))) {
       throw new Error("--out must be outside every input directory.");

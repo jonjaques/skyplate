@@ -175,7 +175,7 @@ bump `version`; pack, install and smoke-test the tarball (CI does this on every 
 | --- | --- | --- |
 | [adoption](../../evals/adoption/) | Do agents call Skyplate unprompted, on which prompts, and are the answers right | before a release that changes instructions, descriptions, skills or tool names |
 | [typescript](../../evals/typescript/) | Are references, calls and unused verdicts right against an independent language service, and what do the probes and injected faults do | before a release that touches `src/core/ts` or `src/shared/calls.ts` |
-| [structure](../../evals/structure/) | Are imports, entries, dependencies, metrics and history right on seven languages | before a release that touches imports, manifests, entries, metrics or git |
+| [structure](../../evals/structure/) | Are imports, entries, dependencies, metrics and history right on seven repositories in nine languages | before a release that touches imports, manifests, entries, metrics or git |
 | [first-answer](../../evals/first-answer/) | How long a cold server takes to answer on a large repository | before a release that touches the workspace or the pipeline |
 | [benchmark](../../evals/benchmark/) | Does `skyplate bench` stay anonymous and valid, and does a skeleton rebuild | before a release that touches `src/core/bench` or adds a tool or argument |
 

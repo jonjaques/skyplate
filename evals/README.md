@@ -9,7 +9,7 @@ run takes, and what the method does not establish.
 | --- | --- | --- |
 | [adoption/](adoption/) | Do coding agents call Skyplate unprompted when it is attached, on which prompts, and are their answers right? | [agent-adoption.md](../docs/roadmap/research/agent-adoption.md) |
 | [typescript/](typescript/) | Are TypeScript and JavaScript references, calls and unused verdicts right against an independent language service, and what do probes and injected faults do? | [typescript-symbols.md](../docs/roadmap/research/typescript-symbols.md) |
-| [structure/](structure/) | Are imports, entries, dependencies, metrics and history right across seven languages, and what does each phase cost? | [structure-and-history.md](../docs/roadmap/research/structure-and-history.md) |
+| [structure/](structure/) | Are imports, entries, dependencies, metrics and history right on seven public repositories in nine languages, and what does each phase cost? | [structure-and-history.md](../docs/roadmap/research/structure-and-history.md) |
 | [first-answer/](first-answer/) | How long does a cold MCP server take to answer on a large repository? | [roadmap](../docs/roadmap/README.md#where-it-stands) |
 | [benchmark/](benchmark/) | Does `skyplate bench` stay anonymous and valid, and does a skeleton rebuild a repository? | [docs/benchmark.md](../docs/benchmark.md) |
 

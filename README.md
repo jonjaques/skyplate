@@ -71,9 +71,10 @@ follow-up:
 The first call can be the question itself. With no project open, the server uses the directory
 it was started in when that is a project (a git repository or a recognizable manifest; never
 a home directory or a filesystem root), and any tool takes `project: "/abs/path"`. A first
-analysis answers in two steps: files, imports and the graph take seconds at any size, so
-`map_codebase`, `locate_code`, `files`, `dir`, `graph` and `read_source` answer from that
-structure pass, with a note, while git history and the compiler pass finish.
+analysis answers in two steps: files, imports and the graph come first (about two seconds on
+a 32,000-file repository), so `map_codebase`, `locate_code`, `files`, `dir`, `graph` and
+`read_source` answer from that structure pass, with a note, while git history and the compiler
+pass finish.
 
 The rest answer the questions the report does: `overview`, `findings`, `files` (filter and
 rank by any measure), `file` and `dir` records, `search_symbols` and `symbol` (callers with call
@@ -189,7 +190,7 @@ bun scripts/brand.ts                            # regenerate the mark, wordmark 
 
 The measurements behind the roadmap are rerunnable from [`evals/`](evals/): agent adoption,
 TypeScript accuracy against an independent language service, structure and history on seven
-languages, the first answer on a large repository, and the benchmark's privacy checks.
+repositories in nine languages, the first answer on a large repository, and the benchmark's privacy checks.
 
 ## License
 

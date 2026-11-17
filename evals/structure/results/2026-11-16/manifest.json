@@ -125,8 +125,8 @@
       "sha256": "0e7e9350c399dcedea5ffb9879fe46dc1792a114aa0e3fc92135b80b3c7176ac"
     },
     "kubernetes-sample.txt": {
-      "bytes": 49797,
-      "sha256": "fe4efc026ba0de5856d8c2fe7cf38313d8c7fb946463e30e4db4fc247f6b7022"
+      "bytes": 28341,
+      "sha256": "9909e7f2e27863d31b716d17bd8836dd98ab9f2875473a075cb651dba42dd99c"
     },
     "mcp-timings.json": {
       "bytes": 1885,
