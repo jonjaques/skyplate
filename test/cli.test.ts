@@ -138,7 +138,7 @@ describe("the command", () => {
     expect(help.stdout).toContain("--max-source-total");
     const v = run(["--version"]);
     expect(v.code).toBe(0);
-    expect(v.stdout).toMatch(/^skyplate \d+\.\d+\.\d+\n$/);
+    expect(v.stdout).toMatch(/^skyplate \d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\n$/); // a release candidate carries -rc.N
   });
 
   test("user errors are one line and exit 1", () => {
