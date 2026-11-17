@@ -31,6 +31,7 @@ missing) or `done`.
 | [E11](#e11) | Compiler questions at a position | M | not started | |
 | [E12](#e12) | A way to send a benchmark back | S | not started | |
 | [E13](#e13) | Further out: SCIP, architecture evidence, contracts, clones, scale | each M to L | not started | |
+| [E14](#e14) | A smaller tool surface | M | not started | |
 
 ## The first four, which build on what 0.3.0 shipped
 
@@ -242,6 +243,23 @@ that could reject it.
 - A report format that loads detail on demand past 100k files (boundary 15).
 - Knowledge concentration around contracts, with temporal uncertainty (boundary 16).
 - Stable symbol ids across a refresh: today they follow file and declaration order.
+
+### E14
+
+**A smaller tool surface.** Size M. Not started.
+
+- **Today.** 22 tools, and a `tools/list` of 33,241 characters that every session pays for
+  before its first question (26,582 at 0.2.0, before the three task tools and `benchmark`).
+  `overview` and `dir` overlap `map_codebase` (both descriptions already send agents to it), and
+  `search_symbols` and `locate_code` both start from a name. Hosts that show only tool names
+  give an agent 22 to choose from.
+- **Next.** Fold what only `overview` and `dir` say (compiler totals, ownership, module
+  coupling, warnings) into `map_codebase` and drop them, decide whether `search_symbols` stays
+  separate from `locate_code`, and cut descriptions to the moment each tool is for. Nothing
+  depends on the current names yet, so this is the cheapest time to do it.
+- **Measure.** The adoption eval before and after: Skyplate within the first three calls on
+  task prompts, no use on controls, answers graded the same, and the surface size from
+  `evals/adoption/surface.ts`.
 
 ## Moonshots
 
