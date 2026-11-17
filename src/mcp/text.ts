@@ -19,6 +19,31 @@ export function render(value: unknown): string {
   return write(value, "");
 }
 
+/**
+ * The row lists a budgeted answer can still give up, carried on the answer itself so whoever
+ * adds to it later (server.ts appends the follow-up hint) can fit it again without knowing its
+ * shape. A non-enumerable symbol: not printed, not serialized, not copied by a spread.
+ */
+const BUDGET_LISTS = Symbol("budget lists");
+export const budgetLists = (value: object): unknown[][] | undefined => (value as { [BUDGET_LISTS]?: unknown[][] })[BUDGET_LISTS];
+
+/** A character-based token estimate, not a tokenizer. Keep totals and follow-ups when cutting rows. */
+export function fitBudget<T extends object>(value: T, lists: unknown[][], tokens = 1800) {
+  const prior = (value as { budget?: { tokenEstimate: string; requested: number; omittedRows: number } }).budget;
+  const budget = prior ?? { tokenEstimate: "characters / 4", requested: tokens, omittedRows: 0 };
+  const result = { ...value, budget };
+  Object.defineProperty(result, BUDGET_LISTS, { value: lists });
+  while (render(result).length > tokens * 4) {
+    const largest = lists.filter((rows) => rows.length).sort((a, b) => JSON.stringify(b).length - JSON.stringify(a).length)[0];
+    if (!largest) break;
+    // Geometric cuts keep a map with thousands of rows from repeatedly rendering every suffix.
+    const cut = Math.max(1, Math.floor(largest.length / 8));
+    largest.splice(largest.length - cut, cut);
+    budget.omittedRows += cut;
+  }
+  return result;
+}
+
 const scalar = (v: unknown) => v === null || typeof v !== "object";
 
 /** A row: every value a scalar or a list of scalars. Kept whole, however wide it runs. */

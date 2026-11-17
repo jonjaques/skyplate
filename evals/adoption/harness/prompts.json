@@ -1,0 +1,233 @@
+{
+  "version": 1,
+  "repository": {
+    "url": "https://github.com/vitejs/vite.git",
+    "commit": "9a8d1a98922c5e445e8a618b8c27f84c63b9fbff",
+    "trackedFiles": 3007,
+    "reachableCommits": 3230
+  },
+  "writtenBeforeSessions": true,
+  "grading": "correct = all material requirements with no material false claim; partly = useful but missing material evidence or bounded mistakes; wrong = central conclusion false or task unanswered. No failed startup is graded.",
+  "measurementEvidence": {
+    "packages/vite/src/node/optimizer": {
+      "tracked_files": 6,
+      "lines_non_symlink": 4094
+    },
+    "packages/vite/src/node/server": {
+      "tracked_files": 67,
+      "lines_non_symlink": 13167
+    },
+    "packages/vite/src/node/plugins": {
+      "tracked_files": 29,
+      "lines_non_symlink": 15933
+    },
+    "packages/vite/src/node/__tests__": {
+      "tracked_files": 261,
+      "lines_non_symlink": 16833
+    },
+    "packages/vite/src/module-runner": {
+      "tracked_files": 17,
+      "lines_non_symlink": 2011
+    },
+    "playground/optimize-deps": {
+      "tracked_files": 155,
+      "lines_non_symlink": 2276
+    },
+    "normalizePath": {
+      "files": 71,
+      "paths": [
+        "packages/vite/src/node/preview.ts",
+        "docs/guide/api-plugin.md",
+        "packages/vite/src/node/nativeConfigCompat.ts",
+        "docs/guide/api-environment-plugins.md",
+        "packages/vite/src/node/config.ts",
+        "packages/vite/src/node/env.ts",
+        "packages/vite/src/node/index.ts",
+        "packages/vite/src/node/__tests__/scan.spec.ts",
+        "docs/guide/api-javascript.md",
+        "packages/vite/src/node/__tests__/config.spec.ts",
+        "playground/backend-integration/vite.config.js",
+        "playground/hmr/css-link/plugin.ts",
+        "playground/hmr/css-style/plugin.ts",
+        "playground/css/lightningcss-plugins.js",
+        "playground/base-conflict/vite.config.ts",
+        "playground/transform-plugin/vite.config.js",
+        "playground/css/postcss.config.js",
+        "packages/vite/src/node/__tests__/resolve.spec.ts",
+        "playground/test-utils.ts",
+        "packages/vite/src/node/__tests__/dev.spec.ts",
+        "packages/vite/src/node/__tests__/html.spec.ts",
+        "packages/vite/src/node/__tests__/build.spec.ts",
+        "packages/vite/src/node/__tests__/plugins/dynamicImportVar/parse.spec.ts",
+        "packages/vite/src/node/utils.ts",
+        "packages/vite/src/node/publicDir.ts",
+        "packages/vite/src/node/plugins/worker.ts",
+        "packages/vite/src/node/plugins/resolve.ts",
+        "packages/vite/src/node/__tests__/plugins/esbuild.spec.ts",
+        "packages/vite/src/node/plugins/asset.ts",
+        "packages/vite/src/node/plugins/manifest.ts",
+        "packages/vite/src/node/plugins/html.ts",
+        "packages/vite/src/node/__tests__/plugins/css.spec.ts",
+        "playground/optimize-missing-deps/server.js",
+        "packages/vite/src/node/plugins/clientInjections.ts",
+        "packages/vite/src/node/plugins/css.ts",
+        "packages/vite/src/node/__tests__/plugins/assetImportMetaUrl.spec.ts",
+        "packages/vite/src/node/plugins/importMetaGlob.ts",
+        "packages/vite/src/node/plugins/forwardConsole.ts",
+        "packages/vite/src/node/plugins/importAnalysis.ts",
+        "packages/vite/src/node/plugins/importAnalysisBuild.ts",
+        "packages/vite/src/node/plugins/oxc.ts",
+        "packages/vite/src/node/__tests__/optimizer/rolldownDepPlugin.spec.ts",
+        "packages/vite/src/node/plugins/dynamicImportVars.ts",
+        "packages/vite/src/node/plugins/prepareOutDir.ts",
+        "packages/vite/src/node/watch.ts",
+        "packages/vite/src/node/optimizer/index.ts",
+        "packages/vite/src/node/optimizer/scan.ts",
+        "packages/vite/src/node/__tests__/optimizer/cacheDir.spec.ts",
+        "packages/vite/src/node/optimizer/rolldownDepPlugin.ts",
+        "packages/vite/src/node/__tests__/utils.spec.ts",
+        "packages/vite/src/node/packages.ts",
+        "packages/vite/src/node/ssr/fetchModule.ts",
+        "packages/vite/src/node/ssr/__tests__/ssrLoadModule.spec.ts",
+        "playground/fs-serve/root/vite.config-extended.js",
+        "packages/vite/src/node/ssr/ssrManifestPlugin.ts",
+        "playground/resolve/vite.config.js",
+        "packages/vite/src/node/server/hmr.ts",
+        "packages/vite/src/node/server/moduleUrl.ts",
+        "packages/vite/src/node/server/index.ts",
+        "packages/vite/src/node/server/moduleGraph.ts",
+        "packages/vite/src/node/server/__tests__/htmlSafeModulePaths.spec.ts",
+        "packages/plugin-legacy/src/index.ts",
+        "packages/vite/src/node/server/__tests__/moduleUrl.spec.ts",
+        "packages/vite/src/node/server/bundledDev.ts",
+        "packages/vite/src/node/server/warmup.ts",
+        "packages/vite/src/node/server/middlewares/indexHtml.ts",
+        "packages/vite/src/node/server/pluginContainer.ts",
+        "packages/vite/src/node/server/sourcemap.ts",
+        "packages/vite/src/node/server/htmlSafeModulePaths.ts",
+        "packages/vite/src/node/server/middlewares/__tests__/indexHtml.spec.ts",
+        "packages/vite/src/node/server/middlewares/static.ts"
+      ]
+    },
+    "typescript_files": 635
+  },
+  "prompts": [
+    {
+      "id": "01-env",
+      "moment": "locate",
+      "control": false,
+      "prompt": "A Vite app sees a different VITE_API_URL in development and production. Where does Vite load .env files, decide their precedence, and filter which variables reach the client? Trace the real implementation and point me to the tests I should start with.",
+      "goodAnswerMustContain": [
+        "packages/vite/src/node/env.ts: getEnvFilesForMode, loadEnv, resolveEnvPrefix",
+        "Ordered .env, .env.local, .env.[mode], .env.[mode].local; later values win, matching process.env overrides",
+        "config.ts calls loadEnv(mode, envDir, resolveEnvPrefix(config)); prefix defaults VITE_, empty prefix rejected",
+        "env.spec.ts plus config.spec.ts prefix tests; note dotenv expansion and Vite Task getEnvs before process.env override"
+      ]
+    },
+    {
+      "id": "02-size",
+      "moment": "directory sizing",
+      "control": false,
+      "prompt": "I need to change how optimizeDeps.include and optimizeDeps.exclude are handled. Before I start, size up the relevant directories, tell me roughly how many files and lines I will be dealing with, and identify the implementation and test areas worth reading. Work out exactly what you would change and where; do not edit.",
+      "goodAnswerMustContain": [
+        "optimizer/index.ts option types and manual include expansion addManuallyIncludedOptimizeDeps; scan.ts excludes and dependency scan; optimizer/optimizer.ts orchestration",
+        "Measured counts for optimizer plus server/plugins/module-runner or relevant test/playground areas, explicit counting basis",
+        "playground/optimize-deps and scan.spec.ts/optimizer tests; directory size evidence should match investigation.json within a reasonable counting basis",
+        "Do not treat docs or all playground files as implementation; mention config integration and include/exclude behavior rather than fabricated patch requirements"
+      ]
+    },
+    {
+      "id": "03-rename",
+      "moment": "rename impact",
+      "control": false,
+      "prompt": "We are considering renaming normalizePath to normalizeFsPath throughout Vite. Work out exactly what would change and where, including callers, exports, tests, and compatibility risks. Give a concrete migration plan; do not edit.",
+      "goodAnswerMustContain": [
+        "Declaration packages/vite/src/node/utils.ts, Windows slash then path.posix.normalize",
+        "Public export packages/vite/src/node/index.ts makes breaking public API, keep deprecated alias or plan major release",
+        "Multiple consumers across config, optimizer, plugins, server, tests, playground/docs. investigation.json records matching files",
+        "Update named imports/reexports, call sites, docs/tests; no blind textual change of unrelated external APIs; typecheck/test needed but not run without deps"
+      ]
+    },
+    {
+      "id": "04-refactor",
+      "moment": "quality refactor",
+      "control": false,
+      "prompt": "PluginContext._formatLog in packages/vite/src/node/server/pluginContainer.ts is doing too much. Plan a high-quality refactor that fits Vite's existing design and preserves error behavior. Work out exactly what you would change and where, including the boundaries and regression tests; do not edit.",
+      "goodAnswerMustContain": [
+        "Locate private PluginContext._formatLog and callers info, warn, error; preserve never-returning throw in error",
+        "Keep plugin context state/logging/file access/sourcemap dependencies explicit, avoid new broad public API or giant parameter bag",
+        "Preserve pluginCode early return, position/pos/position fallback, loc/file reads, frame generation, malformed position original error, TransformPluginContext sourcemap trace, empty loc deletion",
+        "Concrete focused helpers or override boundary consistent with TODO move to overrides, regression tests for string/object, explicit positions, included files, maps, already formatted errors"
+      ]
+    },
+    {
+      "id": "05-dead",
+      "moment": "delete proof",
+      "control": false,
+      "prompt": "getAsyncFunctionDeclarationPaddingLineCount in packages/vite/src/shared/utils.ts looks like obsolete compatibility code. Can we delete it? Establish whether it is actually dead, identify any live consumers and behavior at risk, and work out exactly what you would change and where; do not edit.",
+      "goodAnswerMustContain": [
+        "Do not delete: live import and call in packages/vite/src/module-runner/esmEvaluator.ts",
+        "ESModulesEvaluator.startOffset is padding count +1 for use strict; AsyncFunction wrapper line offsets differ across runtimes",
+        "Check downstream sourcemap/stack offset consumers and tests; helper caches runtime-computed padding",
+        "Distinguish few callers from dead code; any replacement must prove source location behavior across supported runtimes"
+      ]
+    },
+    {
+      "id": "06-risk",
+      "moment": "risk and ownership",
+      "control": false,
+      "prompt": "We need to change config resolution in packages/vite/src/node/config.ts. Which parts would be riskiest to touch, which neighboring files tend to change with it, and who should review the change? Use the repository's actual history and dependencies, and explain any limits in your evidence.",
+      "goodAnswerMustContain": [
+        "config.ts central resolveConfig/loadConfigFromFile and public types, config hooks/env/server/build integration create risk",
+        "Actual history/churn and dependency evidence, concrete neighboring files with cochange or explicitly bounded sample",
+        "Review candidates include 翠 / sapphi-red / Bjorn Lu / Hiroshi Ogawa / patak, with evidence scoped to shallow clone",
+        "Shallow history 3230 commits, unavailable deps may limit call graph; avoid claiming absolute original ownership or future review availability"
+      ]
+    },
+    {
+      "id": "07-cycle",
+      "moment": "dependency cycle",
+      "control": false,
+      "prompt": "Do packages/vite/src/node/config.ts and packages/vite/src/node/server/index.ts form a real import cycle, or is it only TypeScript type imports? Show the edges in both directions and suggest the smallest sensible way to reduce the coupling. Work out exactly what you would change and where; do not edit.",
+      "goodAnswerMustContain": [
+        "Real runtime cycle: config.ts imports resolveServerOptions and serverConfigDefaults from ./server",
+        "server/index.ts imports isResolvedConfig and resolveConfig from ../config, plus type imports separately",
+        "A narrow candidate extract server option defaults/resolution to small module, ensure its dependencies do not reintroduce cycle; do not rewrite whole architecture",
+        "Static cycle is not proof of runtime failure; note lazy access/initialization implications and test config resolution/server options"
+      ]
+    },
+    {
+      "id": "08-hmr",
+      "moment": "locate trace",
+      "control": false,
+      "prompt": "Where does Vite's module runner handle a full-reload message and decide which entrypoints to import again? Trace the path from transport registration through invalidation and reimport, including how it handles triggeredBy and bundled dev mode.",
+      "goodAnswerMustContain": [
+        "runner.ts registers createHMRHandlerForRunner with transport.connect",
+        "module-runner/hmrHandler.ts full-reload branch slash(triggeredBy), getModulesByFile/getModulesEntrypoints or findAllEntrypoints",
+        "reimportEntrypoints resets bundled runtime via _resetBundledDevRuntime or clears evaluatedModules, imports each entrypoint",
+        "Closed runner guard, ERR_OUTDATED_OPTIMIZED_DEP handling, not browser location.reload; useful tests in module-runner/playground runner"
+      ]
+    },
+    {
+      "id": "09-line",
+      "moment": "one-line control",
+      "control": true,
+      "prompt": "In packages/vite/src/node/env.ts, resolveEnvPrefix throws a message containing 'could lead unexpected exposure'. Work out the exact one-line grammar fix by adding the missing word, and quote the corrected message. Do not edit or investigate unrelated files.",
+      "goodAnswerMustContain": [
+        "Corrected literal: envPrefix option contains value '', which could lead to unexpected exposure of sensitive information.",
+        "Only read specified file, no broad repo measurement required"
+      ]
+    },
+    {
+      "id": "10-read",
+      "moment": "known-file control",
+      "control": true,
+      "prompt": "Read only packages/vite/src/shared/utils.ts and explain what cleanUrl removes and how splitFileAndPostfix uses it. Give one input/output example containing both a query and a fragment. Do not inspect other files or edit anything.",
+      "goodAnswerMustContain": [
+        "cleanUrl uses /[?#].*$/ to remove from first query or fragment delimiter onward",
+        "splitFileAndPostfix returns file=cleanUrl(path) and postfix=path.slice(file.length)",
+        "Example /a.ts?raw#x -> file /a.ts, postfix ?raw#x; no URL decoding; only specified file needed"
+      ]
+    }
+  ]
+}

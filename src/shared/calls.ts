@@ -203,12 +203,32 @@ export function selfCalls(symbols: CodeSymbols, symbol: number): number {
  * Callers that reach a symbol through what it implements or overrides. A method behind an
  * interface is called as `this.saves.read(slot)`, and the checker resolves that to
  * SaveStore.read, so IndexedDbSaveStore.read had no callers of its own and its record said
- * "Nothing in the project calls or uses it" about code that runs on every load. One level of
- * bases is followed: the interface member, or the overridden base method.
+ * "Nothing in the project calls or uses it" about code that runs on every load.
+ *
+ * Every base up the chain is followed, nearest first. An override link names only the nearest
+ * same-named member on each base path (src/core/ts/refine.ts), so with Root.run ← Middle.run ←
+ * Base.run ← Leaf.run, Leaf.run's own bases stop at Base.run, while `x.run()` on a Root is
+ * resolved to Root.run two links further up. One level reported no callers for Leaf.run, and
+ * its change impact was empty at any depth. `seen` ends a hierarchy the table records as a
+ * loop, which merged interfaces can produce.
  */
 export function callsThroughBases(symbols: CodeSymbols, symbol: number): { base: number; edges: CallEdge[] }[] {
-  return heritage(symbols, symbol)
-    .bases.map(({ symbol: base }) => ({
+  const seen = new Set<number>([symbol]);
+  const bases: number[] = [];
+  for (let frontier = [symbol]; frontier.length > 0; ) {
+    const next: number[] = [];
+    for (const s of frontier) {
+      for (const { symbol: base } of heritage(symbols, s).bases) {
+        if (seen.has(base)) continue;
+        seen.add(base);
+        bases.push(base);
+        next.push(base);
+      }
+    }
+    frontier = next;
+  }
+  return bases
+    .map((base) => ({
       base,
       edges: callEdges(symbols, base, "incoming").filter((e) => e.symbol !== symbol),
     }))

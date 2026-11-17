@@ -1,0 +1,16 @@
+{
+  "b.py": true,
+  "b.py-ownership": true,
+  "c.py": true,
+  "c.py-ownership": true,
+  "d.py": true,
+  "d.py-ownership": true,
+  "renamed.py": true,
+  "renamed.py-ownership": true,
+  "coupling": true,
+  "truckFactor": true,
+  "identityFusion": true,
+  "renamePairs": true,
+  "renameShared": true,
+  "renameHotspots": true
+}

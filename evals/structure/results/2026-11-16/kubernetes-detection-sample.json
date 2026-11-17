@@ -1,0 +1,162 @@
+[
+  {
+    "path": "pkg/kubelet/kubelet_pod_level_resources_status_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "//go:build linux\n\n/*\nCopyright The Kubernetes Authors.\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at"
+  },
+  {
+    "path": "pkg/kubelet/server/stats/testing/mocks.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "/*\nCopyright The Kubernetes Authors.\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0"
+  },
+  {
+    "path": "staging/src/k8s.io/pod-security-admission/test/testdata/restricted/v1.17/fail/capabilities_baseline3.yaml",
+    "language": "yaml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: capabilities_baseline3\nspec:\n  containers:\n  - image: registry.k8s.io/pause\n    name: container1"
+  },
+  {
+    "path": "pkg/registry/storage/csinode/storage/storage.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "/*\nCopyright 2019 The Kubernetes Authors.\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0"
+  },
+  {
+    "path": "vendor/sigs.k8s.io/kustomize/api/internal/utils/timedcall.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": true,
+    "head": "// Copyright 2020 The Kubernetes Authors.\n// SPDX-License-Identifier: Apache-2.0\n\npackage utils\n\nimport (\n\t\"time\"\n)"
+  },
+  {
+    "path": "staging/src/k8s.io/pod-security-admission/test/testdata/baseline/v1.17/fail/selinuxoptions2.yaml",
+    "language": "yaml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: selinuxoptions2\nspec:\n  containers:\n  - image: registry.k8s.io/pause\n    name: container1"
+  },
+  {
+    "path": "vendor/golang.org/x/sys/unix/syscall_darwin_libSystem.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": true,
+    "head": "// Copyright 2018 The Go Authors. All rights reserved.\n// Use of this source code is governed by a BSD-style\n// license that can be found in the LICENSE file.\n\n//go:build darwin\n\npackage unix\n"
+  },
+  {
+    "path": "staging/src/k8s.io/sample-controller/pkg/signals/signal_posix.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "//go:build !windows\n\n/*\nCopyright 2017 The Kubernetes Authors.\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at"
+  },
+  {
+    "path": "vendor/sigs.k8s.io/apiserver-network-proxy/konnectivity-client/LICENSE",
+    "language": "text",
+    "category": "docs",
+    "generated": false,
+    "vendored": true,
+    "head": "                                 Apache License\n                           Version 2.0, January 2004\n                        http://www.apache.org/licenses/\n\n   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION\n\n   1. Definitions.\n"
+  },
+  {
+    "path": "test/integration/logs/OWNERS",
+    "language": "text",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "# See the OWNERS docs at https://go.k8s.io/owners\n\napprovers:\n  - sig-instrumentation-approvers\n  - serathius\n  - pohly\nreviewers:\n  - sig-instrumentation-reviewers"
+  },
+  {
+    "path": "vendor/go.etcd.io/etcd/api/v3/etcdserverpb/rpc.proto",
+    "language": "protocol-buffer",
+    "category": "data",
+    "generated": false,
+    "vendored": true,
+    "head": "syntax = \"proto3\";\npackage etcdserverpb;\n\nimport \"etcd/api/mvccpb/kv.proto\";\nimport \"etcd/api/authpb/auth.proto\";\nimport \"etcd/api/versionpb/version.proto\";\n\n// for grpc-gateway"
+  },
+  {
+    "path": "staging/src/k8s.io/pod-security-admission/test/testdata/restricted/v1.9/fail/restrictedvolumes16.yaml",
+    "language": "yaml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: restrictedvolumes16\nspec:\n  containers:\n  - image: registry.k8s.io/pause\n    name: container1"
+  },
+  {
+    "path": "staging/src/k8s.io/pod-security-admission/test/testdata/restricted/v1.34/fail/runasnonroot3.yaml",
+    "language": "yaml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: runasnonroot3\nspec:\n  containers:\n  - image: registry.k8s.io/pause\n    name: container1"
+  },
+  {
+    "path": "staging/src/k8s.io/apiextensions-apiserver/pkg/apis/testdata/HEAD/apiextensions.k8s.io.v1.CustomResourceDefinition.yaml",
+    "language": "yaml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "apiVersion: apiextensions.k8s.io/v1\nkind: CustomResourceDefinition\nmetadata:\n  annotations:\n    annotationsKey: annotationsValue\n  creationTimestamp: \"2008-01-01T01:01:01Z\"\n  deletionGracePeriodSeconds: 10\n  deletionTimestamp: \"2009-01-01T01:01:01Z\""
+  },
+  {
+    "path": "test/fuzz/cbor/testdata/fuzz/FuzzDecodeAllocations/b94308e7a707b006",
+    "language": "text",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "go test fuzz v1\n[]byte(\"\\xa1\\xc7\\xc7\\xc7\\xc7\\xc7\\xc7\\xc7\\xda0000\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xd2\\xc7\\xc7\\xc7\\xc7\\xc7\\xc7\\xc7\\xc7\\xc7\\xc7\\xc7\\xc7\\xda000000\")\n"
+  },
+  {
+    "path": "cmd/kube-controller-manager/app/options/nodelifecyclecontroller.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "/*\nCopyright 2018 The Kubernetes Authors.\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0"
+  },
+  {
+    "path": "staging/src/k8s.io/pod-security-admission/test/testdata/restricted/v1.11/pass/selinuxoptions1.yaml",
+    "language": "yaml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: selinuxoptions1\nspec:\n  containers:\n  - image: registry.k8s.io/pause\n    name: container1"
+  },
+  {
+    "path": "pkg/volume/util/storageclass_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "/*\nCopyright 2023 The Kubernetes Authors.\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0"
+  },
+  {
+    "path": "pkg/kubelet/pluginmanager/cache/actual_state_of_world.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "/*\nCopyright 2019 The Kubernetes Authors.\n\nLicensed under the Apache License, Version 2.0 (the \"License\");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0"
+  },
+  {
+    "path": "staging/src/k8s.io/api/testdata/v1.36.0/admissionregistration.k8s.io.v1alpha1.ValidatingAdmissionPolicyBinding.json",
+    "language": "json",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "{\n  \"kind\": \"ValidatingAdmissionPolicyBinding\",\n  \"apiVersion\": \"admissionregistration.k8s.io/v1alpha1\",\n  \"metadata\": {\n    \"name\": \"nameValue\",\n    \"generateName\": \"generateNameValue\",\n    \"namespace\": \"namespaceValue\",\n    \"selfLink\": \"selfLinkValue\","
+  }
+]

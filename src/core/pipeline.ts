@@ -22,7 +22,8 @@
  * Verify:    bun test test/pipeline.test.ts && bun check src/core/pipeline.ts
  */
 
-import { existsSync, readFileSync, realpathSync } from "node:fs";
+import type { AnalysisDiagnostics } from "./bench/diagnostics";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import pkg from "../../package.json" with { type: "json" };
 import type { Detection, ImportResolution, RawImport } from "./contracts";
@@ -41,6 +42,7 @@ import {
   type LanguageSummary,
   type Layouts,
   type Manifest,
+  type PackageImportTable,
   type Report,
   type SourceIndex,
 } from "../shared/schema";
@@ -70,6 +72,13 @@ export interface AnalyzeOptions {
   source: boolean;
   /** Run the TypeScript analysis. */
   symbols: boolean;
+  /**
+   * Compute the import-graph layout the viewer morphs to. Only a report needs it, and it was
+   * two thirds of a history-free analysis of a 32k-file repository (5.2 s of 7.7 s), so a caller
+   * that needs only answers turns it off (the MCP server's analyses). Off leaves `layout.graph`
+   * empty: complete it with withReportLayout before writing a report.
+   */
+  layout: boolean;
   maxCommits: number;
   maxSourceFile: number;
   maxSourceTotal: number;
@@ -94,6 +103,7 @@ export const DEFAULT_OPTIONS: AnalyzeOptions = {
   git: true,
   source: true,
   symbols: true,
+  layout: true,
   maxCommits: 20_000,
   maxSourceFile: DEFAULT_MAX_SOURCE_FILE,
   maxSourceTotal: DEFAULT_MAX_SOURCE_TOTAL,
@@ -197,29 +207,61 @@ const parentOf = (p: string) => {
 };
 
 /**
- * package.json manifests that declare dependencies with nothing installed for them: no
- * node_modules in the manifest's folder or any folder above it, and no Yarn Plug'n'Play
- * manifest (.pnp.cjs) either. Node's resolution climbs past the project root, so the search
- * does too: a package analyzed on its own inside an installed monorepo is installed. A fresh
- * clone is the usual case, and it is invisible in the report otherwise: the checker resolves
- * nothing imported from a package, and the counts quietly drop.
+ * A node_modules directory can belong to an unrelated ancestor or an incomplete install.
+ * Check declared install names, not the merged external names (npm aliases install under
+ * their keys), and climb past the analyzed root just as Node does for a hoisted workspace.
+ * Bound filesystem probes across the whole analysis; an unchecked package is unknown, not
+ * evidence that its manifest is installed or missing. PnP files alone prove neither, and
+ * loading them would execute the analyzed project's code.
  */
-function uninstalledManifests(root: string, manifests: Manifest[]): number {
+function uninstalledManifests(root: string, manifests: Manifest[], readText: (path: string) => string | undefined): { missing: number; limited: boolean } {
+  const maxProbes = 10_000;
+  let probes = 0;
   const installed = new Map<string, boolean>();
-  const look = (dir: string): boolean => {
-    let hit = installed.get(dir);
+  const look = (dir: string, name: string): boolean | undefined => {
+    const key = `${dir}\0${name}`;
+    let hit = installed.get(key);
     if (hit === undefined) {
-      hit = existsSync(join(dir, "node_modules")) || existsSync(join(dir, ".pnp.cjs")) || existsSync(join(dir, ".pnp.js"));
-      if (!hit && dirname(dir) !== dir) hit = look(dirname(dir));
-      installed.set(dir, hit);
+      hit = false;
+      if (basename(dir) !== "node_modules") {
+        if (probes >= maxProbes) return undefined;
+        probes++;
+        try {
+          hit = statSync(join(dir, "node_modules", name)).isDirectory();
+        } catch {
+          hit = false;
+        }
+      }
+      if (!hit && dirname(dir) !== dir) hit = look(dirname(dir), name);
+      if (hit !== undefined) installed.set(key, hit);
     }
     return hit;
   };
-  let n = 0;
-  for (const m of manifests) {
-    if (m.kind === "package.json" && m.dependencies > 0 && !look(dirname(join(root, m.path)))) n++;
+  let missing = 0;
+  for (const manifest of manifests) {
+    if (manifest.kind !== "package.json") continue;
+    const text = readText(manifest.path);
+    if (!text) continue;
+    // readManifests parsed this same text with the same strict JSON.parse and dropped any file
+    // it rejected, so only valid manifests reach this point.
+    const json = JSON.parse(text.charCodeAt(0) === 0xfeff ? text.slice(1) : text) as Record<string, unknown>;
+    const names = new Set<string>();
+    for (const section of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+      const declared = json[section];
+      if (declared && typeof declared === "object" && !Array.isArray(declared)) {
+        for (const name of Object.keys(declared)) names.add(name);
+      }
+    }
+    for (const name of names) {
+      const found = look(dirname(join(root, manifest.path)), name);
+      if (found === undefined) return { missing, limited: true };
+      if (!found) {
+        missing++;
+        break;
+      }
+    }
   }
-  return n;
+  return { missing, limited: false };
 }
 
 const CONFIG_FILE = /^(?:tsconfig|jsconfig)[\w.-]*\.json$/i;
@@ -479,6 +521,7 @@ export async function analyzeProject(
   rootIn: string,
   options: Partial<AnalyzeOptions> = {},
   onProgress?: (e: ProgressEvent) => void,
+  diagnostics?: AnalysisDiagnostics,
 ): Promise<AnalysisResult> {
   const opts: AnalyzeOptions = { ...DEFAULT_OPTIONS, ...options };
   const totalStart = performance.now();
@@ -500,6 +543,7 @@ export async function analyzeProject(
   const paths = walked.map((f) => f.path);
   const abs = walked.map((f) => f.abs);
   warnings.push(...walk.warnings);
+  diagnostics?.add("unclassified_warning", walk.warnings.length);
   phases.end("walk", plural(n, "file"));
 
   const pool = new WorkerPool(opts.workers > 0 ? opts.workers : defaultPoolSize());
@@ -527,8 +571,8 @@ export async function analyzeProject(
     phases.end("detect", plural(n, "file"));
 
     // ── Git and TypeScript, in the background ──
-    const gitP = startGit(opts, walk.isGit, root, paths, detections, phases, warnings);
-    const tsP = startTypeScript(opts, root, paths, detections, phases, warnings);
+    const gitP = startGit(opts, walk.isGit, root, paths, detections, phases, warnings, diagnostics);
+    const tsP = startTypeScript(opts, root, paths, detections, phases, warnings, diagnostics);
 
     // ── Measure ──
     const plan = opts.source
@@ -545,7 +589,7 @@ export async function analyzeProject(
     const measured = new Array<MeasureResult>(n);
     const sources = new Map<number, string>();
     {
-      const jobs: MeasureJob[] = walked.map((f, id) => ({ id, abs: f.abs, path: f.path, detection: detections[id]!, embed: plan?.embed[id] ?? false }));
+      const jobs: MeasureJob[] = walked.map((f, id) => ({ id, abs: f.abs, path: f.path, detection: detections[id]!, diagnostics: !!diagnostics, embed: plan?.embed[id] ?? false }));
       let done = 0;
       await Promise.all(
         batches(jobs, pool.size, (j) => Math.min(walked[j.id]!.bytes, opts.maxReadBytes), 8 * 1024 * 1024).map(async (batch) => {
@@ -570,6 +614,7 @@ export async function analyzeProject(
     const unhashed: string[] = [];
     for (let id = 0; id < n; id++) {
       const m = measured[id]!;
+      for (const item of m.diagnostics ?? []) diagnostics?.add(item.code, item.count);
       const d = detections[id]!;
       if (m.error) unreadable.add(id);
       if (m.unmeasured) (d.binary ? unhashed : unmeasured).push(paths[id]!);
@@ -618,6 +663,9 @@ export async function analyzeProject(
       files[id] = rec;
       rawImports[id] = m.imports;
     }
+    diagnostics?.add("unreadable_file", unreadable.size);
+    diagnostics?.add("text_read_cap", unmeasured.length);
+    diagnostics?.add("binary_read_cap", unhashed.length);
     if (unreadable.size) {
       const sample = [...unreadable].slice(0, 3).map((id) => paths[id]).join(", ");
       warnings.push(`${plural(unreadable.size, "file")} could not be read and ${unreadable.size === 1 ? "is" : "are"} listed without measurements (${sample}${unreadable.size > 3 ? ", …" : ""})`);
@@ -657,6 +705,9 @@ export async function analyzeProject(
       return text;
     };
     const { manifests, dependencies } = readManifests(paths, readText);
+    const { missing: uninstalled, limited: installationLimited } = uninstalledManifests(root, manifests, readText);
+    if (installationLimited) warnings.push("Dependency installation checks stopped after 10,000 package directory probes; some declared dependencies were not checked and the missing-manifest count may be incomplete.");
+    diagnostics?.add("uninstalled_manifests", uninstalled);
     const idOfPath = new Map(paths.map((p, i) => [p, i]));
     for (const [path, source] of findEntries(paths, readText)) files[idOfPath.get(path)!]!.entry = source;
     const info = readProjectInfo(paths, readText);
@@ -667,7 +718,7 @@ export async function analyzeProject(
     rollUpDirs(dirs, files);
 
     // ── Imports → edges and externals ──
-    const resolve = createResolver({ root, paths, manifests, readText });
+    const resolve = createResolver({ root, paths, manifests, readText, onDiagnostic: diagnostics?.add });
     const pairKind = new Map<number, number>(); // from * n + to → index into KIND_ORDER
     const externals = new Map<string, ExternalDependency>();
     const importers = new Map<string, Set<number>>();
@@ -683,6 +734,8 @@ export async function analyzeProject(
     // marked those all along and nothing carried the mark here, so loops closed by an
     // `import type` were reported as import cycles.
     const runtimePairs = new Set<number>();
+    const packageImports: PackageImportTable = { from: [], dir: [], members: [], projected: [], capped: [] };
+    const packagePairs = new Set<number>();
     // `export … from` edges, for the published API walk below.
     const reexports: number[][] = Array.from({ length: n }, () => []);
     const addEdge = (from: number, to: number, kind: EdgeKind, typeOnly: boolean) => {
@@ -703,6 +756,7 @@ export async function analyzeProject(
         try {
           r = resolve(id, imp, lang);
         } catch {
+          diagnostics?.add("resolver_failed");
           r = { unresolved: true };
         }
         const names = (imp as ExtractedImport).names;
@@ -710,6 +764,7 @@ export async function analyzeProject(
         // Doc links are edges, not import statements: they stay out of the counts, as they
         // stay out of the code graph.
         const counted = imp.kind !== LINK;
+        if (counted) diagnostics?.import(lang, "file" in r ? "internal" : "external" in r ? "external" : "unresolved", imp.spec);
         if ("file" in r) {
           if (counted) resolved++;
           if (names?.length) hostImports.push({ from: id, to: r.file, line: imp.line, names });
@@ -717,6 +772,18 @@ export async function analyzeProject(
           addEdge(id, r.file, imp.kind, typeOnly);
           if ((imp as ExtractedImport).reexport && r.file !== id) reexports[id]!.push(r.file);
           for (const sib of r.also ?? []) addEdge(id, sib, imp.kind, typeOnly);
+          if (r.package) {
+            const dir = files[r.file]!.dir;
+            const key = id * dirs.length + dir;
+            if (!packagePairs.has(key)) {
+              packagePairs.add(key);
+              packageImports.from.push(id);
+              packageImports.dir.push(dir);
+              packageImports.members.push(r.package.members);
+              packageImports.projected.push(Number(r.file !== id) + (r.also ?? []).filter((sib) => sib !== id).length);
+              packageImports.capped.push(r.package.capped);
+            }
+          }
         } else if ("external" in r) {
           if (!counted) continue;
           external++;
@@ -767,6 +834,7 @@ export async function analyzeProject(
       }
     }
     if (typeOnlyRows.length) edges.typeOnly = typeOnlyRows;
+    if (packageImports.from.length) edges.packages = packageImports;
     const externalList = [...externals.values()].sort(
       (a, b) => b.importers - a.importers || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0) || (a.ecosystem < b.ecosystem ? -1 : 1),
     );
@@ -786,6 +854,7 @@ export async function analyzeProject(
       dirParent: dirs.map((d) => d.parent),
       dirDepth: dirs.map((d) => d.depth),
       packageDirs: [...new Set(packageDirs)],
+      onDiagnostic: diagnostics?.add,
     });
     for (let id = 0; id < n; id++) {
       const f = files[id]!;
@@ -797,7 +866,8 @@ export async function analyzeProject(
     phases.end("graph", `${plural(g.summary.connected, "connected file")}, ${plural(g.summary.cycles.length, "cycle")}`);
 
     // ── Layout, on a worker while git and TypeScript finish ──
-    phases.start("layout");
+    if (opts.layout) phases.start("layout");
+    else phases.skip("layout", "not requested");
     const layoutInput: LayoutInput = {
       fileCount: n,
       fileDir,
@@ -811,11 +881,13 @@ export async function analyzeProject(
       fanIn: files.map((f) => f.fanIn),
       rank: files.map((f) => f.rank),
     };
-    const layoutP = pool.run({ type: "layout", input: layoutInput }).then((res: WorkerResponse): Layouts => {
-      if (res.type !== "layout") throw new Error("analysis worker answered the layout job with " + res.type);
-      phases.end("layout", plural(n, "position"));
-      return res.layout;
-    });
+    const layoutP: Promise<Layouts> = !opts.layout
+      ? Promise.resolve({ graph: [], radius: 0 })
+      : pool.run({ type: "layout", input: layoutInput }).then((res: WorkerResponse): Layouts => {
+          if (res.type !== "layout") throw new Error("analysis worker answered the layout job with " + res.type);
+          phases.end("layout", plural(n, "position"));
+          return res.layout;
+        });
     // Awaited below, after git and TypeScript; without a handler attached now, a layout failure
     // during that wait would surface as an unhandled rejection instead of this run's error.
     layoutP.catch(() => {});
@@ -825,7 +897,6 @@ export async function analyzeProject(
 
     if (symbols) {
       applyHostImports(symbols, hostImports, hostFiles);
-      const uninstalled = uninstalledManifests(root, manifests);
       if (uninstalled > 0) {
         symbols.stats.uninstalledManifests = uninstalled;
         const { references, unresolved: missed } = symbols.stats;
@@ -834,8 +905,9 @@ export async function analyzeProject(
         // installing, left 29,129 unresolved beside 25,857 resolved; installed projects run
         // around 3%.
         if (missed > 0 && missed >= 0.1 * (references + missed)) {
+          diagnostics?.add("dependencies_missing", uninstalled);
           warnings.push(
-            `Dependencies are not installed (${plural(uninstalled, "package.json", "package.json files")} without node_modules), so TypeScript could not resolve ${nf.format(missed)} names, against ${nf.format(references)} it did. Reference and caller counts are lower bounds and some exports flagged unused may be used; install the dependencies and re-run for complete code intelligence.`,
+            `Dependencies are not installed (${plural(uninstalled, "package.json", "package.json files")} with missing packages), so TypeScript could not resolve ${nf.format(missed)} names, against ${nf.format(references)} it did. Reference and caller counts are lower bounds and some exports flagged unused may be used; install the dependencies and re-run for complete code intelligence.`,
           );
         }
       }
@@ -845,6 +917,8 @@ export async function analyzeProject(
     if (gitResult) {
       git = gitResult.summary;
       warnings.push(...gitResult.warnings);
+      if (git.shallow) diagnostics?.add("git_shallow");
+      if (!git.shallow && git.analyzedCommits < git.totalCommits) diagnostics?.add("git_commit_cap", git.totalCommits - git.analyzedCommits);
       gitResult.perFile.forEach((fg, id) => {
         if (fg && files[id]) files[id]!.git = fg;
       });
@@ -863,6 +937,7 @@ export async function analyzeProject(
       });
       dirs.forEach((d, i) => (d.commits = commits[i]!));
       if (git.truncated) {
+        diagnostics?.add("history_boundary");
         warnings.push(
           `Growth and file ages start at the oldest ${git.shallow ? "fetched" : "analyzed"} commit, so the growth chart's line counts are relative to that point, not to the project's beginning.`,
         );
@@ -883,6 +958,7 @@ export async function analyzeProject(
       }
       if (maxHot > 0) for (const f of files) f.hotspot = round4(hot[f.id]! / maxHot);
     } else if (git) {
+      diagnostics?.add("history_insufficient");
       const more = git.shallow ? " Fetch more history (git fetch --unshallow) for hotspots." : git.truncated ? " Raise --max-commits for hotspots." : "";
       warnings.push(
         `Hotspot scores are all 0: ${plural(git.analyzedCommits, "commit")} of history ${git.analyzedCommits === 1 ? "was" : "were"} analyzed, and churn says nothing below ${MIN_HISTORY}.${more}`,
@@ -994,6 +1070,63 @@ export async function analyzeProject(
     // A throw above leaves git and tsgo running: neither module takes a cancellation signal
     // yet, so their subprocesses finish on their own (bin/skyplate.ts exits on failure
     // rather than waiting for them).
+    if (diagnostics) diagnostics.workers = { size: pool.size, ...pool.diagnostics };
+    pool.close();
+  }
+}
+
+/**
+ * Complete a layout-less analysis for writing, without changing the snapshot answering MCP queries.
+ * It rebuilds analyzeProject's `layoutInput` from the finished report (code edges are the
+ * report's non-link edges, in the same order), so a change to one must reach the other: the
+ * "same report as the CLI pipeline" test in test/mcp-workspace.test.ts compares the two.
+ */
+export async function withReportLayout(result: AnalysisResult, onProgress?: (e: ProgressEvent) => void): Promise<AnalysisResult> {
+  const report = result.report;
+  if (report.timings.layout !== undefined) return result;
+  const started = performance.now();
+  const phases = new Phases((event) => {
+    try {
+      onProgress?.(event);
+    } catch {
+      // A broken progress sink must not take the analysis down.
+    }
+  });
+  const pool = new WorkerPool(1);
+  try {
+    phases.start("layout");
+    const from: number[] = [];
+    const to: number[] = [];
+    for (let edge = 0; edge < report.edges.from.length; edge++) {
+      if (report.edges.kind[edge] === LINK) continue;
+      from.push(report.edges.from[edge]!);
+      to.push(report.edges.to[edge]!);
+    }
+    const response = await pool.run({
+      type: "layout",
+      input: {
+        fileCount: report.files.length,
+        fileDir: report.files.map((file) => file.dir),
+        dirParent: report.dirs.map((dir) => dir.parent),
+        dirDirs: report.dirs.map((dir) => dir.dirs),
+        dirFiles: report.dirs.map((dir) => dir.files),
+        from,
+        to,
+        fanIn: report.files.map((file) => file.fanIn),
+        rank: report.files.map((file) => file.rank),
+      },
+    });
+    if (response.type !== "layout") throw new Error("analysis worker answered the layout job with " + response.type);
+    phases.end("layout", plural(report.files.length, "position"));
+    return {
+      ...result,
+      report: {
+        ...report,
+        layout: response.layout,
+        timings: { ...report.timings, ...phases.timings, total: report.timings.total! + Math.round(performance.now() - started) },
+      },
+    };
+  } finally {
     pool.close();
   }
 }
@@ -1008,6 +1141,7 @@ function startGit(
   detections: Detection[],
   phases: Phases,
   warnings: string[],
+  diagnostics?: AnalysisDiagnostics,
 ) {
   if (!opts.git) {
     phases.skip("git", "disabled (--no-git)");
@@ -1027,9 +1161,11 @@ function startGit(
     // coupling and the truck factor (see GitInput.exclude).
     exclude: detections.map((d) => d.category === "lockfile" || d.generated || d.vendored),
     onProgress: (done, total) => phases.update("git", done, total),
+    onDiagnostic: diagnostics?.add,
   }).then(
     (r) => {
       if (!r) {
+        diagnostics?.add("git_unavailable");
         phases.end("git", "no history");
         return null;
       }
@@ -1037,6 +1173,8 @@ function startGit(
       return r;
     },
     (e: unknown) => {
+      diagnostics?.failure(e, "git");
+      diagnostics?.add("git_failed");
       warnings.push(`Git history could not be read: ${errorMessage(e)}`);
       phases.end("git", "failed");
       return null;
@@ -1054,6 +1192,7 @@ function startTypeScript(
   detections: Detection[],
   phases: Phases,
   warnings: string[],
+  diagnostics?: AnalysisDiagnostics,
 ): Promise<CodeSymbols | null> {
   if (!opts.symbols) {
     phases.skip("typescript", "disabled (--no-symbols)");
@@ -1075,6 +1214,8 @@ function startTypeScript(
     configs: paths.filter((p) => CONFIG_FILE.test(p.slice(p.lastIndexOf("/") + 1)) && !IN_NODE_MODULES.test(p)),
     maxFiles: opts.tsMaxFiles,
     maxRefs: opts.tsMaxRefs,
+    onFailure: diagnostics ? (error) => diagnostics.failure(error, "typescript") : undefined,
+    onDiagnostic: diagnostics?.add,
     onProgress: (m) => {
       if (TS_PROBLEM.test(m)) warnings.push(m);
       phases.update("typescript", undefined, undefined, m.replace(/^TypeScript: /, ""));
@@ -1085,6 +1226,8 @@ function startTypeScript(
       return s;
     },
     (e: unknown) => {
+      diagnostics?.failure(e, "typescript");
+      diagnostics?.add("ts_failed");
       warnings.push(`TypeScript analysis failed: ${errorMessage(e)}`);
       phases.end("typescript", "failed");
       return null;

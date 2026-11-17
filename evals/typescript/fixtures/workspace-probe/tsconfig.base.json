@@ -1,0 +1,1 @@
+{"compilerOptions":{"strict":true,"composite":true,"target":"ES2022","module":"ESNext","moduleResolution":"bundler","baseUrl":".","paths":{"@lib/*":["packages/lib/src/*"]}}}

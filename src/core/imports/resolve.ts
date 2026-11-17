@@ -19,7 +19,7 @@ import { parseJsonc } from "../facts";
 import { readManifests } from "../manifests";
 
 /** A resolution to a package directory: the representative file plus its siblings. */
-export type PackageResolution = { file: number; also: number[] };
+export type PackageResolution = { file: number; also: number[]; package: { dir: string; members: number; capped: boolean } };
 
 const ALSO_CAP = 16;
 const UNRESOLVED: ImportResolution = { unresolved: true };
@@ -66,7 +66,7 @@ class RepoIndex {
   readonly byBase = new Map<string, number[]>();
   readonly dirs = new Set<string>();
 
-  constructor(readonly paths: string[]) {
+  constructor(readonly paths: string[], private readonly diagnostic?: ResolveContext["onDiagnostic"]) {
     if (paths.length) this.dirs.add(""); // the root is a directory too (`require("..")`)
     paths.forEach((p, id) => {
       this.byPath.set(p, id);
@@ -124,7 +124,9 @@ class RepoIndex {
     const named = ids.find((id) => basename(this.paths[id]!).replace(/\.[^.]+$/, "") === stem);
     const main = ids.find((id) => /^(?:main|index|mod|lib|init)\.[^.]+$/.test(basename(this.paths[id]!)));
     const rep = named ?? main ?? ids.find((id) => !basename(this.paths[id]!).startsWith("doc.")) ?? ids[0]!;
-    return { file: rep, also: ids.filter((id) => id !== rep).slice(0, ALSO_CAP) };
+    const capped = ids.length - 1 > ALSO_CAP;
+    if (capped) this.diagnostic?.("package_sibling_cap", ids.length - 1 - ALSO_CAP);
+    return { file: rep, also: ids.filter((id) => id !== rep).slice(0, ALSO_CAP), package: { dir, members: ids.length, capped } };
   }
 }
 
@@ -1178,22 +1180,39 @@ function closest(idx: RepoIndex, cands: number[], from: string): number {
 const C_STD_HEADERS = new Set(
   (
     "assert.h complex.h ctype.h errno.h fenv.h float.h inttypes.h iso646.h limits.h locale.h math.h setjmp.h signal.h stdalign.h stdarg.h " +
-    "stdatomic.h stdbool.h stddef.h stdint.h stdio.h stdlib.h stdnoreturn.h string.h tgmath.h threads.h time.h uchar.h wchar.h wctype.h " +
+    "stdatomic.h stdbit.h stdbool.h stdckdint.h stddef.h stdint.h stdio.h stdlib.h stdnoreturn.h string.h tgmath.h threads.h time.h uchar.h wchar.h wctype.h " +
     "unistd.h fcntl.h dirent.h pthread.h sys/types.h sys/stat.h sys/time.h sys/socket.h sys/wait.h sys/mman.h sys/ioctl.h netinet/in.h " +
     "arpa/inet.h netdb.h poll.h termios.h dlfcn.h windows.h"
   ).split(" "),
 );
 
-function resolveC(idx: RepoIndex, from: string, spec: string): ImportResolution {
+const CPP_STD_HEADERS = new Set(
+  (
+    "algorithm any array atomic barrier bit bitset charconv chrono codecvt compare complex concepts condition_variable contracts coroutine " +
+    "debugging deque exception execution expected filesystem flat_map flat_set format forward_list fstream functional future generator " +
+    "hazard_pointer hive initializer_list inplace_vector iomanip ios iosfwd iostream istream iterator latch limits linalg list locale map " +
+    "mdspan memory memory_resource meta mutex new numbers numeric optional ostream print queue random ranges ratio rcu regex scoped_allocator " +
+    "semaphore set shared_mutex simd source_location span spanstream sstream stack stacktrace stdexcept stdfloat stop_token streambuf " +
+    "string string_view strstream syncstream system_error text_encoding thread tuple type_traits typeindex typeinfo unordered_map " +
+    "unordered_set utility valarray variant vector version " +
+    "cassert ccomplex cctype cerrno cfenv cfloat cinttypes ciso646 climits clocale cmath csetjmp csignal cstdalign cstdarg cstdbool " +
+    "cstddef cstdint cstdio cstdlib cstring ctgmath ctime cuchar cwchar cwctype"
+  ).split(" "),
+);
+
+function resolveC(idx: RepoIndex, from: string, spec: string, kind: RawImport["kind"]): ImportResolution {
   if (spec.startsWith("<") && spec.endsWith(">")) {
     const inner = spec.slice(1, -1);
-    // No extension (<vector>) or a standard header: the toolchain's, even if a same-named file
-    // exists somewhere in the repo.
-    if (C_STD_HEADERS.has(inner) || !/\.[a-z]+$/i.test(inner)) return ext(inner, "system");
+    // Standard headers belong to the toolchain even with local namesakes. An extensionless
+    // name alone is not evidence: projects also install headers without a suffix, so look in
+    // the repository first (S8). An angle include it does not hold is on the system or a
+    // library's include path (<openssl/ssl.h>, <sys/epoll.h>), as the brackets say: external,
+    // not unresolved, or every C project's unresolved count would be its library headers.
+    if (C_STD_HEADERS.has(inner) || CPP_STD_HEADERS.has(inner)) return ext(inner, "system");
     const hit = idx.suffix(inner, from);
     return hit === undefined ? ext(inner, "system") : { file: hit };
   }
-  if (!spec.includes(".") && !spec.includes("/")) return ext(spec, "system"); // @import Foundation
+  if (kind === "import" && !spec.includes(".") && !spec.includes("/")) return ext(spec, "system"); // @import Foundation
   const rel = idx.file(join(dirname(from), spec));
   if (rel !== undefined) return { file: rel };
   const hit = idx.suffix(spec, from);
@@ -1292,7 +1311,7 @@ const JVM_LANGS = new Set(["java", "kotlin", "scala", "groovy", "gradle-kotlin-d
 const C_LANGS = new Set(["c", "c++", "objective-c", "objective-c++", "cuda", "metal", "hlsl", "glsl"]);
 
 export const createResolver: CreateResolver = (ctx) => {
-  const idx = new RepoIndex(ctx.paths);
+  const idx = new RepoIndex(ctx.paths, ctx.onDiagnostic);
   const lazy = <T>(make: () => T) => {
     let v: T | undefined;
     return () => (v ??= make());
@@ -1357,7 +1376,7 @@ export const createResolver: CreateResolver = (ctx) => {
     if (languageId === "go") return go().resolve(from, spec);
     if (languageId === "rust") return rust().resolve(from, spec, imp.kind);
     if (JVM_LANGS.has(languageId)) return jvm().resolve(from, spec);
-    if (C_LANGS.has(languageId)) return resolveC(idx, from, spec);
+    if (C_LANGS.has(languageId)) return resolveC(idx, from, spec, imp.kind);
     if (languageId === "php") return php().resolve(idx, from, spec);
     if (languageId === "ruby" || languageId === "crystal") {
       const r = resolveRuby(idx, from, spec);

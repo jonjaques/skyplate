@@ -1,0 +1,4 @@
+# The fixture deliberately exports a declaration from dist while its source is elsewhere.
+# The repository's build-output ignore would otherwise drop this part of the experiment.
+!fixtures/probes/packages/built/dist/
+!fixtures/probes/packages/built/dist/index.d.ts

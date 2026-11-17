@@ -243,7 +243,7 @@ export interface SiteResult {
 }
 
 const dataScriptHead = (name: string) => `window.${DATA_GLOBAL}.resolve(${JSON.stringify(name)}, `;
-const dataScript = (name: string, payload: unknown) => `${dataScriptHead(name)}${JSON.stringify(payload)});\n`;
+export const dataScript = (name: string, payload: unknown) => `${dataScriptHead(name)}${JSON.stringify(payload)});\n`;
 
 /**
  * The payload of a data script dataScript() wrote for `name`, or undefined when `text` is not

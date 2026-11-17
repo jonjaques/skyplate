@@ -1,0 +1,995 @@
+{
+  "root": ".",
+  "paths": 5409,
+  "candidates": 2223,
+  "configs": 260,
+  "elapsed": 3049.312083,
+  "rss": 270880,
+  "stats": {
+    "files": 2223,
+    "symbols": 8662,
+    "references": 39463,
+    "unresolved": 100071,
+    "unusedExports": 1044,
+    "truncated": 0,
+    "ms": 3047
+  },
+  "projects": [
+    {
+      "config": "examples/angular/auto-refetching/tsconfig.json",
+      "files": 8,
+      "ms": 38
+    },
+    {
+      "config": "examples/angular/basic-angular-router/tsconfig.json",
+      "files": 10,
+      "ms": 3
+    },
+    {
+      "config": "examples/angular/basic-persister/tsconfig.json",
+      "files": 9,
+      "ms": 4
+    },
+    {
+      "config": "examples/angular/basic/tsconfig.json",
+      "files": 9,
+      "ms": 4
+    },
+    {
+      "config": "examples/angular/devtools-panel-angular-router/tsconfig.json",
+      "files": 11,
+      "ms": 4
+    },
+    {
+      "config": "examples/angular/infinite-query-with-max-pages/tsconfig.json",
+      "files": 10,
+      "ms": 5
+    },
+    {
+      "config": "examples/angular/optimistic-updates/tsconfig.json",
+      "files": 8,
+      "ms": 3
+    },
+    {
+      "config": "examples/angular/pagination/tsconfig.json",
+      "files": 9,
+      "ms": 4
+    },
+    {
+      "config": "examples/angular/query-options-from-a-service-angular-router/tsconfig.json",
+      "files": 10,
+      "ms": 3
+    },
+    {
+      "config": "examples/angular/rxjs/tsconfig.json",
+      "files": 9,
+      "ms": 3
+    },
+    {
+      "config": "examples/angular/simple/tsconfig.json",
+      "files": 5,
+      "ms": 3
+    },
+    {
+      "config": "examples/lit/algolia/tsconfig.json",
+      "files": 8,
+      "ms": 4
+    },
+    {
+      "config": "examples/lit/auto-refetching/tsconfig.json",
+      "files": 6,
+      "ms": 5
+    },
+    {
+      "config": "examples/lit/basic-graphql-request/tsconfig.json",
+      "files": 7,
+      "ms": 3
+    },
+    {
+      "config": "examples/lit/basic/tsconfig.json",
+      "files": 11,
+      "ms": 7
+    },
+    {
+      "config": "examples/lit/batching/tsconfig.json",
+      "files": 6,
+      "ms": 4
+    },
+    {
+      "config": "examples/lit/chat/tsconfig.json",
+      "files": 8,
+      "ms": 4
+    },
+    {
+      "config": "examples/lit/default-query-function/tsconfig.json",
+      "files": 5,
+      "ms": 3
+    },
+    {
+      "config": "examples/lit/infinite-query-with-max-pages/tsconfig.json",
+      "files": 7,
+      "ms": 2
+    },
+    {
+      "config": "examples/lit/load-more-infinite-scroll-lit-labs-router/tsconfig.json",
+      "files": 9,
+      "ms": 5
+    },
+    {
+      "config": "examples/lit/offline-lit-labs-router/tsconfig.json",
+      "files": 11,
+      "ms": 9
+    },
+    {
+      "config": "examples/lit/optimistic-updates/tsconfig.json",
+      "files": 10,
+      "ms": 7
+    },
+    {
+      "config": "examples/lit/pagination/tsconfig.json",
+      "files": 11,
+      "ms": 14
+    },
+    {
+      "config": "examples/lit/playground/tsconfig.json",
+      "files": 9,
+      "ms": 9
+    },
+    {
+      "config": "examples/lit/prefetching-lit-labs-router/tsconfig.json",
+      "files": 9,
+      "ms": 4
+    },
+    {
+      "config": "examples/lit/rick-morty-lit-labs-router/tsconfig.json",
+      "files": 22,
+      "ms": 6
+    },
+    {
+      "config": "examples/lit/simple/tsconfig.json",
+      "files": 5,
+      "ms": 1
+    },
+    {
+      "config": "examples/lit/ssr/tsconfig.json",
+      "files": 11,
+      "ms": 30
+    },
+    {
+      "config": "examples/lit/star-wars-lit-labs-router/tsconfig.json",
+      "files": 22,
+      "ms": 6
+    },
+    {
+      "config": "examples/preact/algolia/tsconfig.json",
+      "files": 10,
+      "ms": 4
+    },
+    {
+      "config": "examples/preact/auto-refetching/tsconfig.json",
+      "files": 7,
+      "ms": 3
+    },
+    {
+      "config": "examples/preact/basic-graphql-request/tsconfig.json",
+      "files": 6,
+      "ms": 2
+    },
+    {
+      "config": "examples/preact/basic/tsconfig.json",
+      "files": 6,
+      "ms": 4
+    },
+    {
+      "config": "examples/preact/batching/tsconfig.json",
+      "files": 6,
+      "ms": 4
+    },
+    {
+      "config": "examples/preact/chat/tsconfig.json",
+      "files": 7,
+      "ms": 5
+    },
+    {
+      "config": "examples/preact/default-query-function/tsconfig.json",
+      "files": 3,
+      "ms": 2
+    },
+    {
+      "config": "examples/preact/devtools-panel/tsconfig.json",
+      "files": 6,
+      "ms": 2
+    },
+    {
+      "config": "examples/preact/infinite-query-with-max-pages/tsconfig.json",
+      "files": 8,
+      "ms": 2
+    },
+    {
+      "config": "examples/preact/load-more-infinite-scroll-preact-iso/tsconfig.json",
+      "files": 10,
+      "ms": 4
+    },
+    {
+      "config": "examples/preact/offline-preact-iso/tsconfig.json",
+      "files": 10,
+      "ms": 6
+    },
+    {
+      "config": "examples/preact/optimistic-updates/tsconfig.json",
+      "files": 11,
+      "ms": 5
+    },
+    {
+      "config": "examples/preact/pagination/tsconfig.json",
+      "files": 8,
+      "ms": 3
+    },
+    {
+      "config": "examples/preact/playground/tsconfig.json",
+      "files": 7,
+      "ms": 6
+    },
+    {
+      "config": "examples/preact/prefetching-preact-iso/tsconfig.json",
+      "files": 9,
+      "ms": 3
+    },
+    {
+      "config": "examples/preact/rick-morty-preact-iso/tsconfig.json",
+      "files": 20,
+      "ms": 8
+    },
+    {
+      "config": "examples/preact/shadow-dom/tsconfig.json",
+      "files": 8,
+      "ms": 2
+    },
+    {
+      "config": "examples/preact/simple/tsconfig.json",
+      "files": 3,
+      "ms": 1
+    },
+    {
+      "config": "examples/preact/ssr-streaming/tsconfig.json",
+      "files": 11,
+      "ms": 6
+    },
+    {
+      "config": "examples/preact/ssr/tsconfig.json",
+      "files": 16,
+      "ms": 5
+    },
+    {
+      "config": "examples/preact/star-wars-preact-iso/tsconfig.json",
+      "files": 20,
+      "ms": 5
+    },
+    {
+      "config": "examples/preact/suspense/tsconfig.json",
+      "files": 12,
+      "ms": 4
+    },
+    {
+      "config": "examples/react/algolia/tsconfig.json",
+      "files": 10,
+      "ms": 3
+    },
+    {
+      "config": "examples/react/auto-refetching-nextjs-pages-router/tsconfig.json",
+      "files": 8,
+      "ms": 4
+    },
+    {
+      "config": "examples/react/basic-graphql-request/tsconfig.json",
+      "files": 6,
+      "ms": 4
+    },
+    {
+      "config": "examples/react/basic/tsconfig.json",
+      "files": 6,
+      "ms": 4
+    },
+    {
+      "config": "examples/react/batching/tsconfig.json",
+      "files": 6,
+      "ms": 4
+    },
+    {
+      "config": "examples/react/chat/tsconfig.json",
+      "files": 7,
+      "ms": 5
+    },
+    {
+      "config": "examples/react/contacts-react-router/tsconfig.json",
+      "files": 14,
+      "ms": 26
+    },
+    {
+      "config": "examples/react/contacts-tanstack-router/tsconfig.json",
+      "files": 16,
+      "ms": 13
+    },
+    {
+      "config": "examples/react/default-query-function/tsconfig.json",
+      "files": 3,
+      "ms": 4
+    },
+    {
+      "config": "examples/react/devtools-panel/tsconfig.json",
+      "files": 6,
+      "ms": 2
+    },
+    {
+      "config": "examples/react/eslint-legacy/tsconfig.json",
+      "files": 2,
+      "ms": 4
+    },
+    {
+      "config": "examples/react/eslint-plugin-demo/tsconfig.json",
+      "files": 4,
+      "ms": 2
+    },
+    {
+      "config": "examples/react/hydration-nextjs-pages-router/tsconfig.json",
+      "files": 14,
+      "ms": 5
+    },
+    {
+      "config": "examples/react/infinite-query-with-max-pages-nextjs-pages-router/tsconfig.json",
+      "files": 9,
+      "ms": 3
+    },
+    {
+      "config": "examples/react/load-more-infinite-scroll-nextjs-pages-router/tsconfig.json",
+      "files": 10,
+      "ms": 4
+    },
+    {
+      "config": "examples/react/offline-react-router/tsconfig.json",
+      "files": 11,
+      "ms": 6
+    },
+    {
+      "config": "examples/react/offline-tanstack-router/tsconfig.json",
+      "files": 12,
+      "ms": 10
+    },
+    {
+      "config": "examples/react/optimistic-updates-nextjs-app-router/tsconfig.json",
+      "files": 14,
+      "ms": 6
+    },
+    {
+      "config": "examples/react/pagination-nextjs-pages-router/tsconfig.json",
+      "files": 9,
+      "ms": 3
+    },
+    {
+      "config": "examples/react/playground/tsconfig.json",
+      "files": 7,
+      "ms": 6
+    },
+    {
+      "config": "examples/react/prefetching-nextjs-app-router/tsconfig.json",
+      "files": 9,
+      "ms": 2
+    },
+    {
+      "config": "examples/react/prefetching-nextjs-pages-router/tsconfig.json",
+      "files": 9,
+      "ms": 3
+    },
+    {
+      "config": "examples/react/react-native/tsconfig.json",
+      "files": 18,
+      "ms": 8
+    },
+    {
+      "config": "examples/react/rick-morty-react-router/tsconfig.json",
+      "files": 20,
+      "ms": 6
+    },
+    {
+      "config": "examples/react/shadow-dom/tsconfig.json",
+      "files": 8,
+      "ms": 2
+    },
+    {
+      "config": "examples/react/simple/tsconfig.json",
+      "files": 3,
+      "ms": 2
+    },
+    {
+      "config": "examples/react/star-wars-react-router/tsconfig.json",
+      "files": 20,
+      "ms": 5
+    },
+    {
+      "config": "examples/react/suspense-streaming-nextjs-app-router/tsconfig.json",
+      "files": 8,
+      "ms": 3
+    },
+    {
+      "config": "examples/react/suspense/tsconfig.json",
+      "files": 11,
+      "ms": 4
+    },
+    {
+      "config": "examples/solid/algolia/tsconfig.json",
+      "files": 10,
+      "ms": 5
+    },
+    {
+      "config": "examples/solid/auto-refetching-solid-start2/tsconfig.json",
+      "files": 9,
+      "ms": 3
+    },
+    {
+      "config": "examples/solid/basic-graphql-request/tsconfig.json",
+      "files": 6,
+      "ms": 2
+    },
+    {
+      "config": "examples/solid/basic/tsconfig.json",
+      "files": 6,
+      "ms": 3
+    },
+    {
+      "config": "examples/solid/batching/tsconfig.json",
+      "files": 6,
+      "ms": 3
+    },
+    {
+      "config": "examples/solid/chat/tsconfig.json",
+      "files": 7,
+      "ms": 3
+    },
+    {
+      "config": "examples/solid/contacts-solid-router/tsconfig.json",
+      "files": 15,
+      "ms": 7
+    },
+    {
+      "config": "examples/solid/contacts-tanstack-router/tsconfig.json",
+      "files": 16,
+      "ms": 8
+    },
+    {
+      "config": "examples/solid/default-query-function/tsconfig.json",
+      "files": 3,
+      "ms": 2
+    },
+    {
+      "config": "examples/solid/devtools-panel/tsconfig.json",
+      "files": 6,
+      "ms": 2
+    },
+    {
+      "config": "examples/solid/offline-solid-router/tsconfig.json",
+      "files": 9,
+      "ms": 7
+    },
+    {
+      "config": "examples/solid/offline-tanstack-router/tsconfig.json",
+      "files": 11,
+      "ms": 7
+    },
+    {
+      "config": "examples/solid/optimistic-updates-solid-start2/tsconfig.json",
+      "files": 13,
+      "ms": 4
+    },
+    {
+      "config": "examples/solid/pagination-solid-start2/tsconfig.json",
+      "files": 10,
+      "ms": 3
+    },
+    {
+      "config": "examples/solid/playground/tsconfig.json",
+      "files": 7,
+      "ms": 6
+    },
+    {
+      "config": "examples/solid/prefetching-solid-start2/tsconfig.json",
+      "files": 11,
+      "ms": 3
+    },
+    {
+      "config": "examples/solid/rick-morty-solid-router/tsconfig.json",
+      "files": 20,
+      "ms": 6
+    },
+    {
+      "config": "examples/solid/shadow-dom/tsconfig.json",
+      "files": 8,
+      "ms": 3
+    },
+    {
+      "config": "examples/solid/simple/tsconfig.json",
+      "files": 3,
+      "ms": 2
+    },
+    {
+      "config": "examples/solid/ssr-astro/tsconfig.json",
+      "files": 6,
+      "ms": 5
+    },
+    {
+      "config": "examples/solid/star-wars-solid-router/tsconfig.json",
+      "files": 20,
+      "ms": 7
+    },
+    {
+      "config": "examples/solid/streaming-solid-start2/tsconfig.json",
+      "files": 24,
+      "ms": 10
+    },
+    {
+      "config": "examples/solid/suspense/tsconfig.json",
+      "files": 11,
+      "ms": 4
+    },
+    {
+      "config": "examples/svelte/algolia/tsconfig.json",
+      "files": 7,
+      "ms": 4
+    },
+    {
+      "config": "examples/svelte/auto-refetching-sveltekit/tsconfig.json",
+      "files": 7,
+      "ms": 3
+    },
+    {
+      "config": "examples/svelte/basic-graphql-request/tsconfig.json",
+      "files": 7,
+      "ms": 3
+    },
+    {
+      "config": "examples/svelte/basic-sveltekit/tsconfig.json",
+      "files": 7,
+      "ms": 2
+    },
+    {
+      "config": "examples/svelte/batching/tsconfig.json",
+      "files": 7,
+      "ms": 3
+    },
+    {
+      "config": "examples/svelte/chat/tsconfig.json",
+      "files": 6,
+      "ms": 4
+    },
+    {
+      "config": "examples/svelte/contacts-sveltekit/tsconfig.json",
+      "files": 16,
+      "ms": 8
+    },
+    {
+      "config": "examples/svelte/default-query-function/tsconfig.json",
+      "files": 5,
+      "ms": 2
+    },
+    {
+      "config": "examples/svelte/infinite-query-with-max-pages-sveltekit/tsconfig.json",
+      "files": 7,
+      "ms": 4
+    },
+    {
+      "config": "examples/svelte/load-more-infinite-scroll-sveltekit/tsconfig.json",
+      "files": 6,
+      "ms": 4
+    },
+    {
+      "config": "examples/svelte/offline-sveltekit/tsconfig.json",
+      "files": 11,
+      "ms": 11
+    },
+    {
+      "config": "examples/svelte/optimistic-updates-sveltekit/tsconfig.json",
+      "files": 7,
+      "ms": 2
+    },
+    {
+      "config": "examples/svelte/pagination-sveltekit/tsconfig.json",
+      "files": 7,
+      "ms": 2
+    },
+    {
+      "config": "examples/svelte/playground-sveltekit/tsconfig.json",
+      "files": 7,
+      "ms": 4
+    },
+    {
+      "config": "examples/svelte/prefetching-sveltekit/tsconfig.json",
+      "files": 6,
+      "ms": 2
+    },
+    {
+      "config": "examples/svelte/rick-morty-sveltekit/tsconfig.json",
+      "files": 12,
+      "ms": 2
+    },
+    {
+      "config": "examples/svelte/shadow-dom/tsconfig.json",
+      "files": 7,
+      "ms": 2
+    },
+    {
+      "config": "examples/svelte/simple/tsconfig.json",
+      "files": 4,
+      "ms": 1
+    },
+    {
+      "config": "examples/svelte/ssr-sveltekit/tsconfig.json",
+      "files": 9,
+      "ms": 2
+    },
+    {
+      "config": "examples/svelte/star-wars-sveltekit/tsconfig.json",
+      "files": 12,
+      "ms": 2
+    },
+    {
+      "config": "examples/vue/2.6-basic/tsconfig.json",
+      "files": 7,
+      "ms": 2
+    },
+    {
+      "config": "examples/vue/2.7-basic/tsconfig.json",
+      "files": 7,
+      "ms": 1
+    },
+    {
+      "config": "examples/vue/algolia/tsconfig.json",
+      "files": 8,
+      "ms": 2
+    },
+    {
+      "config": "examples/vue/basic-graphql-request/tsconfig.json",
+      "files": 7,
+      "ms": 2
+    },
+    {
+      "config": "examples/vue/basic/tsconfig.json",
+      "files": 7,
+      "ms": 2
+    },
+    {
+      "config": "examples/vue/batching/tsconfig.json",
+      "files": 8,
+      "ms": 2
+    },
+    {
+      "config": "examples/vue/chat/tsconfig.json",
+      "files": 7,
+      "ms": 3
+    },
+    {
+      "config": "examples/vue/contacts-tanstack-router/tsconfig.json",
+      "files": 17,
+      "ms": 5
+    },
+    {
+      "config": "examples/vue/contacts-vue-router/tsconfig.json",
+      "files": 10,
+      "ms": 28
+    },
+    {
+      "config": "examples/vue/default-query-function/tsconfig.json",
+      "files": 5,
+      "ms": 2
+    },
+    {
+      "config": "examples/vue/dependent-queries/tsconfig.json",
+      "files": 10,
+      "ms": 2
+    },
+    {
+      "config": "examples/vue/devtools-panel/tsconfig.json",
+      "files": 7,
+      "ms": 1
+    },
+    {
+      "config": "examples/vue/offline-tanstack-router/tsconfig.json",
+      "files": 15,
+      "ms": 6
+    },
+    {
+      "config": "examples/vue/offline-vue-router/tsconfig.json",
+      "files": 11,
+      "ms": 4
+    },
+    {
+      "config": "examples/vue/persister/tsconfig.json",
+      "files": 7,
+      "ms": 10
+    },
+    {
+      "config": "examples/vue/playground/tsconfig.json",
+      "files": 8,
+      "ms": 3
+    },
+    {
+      "config": "examples/vue/rick-morty-vue-router/tsconfig.json",
+      "files": 15,
+      "ms": 3
+    },
+    {
+      "config": "examples/vue/shadow-dom/tsconfig.json",
+      "files": 8,
+      "ms": 12
+    },
+    {
+      "config": "examples/vue/simple-nuxt3/tsconfig.json",
+      "files": 5,
+      "ms": 4
+    },
+    {
+      "config": "examples/vue/simple/tsconfig.json",
+      "files": 7,
+      "ms": 2
+    },
+    {
+      "config": "examples/vue/star-wars-vue-router/tsconfig.json",
+      "files": 15,
+      "ms": 5
+    },
+    {
+      "config": "examples/vue/suspense/tsconfig.json",
+      "files": 9,
+      "ms": 3
+    },
+    {
+      "config": "integrations/angular/cli-22/tsconfig.app.json",
+      "files": 3,
+      "ms": 1
+    },
+    {
+      "config": "integrations/lit/vite/tsconfig.json",
+      "files": 1,
+      "ms": 1
+    },
+    {
+      "config": "integrations/preact/vite/tsconfig.json",
+      "files": 3,
+      "ms": 1
+    },
+    {
+      "config": "integrations/react/next-14/tsconfig.json",
+      "files": 4,
+      "ms": 1
+    },
+    {
+      "config": "integrations/react/next-15/tsconfig.json",
+      "files": 7,
+      "ms": 2
+    },
+    {
+      "config": "integrations/react/next-16/tsconfig.json",
+      "files": 7,
+      "ms": 4
+    },
+    {
+      "config": "integrations/react/nodenext/tsconfig.json",
+      "files": 2,
+      "ms": 2
+    },
+    {
+      "config": "integrations/react/vite/tsconfig.json",
+      "files": 3,
+      "ms": 1
+    },
+    {
+      "config": "integrations/react/webpack-4/tsconfig.json",
+      "files": 2,
+      "ms": 1
+    },
+    {
+      "config": "integrations/react/webpack-5/tsconfig.json",
+      "files": 2,
+      "ms": 1
+    },
+    {
+      "config": "integrations/solid/astro-7/tsconfig.json",
+      "files": 1,
+      "ms": 1
+    },
+    {
+      "config": "integrations/solid/solid-start-2/tsconfig.json",
+      "files": 5,
+      "ms": 2
+    },
+    {
+      "config": "integrations/solid/vite/tsconfig.json",
+      "files": 3,
+      "ms": 1
+    },
+    {
+      "config": "integrations/svelte/sveltekit-2/tsconfig.json",
+      "files": 2,
+      "ms": 1
+    },
+    {
+      "config": "integrations/svelte/vite/tsconfig.json",
+      "files": 3,
+      "ms": 1
+    },
+    {
+      "config": "integrations/vue/declaration-emit/tsconfig.consume.json",
+      "files": 1,
+      "ms": 1
+    },
+    {
+      "config": "integrations/vue/declaration-emit/tsconfig.emit.json",
+      "files": 1,
+      "ms": 1
+    },
+    {
+      "config": "integrations/vue/nuxt-3/tsconfig.json",
+      "files": 2,
+      "ms": 2
+    },
+    {
+      "config": "integrations/vue/vite/tsconfig.json",
+      "files": 3,
+      "ms": 1
+    },
+    {
+      "config": "packages/angular-query-experimental/tsconfig.json",
+      "files": 61,
+      "ms": 74
+    },
+    {
+      "config": "packages/angular-query-persist-client/tsconfig.json",
+      "files": 7,
+      "ms": 8
+    },
+    {
+      "config": "packages/eslint-plugin-query/src/__tests__/ts-fixture/tsconfig.json",
+      "files": 2,
+      "ms": 1
+    },
+    {
+      "config": "packages/eslint-plugin-query/tsconfig.json",
+      "files": 37,
+      "ms": 37
+    },
+    {
+      "config": "packages/lit-query/tsconfig.json",
+      "files": 43,
+      "ms": 112
+    },
+    {
+      "config": "packages/preact-query-devtools/tsconfig.json",
+      "files": 10,
+      "ms": 9
+    },
+    {
+      "config": "packages/preact-query-persist-client/tsconfig.json",
+      "files": 8,
+      "ms": 6
+    },
+    {
+      "config": "packages/preact-query/tsconfig.json",
+      "files": 68,
+      "ms": 211
+    },
+    {
+      "config": "packages/query-async-storage-persister/tsconfig.json",
+      "files": 7,
+      "ms": 4
+    },
+    {
+      "config": "packages/query-broadcast-client-experimental/tsconfig.json",
+      "files": 6,
+      "ms": 6
+    },
+    {
+      "config": "packages/query-codemods/tsconfig.json",
+      "files": 60,
+      "ms": 52
+    },
+    {
+      "config": "packages/query-core/tsconfig.json",
+      "files": 68,
+      "ms": 319
+    },
+    {
+      "config": "packages/query-devtools/tsconfig.json",
+      "files": 43,
+      "ms": 100
+    },
+    {
+      "config": "packages/query-persist-client-core/tsconfig.json",
+      "files": 11,
+      "ms": 35
+    },
+    {
+      "config": "packages/query-sync-storage-persister/tsconfig.json",
+      "files": 6,
+      "ms": 4
+    },
+    {
+      "config": "packages/query-test-utils/tsconfig.json",
+      "files": 8,
+      "ms": 2
+    },
+    {
+      "config": "packages/react-query-devtools/tsconfig.json",
+      "files": 10,
+      "ms": 7
+    },
+    {
+      "config": "packages/react-query-next-experimental/tsconfig.json",
+      "files": 7,
+      "ms": 4
+    },
+    {
+      "config": "packages/react-query-persist-client/tsconfig.json",
+      "files": 8,
+      "ms": 7
+    },
+    {
+      "config": "packages/react-query/tsconfig.json",
+      "files": 65,
+      "ms": 217
+    },
+    {
+      "config": "packages/solid-query-devtools/tsconfig.json",
+      "files": 10,
+      "ms": 7
+    },
+    {
+      "config": "packages/solid-query-persist-client/tsconfig.json",
+      "files": 7,
+      "ms": 6
+    },
+    {
+      "config": "packages/solid-query/tsconfig.json",
+      "files": 43,
+      "ms": 89
+    },
+    {
+      "config": "packages/svelte-query-devtools/tsconfig.json",
+      "files": 7,
+      "ms": 3
+    },
+    {
+      "config": "packages/svelte-query-persist-client/tsconfig.json",
+      "files": 8,
+      "ms": 4
+    },
+    {
+      "config": "packages/svelte-query/tsconfig.json",
+      "files": 48,
+      "ms": 52
+    },
+    {
+      "config": "packages/vue-query-devtools/tsconfig.json",
+      "files": 8,
+      "ms": 4
+    },
+    {
+      "config": "packages/vue-query/tsconfig.json",
+      "files": 60,
+      "ms": 69
+    },
+    {
+      "config": "scripts/tsconfig.json",
+      "files": 7,
+      "ms": 17
+    },
+    {
+      "config": "tsconfig.json",
+      "files": 3,
+      "ms": 4
+    },
+    {
+      "config": "",
+      "files": 79,
+      "ms": 114
+    }
+  ],
+  "logs": []
+}

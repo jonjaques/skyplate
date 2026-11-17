@@ -1,0 +1,16 @@
+{
+  "probes": [
+    { "name": "cb", "file": "callbacks.ts" },
+    { "name": "Root", "file": "heritage.ts" },
+    { "name": "dispatch", "file": "heritage.ts" },
+    { "name": "original", "file": "source.ts" },
+    { "name": "extra", "file": "source.ts" },
+    { "name": "overloaded", "file": "overloads.ts" },
+    { "name": "tag", "file": "tagged.ts" },
+    { "name": "prop", "parent": "Binding", "file": "binding.ts" },
+    { "name": "field", "parent": "Field", "file": "field.ts" },
+    { "name": "InterfaceProps", "file": "jsx.tsx" },
+    { "name": "AliasProps", "file": "jsx.tsx" },
+    { "name": "dec", "file": "decorators.ts" }
+  ]
+}

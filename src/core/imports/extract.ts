@@ -12,6 +12,7 @@
  * job. Line numbers are 0-based and point at the statement's first line.
  */
 
+import type { DiagnosticSink } from "../bench/diagnostics";
 import type { ExtractImports, RawImport } from "../contracts";
 import type { EdgeKind } from "../../shared/schema";
 import { scanWithRules, type Scan } from "../metrics";
@@ -20,8 +21,8 @@ import { getLexRules, type LexRules } from "../languages/syntax";
 // ─── Shared machinery ────────────────────────────────────────────────────────────────────────
 
 /**
- * A RawImport that may also say the compiler erases it (`import type`, `export type … from`,
- * or a list whose every specifier is written `type X`). Such an edge is real coupling but
+ * A RawImport that may also say it is type-only (`import type`, `export type … from`, a list
+ * whose every specifier is written `type X`, or Python under TYPE_CHECKING). Real coupling but
  * never runs, so it cannot make an import cycle bite at module evaluation; the graph keeps it
  * out of cycle detection. The flag rides on the contract's RawImport as an extra field until
  * the contract names it, which is why it is optional and only ever `true`.
@@ -46,6 +47,7 @@ export interface ExtractedImport extends RawImport {
 }
 
 interface Ctx {
+  onDiagnostic?: DiagnosticSink;
   text: string;
   mask: string;
   out: ExtractedImport[];
@@ -423,9 +425,67 @@ const PY_IMPORT = /^[ \t]*import[ \t]+([^\n#;]{1,2000})/gm;
 const PY_NAME = /^[\p{ID_Start}_]\p{ID_Continue}*$/u;
 const PY_DOTTED = /^[\p{ID_Start}_][\p{ID_Continue}.]*$/u;
 
+function pythonTypeOnlyLines(ctx: Ctx, start: number, end: number): Set<number> {
+  const names = new Map<string, number>([["TYPE_CHECKING", -1]]);
+  const modules = new Map<string, number>([["typing", -1]]);
+  each(ctx, PY_FROM, start, end, (match) => {
+    if (match[1] !== "typing") return;
+    for (const part of match[2]!.replace(/[()\\]/g, " ").split(",")) {
+      const [name, alias = name] = part.trim().split(/\s+as\s+/);
+      if (name === "TYPE_CHECKING" && alias && PY_NAME.test(alias)) names.set(alias, Math.min(names.get(alias) ?? Infinity, match.index));
+    }
+  });
+  each(ctx, PY_IMPORT, start, end, (match) => {
+    for (const part of match[1]!.split(",")) {
+      const [name, alias = name] = part.trim().split(/\s+as\s+/);
+      if (name === "typing" && alias && PY_NAME.test(alias)) modules.set(alias, Math.min(modules.get(alias) ?? Infinity, match.index));
+    }
+  });
+  const typed = new Set<number>();
+  const guards: number[] = [];
+  const lines = ctx.mask.slice(start, end).split("\n");
+  const firstLine = lineOf(ctx, start);
+  let statement = "";
+  let statementLine = 0;
+  let brackets = 0;
+  for (let line = 0; line < lines.length; line++) {
+    const text = lines[line]!;
+    // Continuation lines can close at column zero without leaving the surrounding suite.
+    // String bodies are masked too, so a docstring's contents must not dedent a guard.
+    if (!statement && /^[\s\x01'"]*$/.test(text)) continue;
+    if (!statement) statementLine = line;
+    statement += text + "\n";
+    for (const char of text) {
+      if (char === "(" || char === "[" || char === "{") brackets++;
+      else if (char === ")" || char === "]" || char === "}") brackets--;
+    }
+    if (brackets > 0 || /\\\s*$/.test(text)) continue;
+    let indent = 0;
+    for (const char of statement) {
+      if (char === " ") indent++;
+      else if (char === "\t") indent += 8 - indent % 8;
+      else break;
+    }
+    while (guards.length && indent <= guards[guards.length - 1]!) guards.pop();
+    if (guards.length) for (let row = statementLine; row <= line; row++) typed.add(firstLine + row);
+    const header = /^(?:if|elif)\s+([\s\S]+):\s*$/.exec(statement.trim());
+    if (header) {
+      let condition = header[1]!.trim();
+      while (condition.startsWith("(") && condition.endsWith(")")) condition = condition.slice(1, -1).trim();
+      const position = ctx.lineStarts[firstLine + statementLine]!;
+      const qualified = /^(.*)\.TYPE_CHECKING$/.exec(condition);
+      if ((names.get(condition) ?? Infinity) < position || (qualified && (modules.get(qualified[1]!) ?? Infinity) < position)) guards.push(indent);
+    }
+    statement = "";
+  }
+  return typed;
+}
+
 function extractPython(ctx: Ctx, start: number, end: number): void {
+  const typed = pythonTypeOnlyLines(ctx, start, end);
   each(ctx, PY_FROM, start, end, (m) => {
     const mod = m[1]!;
+    const typeOnly = typed.has(lineOf(ctx, m.index));
     if (/^\.+$/.test(mod)) {
       // `from . import a, b` imports sibling modules (or names from __init__): emit one
       // specifier per name so the resolver can find `a.py` before falling back to `.`.
@@ -434,17 +494,17 @@ function extractPython(ctx: Ctx, start: number, end: number): void {
       for (const part of names) {
         const name = part.trim().split(/\s+as\s+/)[0]?.trim();
         if (name && name !== "*" && PY_NAME.test(name)) {
-          add(ctx, mod + name, "import", m.index);
+          add(ctx, mod + name, "import", m.index, typeOnly);
           any = true;
         }
       }
-      if (!any) add(ctx, mod, "import", m.index);
-    } else add(ctx, mod, "import", m.index);
+      if (!any) add(ctx, mod, "import", m.index, typeOnly);
+    } else add(ctx, mod, "import", m.index, typeOnly);
   });
   each(ctx, PY_IMPORT, start, end, (m) => {
     for (const part of m[1]!.split(",")) {
       const name = part.trim().split(/\s+/)[0];
-      if (name && PY_DOTTED.test(name)) add(ctx, name, "import", m.index);
+      if (name && PY_DOTTED.test(name)) add(ctx, name, "import", m.index, typed.has(lineOf(ctx, m.index)));
     }
   });
 }
@@ -482,8 +542,9 @@ const RUST_USE = /(?<![\w#:])use\s+([^;]{1,4000});/g;
 const RUST_EXTERN = /\bextern[ \t]+crate[ \t]+(\w+)/g;
 
 /** Expand a use tree (`a::{b, c::{d, e}}`) into paths; capped so a huge std import stays sane. */
-export function expandUseTree(tree: string, cap = 32): string[] {
+export function expandUseTree(tree: string, cap = 32, onTruncated?: (count: number) => void): string[] {
   const out: string[] = [];
+  let dropped = 0;
   const walk = (prefix: string, s: string) => {
     s = s.trim();
     const brace = s.indexOf("{");
@@ -491,7 +552,10 @@ export function expandUseTree(tree: string, cap = 32): string[] {
       let p = s.replace(/\s+as\s+\w+$/, "").trim();
       if (p === "self") p = "";
       const full = prefix && p ? `${prefix}::${p}` : prefix || p;
-      if (full && full !== "*" && out.length < cap) out.push(full.replace(/::\*$/, ""));
+      if (full && full !== "*") {
+        if (out.length < cap) out.push(full.replace(/::\*$/, ""));
+        else dropped++;
+      }
       return;
     }
     const head = s.slice(0, brace).replace(/::\s*$/, "").trim();
@@ -511,12 +575,25 @@ export function expandUseTree(tree: string, cap = 32): string[] {
     }
   };
   walk("", tree.replace(/\s+/g, " "));
+  if (dropped) onTruncated?.(dropped);
   return out;
 }
 
 const RUST_INLINE_MOD = /\bmod[ \t]+(?:r#)?\w+[ \t]*\{/g;
 
 function extractRust(ctx: Ctx, start: number, end: number): void {
+  if (ctx.onDiagnostic) {
+    // Look past the bounded extractor once per statement, without an unbounded regex retry
+    // for every `use` in a huge malformed statement with no semicolon.
+    let scannedTo = -1;
+    each(ctx, /(?<![\w#:])use\s+/g, start, end, (m) => {
+      const from = m.index + m[0].length;
+      if (from <= scannedTo) return;
+      const semi = ctx.mask.indexOf(";", from);
+      scannedTo = semi < 0 ? end : semi;
+      if (semi >= 0 && semi < end && semi - from > 4000) ctx.onDiagnostic?.("rust_statement_cap");
+    });
+  }
   // Inline `mod tests { … }` blocks: inside one, `super::` means this file's module, not its
   // parent. Without this every `use super::*` in a test block becomes an edge to the parent
   // module and fabricates a cycle through the crate root.
@@ -536,7 +613,7 @@ function extractRust(ctx: Ctx, start: number, end: number): void {
   each(ctx, RUST_USE, start, end, (m) => {
     let nesting = 0;
     for (const [s, e] of inline) if (m.index > s && m.index < e) nesting++;
-    for (let path of expandUseTree(m[1]!)) {
+    for (let path of expandUseTree(m[1]!, 32, (count) => ctx.onDiagnostic?.("rust_use_cap", count))) {
       path = path.replace(/^::/, "");
       if (nesting > 0) {
         // Each leading `super` first climbs out of an inline module, staying in this file.
@@ -817,14 +894,14 @@ function segmentExtractor(rules: LexRules): Extractor | undefined {
 }
 
 // Typed through `satisfies` so callers see ExtractedImport and can read `typeOnly`.
-export const extractImports = ((_path: string, text: string, languageId: string): ExtractedImport[] => {
+export const extractImports = ((_path: string, text: string, languageId: string, onDiagnostic?: DiagnosticSink): ExtractedImport[] => {
   const markdown = languageId === "markdown" || languageId === "rmarkdown" || languageId === "mdx";
   const host = HOSTS.has(languageId);
   const extractor = BY_LANGUAGE[languageId];
   if (!extractor && !markdown && !host) return [];
   const rules = markdown ? undefined : getLexRules(languageId);
   const scan: Scan | undefined = rules ? scanWithRules(text, rules) : undefined;
-  const ctx: Ctx = { text, mask: scan?.mask ?? text, out: [], seen: new Map(), lineStarts: lineStartsOf(text), names: host || markdown };
+  const ctx: Ctx = { onDiagnostic, text, mask: scan?.mask ?? text, out: [], seen: new Map(), lineStarts: lineStartsOf(text), names: host || markdown };
   if (markdown) extractMarkdown(ctx, languageId === "mdx");
   else if (scan && scan.segments.length > 1) {
     // HTML-like files: scripts, styles and markup each get their own extractor.

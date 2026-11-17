@@ -1,0 +1,257 @@
+{
+  "strata": {
+    "function": {
+      "samples": 25,
+      "refs": {
+        "tp": 1198,
+        "fp": 0,
+        "fn": 0
+      },
+      "calls": {
+        "tp": 783,
+        "fp": 0,
+        "fn": 0
+      },
+      "callers": {
+        "tp": 152,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "type/interface/class": {
+      "samples": 13,
+      "refs": {
+        "tp": 568,
+        "fp": 0,
+        "fn": 0
+      },
+      "calls": {
+        "tp": 256,
+        "fp": 0,
+        "fn": 0
+      },
+      "callers": {
+        "tp": 30,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "method": {
+      "samples": 14,
+      "refs": {
+        "tp": 187,
+        "fp": 0,
+        "fn": 1
+      },
+      "calls": {
+        "tp": 156,
+        "fp": 0,
+        "fn": 1
+      },
+      "callers": {
+        "tp": 48,
+        "fp": 0,
+        "fn": 1
+      }
+    },
+    "getter": {
+      "samples": 1,
+      "refs": {
+        "tp": 2,
+        "fp": 0,
+        "fn": 0
+      },
+      "calls": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "callers": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "property": {
+      "samples": 11,
+      "refs": {
+        "tp": 445,
+        "fp": 0,
+        "fn": 0
+      },
+      "calls": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "callers": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "variable": {
+      "samples": 3,
+      "refs": {
+        "tp": 39,
+        "fp": 0,
+        "fn": 0
+      },
+      "calls": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      },
+      "callers": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "React function": {
+      "samples": 5,
+      "refs": {
+        "tp": 327,
+        "fp": 0,
+        "fn": 0
+      },
+      "calls": {
+        "tp": 293,
+        "fp": 0,
+        "fn": 0
+      },
+      "callers": {
+        "tp": 33,
+        "fp": 0,
+        "fn": 0
+      }
+    }
+  },
+  "repos": {
+    "sky-installed": {
+      "samples": 26,
+      "refs": {
+        "tp": 375,
+        "fp": 0,
+        "fn": 0
+      },
+      "calls": {
+        "tp": 59,
+        "fp": 0,
+        "fn": 0
+      },
+      "callers": {
+        "tp": 36,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "query-bare": {
+      "samples": 18,
+      "refs": {
+        "tp": 1447,
+        "fp": 0,
+        "fn": 0
+      },
+      "calls": {
+        "tp": 707,
+        "fp": 0,
+        "fn": 0
+      },
+      "callers": {
+        "tp": 100,
+        "fp": 0,
+        "fn": 0
+      }
+    },
+    "express-installed": {
+      "samples": 16,
+      "refs": {
+        "tp": 909,
+        "fp": 0,
+        "fn": 1
+      },
+      "calls": {
+        "tp": 699,
+        "fp": 0,
+        "fn": 1
+      },
+      "callers": {
+        "tp": 118,
+        "fp": 0,
+        "fn": 1
+      }
+    },
+    "plimit-installed": {
+      "samples": 12,
+      "refs": {
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      "calls": {
+        "tp": 23,
+        "fp": 0,
+        "fn": 0
+      },
+      "callers": {
+        "tp": 9,
+        "fp": 0,
+        "fn": 0
+      }
+    }
+  },
+  "paired": {
+    "sky": {
+      "refs": {
+        "tp": 142,
+        "fp": 0,
+        "fn": 233
+      },
+      "calls": {
+        "tp": 48,
+        "fp": 0,
+        "fn": 11
+      },
+      "callers": {
+        "tp": 30,
+        "fp": 0,
+        "fn": 6
+      }
+    },
+    "express": {
+      "refs": {
+        "tp": 909,
+        "fp": 0,
+        "fn": 1
+      },
+      "calls": {
+        "tp": 699,
+        "fp": 0,
+        "fn": 1
+      },
+      "callers": {
+        "tp": 118,
+        "fp": 0,
+        "fn": 1
+      }
+    },
+    "plimit": {
+      "refs": {
+        "tp": 35,
+        "fp": 0,
+        "fn": 0
+      },
+      "calls": {
+        "tp": 23,
+        "fp": 0,
+        "fn": 0
+      },
+      "callers": {
+        "tp": 9,
+        "fp": 0,
+        "fn": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,162 @@
+[
+  {
+    "path": "tests/certs/mtls/client/client.pem",
+    "language": "text",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "-----BEGIN CERTIFICATE-----\nMIIDpjCCAo6gAwIBAgIUTzbDp+B1umRS0Q7rgefxif9Im4IwDQYJKoZIhvcNAQEL\nBQAwajELMAkGA1UEBhMCVVMxIzAhBgNVBAoMGlB5dGhvbiBTb2Z0d2FyZSBGb3Vu\nZGF0aW9uMRgwFgYDVQQLDA9weXRob24tcmVxdWVzdHMxHDAaBgNVBAMME1NlbGYt\nU2lnbmVkIFJvb3QgQ0EwHhcNMjUwMjE3MDAzODIzWhcNMjcwMjE3MDAzODIzWjBs\nMQswCQYDVQQGEwJVUzELMAkGA1UECAwCREUxIzAhBgNVBAoMGlB5dGhvbiBTb2Z0\nd2FyZSBGb3VuZGF0aW9uMRgwFgYDVQQLDA9weXRob24tcmVxdWVzdHMxETAPBgNV\nBAMMCHJlcXVlc3RzMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAmt2+"
+  },
+  {
+    "path": "docs/api.rst",
+    "language": "restructuredtext",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": ".. _api:\n\nDeveloper Interface\n===================\n\n.. module:: requests\n\nThis part of the documentation covers all the interfaces of Requests. For"
+  },
+  {
+    "path": "src/requests/__init__.py",
+    "language": "python",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "#   __\n#  /__)  _  _     _   _ _/   _\n# / (   (- (/ (/ (- _)  /  _)\n#          /\n\n\"\"\"\nRequests HTTP Library\n~~~~~~~~~~~~~~~~~~~~~"
+  },
+  {
+    "path": "docs/_themes/flask_theme_support.py",
+    "language": "python",
+    "category": "code",
+    "generated": false,
+    "vendored": true,
+    "head": "# flasky extensions.  flasky pygments style based on tango style\nfrom pygments.style import Style\nfrom pygments.token import Keyword, Name, Comment, String, Error, \\\n     Number, Operator, Generic, Whitespace, Punctuation, Other, Literal\n\n\nclass FlaskyStyle(Style):\n    background_color = \"#f8f8f8\""
+  },
+  {
+    "path": "tests/test_utils.py",
+    "language": "python",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "import copy\nimport filecmp\nimport os\nimport tarfile\nimport zipfile\nfrom collections import deque\nfrom io import BytesIO\nfrom unittest import mock"
+  },
+  {
+    "path": "NOTICE",
+    "language": "text",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "Requests\nCopyright 2019 Kenneth Reitz\n"
+  },
+  {
+    "path": ".github/workflows/close-issues.yml",
+    "language": "yaml",
+    "category": "build",
+    "generated": false,
+    "vendored": false,
+    "head": "name: 'Autoclose Issues'\n\non:\n  issues:\n    types:\n      - labeled\n\npermissions: {}"
+  },
+  {
+    "path": "docs/community/vulnerabilities.rst",
+    "language": "restructuredtext",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "Vulnerability Disclosure\n========================\n\nThe latest vulnerability disclosure information can be found on GitHub in our\n`Security Policy <https://github.com/psf/requests/blob/main/.github/SECURITY.md>`_.\n"
+  },
+  {
+    "path": "tests/certs/valid/server/server.pem",
+    "language": "text",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "-----BEGIN CERTIFICATE-----\nMIIEEDCCAvigAwIBAgIUTzbDp+B1umRS0Q7rgefxif9Im4MwDQYJKoZIhvcNAQEL\nBQAwajELMAkGA1UEBhMCVVMxIzAhBgNVBAoMGlB5dGhvbiBTb2Z0d2FyZSBGb3Vu\nZGF0aW9uMRgwFgYDVQQLDA9weXRob24tcmVxdWVzdHMxHDAaBgNVBAMME1NlbGYt\nU2lnbmVkIFJvb3QgQ0EwHhcNMjUwMjE3MDAzODIzWhcNNDQxMTA0MDAzODIzWjBt\nMQswCQYDVQQGEwJVUzELMAkGA1UECAwCREUxIzAhBgNVBAoMGlB5dGhvbiBTb2Z0\nd2FyZSBGb3VuZGF0aW9uMRgwFgYDVQQLDA9weXRob24tcmVxdWVzdHMxEjAQBgNV\nBAMMCWxvY2FsaG9zdDCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAMPc"
+  },
+  {
+    "path": "tests/certs/mtls/client/client.csr",
+    "language": "text",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "-----BEGIN CERTIFICATE REQUEST-----\nMIIEGjCCAwICAQAwbDELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkRFMSMwIQYDVQQK\nDBpQeXRob24gU29mdHdhcmUgRm91bmRhdGlvbjEYMBYGA1UECwwPcHl0aG9uLXJl\ncXVlc3RzMREwDwYDVQQDDAhyZXF1ZXN0czCCASIwDQYJKoZIhvcNAQEBBQADggEP\nADCCAQoCggEBAJrdvu5kvCy5g6w67gczETk/u6K0UBmf6Mv0lqXCp3Voyt5fv6SI\n/OPWrFV1+m4imNe5bLM7JUoUfkqkmULsjTTh7sxVLjW226vLSYOWWy7PA+OSwUTN\nLjydF1dazlPedHPYdmhVShCmyoOd1pUCDQn0/4cEA/WW4mtzZImmoCf/pyAM3XAC\n9RBcSSJRywOTe6n9LY6Ko0YUW94ay2M4ClVblDxswDemaAsLFuciKmi53gKx4H/l"
+  },
+  {
+    "path": "ext/LICENSE",
+    "language": "text",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "Copyright 2019 Kenneth Reitz. All rights reserved.\n"
+  },
+  {
+    "path": "tests/certs/expired/server/server.csr",
+    "language": "text",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "-----BEGIN CERTIFICATE REQUEST-----\nMIIDHjCCAgYCAQAwbTELMAkGA1UEBhMCVVMxCzAJBgNVBAgMAkRFMSMwIQYDVQQK\nDBpQeXRob24gU29mdHdhcmUgRm91bmRhdGlvbjEYMBYGA1UECwwPcHl0aG9uLXJl\ncXVlc3RzMRIwEAYDVQQDDAlsb2NhbGhvc3QwggEiMA0GCSqGSIb3DQEBAQUAA4IB\nDwAwggEKAoIBAQDcRRwk8IU1YoNu8CHzB5Vh8HP/yLfBtU69LLZq+7rDG31JlR5s\nlmcwLLoZ8opUQ5rg8JMRZ7toh5zB4Uc0B4Sg8RhQMSOZYBIJkXdHuqQkciR0vWnN\nvD/5CkWEhnj4dxE7xTbDufBlxmwAthC/u72UIsZHavAyLCBqsONa7xuTiogz/d+3\nG+525JrfVr05hhJpT4Ypx5YY+ABkIOuOk/XuudbGm5SquuX6BgjmgaGtDjAuE/Rn"
+  },
+  {
+    "path": "src/requests/utils.py",
+    "language": "python",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "\"\"\"\nrequests.utils\n~~~~~~~~~~~~~~\n\nThis module provides utility functions that are used within Requests\nthat are also useful for external consumption.\n\"\"\"\n"
+  },
+  {
+    "path": ".github/FUNDING.yml",
+    "language": "yaml",
+    "category": "config",
+    "generated": false,
+    "vendored": false,
+    "head": "custom: ['https://www.python.org/psf/sponsorship/']\n"
+  },
+  {
+    "path": "README.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "# Requests\n\n[![Version](https://img.shields.io/pypi/v/requests.svg?maxAge=86400)](https://pypi.org/project/requests/)\n[![Supported Versions](https://img.shields.io/pypi/pyversions/requests.svg)](https://pypi.org/project/requests)\n[![Downloads](https://static.pepy.tech/badge/requests/month)](https://pepy.tech/project/requests)\n[![Contributors](https://img.shields.io/github/contributors/psf/requests.svg)](https://github.com/psf/requests/graphs/contributors)\n[![Documentation](https://readthedocs.org/projects/requests/badge/?version=latest)](https://requests.readthedocs.io)\n"
+  },
+  {
+    "path": "HISTORY.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "Release History\n===============\n\ndev\n---\n\n- \\[Short description of non-trivial change.\\]\n"
+  },
+  {
+    "path": "tests/utils.py",
+    "language": "python",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "import contextlib\nimport os\n\n\n@contextlib.contextmanager\ndef override_environ(**kwargs):\n    save_env = dict(os.environ)\n    for key, value in kwargs.items():"
+  },
+  {
+    "path": "tests/certs/README.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "# Testing Certificates\n\nThis is a collection of certificates useful for testing aspects of Requests'\nbehaviour.\n\nThe certificates include:\n\n* [expired](./expired) server certificate with a valid certificate authority"
+  },
+  {
+    "path": "docs/community/faq.rst",
+    "language": "restructuredtext",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": ".. _faq:\n\nFrequently Asked Questions\n==========================\n\nThis part of the documentation answers common questions about Requests.\n\nEncoded Data?"
+  },
+  {
+    "path": ".github/ISSUE_TEMPLATE/Feature_request.md",
+    "language": "markdown",
+    "category": "config",
+    "generated": false,
+    "vendored": false,
+    "head": "---\r\nname: Feature request\r\nabout: Suggest an idea for this project\r\nlabels:\r\n- \"Feature Request\"\r\n- \"actions/autoclose-feat\"\r\n\r\n---\r"
+  }
+]

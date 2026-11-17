@@ -19,7 +19,7 @@ import { createServer } from "./server";
 import { Workspace } from "./workspace";
 
 export async function runMcp(cmd: McpCommand): Promise<number> {
-  const ws = new Workspace();
+  const ws = new Workspace(process.cwd(), { options: cmd.options, refresh: cmd.refresh });
   for (const path of cmd.paths) {
     // A bad startup path is the configuration's mistake: fail loudly, before any client connects.
     await ws.open(path, { options: cmd.options, refresh: cmd.refresh });

@@ -1,0 +1,33 @@
+{
+  "branch": "task-tools-benchmark",
+  "head": "e4b548cb3e71dc1c3edc3479b9f596a18c14dc3a",
+  "bun": "1.4.4",
+  "baselineTests": {
+    "pass": 671,
+    "skip": 2,
+    "fail": 0,
+    "assertions": 10370,
+    "seconds": 19.41
+  },
+  "finalTests": {
+    "pass": 671,
+    "skip": 2,
+    "fail": 0,
+    "assertions": 10370,
+    "seconds": 17.62
+  },
+  "rootTypecheck": {
+    "passed": true,
+    "files": 266
+  },
+  "outputGuards": {
+    "checkoutOutputRejected": true,
+    "existingOutputRejected": true
+  },
+  "arithmetic": {
+    "corpusTotalsMatch": true,
+    "strataTotalsMatch": true,
+    "skyplatePairedTotalsMatch": true
+  },
+  "externalChangesRequired": false
+}

@@ -1,0 +1,162 @@
+[
+  {
+    "path": "lib/curl_printf.h",
+    "language": "c",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "#ifndef HEADER_CURL_PRINTF_H\n#define HEADER_CURL_PRINTF_H\n/***************************************************************************\n *                                  _   _ ____  _\n *  Project                     ___| | | |  _ \\| |\n *                             / __| | | | |_) | |\n *                            | (__| |_| |  _ <| |___\n *                             \\___|\\___/|_| \\_\\_____|"
+  },
+  {
+    "path": "lib/cfilters.h",
+    "language": "c",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "#ifndef HEADER_CURL_CFILTERS_H\n#define HEADER_CURL_CFILTERS_H\n/***************************************************************************\n *                                  _   _ ____  _\n *  Project                     ___| | | |  _ \\| |\n *                             / __| | | | |_) | |\n *                            | (__| |_| |  _ <| |___\n *                             \\___|\\___/|_| \\_\\_____|"
+  },
+  {
+    "path": "docs/cmdline-opts/write-out.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "---\nc: Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.\nSPDX-License-Identifier: curl\nLong: write-out\nShort: w\nArg: <format>\nHelp: Output FORMAT after completion\nCategory: verbose"
+  },
+  {
+    "path": "tests/data/test1117",
+    "language": "xml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "<?xml version=\"1.0\" encoding=\"US-ASCII\"?>\n<testcase>\n<info>\n<keywords>\nHTTP\nHTTP GET\nRange\nDELAY"
+  },
+  {
+    "path": "tests/data/test357",
+    "language": "xml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "<?xml version=\"1.0\" encoding=\"US-ASCII\"?>\n<testcase>\n<info>\n<keywords>\nHTTP\nHTTP PUT\nExpect: 100-continue\n</keywords>"
+  },
+  {
+    "path": "tests/data/test19",
+    "language": "xml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "<?xml version=\"1.0\" encoding=\"US-ASCII\"?>\n<testcase>\n<info>\n<keywords>\nHTTP\nconnect to non-listen\n</keywords>\n</info>"
+  },
+  {
+    "path": "lib/vtls/hostcheck.c",
+    "language": "c",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "/***************************************************************************\n *                                  _   _ ____  _\n *  Project                     ___| | | |  _ \\| |\n *                             / __| | | | |_) | |\n *                            | (__| |_| |  _ <| |___\n *                             \\___|\\___/|_| \\_\\_____|\n *\n * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al."
+  },
+  {
+    "path": "tests/data/test866",
+    "language": "xml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "<?xml version=\"1.0\" encoding=\"US-ASCII\"?>\n<testcase>\n<info>\n<keywords>\nPOP3\nSASL\nSASL AUTH LOGIN\nRFC1734"
+  },
+  {
+    "path": "tests/data/test809",
+    "language": "xml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "<?xml version=\"1.0\" encoding=\"US-ASCII\"?>\n<testcase>\n<info>\n<keywords>\nIMAP\nClear Text\nSTATUS\nCUSTOMREQUEST"
+  },
+  {
+    "path": "docs/cmdline-opts/proxy-ssl-allow-beast.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "---\nc: Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.\nSPDX-License-Identifier: curl\nLong: proxy-ssl-allow-beast\nHelp: Allow this security flaw for HTTPS proxy\nAdded: 7.52.0\nCategory: proxy tls\nMulti: boolean"
+  },
+  {
+    "path": "tests/data/test830",
+    "language": "xml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "<?xml version=\"1.0\" encoding=\"US-ASCII\"?>\n<testcase>\n<info>\n<keywords>\nIMAP\nSASL\nSASL AUTH CRAM-MD5\nSASL CANCELLATION"
+  },
+  {
+    "path": ".github/scripts/verify-synopsis.pl",
+    "language": "perl",
+    "category": "build",
+    "generated": false,
+    "vendored": false,
+    "head": "#!/usr/bin/env perl\n#***************************************************************************\n#                                  _   _ ____  _\n#  Project                     ___| | | |  _ \\| |\n#                             / __| | | | |_) | |\n#                            | (__| |_| |  _ <| |___\n#                             \\___|\\___/|_| \\_\\_____|\n#"
+  },
+  {
+    "path": "tests/data/test2081",
+    "language": "xml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "<?xml version=\"1.0\" encoding=\"US-ASCII\"?>\n<testcase>\n<info>\n<keywords>\nHTTP\nHTTP GET\nreferer\nfollowlocation"
+  },
+  {
+    "path": "tests/data/test373",
+    "language": "xml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "<?xml version=\"1.0\" encoding=\"US-ASCII\"?>\n<testcase>\n<info>\n<keywords>\nHTTP\nHTTP GET\nchunked Transfer-Encoding\n</keywords>"
+  },
+  {
+    "path": "docs/examples/multi-app.c",
+    "language": "c",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "/***************************************************************************\n *                                  _   _ ____  _\n *  Project                     ___| | | |  _ \\| |\n *                             / __| | | | |_) | |\n *                            | (__| |_| |  _ <| |___\n *                             \\___|\\___/|_| \\_\\_____|\n *\n * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al."
+  },
+  {
+    "path": "tests/data/test1361",
+    "language": "xml",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "<?xml version=\"1.0\" encoding=\"US-ASCII\"?>\n<testcase>\n<info>\n<keywords>\nFTP\nRETR\n</keywords>\n</info>"
+  },
+  {
+    "path": "docs/libcurl/opts/CURLOPT_SSL_SIGNATURE_ALGORITHMS.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "---\nc: Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.\nSPDX-License-Identifier: curl\nTitle: CURLOPT_SSL_SIGNATURE_ALGORITHMS\nSection: 3\nSource: libcurl\nSee-also:\n  - CURLOPT_SSL_CIPHER_LIST (3)"
+  },
+  {
+    "path": "lib/cf-recvbuf.c",
+    "language": "c",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "/***************************************************************************\n *                                  _   _ ____  _\n *  Project                     ___| | | |  _ \\| |\n *                             / __| | | | |_) | |\n *                            | (__| |_| |  _ <| |___\n *                             \\___|\\___/|_| \\_\\_____|\n *\n * Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al."
+  },
+  {
+    "path": "docs/TODO.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "<!--\nCopyright (C) Daniel Stenberg, <daniel@haxx.se>, et al.\n\nSPDX-License-Identifier: curl\n-->\n\n# TODO intro\n"
+  },
+  {
+    "path": "tests/http/test_32_ftps_vsftpd.py",
+    "language": "python",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "#***************************************************************************\n#                                  _   _ ____  _\n#  Project                     ___| | | |  _ \\| |\n#                             / __| | | | |_) | |\n#                            | (__| |_| |  _ <| |___\n#                             \\___|\\___/|_| \\_\\_____|\n#\n# Copyright (C) Daniel Stenberg, <daniel@haxx.se>, et al."
+  }
+]

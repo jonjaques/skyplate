@@ -1,0 +1,216 @@
+{
+  "origin": "Retained study evidence, 2026-11-16",
+  "transformations": [
+    "Local absolute paths replaced with neutral markers",
+    "Radon input keys made repository-relative",
+    "measurements.json compressed losslessly",
+    "detection-verdicts.json transcribes the study rubric and its one documented exception",
+    "The Kubernetes full import stream is omitted for the size budget; aggregate counts and selected rows are retained"
+  ],
+  "files": {
+    "accuracy.json": {
+      "bytes": 124475,
+      "sha256": "67e566c69d35d83ff48f3995d2df0c014a2205ad9bca827da0fb7a597f9878ad"
+    },
+    "cap-ledger.txt": {
+      "bytes": 15016,
+      "sha256": "f2477b6670895c23c8f518599cc16c69b9dcaf9aa278fad0c4256a7a73611a49"
+    },
+    "chi-cli.log": {
+      "bytes": 778,
+      "sha256": "c4c4ffda703e3cc59a8e43adbd265010258d575c1dbadb835742683200f18232"
+    },
+    "chi-detection-sample.json": {
+      "bytes": 6871,
+      "sha256": "b11c167f9304905fb4cd97595183402d09c838b3391dce321c8b2684ebc8dc77"
+    },
+    "chi-imports.ndjson.gz": {
+      "bytes": 3787,
+      "sha256": "b23336f51f68e793ee5b44a1f5bddd01aa7e23ee3e400c4bee98ff07ac2ad4c0"
+    },
+    "chi-sample.json": {
+      "bytes": 9092,
+      "sha256": "872ddbcc7b04cb5b72d789a6d124eafd4bd82f69439aac7f64e80a4de9951722"
+    },
+    "cli-summary.json": {
+      "bytes": 43614,
+      "sha256": "db2b92399dc8e5f38b6203da02b57917a6ebb39c2502ec36cca622558a21da3e"
+    },
+    "complexity.json": {
+      "bytes": 5382,
+      "sha256": "e1d9a48b33e8ae7ddd7ae5e845d6e2bda804b6f57de53b57481eb06844ce5a08"
+    },
+    "curl-cli.log": {
+      "bytes": 778,
+      "sha256": "f0edf71b3de8e85f4bf9f9b3921ba355ba0c3b24b1f00b548a397928caee1e36"
+    },
+    "curl-detection-sample.json": {
+      "bytes": 7804,
+      "sha256": "557100636f40f21364c87fcec817fb1bc5326478b0aea3cdb6364c0f67db6265"
+    },
+    "curl-imports.ndjson.gz": {
+      "bytes": 41486,
+      "sha256": "1a3278898eac86c2f8012fdad85e735784c9f93e57bd82cc9de22756dc530639"
+    },
+    "curl-sample.json": {
+      "bytes": 5540,
+      "sha256": "d572b1fe60ea2f28cef9a66b3d20dc4c813584bf9d7ccb75051c734aa30cbc7a"
+    },
+    "detection-review.txt": {
+      "bytes": 46174,
+      "sha256": "0635cead565dbe493584d34b5a119564e3eb675fee8822d581e7cbc0ba86a661"
+    },
+    "detection-verdicts.json": {
+      "bytes": 29922,
+      "sha256": "bd62d4f5536f8903c0907235e2f959fecceeeb27baa855ede77d2d8b78bb9af7"
+    },
+    "edge-review.json": {
+      "bytes": 76657,
+      "sha256": "b0dcd1f909f66fa80f77fe5f27b8a3b01980bf57de1afc5e305902f84d4fe5da"
+    },
+    "encoding.json": {
+      "bytes": 1103,
+      "sha256": "b8a122fdc2e0904ed265cdec2a32bd914625fceb500a2da229185af30cbfce94"
+    },
+    "entry-cargo-check.json": {
+      "bytes": 1526,
+      "sha256": "921f401920092a8ee4bd959236fb83486e4246616b262e461098e2770e224f85"
+    },
+    "graph-scale.json": {
+      "bytes": 259,
+      "sha256": "65d687b4ec97902fc7f6efde674e6fa1e6828b0d706712888684c3d641e604b0"
+    },
+    "graph-scale.log": {
+      "bytes": 1013,
+      "sha256": "4cb3c12a882e6fe11332a1e29b172bd312eabbd8589bacba32bab3a49435bb82"
+    },
+    "history-ground-truth.txt": {
+      "bytes": 390,
+      "sha256": "275e88996e7f5ebbbf3aa30e22b761226fa4e079666a79fca9ab55f76352063f"
+    },
+    "junit-cli.log": {
+      "bytes": 778,
+      "sha256": "ab0b5c1b7399581680417daee4f768abae211dbcf75bb7f4b71ebc936d3b41b2"
+    },
+    "junit-detection-sample.json": {
+      "bytes": 10338,
+      "sha256": "afc27ad8bf400b243248637034a827c4939119d5574369c07615a4ae2f662c8f"
+    },
+    "junit-imports.ndjson.gz": {
+      "bytes": 272800,
+      "sha256": "e423a72441d6a30fbf2809033e1db17f157d1dc354e6247c0b113ac6387df635"
+    },
+    "junit-sample.json": {
+      "bytes": 9072,
+      "sha256": "d0eb26eb0871e99dca1ae32286db0e4189a6be6b75eca274a69899721e2220fe"
+    },
+    "kubernetes-cap50.log": {
+      "bytes": 777,
+      "sha256": "50d391214fa3c95a5f918c5ee21f1b22cb905ea260d4b3ef0cb8909bfd9f2719"
+    },
+    "kubernetes-cli.log": {
+      "bytes": 778,
+      "sha256": "1b64b022b7034c763ea0ec0a5d69940be0b5dcd5ab3b6da1c91068842207dde1"
+    },
+    "kubernetes-detection-sample.json": {
+      "bytes": 8425,
+      "sha256": "695445b667468ad98f43f1869c682f8f18fa942eaab467676943cdc3c69ef0a6"
+    },
+    "kubernetes-nogit.log": {
+      "bytes": 1685,
+      "sha256": "404dd00ce3142540800419742768195ba86f611b4efbda4e3b2e06001591b305"
+    },
+    "kubernetes-sample.json": {
+      "bytes": 20232,
+      "sha256": "0e7e9350c399dcedea5ffb9879fe46dc1792a114aa0e3fc92135b80b3c7176ac"
+    },
+    "kubernetes-sample.txt": {
+      "bytes": 28341,
+      "sha256": "9909e7f2e27863d31b716d17bd8836dd98ab9f2875473a075cb651dba42dd99c"
+    },
+    "mcp-timings.json": {
+      "bytes": 1885,
+      "sha256": "ea8c992889f4e48746805ac2b50603b145546f727fcf8e439a409138f4d3a432"
+    },
+    "measurements.json.gz": {
+      "bytes": 58649,
+      "sha256": "a2a66f2446df3b205b7eb760f33f7262556567f6249075708ec300303c8a4b39"
+    },
+    "package-cap.json": {
+      "bytes": 1129,
+      "sha256": "dae7f596644c9ffe557644ad744c9e2d370982928e836cefe5e04f3e8fb19b25"
+    },
+    "python-type-guards.json": {
+      "bytes": 1320,
+      "sha256": "e7e43c805ab98eceab886d0b47a7baeb640860abf46359357661094144ef831f"
+    },
+    "radon-requests.json": {
+      "bytes": 321022,
+      "sha256": "502f12189a0d49d244c855394706e2e8ebf838963585933bafeb43dea7d0e745"
+    },
+    "rails-cli.log": {
+      "bytes": 778,
+      "sha256": "3b22eca7fbe84f1dbfa68e2a7663b7c5f406f81f23260c3b990dd744b6b0d2ac"
+    },
+    "rails-detection-sample.json": {
+      "bytes": 7800,
+      "sha256": "69703e0685481dd66038ece3ce877a848d243bd8185960cccd7476ae552d83d6"
+    },
+    "rails-imports.ndjson.gz": {
+      "bytes": 87416,
+      "sha256": "b960bbdd9e117a0866fb9c4864b2d93f84d82029d8e028ba894290c543d88002"
+    },
+    "rails-rerun.log": {
+      "bytes": 777,
+      "sha256": "7a58dd891b06936d7461607ebf5b8c7006a0d97c72b37c2526c1077d1a7dee6a"
+    },
+    "rails-sample.json": {
+      "bytes": 7063,
+      "sha256": "9fadbfb1815b2b82b3adc665e8a7e4b1a9ca8b9675524555e6fe4718475dc022"
+    },
+    "rename-ground-truth.txt": {
+      "bytes": 1034,
+      "sha256": "4cce41fe307f3d362c6abfcb2f56d937da94d4bc227f4a543d4b8ec62370fa48"
+    },
+    "repros.json": {
+      "bytes": 8046,
+      "sha256": "bb35803797a6c1c3816bda2d1d2b3e5e8eb25c6292d8429f0c0367b1cdf0b1da"
+    },
+    "requests-cli.log": {
+      "bytes": 778,
+      "sha256": "f9c312e7824b85bcafc02c11ec5f8744e841f856a0acbd6c14d74f3e6ed3a3c7"
+    },
+    "requests-detection-sample.json": {
+      "bytes": 7965,
+      "sha256": "adcb7cc364ab4181add8fb64d74002b6c22d4f1f882f9a0126aa274ef88e1200"
+    },
+    "requests-imports.ndjson.gz": {
+      "bytes": 3858,
+      "sha256": "0720c30e1adfbc1ce3162cae71b54bf7bb4943b9f87c5c85e43c562b0fcf3802"
+    },
+    "requests-sample.json": {
+      "bytes": 5818,
+      "sha256": "77f08c3bde98ed3aad3b18339e11ad00bfc9a93fdc34e8c41b5a1ba843c58a6e"
+    },
+    "ripgrep-cli.log": {
+      "bytes": 778,
+      "sha256": "3ba2c0e05bcd5ac1dfb0b20ee3d5eeaaae7f0e8fdd57c9c6d7574ca3560290e5"
+    },
+    "ripgrep-detection-sample.json": {
+      "bytes": 8647,
+      "sha256": "ff48bf220ad4c741991f941a675889bd5ad3ae0d8a686b0371e6409cd7cde1b9"
+    },
+    "ripgrep-imports.ndjson.gz": {
+      "bytes": 11730,
+      "sha256": "e53393eddf2324673f1639d6fb533f2f2f1ca192610215da2adf15af264f0133"
+    },
+    "ripgrep-sample.json": {
+      "bytes": 6239,
+      "sha256": "4cf731664a4a66ca0995bde6ebe5adbbda4bab91494adcb65dd256d1b0c172e8"
+    },
+    "tables.json": {
+      "bytes": 9579,
+      "sha256": "e32adff8463fcf4d4915215de6c812356026091eaca873a96e0ad2f43b11350b"
+    }
+  }
+}

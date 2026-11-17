@@ -79,7 +79,7 @@ function buildCsr(n: number, from: number[], to: number[]): Csr {
  * so the vector stays a distribution and converges. Edges point importer → imported, so the
  * most depended-upon files rank highest. Max-normalized to 1; all zeros for an empty graph.
  */
-function pageRank(n: number, g: Csr): number[] {
+function pageRank(n: number, g: Csr, diagnostic?: GraphInput["onDiagnostic"]): number[] {
   if (n === 0) return [];
   if (g.out.length === 0) return new Array<number>(n).fill(0);
   let rank = new Float64Array(n).fill(1 / n);
@@ -101,6 +101,7 @@ function pageRank(n: number, g: Csr): number[] {
     for (let v = 0; v < n; v++) delta += Math.abs(next[v]! - rank[v]!);
     [rank, next] = [next, rank];
     if (delta < TOLERANCE * n) break;
+    if (iter === MAX_ITERATIONS - 1) diagnostic?.("pagerank_iteration_cap");
   }
   let max = 0;
   for (let v = 0; v < n; v++) if (rank[v]! > max) max = rank[v]!;
@@ -289,7 +290,7 @@ function chooseModules(input: GraphInput, connected: Uint8Array, rank: number[])
       let parts = expand(m.dir);
       if (mods.length - 1 + parts.length > MAX_MODULES && holdsPackage[m.dir]) parts = expand(m.dir, false, false);
       if (parts.length < 2 && !(parts.length === 1 && !parts[0]!.self)) continue;
-      if (mods.length - 1 + parts.length > MAX_MODULES) continue;
+      if (mods.length - 1 + parts.length > MAX_MODULES) { input.onDiagnostic?.("module_split_cap"); continue; }
       const depth = dirDepth[m.dir] ?? 0;
       const value = size(m) / Math.max(1, parts.length - 1);
       if (depth < bestDepth || (depth === bestDepth && value > bestValue)) {
@@ -376,7 +377,7 @@ export const analyzeGraph = ((input: GraphInput): GraphResult => {
       connectedCount++;
     }
   }
-  const rank = pageRank(n, g);
+  const rank = pageRank(n, g, input.onDiagnostic);
 
   // Cycles: components of two or more files, largest first, ids in that order, over runtime
   // edges only. A cycle hurts because evaluation order breaks (a binding read before its module

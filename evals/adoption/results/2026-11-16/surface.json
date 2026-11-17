@@ -1,0 +1,190 @@
+{
+  "measurements": [
+    {
+      "run": "baseline",
+      "toolCount": 18,
+      "toolsListChars": 26582,
+      "instructionsChars": 882,
+      "tools": [
+        {
+          "name": "open",
+          "descriptionChars": 266
+        },
+        {
+          "name": "status",
+          "descriptionChars": 162
+        },
+        {
+          "name": "close",
+          "descriptionChars": 117
+        },
+        {
+          "name": "overview",
+          "descriptionChars": 200
+        },
+        {
+          "name": "findings",
+          "descriptionChars": 214
+        },
+        {
+          "name": "files",
+          "descriptionChars": 268
+        },
+        {
+          "name": "file",
+          "descriptionChars": 227
+        },
+        {
+          "name": "dir",
+          "descriptionChars": 188
+        },
+        {
+          "name": "search_symbols",
+          "descriptionChars": 244
+        },
+        {
+          "name": "symbol",
+          "descriptionChars": 355
+        },
+        {
+          "name": "seams",
+          "descriptionChars": 593
+        },
+        {
+          "name": "seam",
+          "descriptionChars": 602
+        },
+        {
+          "name": "graph",
+          "descriptionChars": 464
+        },
+        {
+          "name": "history",
+          "descriptionChars": 420
+        },
+        {
+          "name": "dependencies",
+          "descriptionChars": 369
+        },
+        {
+          "name": "read_source",
+          "descriptionChars": 215
+        },
+        {
+          "name": "build_report",
+          "descriptionChars": 419
+        },
+        {
+          "name": "serve_report",
+          "descriptionChars": 256
+        }
+      ],
+      "unit": "UTF-16 code units; compact JSON array for tools/list; instructions text only",
+      "recomputedToolsListChars": 26582
+    },
+    {
+      "run": "changed",
+      "toolCount": 22,
+      "toolsListChars": 33241,
+      "instructionsChars": 1156,
+      "tools": [
+        {
+          "name": "map_codebase",
+          "descriptionChars": 274
+        },
+        {
+          "name": "locate_code",
+          "descriptionChars": 426
+        },
+        {
+          "name": "change_impact",
+          "descriptionChars": 609
+        },
+        {
+          "name": "open",
+          "descriptionChars": 254
+        },
+        {
+          "name": "status",
+          "descriptionChars": 149
+        },
+        {
+          "name": "close",
+          "descriptionChars": 123
+        },
+        {
+          "name": "overview",
+          "descriptionChars": 195
+        },
+        {
+          "name": "findings",
+          "descriptionChars": 230
+        },
+        {
+          "name": "files",
+          "descriptionChars": 253
+        },
+        {
+          "name": "file",
+          "descriptionChars": 207
+        },
+        {
+          "name": "dir",
+          "descriptionChars": 181
+        },
+        {
+          "name": "search_symbols",
+          "descriptionChars": 289
+        },
+        {
+          "name": "symbol",
+          "descriptionChars": 466
+        },
+        {
+          "name": "seams",
+          "descriptionChars": 260
+        },
+        {
+          "name": "seam",
+          "descriptionChars": 298
+        },
+        {
+          "name": "graph",
+          "descriptionChars": 270
+        },
+        {
+          "name": "history",
+          "descriptionChars": 279
+        },
+        {
+          "name": "dependencies",
+          "descriptionChars": 283
+        },
+        {
+          "name": "read_source",
+          "descriptionChars": 218
+        },
+        {
+          "name": "build_report",
+          "descriptionChars": 294
+        },
+        {
+          "name": "serve_report",
+          "descriptionChars": 198
+        },
+        {
+          "name": "benchmark",
+          "descriptionChars": 519
+        }
+      ],
+      "unit": "UTF-16 code units; compact JSON array for tools/list; instructions text only",
+      "recomputedToolsListChars": 33215
+    }
+  ],
+  "notes": [
+    "The two agent-run surface totals are 26,582 / 882 and 33,241 / 1,156 characters.",
+    "The earlier development snapshot in the scratch input had 21 tools, 29,892 tools/list characters and 865 instruction characters. It was not the 22-tool surface used by changed sessions.",
+    "Totals use JSON.stringify(tools).length, not the whole tools/list result or JSON-RPC envelope.",
+    "The captured changed agent-run dump recomputes to 33,215 characters, 26 fewer than the reported 33,241 comparison total. Both are retained rather than treating the slightly later comparison surface as the exact session snapshot. Per-tool description lengths come from the captured session dump."
+  ]
+}

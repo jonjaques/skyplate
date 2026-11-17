@@ -28,6 +28,7 @@
  * fails halfway are reported through onProgress and the rest carries on.
  */
 
+import type { DiagnosticCode } from "../bench/diagnostics";
 import { readFileSync, realpathSync } from "node:fs";
 import { basename } from "node:path";
 import type { API } from "typescript/unstable/async";
@@ -51,7 +52,9 @@ const BATCH = 20_000;
 
 export const analyzeTypeScript: AnalyzeTypeScript = async (input) => {
   const started = performance.now();
-  const log = (m: string) => {
+  const log = (m: string, code?: DiagnosticCode, count = 1) => {
+    if (code) input.onDiagnostic?.(code, count);
+    else if (/failed|exceed|dropped|cannot|could not/i.test(m)) input.onDiagnostic?.("unclassified_warning");
     try {
       input.onProgress?.(m);
     } catch {
@@ -62,6 +65,7 @@ export const analyzeTypeScript: AnalyzeTypeScript = async (input) => {
   const candidates = findCandidates(input);
   if (!candidates.length) return null;
   if (candidates.length > input.maxFiles) {
+    input.onDiagnostic?.("ts_file_cap", candidates.length);
     log(`TypeScript: skipped, ${candidates.length} TS/JS files exceed the limit of ${input.maxFiles} (raise maxFiles to analyze them)`);
     return null;
   }
@@ -81,6 +85,7 @@ export const analyzeTypeScript: AnalyzeTypeScript = async (input) => {
     compiler = new Compiler(root, configs.hidden);
     const plan = await planProjects(compiler, input, root, candidates, configs.open, log);
     if (!plan?.projects.length) {
+      input.onDiagnostic?.("ts_failed");
       log("TypeScript: no project could be opened");
       return null;
     }
@@ -89,6 +94,8 @@ export const analyzeTypeScript: AnalyzeTypeScript = async (input) => {
     // planProjects may have replaced the child; its projects belong to the current one.
     return await analyze(compiler.api, input, root, plan.projects, started, log);
   } catch (e) {
+    input.onFailure?.(e);
+    input.onDiagnostic?.("ts_failed");
     log(`TypeScript: analysis failed: ${message(e)}`);
     return null;
   } finally {
@@ -102,7 +109,7 @@ async function analyze(
   root: string,
   projects: OwnedProject[],
   started: number,
-  log: (m: string) => void,
+  log: (m: string, code?: DiagnosticCode, count?: number) => void,
 ): Promise<CodeSymbols> {
   const absOf = (id: number) => root + "/" + input.paths[id]!;
   const store = new SymbolStore();
@@ -139,11 +146,12 @@ async function analyze(
       // Pass A keeps no nodes, but the client caches every AST it fetches; without this the
       // whole repository's ASTs are alive at once by the end of the pass.
       if (++seen % 256 === 0) api.clearSourceFileCache();
-      if (!sf) return;
+      if (!sf) { input.onDiagnostic?.("ts_read_failed"); return; }
       decls.set(id, collectDeclarations(ts(sf) as TsSourceFile, id, basename(input.paths[id]!), !!input.isTest[id], store));
       report[pi]!.files++;
     },
     (id, e) => {
+      input.onDiagnostic?.("ts_read_failed");
       const pi = owner.get(id)!;
       if (!failedA.has(pi)) log(`TypeScript: reading ${input.paths[id]} failed: ${message(e)}`);
       failedA.add(pi);
@@ -160,6 +168,8 @@ async function analyze(
     try {
       await referencePass(api, p, decls, absOf, state, log);
     } catch (e) {
+      input.onFailure?.(e);
+      input.onDiagnostic?.("ts_resolve_failed");
       log(`TypeScript: ${p.config || "inferred project"} failed partway: ${message(e)}`);
     }
     const ms = performance.now() - t;
@@ -174,6 +184,7 @@ async function analyze(
   promoteComponents(store, refs);
 
   const tables = buildTables(store, refs, input.paths.length, decls.values(), input.maxRefs);
+  if (tables.truncated) input.onDiagnostic?.("ts_reference_cap", tables.truncated);
   if (tables.truncated) log(`TypeScript: ${tables.truncated} references over the limit of ${input.maxRefs} were dropped`);
   return {
     engine: { name: "typescript", version: typescriptVersion() },
@@ -201,7 +212,7 @@ async function referencePass(
   decls: Map<number, FileDecls>,
   absOf: (id: number) => string,
   state: ResolveState,
-  log: (m: string) => void,
+  log: (m: string, code?: DiagnosticCode, count?: number) => void,
 ): Promise<void> {
   const checker = p.project.checker;
   const cache = newProjectCache();
@@ -214,7 +225,7 @@ async function referencePass(
     batch = new Batch();
     if (inflight) await inflight;
     inflight = resolveBatch(b, checker, state, cache).catch((e) => {
-      if (!failures++) log(`TypeScript: resolving references in ${p.config || "inferred project"} failed: ${message(e)}`);
+      if (!failures++) log(`TypeScript: resolving references in ${p.config || "inferred project"} failed: ${message(e)}`, "ts_resolve_failed");
     });
     // The walked files' ASTs are no longer needed; the batch keeps its own nodes alive.
     api.clearSourceFileCache();
@@ -229,7 +240,7 @@ async function referencePass(
       if (batch.size >= BATCH) await flush();
     },
     (id, e) => {
-      if (!failures++) log(`TypeScript: reading ${absOf(id)} failed: ${message(e)}`);
+      if (!failures++) log(`TypeScript: reading ${absOf(id)} failed: ${message(e)}`, "ts_read_failed");
     },
   );
   await flush();

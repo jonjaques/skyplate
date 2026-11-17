@@ -244,6 +244,59 @@ describe("symbols", () => {
 
 // ─── References ──────────────────────────────────────────────────────────────────────────────
 
+describe("complexity boundaries", () => {
+  test.each([
+    ["arrow", "const neverCalled = () => { if (flag) return 1; return 2; };"],
+    ["function expression", "const neverCalled = function () { if (flag) return 1; return 2; };"],
+    ["function declaration", "function neverCalled() { if (flag) return 1; return 2; }"],
+    ["method", "const object = { method() { if (flag) return 1; return 2; } };"],
+    ["getter", "const object = { get value() { if (flag) return 1; return 2; } };"],
+    ["setter", "const object = { set value(next: number) { if (flag) return; } };"],
+    ["constructor", "class Local { constructor() { if (flag) return; } }"],
+    ["static block", "class Local { static { if (flag) console.log(flag); } }"],
+    ["callback", "[flag].map(value => value ? 1 : 2);"],
+  ])("does not charge a nested %s to the enclosing function", async (_, nested) => {
+    const dir = mkdtempSync(join(tmpdir(), "skyplate-complexity-"));
+    try {
+      writeFileSync(join(dir, "index.ts"), `export function outer(flag: boolean) { ${nested} return 0; }\n`);
+      const data = await analyzeTypeScript(inputFor(dir, ["index.ts"]));
+      expect(data).not.toBeNull();
+      expect(data!.symbols.name).toEqual(["index.ts", "outer"]);
+      expect(data!.symbols.complexity[data!.symbols.name.indexOf("outer")]).toBe(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("recorded functions keep their own decisions across nested boundaries", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "skyplate-complexity-"));
+    try {
+      writeFileSync(join(dir, "index.ts"), `
+        export const arrow = (flag: boolean) => { const inner = () => flag ? 1 : 2; if (flag) return 1; return 0; };
+        export const expression = (function (flag: boolean) { if (flag) return 1; return 0; });
+        declare function wrap(callback: (flag: boolean) => number): (flag: boolean) => number;
+        export const useWrapped = wrap((flag: boolean) => { if (flag) return 1; return 0; });
+        export class Example {
+          constructor(flag: boolean) { if (flag) console.log(flag); }
+          method(flag: boolean) { const inner = () => flag ? 1 : 2; if (flag) return 1; return 0; }
+          get value() { if (true) return 1; return 0; }
+          set value(next: number) { if (next) return; }
+          field = (flag: boolean) => flag ? 1 : 0;
+        }
+      `);
+      const data = await analyzeTypeScript(inputFor(dir, ["index.ts"]));
+      expect(data).not.toBeNull();
+      const table = data!.symbols;
+      for (const name of ["arrow", "expression", "useWrapped", "constructor", "method", "field"]) {
+        expect(table.complexity[table.name.indexOf(name)]).toBe(2);
+      }
+      expect(table.name.flatMap((name, index) => name === "value" ? [table.complexity[index]] : [])).toEqual([2, 2]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("references", () => {
   test("a function: imports, calls from every file, the JS file included", () => {
     expect(refsTo(sym("add"))).toEqual([

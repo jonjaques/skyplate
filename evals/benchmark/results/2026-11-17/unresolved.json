@@ -1,0 +1,27 @@
+{
+  "analyzerCommit": "e4b548cb3e71dc1c3edc3479b9f596a18c14dc3a",
+  "inputCommit": "e4b548cb3e71dc1c3edc3479b9f596a18c14dc3a",
+  "bun": "1.4.4",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "unresolved": [
+    {
+      "path": "evals/typescript/faults.ts",
+      "spec": "../../node_modules/typescript/dist/api/async/api.js",
+      "line": 4,
+      "language": "typescript"
+    },
+    {
+      "path": "evals/typescript/faults.ts",
+      "spec": "../../node_modules/typescript/dist/ast/index.js",
+      "line": 5,
+      "language": "typescript"
+    },
+    {
+      "path": "src/core/bench/privacy.ts",
+      "spec": "../../../",
+      "line": 293,
+      "language": "typescript"
+    }
+  ]
+}

@@ -11,6 +11,7 @@
  * them (sorted by path), and stay stable through the whole pipeline.
  */
 
+import type { DiagnosticSink } from "./bench/diagnostics";
 import type {
   Category,
   CodeSymbols,
@@ -137,7 +138,7 @@ export interface RawImport {
   line: number; //          0-based
 }
 
-export type ExtractImports = (path: string, text: string, languageId: string) => RawImport[];
+export type ExtractImports = (path: string, text: string, languageId: string, onDiagnostic?: DiagnosticSink) => RawImport[];
 
 export interface ResolveContext {
   root: string;
@@ -146,6 +147,7 @@ export interface ResolveContext {
   manifests: Manifest[];
   /** Read a repo file as text (configs: tsconfig.json, go.mod, package.json, Cargo.toml). */
   readText: (path: string) => string | undefined;
+  onDiagnostic?: DiagnosticSink;
 }
 
 export type ImportResolution =
@@ -154,7 +156,7 @@ export type ImportResolution =
    * C# namespaces, Terraform modules) resolve to a representative file plus `also`, a capped
    * list of its siblings, so package-level edges can still be drawn.
    */
-  | { file: number; also?: number[] }
+  | { file: number; also?: number[]; package?: { dir: string; members: number; capped: boolean } }
   | { external: { name: string; ecosystem: string } } //  a package / stdlib module
   | { unresolved: true };
 
@@ -182,6 +184,7 @@ export interface GraphInput {
    * the root excluded: a monorepo's packages, which module choice keeps whole.
    */
   packageDirs?: number[];
+  onDiagnostic?: DiagnosticSink;
 }
 
 export interface GraphResult {
@@ -223,6 +226,7 @@ export interface GitInput {
    */
   exclude?: boolean[];
   onProgress?: (done: number, total: number) => void;
+  onDiagnostic?: DiagnosticSink;
 }
 
 export interface GitResult {
@@ -254,6 +258,8 @@ export interface TsInput {
   /** Cap on stored references; the rest are counted in stats.truncated. */
   maxRefs: number;
   onProgress?: (message: string) => void;
+  onFailure?: (error: unknown) => void;
+  onDiagnostic?: DiagnosticSink;
 }
 
 /** Resolves to null when there is nothing to analyze or the compiler cannot start. */

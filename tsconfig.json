@@ -32,5 +32,10 @@
     "noPropertyAccessFromIndexSignature": false
   },
 
-  "exclude": ["dist", "node_modules"]
+  // Eval fixtures are small repositories for Skyplate to analyze, some broken on purpose (a
+  // failing tsconfig, a missing package, foreign syntax), so they are inputs, not our code. The
+  // TypeScript eval's oracle runs on TypeScript 5.9.3 from that eval's own package, which a clean
+  // checkout does not install; against the root's TypeScript 7 its classic API does not exist.
+  // `bun check evals/typescript/oracle.ts` checks it once that package is installed.
+  "exclude": ["dist", "node_modules", "evals/**/fixtures", "evals/typescript/oracle.ts"]
 }

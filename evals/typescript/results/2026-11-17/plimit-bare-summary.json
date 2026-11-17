@@ -1,0 +1,29 @@
+{
+  "root": ".",
+  "revision": "a8a6fbec4e0e866d6d779b10889bb4f5567e70eb",
+  "paths": 16,
+  "candidates": 6,
+  "configs": 0,
+  "elapsed": 84.78595899999999,
+  "rss": 40752,
+  "stats": {
+    "files": 6,
+    "symbols": 38,
+    "references": 139,
+    "unresolved": 252,
+    "unusedExports": 4,
+    "truncated": 0,
+    "ms": 79
+  },
+  "projects": [
+    {
+      "config": "",
+      "files": 6,
+      "ms": 44
+    }
+  ],
+  "logs": [
+    "TypeScript: 1 project(s), 6 files",
+    "TypeScript: inferred project: 6 files, 139 references, 43 ms"
+  ]
+}

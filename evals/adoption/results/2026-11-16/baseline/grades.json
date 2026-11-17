@@ -1,0 +1,86 @@
+{
+  "codex": {
+    "01-env": {
+      "grade": "correct",
+      "gradeReason": "Traces mode/envDir, all four files in precedence order, expansion, Vite Task and process.env override layers, prefix validation, client injection, and concrete unit and playground tests. All material preregistered requirements are covered."
+    },
+    "02-size": {
+      "grade": "partly",
+      "gradeReason": "Locates optimizer/index.ts, scan.ts, resolve/preAlias and docs, but supplies no directory file/line counts and no concrete test area. Asks for behavior clarification instead of completing the explicitly requested sizing."
+    },
+    "03-rename": {
+      "grade": "correct",
+      "gradeReason": "Correct declaration and public export, independently matching 71-file scope, detailed import/callback/dynamic-import references, tests and docs, deprecated alias and plugin-legacy peer-version compatibility. Preserves existing Windows/relative-path behavior. Its final answer also self-reports a rejected heredoc that the JSON events do not independently show."
+    },
+    "04-refactor": {
+      "grade": "correct",
+      "gradeReason": "Proposes a narrow in-file extraction and transform-specific override matching the existing TODO, preserves identity, truthiness, position precedence, file-read/frame/map behavior and error propagation, and gives concrete public-interface regression tests in the existing test file. All material requirements covered."
+    },
+    "05-dead": {
+      "grade": "correct",
+      "gradeReason": "Rejects dead-code deletion, finds live evaluator consumer, traces startOffset through runner/fetchModule to source-map padding, checks historical rationale, and distinguishes a deliberate fixed-offset compatibility change from deletion of unused code. Tests not run and runtime uncertainty are explicit."
+    },
+    "06-risk": {
+      "grade": "correct",
+      "gradeReason": "Uses actual config history, concrete runtime dependencies and historical fixes, computes companion files with a stated non-merge/boundary filter, identifies area-specific reviewers, and distinguishes expertise from ownership or availability. Co-change rankings agree with independent investigation under its broader counting basis. Explicit shallow-history and co-change limits."
+    },
+    "07-cycle": {
+      "grade": "correct",
+      "gradeReason": "Shows both named runtime import directions separately from type-only edges, identifies actual runtime uses, proposes a narrow server/options extraction with type-only back references and compatibility reexports, and limits its claim to removing the direct cycle."
+    },
+    "08-hmr": {
+      "grade": "correct",
+      "gradeReason": "Traces transport registration, serialized handler, triggeredBy graph traversal, roots, whole-graph invalidation, bundled-runtime reset, sequential reimport, closed guards and outdated-dependency handling. Distinguishes selection scope from invalidation scope."
+    },
+    "09-line": {
+      "grade": "correct",
+      "gradeReason": "Quotes the exact corrected message with to inserted after lead. Reads only the requested target file with one rg command."
+    },
+    "10-read": {
+      "grade": "correct",
+      "gradeReason": "Accurately explains cleanUrl regex and postfix slicing and gives the requested query-plus-fragment example. One direct read of the specified file, with no unrelated inspection."
+    }
+  },
+  "claude": {
+    "01-env": {
+      "grade": "correct",
+      "gradeReason": "Covers mode/envDir, four env files and precedence, expansion, Vite Task and process.env overrides, prefix validation, client exposure and real unit/playground tests. Explicitly limits claims about uninstalled dependencies and reports tests not run."
+    },
+    "02-size": {
+      "grade": "correct",
+      "gradeReason": "Reports measured optimizer file/line/code totals matching the independent 6-file/4094-line count, relevant plugin/config/helper areas, unit specs and playground sizes; traces include/exclude consumers and gives concrete design/test locations with stated behavioral uncertainty. Minor playground counting differences are within the requested rough sizing."
+    },
+    "03-rename": {
+      "grade": "correct",
+      "gradeReason": "Finds the 71-file reference scope, exact implementation/public export, isolatedDeclarations typed alias constraint, tests/docs and external-name collision. Preserves backward compatibility and plugin-legacy peer range. Minor overstatements in the proposed final grep inventory do not change the sound migration plan."
+    },
+    "04-refactor": {
+      "grade": "correct",
+      "gradeReason": "Proposes a narrow hierarchy-based extraction matching the existing TODO, preserves mutation/identity, pluginCode guard, truthiness, position validation, included-file/frame differences, sourcemap side effects and cleanup, and specifies concrete characterization tests through the container interface. No public API expansion or claimed test run."
+    },
+    "05-dead": {
+      "grade": "correct",
+      "gradeReason": "Rejects dead-code deletion, finds the one live evaluator call and offset path through runner/fetchModule, checks history and a Node runtime probe, and describes source-map/stack risks. Any constant replacement is identified as a compatibility decision with a nonconforming-runtime tradeoff, rather than deleting unreferenced code."
+    },
+    "06-risk": {
+      "grade": "correct",
+      "gradeReason": "Uses Skyplate file/symbol/graph/seam/history evidence, then independently detects and excludes the shallow-boundary ownership artifact. Names actual expert reviewers, concrete risky line ranges and focused co-change partners, and states counting, alias, uninstalled-dependency and external-review limits. The central ownership/risk conclusions match independent Git investigation."
+    },
+    "07-cycle": {
+      "grade": "correct",
+      "gradeReason": "Correctly separates named runtime imports from type-only edges, confirms both one-hop edges with graph queries, traces candidate extraction dependencies, and proposes a narrow server-options module while preserving relevant type placement. Initialization hazard is explicitly reasoned rather than claimed as tested, and remaining transitive cycles are stated."
+    },
+    "08-hmr": {
+      "grade": "correct",
+      "gradeReason": "Traces transport registration and queue, triggeredBy importer traversal, graph-root selection, whole-cache invalidation, bundled-runtime/HMR/client-id reset, sequential reimport and error guards. Distinguishes inferred bundled-mode edge cases from tested behavior."
+    },
+    "09-line": {
+      "grade": "partly",
+      "gradeReason": "Exact grammar fix and test-assertion observations are correct. However, it broadened the preregistered one-file control with a repository-wide search and a read of config.spec.ts, contrary to the expected one-file scope. No Skyplate misuse."
+    },
+    "10-read": {
+      "grade": "correct",
+      "gradeReason": "Accurately explains the regex and postfix slicing, gives a concrete query-plus-fragment example, and restricts both Grep and Read to the specified file."
+    }
+  }
+}

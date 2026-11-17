@@ -1,0 +1,162 @@
+[
+  {
+    "path": "activerecord/lib/active_record/tasks/postgresql_database_tasks.rb",
+    "language": "ruby",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire \"tempfile\"\n\nmodule ActiveRecord\n  module Tasks # :nodoc:\n    class PostgreSQLDatabaseTasks < AbstractTasks # :nodoc:\n      DEFAULT_ENCODING = ENV[\"CHARSET\"] || \"utf8\""
+  },
+  {
+    "path": "railties/lib/rails/generators/test_unit/authentication/templates/test/mailers/previews/passwords_mailer_preview.rb.tt",
+    "language": "text",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "# Preview all emails at http://localhost:3000/rails/mailers/passwords_mailer\nclass PasswordsMailerPreview < ActionMailer::Preview\n  # Preview this email at http://localhost:3000/rails/mailers/passwords_mailer/reset\n  def reset\n    PasswordsMailer.reset(User.take)\n  end\nend\n"
+  },
+  {
+    "path": "activerecord/test/cases/relation/and_test.rb",
+    "language": "ruby",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire \"cases/helper\"\nrequire \"models/author\"\n\nmodule ActiveRecord\n  class AndTest < ActiveRecord::TestCase\n    fixtures :authors, :author_addresses"
+  },
+  {
+    "path": "actionpack/Rakefile",
+    "language": "ruby",
+    "category": "build",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire \"rake/testtask\"\n\ntest_files = FileList[\"test/**/*_test.rb\"]\n\ndesc \"Default Task\"\ntask default: :test"
+  },
+  {
+    "path": "activerecord/test/cases/test_fixtures_test.rb",
+    "language": "ruby",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire \"cases/helper\"\nrequire \"tempfile\"\nrequire \"fileutils\"\nrequire \"models/zine\"\n\nclass TestFixturesTest < ActiveRecord::TestCase"
+  },
+  {
+    "path": "activejob/test/jobs/inherited_job.rb",
+    "language": "ruby",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire_relative \"application_job\"\n\nclass InheritedJob < ApplicationJob\n  self.queue_adapter = :inline\nend\n"
+  },
+  {
+    "path": "activesupport/test/error_reporter_test.rb",
+    "language": "ruby",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire_relative \"abstract_unit\"\nrequire \"active_support/execution_context/test_helper\"\nrequire \"active_support/error_reporter/test_helper\"\n\nclass ErrorReporterTest < ActiveSupport::TestCase\n  # ExecutionContext is automatically reset in Rails app via executor hooks set in railtie"
+  },
+  {
+    "path": "actionpack/lib/abstract_controller/asset_paths.rb",
+    "language": "ruby",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nmodule AbstractController\n  module AssetPaths # :nodoc:\n    extend ActiveSupport::Concern\n\n    module ClassMethods\n    end"
+  },
+  {
+    "path": "activesupport/test/ractors_test.rb",
+    "language": "ruby",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire_relative \"abstract_unit\"\n\nclass RactorsTest < ActiveSupport::TestCase\n  include ActiveSupport::Testing::Isolation\n\n  def test_main_is_true_on_the_main_ractor"
+  },
+  {
+    "path": "actionpack/test/fixtures/load_me.rb",
+    "language": "ruby",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nclass LoadMe\nend\n"
+  },
+  {
+    "path": "actionview/lib/action_view/path_set.rb",
+    "language": "ruby",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nmodule ActionView # :nodoc:\n  # Action View PathSet\n  # ===================\n  #\n  # This class is used to store and access paths in Action View. A number of\n  # operations are defined so that you can search among the paths in this"
+  },
+  {
+    "path": "activerecord/test/migrations/scope/2_mysql_only.mysql.rb",
+    "language": "ruby",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nclass MysqlOnly < ActiveRecord::Migration::Current\n  def self.change\n    create_table \"mysql_only\"\n  end\nend\n"
+  },
+  {
+    "path": "actiontext/test/dummy/lib/assets/.keep",
+    "language": "text",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": ""
+  },
+  {
+    "path": "actionview/lib/action_view/renderer/abstract_renderer.rb",
+    "language": "ruby",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire \"concurrent/map\"\n\nmodule ActionView\n  # This class defines the interface for a renderer. Each class that\n  # subclasses `AbstractRenderer` is used by the base `Renderer` class to\n  # render a specific type of object."
+  },
+  {
+    "path": "actionmailbox/lib/rails/generators/test_unit/mailbox_generator.rb",
+    "language": "ruby",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nmodule TestUnit\n  module Generators\n    class MailboxGenerator < ::Rails::Generators::NamedBase\n      source_root File.expand_path(\"templates\", __dir__)\n\n      check_class_collision suffix: \"MailboxTest\""
+  },
+  {
+    "path": "actioncable/test/stubs/test_socket.rb",
+    "language": "ruby",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire \"stubs/user\"\n\nclass TestSocket\n  attr_reader :identifiers, :logger, :current_user, :server, :subscriptions, :transmissions\n\n  delegate :pubsub, :config, :executor, to: :server"
+  },
+  {
+    "path": "actionpack/lib/action_dispatch/middleware/templates/rescues/invalid_statement.text.erb",
+    "language": "html+erb",
+    "category": "markup",
+    "generated": false,
+    "vendored": false,
+    "head": "<%= @exception.class.to_s %><%\n  if @request.parameters['controller']\n%> in <%= @request.parameters['controller'].camelize %>Controller<% if @request.parameters['action'] %>#<%= @request.parameters['action'] %><% end %>\n<% end %>\n\n<%= @exception.message %>\n<% if defined?(ActionText) && @exception.message.match?(%r{#{ActionText::RichText.table_name}}) %>\nTo resolve this issue run: bin/rails action_text:install"
+  },
+  {
+    "path": "tools/rail_inspector/test/rail_inspector/visitor/hash_to_string_test.rb",
+    "language": "ruby",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire \"test_helper\"\nrequire \"rail_inspector/visitor/hash_to_string\"\n\nclass HashToStringTest < Minitest::Test\n  def test_basic_hash_to_s\n    basic_hash = \"{ a: 1 }\""
+  },
+  {
+    "path": "activemodel/lib/active_model/type/helpers/timezone.rb",
+    "language": "ruby",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire \"active_support/core_ext/time/zones\"\n\nmodule ActiveModel\n  module Type\n    module Helpers # :nodoc: all\n      module Timezone"
+  },
+  {
+    "path": "actioncable/lib/action_cable/channel/test_case.rb",
+    "language": "ruby",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "# frozen_string_literal: true\n\nrequire \"active_support\"\nrequire \"active_support/test_case\"\nrequire \"active_support/core_ext/hash/indifferent_access\"\nrequire \"json\"\n\nmodule ActionCable"
+  }
+]

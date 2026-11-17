@@ -1,0 +1,187 @@
+{
+  "summary": {
+    "root": "<evidence>/prototype-probe",
+    "paths": 1,
+    "candidates": 1,
+    "configs": 0,
+    "elapsed": 170.91254200000003,
+    "rss": 21376,
+    "stats": {
+      "files": 1,
+      "symbols": 3,
+      "references": 2,
+      "unresolved": 1,
+      "unusedExports": 0,
+      "truncated": 0,
+      "ms": 169
+    },
+    "projects": [
+      {
+        "config": "",
+        "files": 1,
+        "ms": 23
+      }
+    ],
+    "logs": [
+      "TypeScript: 1 project(s), 1 files",
+      "TypeScript: inferred project: 1 files, 2 references, 20 ms"
+    ]
+  },
+  "paths": [
+    "index.js"
+  ],
+  "data": {
+    "engine": {
+      "name": "typescript",
+      "version": "7.0.2"
+    },
+    "projects": [
+      {
+        "config": "",
+        "files": 1,
+        "ms": 23
+      }
+    ],
+    "symbols": {
+      "name": [
+        "index.js",
+        "V",
+        "lookup"
+      ],
+      "kind": [
+        "module",
+        "function",
+        "method"
+      ],
+      "file": [
+        0,
+        0,
+        0
+      ],
+      "line": [
+        0,
+        0,
+        1
+      ],
+      "col": [
+        0,
+        9,
+        12
+      ],
+      "endLine": [
+        3,
+        0,
+        1
+      ],
+      "parent": [
+        -1,
+        -1,
+        1
+      ],
+      "flags": [
+        0,
+        0,
+        0
+      ],
+      "signature": [
+        "",
+        "() => void",
+        "V.prototype.lookup = function lookup(x)"
+      ],
+      "doc": [
+        "",
+        "",
+        ""
+      ],
+      "complexity": [
+        0,
+        1,
+        1
+      ],
+      "params": [
+        0,
+        0,
+        1
+      ],
+      "refs": [
+        0,
+        2,
+        0
+      ],
+      "callers": [
+        0,
+        1,
+        0
+      ],
+      "files": [
+        0,
+        1,
+        0
+      ]
+    },
+    "refs": {
+      "symbol": [
+        1,
+        1
+      ],
+      "file": [
+        0,
+        0
+      ],
+      "line": [
+        1,
+        2
+      ],
+      "col": [
+        0,
+        4
+      ],
+      "len": [
+        1,
+        1
+      ],
+      "kind": [
+        0,
+        3
+      ],
+      "from": [
+        0,
+        0
+      ]
+    },
+    "calls": {
+      "from": [
+        0,
+        0
+      ],
+      "to": [
+        1,
+        1
+      ],
+      "kind": [
+        0,
+        3
+      ],
+      "count": [
+        1,
+        1
+      ]
+    },
+    "fileRefStart": [
+      0,
+      2
+    ],
+    "moduleSymbol": [
+      0
+    ],
+    "stats": {
+      "files": 1,
+      "symbols": 3,
+      "references": 2,
+      "unresolved": 1,
+      "unusedExports": 0,
+      "truncated": 0,
+      "ms": 169
+    }
+  }
+}

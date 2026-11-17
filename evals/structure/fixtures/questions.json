@@ -1,0 +1,87 @@
+[
+  {
+    "name": "open",
+    "args": {
+      "watch": false,
+      "symbols": false,
+      "wait_seconds": 120
+    }
+  },
+  {
+    "name": "files",
+    "args": {
+      "sort": "complexity",
+      "limit": 5
+    }
+  },
+  {
+    "name": "file",
+    "args": {
+      "path": "src/requests/sessions.py",
+      "limit": 5
+    }
+  },
+  {
+    "name": "dir",
+    "args": {
+      "path": "src/requests",
+      "limit": 5
+    }
+  },
+  {
+    "name": "graph",
+    "args": {
+      "view": "dependents"
+    }
+  },
+  {
+    "name": "graph",
+    "args": {
+      "view": "dependents",
+      "path": "src/requests/sessions.py",
+      "depth": 3,
+      "limit": 10
+    }
+  },
+  {
+    "name": "graph",
+    "args": {
+      "view": "modules",
+      "limit": 5
+    }
+  },
+  {
+    "name": "history",
+    "args": {
+      "view": "coupling",
+      "path": "src/requests/sessions.py",
+      "limit": 5
+    }
+  },
+  {
+    "name": "history",
+    "args": {
+      "view": "ownership",
+      "path": "src/requests",
+      "limit": 5
+    }
+  },
+  {
+    "name": "dependencies",
+    "args": {
+      "filter": "unused",
+      "limit": 100
+    }
+  },
+  {
+    "name": "findings",
+    "args": {}
+  },
+  {
+    "name": "search_symbols",
+    "args": {
+      "query": "Session",
+      "limit": 5
+    }
+  }
+]

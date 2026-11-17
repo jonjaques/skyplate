@@ -1,0 +1,986 @@
+{
+  "files": [
+    {
+      "path": "v3/f0.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    },
+    {
+      "path": "v3/f1.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    },
+    {
+      "path": "v3/f10.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    },
+    {
+      "path": "v3/f11.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    },
+    {
+      "path": "v3/f2.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    },
+    {
+      "path": "v3/f3.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    },
+    {
+      "path": "v3/f4.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    },
+    {
+      "path": "v3/f5.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    },
+    {
+      "path": "v3/f6.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    },
+    {
+      "path": "v3/f7.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    },
+    {
+      "path": "v3/f8.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    },
+    {
+      "path": "v3/f9.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "authors": 1,
+        "owner": 0,
+        "ownership": 1,
+        "created": 1706788800,
+        "modified": 1707048000
+      }
+    }
+  ],
+  "git": {
+    "branch": "main",
+    "head": "d033d8e5c0",
+    "totalCommits": 10,
+    "analyzedCommits": 10,
+    "truncated": false,
+    "shallow": false,
+    "first": 1706788800,
+    "last": 1707566400,
+    "authors": [
+      {
+        "id": 0,
+        "name": "Move Example",
+        "email": "move@example.test",
+        "commits": 10,
+        "added": 36,
+        "deleted": 0,
+        "first": 1706788800,
+        "last": 1707566400,
+        "owned": 12,
+        "bot": false
+      }
+    ],
+    "commits": {
+      "hash": [
+        "d033d8e5c0",
+        "664dd7e768",
+        "b0f85e3ed5",
+        "9a5a7b6205",
+        "11ae617123",
+        "13f375313a",
+        "1fcf742a29",
+        "07fa484145",
+        "48193f6506",
+        "e704b2b917"
+      ],
+      "time": [
+        1707566400,
+        1707480000,
+        1707393600,
+        1707307200,
+        1707220800,
+        1707134400,
+        1707048000,
+        1706961600,
+        1706875200,
+        1706788800
+      ],
+      "author": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "added": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        36
+      ],
+      "deleted": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "files": [
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ]
+      ],
+      "width": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        12,
+        12,
+        12,
+        12
+      ],
+      "subject": [
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "empty",
+        "directory rename only",
+        "directory rename only",
+        "directory rename only",
+        "initial"
+      ],
+      "type": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    "weekly": [
+      {
+        "start": 1706486400,
+        "commits": 4,
+        "added": 36,
+        "deleted": 0,
+        "authors": 1
+      },
+      {
+        "start": 1707091200,
+        "commits": 6,
+        "added": 0,
+        "deleted": 0,
+        "authors": 1
+      }
+    ],
+    "punchcard": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "growth": [
+      {
+        "start": 1706486400,
+        "lines": 36,
+        "files": 12
+      },
+      {
+        "start": 1707091200,
+        "lines": 36,
+        "files": 12
+      }
+    ],
+    "languageChurn": {
+      "months": [
+        1706745600
+      ],
+      "series": {
+        "python": [
+          36
+        ]
+      }
+    },
+    "coupling": [
+      {
+        "a": 0,
+        "b": 1,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 0,
+        "b": 2,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 0,
+        "b": 3,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 0,
+        "b": 4,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 0,
+        "b": 5,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 0,
+        "b": 6,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 0,
+        "b": 7,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 0,
+        "b": 8,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 0,
+        "b": 9,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 0,
+        "b": 10,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 0,
+        "b": 11,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 1,
+        "b": 2,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 1,
+        "b": 3,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 1,
+        "b": 4,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 1,
+        "b": 5,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 1,
+        "b": 6,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 1,
+        "b": 7,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 1,
+        "b": 8,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 1,
+        "b": 9,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 1,
+        "b": 10,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 1,
+        "b": 11,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 2,
+        "b": 3,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 2,
+        "b": 4,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 2,
+        "b": 5,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 2,
+        "b": 6,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 2,
+        "b": 7,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 2,
+        "b": 8,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 2,
+        "b": 9,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 2,
+        "b": 10,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 2,
+        "b": 11,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 3,
+        "b": 4,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 3,
+        "b": 5,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 3,
+        "b": 6,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 3,
+        "b": 7,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 3,
+        "b": 8,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 3,
+        "b": 9,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 3,
+        "b": 10,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 3,
+        "b": 11,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 4,
+        "b": 5,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 4,
+        "b": 6,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 4,
+        "b": 7,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 4,
+        "b": 8,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 4,
+        "b": 9,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 4,
+        "b": 10,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 4,
+        "b": 11,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 5,
+        "b": 6,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 5,
+        "b": 7,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 5,
+        "b": 8,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 5,
+        "b": 9,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 5,
+        "b": 10,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 5,
+        "b": 11,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 6,
+        "b": 7,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 6,
+        "b": 8,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 6,
+        "b": 9,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 6,
+        "b": 10,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 6,
+        "b": 11,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 7,
+        "b": 8,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 7,
+        "b": 9,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 7,
+        "b": 10,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 7,
+        "b": 11,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 8,
+        "b": 9,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 8,
+        "b": 10,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 8,
+        "b": 11,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 9,
+        "b": 10,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 9,
+        "b": 11,
+        "shared": 4,
+        "degree": 1
+      },
+      {
+        "a": 10,
+        "b": 11,
+        "shared": 4,
+        "degree": 1
+      }
+    ],
+    "sweepFiles": 30,
+    "truckFactor": {
+      "value": 1,
+      "authors": [
+        0
+      ]
+    }
+  },
+  "warnings": []
+}

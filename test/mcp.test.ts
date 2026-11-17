@@ -19,6 +19,7 @@ import { join } from "node:path";
 import { Client, InMemoryTransport } from "@modelcontextprotocol/client";
 import { parseDataScript } from "../src/core/site";
 import { parseSince } from "../src/mcp/query";
+import { readReportFolder } from "../src/mcp/report";
 import { createServer } from "../src/mcp/server";
 import { render } from "../src/mcp/text";
 import { relevantChange, Workspace } from "../src/mcp/workspace";
@@ -61,7 +62,7 @@ function commit(name: string, date: string, message: string): void {
   });
 }
 
-const ws = new Workspace();
+const ws = new Workspace(TMP);
 const client = new Client({ name: "skyplate-test", version: "0" });
 /** Every text any tool returned, to prove the secret never left the server. */
 const seen: string[] = [];
@@ -142,11 +143,12 @@ describe("tools", () => {
     const { tools } = await client.listTools();
     const names = tools.map((t) => t.name).sort();
     expect(names).toEqual(
-      ["build_report", "close", "dependencies", "dir", "file", "files", "findings", "graph", "history", "open", "overview", "read_source", "seam", "seams", "search_symbols", "serve_report", "status", "symbol"].sort(),
+      ["benchmark", "build_report", "change_impact", "close", "dependencies", "dir", "file", "files", "findings", "graph", "history", "locate_code", "map_codebase", "open", "overview", "read_source", "seam", "seams", "search_symbols", "serve_report", "status", "symbol"].sort(),
     );
     const byName = new Map(tools.map((t) => [t.name, t]));
     expect(byName.get("symbol")!.annotations?.readOnlyHint).toBe(true);
     expect(byName.get("build_report")!.annotations?.readOnlyHint).toBe(false);
+    expect(byName.get("benchmark")!.annotations?.readOnlyHint).toBe(false);
   });
 
   test("nothing open is an error that says what to do", async () => {
@@ -280,6 +282,17 @@ describe("a live project", () => {
     expect(circle.extends.map((b: any) => b.name)).toEqual(["Shape"]);
   });
 
+  test("change briefing keeps cycles and callers through a base method", async () => {
+    const changed = await json("change_impact", { paths: ["src/math.ts"], token_budget: 6000 });
+    expect(changed.cycles.count).toBe(1);
+    expect(changed.coChange.count).toBe(0); // Only two shared commits, below the analyzer's pair threshold.
+    expect(changed.tests.rows.some((r: any) => r.path === "tests/math.test.ts")).toBe(true);
+    const method = await json("change_impact", { symbols: [{ name: "Circle.area" }], token_budget: 6000 });
+    expect(method.compilerUsers.rows.map((r: any) => r.name)).toContain("total");
+    expect((await call("change_impact", { paths: ["src/no*.ts"] })).error).toBe(true);
+    expect((await call("change_impact", {})).error).toBe(true);
+  });
+
   test("an ambiguous or unknown name lists candidates", async () => {
     const amb = await call("symbol", { name: "area" });
     expect(amb.error).toBe(true);
@@ -352,9 +365,10 @@ describe("a live project", () => {
     expect((await call("read_source", { path: "src/math.ts", start_line: 5, end_line: 3 })).error).toBe(true);
   });
 
-  test("the report is valid, and a loop closed only by import type is not a cycle", async () => {
+  test("only viewer layout is absent, and a loop closed only by import type is not a cycle", async () => {
     const snap = ws.resolve("demo").snapshot!;
-    expect(validateReport(snap.report, await snap.symbols())).toEqual([]);
+    expect(snap.report.layout.graph).toEqual([]);
+    expect(validateReport(snap.report, await snap.symbols())).toEqual([`layout.graph has 0 numbers, expected ${snap.report.files.length * 3}`]);
     expect(snap.report.edges.typeOnly?.length).toBe(1);
     const cycles = await json("graph", { view: "cycles" });
     expect(cycles.total).toBe(1); // math ↔ app, which runs
@@ -517,6 +531,9 @@ describe("a built report", () => {
     expect(r.result).toMatchObject({ out: OUT, reusedAnalysis: true });
     expect(existsSync(join(OUT, "index.html"))).toBe(true);
     expect(existsSync(join(OUT, "data", "report.js"))).toBe(true);
+    const folder = await readReportFolder(OUT);
+    expect(folder.report.layout.graph).toHaveLength(folder.report.files.length * 3);
+    expect(validateReport(folder.report, await folder.symbols())).toEqual([]);
   }, 120_000);
 
   test("build_report refuses to replace a folder that is not a report", async () => {
@@ -539,6 +556,16 @@ describe("a built report", () => {
     expect(report.counts).toEqual(live.counts);
     expect(report.calledBy).toEqual(live.calledBy);
     expect((await json("files", { project: id, sort: "code" })).files).toEqual((await json("files", { project: "demo", sort: "code" })).files);
+    for (const [tool, args, field] of [
+      ["map_codebase", { token_budget: 6000 }, "rows"],
+      ["locate_code", { query: "math", content: false }, "files"],
+      ["change_impact", { paths: ["src/math.ts"] }, "tests"],
+    ] as const) {
+      const saved = await json(tool, { project: id, ...args });
+      const current = await json(tool, { project: "demo", ...args });
+      expect(saved[field]).toEqual(current[field]);
+      expect(saved.next.arguments.project).toBe(id);
+    }
 
     const src = await call("read_source", { project: id, path: "src/math.ts" });
     expect(src.text).toContain("embedded in the report");
@@ -582,6 +609,8 @@ describe("pieces", () => {
     expect(relevantChange(".demo.skyplate.tmp-1-abc", known, true)).toBe(false);
     expect(relevantChange(".git/HEAD", known, true)).toBe(true);
     expect(relevantChange(".git/refs/heads/main", known, true)).toBe(true);
+    expect(relevantChange(".git/refs/t3/orchestration-v2/checkpoints/ordinal/2", known, true)).toBe(false);
+    expect(relevantChange(".git/refs/stash", known, true)).toBe(false);
     expect(relevantChange(".git/objects/ab/cdef", known, true)).toBe(false);
     expect(relevantChange(".git/HEAD", known, false)).toBe(false);
     expect(relevantChange("anything", undefined, true)).toBe(true);

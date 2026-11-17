@@ -1,0 +1,228 @@
+{
+  "name": "requests",
+  "analyzerCommit": "e4b548cb3e71dc1c3edc3479b9f596a18c14dc3a",
+  "inputCommit": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+  "bun": "1.4.4",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "expectedCommit": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+  "commitMatches": true,
+  "wallSeconds": 0.42899683299999997,
+  "totals": {
+    "files": 128,
+    "dirs": 24,
+    "bytes": 4451532,
+    "lines": 19462,
+    "code": 13349,
+    "comment": 2183,
+    "blank": 3930,
+    "binaryFiles": 6,
+    "generatedFiles": 0,
+    "vendoredFiles": 6,
+    "ignored": 2,
+    "languages": 17
+  },
+  "timings": {
+    "walk": 14,
+    "detect": 34,
+    "git": 93,
+    "files": 117,
+    "imports": 26,
+    "graph": 3,
+    "stats": 17,
+    "layout": 162,
+    "findings": 2,
+    "total": 359,
+    "write": 17
+  },
+  "graph": {
+    "edges": 107,
+    "connected": 34,
+    "cycles": [
+      {
+        "id": 0,
+        "files": [
+          80,
+          70,
+          76,
+          86,
+          73,
+          77,
+          71,
+          79
+        ]
+      }
+    ],
+    "modules": [
+      {
+        "dir": 4,
+        "ca": 0,
+        "ce": 1,
+        "instability": 1
+      },
+      {
+        "dir": 13,
+        "ca": 11,
+        "ce": 0,
+        "instability": 0
+      },
+      {
+        "dir": 14,
+        "ca": 0,
+        "ce": 10,
+        "instability": 1
+      },
+      {
+        "dir": 23,
+        "ca": 3,
+        "ce": 0,
+        "instability": 0
+      }
+    ],
+    "moduleMatrix": [
+      [
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        73,
+        0,
+        0
+      ],
+      [
+        0,
+        25,
+        5,
+        3
+      ],
+      [
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "moduleDepth": 2,
+    "resolved": 119,
+    "external": 206,
+    "unresolved": 0
+  },
+  "warnings": [
+    "This is a shallow clone, so history starts at the clone boundary: ages, creation dates and ownership reflect only the fetched commits.",
+    "Growth and file ages start at the oldest fetched commit, so the growth chart's line counts are relative to that point, not to the project's beginning."
+  ],
+  "by": {
+    "python": {
+      "files": 37,
+      "internal": 119,
+      "external": 206,
+      "unresolved": 0,
+      "self": 0
+    }
+  },
+  "valid": [],
+  "entries": [],
+  "unresolved": [],
+  "unused": [
+    {
+      "name": "httpbin",
+      "ecosystem": "pypi",
+      "version": "~=0.10.0",
+      "declaredIn": [
+        "pyproject.toml",
+        "requirements-dev.txt"
+      ],
+      "scope": "dev",
+      "importers": 0
+    },
+    {
+      "name": "pyopenssl",
+      "ecosystem": "pypi",
+      "declaredIn": [
+        "pyproject.toml"
+      ],
+      "scope": "dev",
+      "importers": 0
+    },
+    {
+      "name": "pyright",
+      "ecosystem": "pypi",
+      "declaredIn": [
+        "pyproject.toml"
+      ],
+      "scope": "dev",
+      "importers": 0
+    },
+    {
+      "name": "pysocks",
+      "ecosystem": "pypi",
+      "version": ">=1.5.6, !=1.5.7",
+      "declaredIn": [
+        "pyproject.toml"
+      ],
+      "scope": "optional",
+      "importers": 0
+    },
+    {
+      "name": "pytest-cov",
+      "ecosystem": "pypi",
+      "declaredIn": [
+        "pyproject.toml",
+        "requirements-dev.txt"
+      ],
+      "scope": "dev",
+      "importers": 0
+    },
+    {
+      "name": "pytest-httpbin",
+      "ecosystem": "pypi",
+      "version": "==2.1.0",
+      "declaredIn": [
+        "pyproject.toml",
+        "requirements-dev.txt"
+      ],
+      "scope": "dev",
+      "importers": 0
+    },
+    {
+      "name": "pytest-mock",
+      "ecosystem": "pypi",
+      "declaredIn": [
+        "pyproject.toml"
+      ],
+      "scope": "dev",
+      "importers": 0
+    },
+    {
+      "name": "pytest-xdist",
+      "ecosystem": "pypi",
+      "declaredIn": [
+        "pyproject.toml"
+      ],
+      "scope": "dev",
+      "importers": 0
+    },
+    {
+      "name": "sphinx",
+      "ecosystem": "pypi",
+      "version": "==7.2.6",
+      "declaredIn": [
+        "docs/requirements.txt"
+      ],
+      "scope": "dev",
+      "importers": 0
+    },
+    {
+      "name": "wheel",
+      "ecosystem": "pypi",
+      "declaredIn": [
+        "requirements-dev.txt"
+      ],
+      "scope": "dev",
+      "importers": 0
+    }
+  ]
+}

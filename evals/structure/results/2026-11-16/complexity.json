@@ -1,0 +1,251 @@
+{
+  "all": {
+    "files": 29,
+    "rhoRadonSum": 0.7326519084622077,
+    "rhoDecisions": 0.7819456357814946
+  },
+  "production": {
+    "files": 16,
+    "rhoRadonSum": 0.8529215349381679,
+    "rhoDecisions": 0.965129189817975
+  },
+  "tests": {
+    "files": 13,
+    "rhoRadonSum": 0.5588474989949611,
+    "rhoDecisions": 0.5459840015756398
+  },
+  "rows": [
+    {
+      "path": "src/requests/__init__.py",
+      "category": "code",
+      "sky": 13,
+      "radonSum": 13,
+      "radonDecisionsPlusOne": 12,
+      "functions": 2
+    },
+    {
+      "path": "src/requests/_internal_utils.py",
+      "category": "code",
+      "sky": 3,
+      "radonSum": 5,
+      "radonDecisionsPlusOne": 4,
+      "functions": 2
+    },
+    {
+      "path": "src/requests/_types.py",
+      "category": "code",
+      "sky": 5,
+      "radonSum": 7,
+      "radonDecisionsPlusOne": 4,
+      "functions": 4
+    },
+    {
+      "path": "src/requests/adapters.py",
+      "category": "code",
+      "sky": 57,
+      "radonSum": 78,
+      "radonDecisionsPlusOne": 59,
+      "functions": 20
+    },
+    {
+      "path": "src/requests/api.py",
+      "category": "code",
+      "sky": 2,
+      "radonSum": 8,
+      "radonDecisionsPlusOne": 1,
+      "functions": 8
+    },
+    {
+      "path": "src/requests/auth.py",
+      "category": "code",
+      "sky": 39,
+      "radonSum": 61,
+      "radonDecisionsPlusOne": 38,
+      "functions": 24
+    },
+    {
+      "path": "src/requests/compat.py",
+      "category": "code",
+      "sky": 8,
+      "radonSum": 4,
+      "radonDecisionsPlusOne": 4,
+      "functions": 1
+    },
+    {
+      "path": "src/requests/cookies.py",
+      "category": "code",
+      "sky": 71,
+      "radonSum": 122,
+      "radonDecisionsPlusOne": 71,
+      "functions": 52
+    },
+    {
+      "path": "src/requests/exceptions.py",
+      "category": "code",
+      "sky": 5,
+      "radonSum": 6,
+      "radonDecisionsPlusOne": 4,
+      "functions": 3
+    },
+    {
+      "path": "src/requests/help.py",
+      "category": "code",
+      "sky": 15,
+      "radonSum": 13,
+      "radonDecisionsPlusOne": 11,
+      "functions": 3
+    },
+    {
+      "path": "src/requests/hooks.py",
+      "category": "code",
+      "sky": 8,
+      "radonSum": 8,
+      "radonDecisionsPlusOne": 7,
+      "functions": 2
+    },
+    {
+      "path": "src/requests/models.py",
+      "category": "code",
+      "sky": 154,
+      "radonSum": 204,
+      "radonDecisionsPlusOne": 153,
+      "functions": 52
+    },
+    {
+      "path": "src/requests/sessions.py",
+      "category": "code",
+      "sky": 88,
+      "radonSum": 119,
+      "radonDecisionsPlusOne": 91,
+      "functions": 29
+    },
+    {
+      "path": "src/requests/status_codes.py",
+      "category": "code",
+      "sky": 7,
+      "radonSum": 8,
+      "radonDecisionsPlusOne": 7,
+      "functions": 2
+    },
+    {
+      "path": "src/requests/structures.py",
+      "category": "code",
+      "sky": 6,
+      "radonSum": 22,
+      "radonDecisionsPlusOne": 6,
+      "functions": 17
+    },
+    {
+      "path": "src/requests/utils.py",
+      "category": "code",
+      "sky": 159,
+      "radonSum": 205,
+      "radonDecisionsPlusOne": 159,
+      "functions": 47
+    },
+    {
+      "path": "tests/compat.py",
+      "category": "test",
+      "sky": 3,
+      "radonSum": 1,
+      "radonDecisionsPlusOne": 1,
+      "functions": 1
+    },
+    {
+      "path": "tests/conftest.py",
+      "category": "test",
+      "sky": 3,
+      "radonSum": 7,
+      "radonDecisionsPlusOne": 2,
+      "functions": 6
+    },
+    {
+      "path": "tests/test_adapters.py",
+      "category": "test",
+      "sky": 1,
+      "radonSum": 2,
+      "radonDecisionsPlusOne": 2,
+      "functions": 1
+    },
+    {
+      "path": "tests/test_help.py",
+      "category": "test",
+      "sky": 1,
+      "radonSum": 7,
+      "radonDecisionsPlusOne": 4,
+      "functions": 4
+    },
+    {
+      "path": "tests/test_hooks.py",
+      "category": "test",
+      "sky": 1,
+      "radonSum": 5,
+      "radonDecisionsPlusOne": 3,
+      "functions": 3
+    },
+    {
+      "path": "tests/test_lowlevel.py",
+      "category": "test",
+      "sky": 5,
+      "radonSum": 65,
+      "radonDecisionsPlusOne": 44,
+      "functions": 22
+    },
+    {
+      "path": "tests/test_packages.py",
+      "category": "test",
+      "sky": 1,
+      "radonSum": 3,
+      "radonDecisionsPlusOne": 1,
+      "functions": 3
+    },
+    {
+      "path": "tests/test_requests.py",
+      "category": "test",
+      "sky": 53,
+      "radonSum": 708,
+      "radonDecisionsPlusOne": 454,
+      "functions": 255
+    },
+    {
+      "path": "tests/test_structures.py",
+      "category": "test",
+      "sky": 1,
+      "radonSum": 30,
+      "radonDecisionsPlusOne": 16,
+      "functions": 15
+    },
+    {
+      "path": "tests/test_testserver.py",
+      "category": "test",
+      "sky": 2,
+      "radonSum": 28,
+      "radonDecisionsPlusOne": 17,
+      "functions": 12
+    },
+    {
+      "path": "tests/test_utils.py",
+      "category": "test",
+      "sky": 15,
+      "radonSum": 156,
+      "radonDecisionsPlusOne": 86,
+      "functions": 71
+    },
+    {
+      "path": "tests/testserver/server.py",
+      "category": "test",
+      "sky": 15,
+      "radonSum": 28,
+      "radonDecisionsPlusOne": 15,
+      "functions": 14
+    },
+    {
+      "path": "tests/utils.py",
+      "category": "test",
+      "sky": 3,
+      "radonSum": 3,
+      "radonDecisionsPlusOne": 3,
+      "functions": 1
+    }
+  ]
+}

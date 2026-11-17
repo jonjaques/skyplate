@@ -1,0 +1,1 @@
+export function good(){return 1};export const y=good();

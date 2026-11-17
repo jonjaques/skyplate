@@ -1,0 +1,40 @@
+# The return path for `skyplate bench` (docs/benchmark.md). Skyplate never sends anything; a
+# benchmark reaches us only when its owner reads it and chooses to paste it here, so the form
+# restates what the file holds before asking for it. GitHub applies a label only if it already
+# exists in the repository, which is why the title carries the prefix too.
+name: Share a benchmark
+description: Send the anonymous measurement `skyplate bench` wrote, so a slow, wrong or failing analysis can be fixed without seeing your code.
+title: "Benchmark: "
+labels: ["benchmark"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        `skyplate bench <path>` (or the MCP `benchmark` tool) writes `benchmark.md` and `benchmark.json` to a new folder in your cache directory and prints where. Every value in them is a number, a true/false, or a word from Skyplate's own vocabulary: no paths, file or symbol names, code, authors, dates or remotes. Counts are rounded to powers of two and times to two significant figures. [docs/benchmark.md](https://github.com/jonjaques/skyplate/blob/main/docs/benchmark.md) lists every field.
+
+        `benchmark.md` is the whole content of the JSON, laid out as tables. Read it before you paste it. If the folder also has a skeleton (`--skeleton`), it records the exact shape of your tree and import graph: share that only if that is acceptable too.
+  - type: textarea
+    id: markdown
+    attributes:
+      label: benchmark.md
+      description: Paste the file as it is. Do not edit numbers; leaving a section out is fine.
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: json
+    attributes:
+      label: benchmark.json (optional)
+      description: Attach the file by dragging it into this box, or paste it if it fits. It lets us load the measurement into the tooling that reads these files.
+  - type: textarea
+    id: context
+    attributes:
+      label: What happened
+      description: Optional, and in your own words. What was slow, wrong or missing, what you expected, and how you ran it (CLI or which MCP host). Leave out anything you would not put in the file itself.
+  - type: checkboxes
+    id: consent
+    attributes:
+      label: Before you submit
+      options:
+        - label: I read what I am sharing, and it contains nothing I am not allowed to share.
+          required: true

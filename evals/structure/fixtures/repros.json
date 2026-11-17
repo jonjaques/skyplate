@@ -1,0 +1,137 @@
+[
+  {
+    "name": "python-submodule",
+    "files": {
+      "pkg/__init__.py": "",
+      "pkg/child.py": "VALUE=1",
+      "app.py": "from pkg import child\n"
+    },
+    "from": "app.py",
+    "language": "python"
+  },
+  {
+    "name": "python-namespace",
+    "files": {
+      "src/acme/util.py": "VALUE=1",
+      "src/acme/app.py": "from acme import util\n"
+    },
+    "from": "src/acme/app.py",
+    "language": "python"
+  },
+  {
+    "name": "rust-custom-bin",
+    "files": {
+      "Cargo.toml": "[package]\nname=\"demo\"\nversion=\"0.1.0\"\n[[bin]]\nname=\"demo\"\npath=\"cli/main.rs\"\n",
+      "cli/main.rs": "mod helper;\nuse crate::helper::run;\nfn main(){run()}\n",
+      "cli/helper.rs": "pub fn run(){}"
+    },
+    "from": "cli/main.rs",
+    "language": "rust"
+  },
+  {
+    "name": "jvm-no-explicit-import",
+    "files": {
+      "src/main/java/demo/A.java": "package demo; class A { B value; }",
+      "src/main/java/demo/B.java": "package demo; class B {}"
+    },
+    "from": "src/main/java/demo/A.java",
+    "language": "java"
+  },
+  {
+    "name": "jvm-coordinate",
+    "files": {
+      "pom.xml": "<project><dependencies><dependency><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId><version>2.0.0</version></dependency></dependencies></project>",
+      "src/A.java": "import org.slf4j.Logger;\nclass A {}"
+    },
+    "from": "src/A.java",
+    "language": "java"
+  },
+  {
+    "name": "python-dist-name",
+    "files": {
+      "pyproject.toml": "[project]\nname=\"app\"\nversion=\"0.1\"\ndependencies=[\"PyYAML\"]\n",
+      "app.py": "import yaml\n"
+    },
+    "from": "app.py",
+    "language": "python"
+  },
+  {
+    "name": "go-cap",
+    "files": {
+      "go.mod": "module example.com/test\ngo 1.23\n",
+      "app/main.go": "package main\nimport \"example.com/test/pkg\"\nfunc main(){}",
+      "pkg/f00.go": "package pkg\n",
+      "pkg/f01.go": "package pkg\n",
+      "pkg/f02.go": "package pkg\n",
+      "pkg/f03.go": "package pkg\n",
+      "pkg/f04.go": "package pkg\n",
+      "pkg/f05.go": "package pkg\n",
+      "pkg/f06.go": "package pkg\n",
+      "pkg/f07.go": "package pkg\n",
+      "pkg/f08.go": "package pkg\n",
+      "pkg/f09.go": "package pkg\n",
+      "pkg/f10.go": "package pkg\n",
+      "pkg/f11.go": "package pkg\n",
+      "pkg/f12.go": "package pkg\n",
+      "pkg/f13.go": "package pkg\n",
+      "pkg/f14.go": "package pkg\n",
+      "pkg/f15.go": "package pkg\n",
+      "pkg/f16.go": "package pkg\n",
+      "pkg/f17.go": "package pkg\n",
+      "pkg/f18.go": "package pkg\n",
+      "pkg/f19.go": "package pkg\n",
+      "pkg/f20.go": "package pkg\n",
+      "pkg/f21.go": "package pkg\n",
+      "pkg/f22.go": "package pkg\n",
+      "pkg/f23.go": "package pkg\n"
+    },
+    "from": "app/main.go",
+    "language": "go"
+  },
+  {
+    "name": "c-extensionless",
+    "files": {
+      "main.c": "#include <projectheader>\n",
+      "include/projectheader": "typedef int Value;"
+    },
+    "from": "main.c",
+    "language": "c"
+  },
+  {
+    "name": "c-search-order",
+    "files": {
+      "src/main.c": "#include \"api.h\"\n",
+      "src/unrelated/api.h": "",
+      "include/api.h": ""
+    },
+    "from": "src/main.c",
+    "language": "c"
+  },
+  {
+    "name": "python-type-guard",
+    "files": {
+      "a.py": "from typing import TYPE_CHECKING\nif TYPE_CHECKING:\n    import b\n",
+      "b.py": "import a\n"
+    },
+    "from": "a.py",
+    "language": "python"
+  },
+  {
+    "name": "rust-qualified",
+    "files": {
+      "Cargo.toml": "[package]\nname=\"demo\"\nversion=\"0.1.0\"\n[dependencies]\ntextwrap=\"0.16\"\n",
+      "src/main.rs": "fn main(){textwrap::fill(\"x\",10);}\n"
+    },
+    "from": "src/main.rs",
+    "language": "rust"
+  },
+  {
+    "name": "swift-entry",
+    "files": {
+      "Package.swift": "// swift-tools-version: 6.0\nimport PackageDescription\nlet package = Package(name: \"demo\", targets: [.executableTarget(name: \"Demo\")])\n",
+      "Sources/Demo/main.swift": "print(\"hello\")\n"
+    },
+    "from": "Sources/Demo/main.swift",
+    "language": "swift"
+  }
+]

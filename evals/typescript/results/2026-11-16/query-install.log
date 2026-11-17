@@ -1,0 +1,13 @@
+Error:   × load configuration
+  ╰─▶ Failed to parse pnpm-workspace.yaml: error: line 4 column
+      3: unexpected event: expected string scalar
+       --> <input>:4:3
+        |
+      2 | autoDedupe: true
+      3 | lockfile:
+      4 |   includeResolutionSettings: true
+        |   ^ unexpected event: expected string scalar
+      5 | minimumReleaseAge: 1440
+      6 | minimumReleaseAgeExcludePrune: true
+        |
+

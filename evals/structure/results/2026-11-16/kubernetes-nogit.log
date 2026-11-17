@@ -1,0 +1,37 @@
+  ✓ Listing files        32,005 files  284 ms
+  ✓ Detecting languages  32,005 files  592 ms
+  – Reading git history  disabled (--no-git)
+  – TypeScript symbols   disabled (--no-symbols)
+  ✓ Measuring files      32,005 files, 7,516,112 lines  1.1 s
+  ✓ Resolving imports    114,278 imports, 532,217 edges  383 ms
+  ✓ Import graph         17,324 connected files, 0 cycles  42 ms
+  ✓ Statistics           40 languages, 200 duplicate sets  14 ms
+  ✓ Layout               32,005 positions  5.2 s
+  ✓ Findings             7 findings  7 ms
+  ✓ Writing report       60.2 MB  52 ms
+
+skyplate · Kubernetes (K8s
+  32,005 files · 40 languages · no git history
+  findings: 3 warning · 4 notice
+  wrote <study>/reports/kubernetes-nogit.skyplate (60.2 MB) in 7.7 s
+
+  next: open <study>/reports/kubernetes-nogit.skyplate/index.html
+    or: skyplate serve <study>/reports/kubernetes-nogit.skyplate
+        7.77 real        14.53 user         3.95 sys
+          1322500096  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               84166  page reclaims
+                 447  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   6  messages sent
+                  20  messages received
+                   0  signals received
+               35928  voluntary context switches
+               78305  involuntary context switches
+        285928001705  instructions retired
+         66620068518  cycles elapsed
+           723584800  peak memory footprint

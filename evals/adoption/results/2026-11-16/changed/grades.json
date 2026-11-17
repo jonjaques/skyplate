@@ -1,0 +1,86 @@
+{
+  "codex": {
+    "01-env": {
+      "grade": "correct",
+      "gradeReason": "Covers mode/envDir, the four files in increasing precedence, expansion, Vite Task then process.env overrides, default and empty-prefix validation, client delivery, and env.spec.ts/config.spec.ts/playground evidence. No implementation or test execution claimed."
+    },
+    "02-size": {
+      "grade": "correct",
+      "gradeReason": "Supplies a stated rg --files/wc counting basis, exact six-file/4094-line optimizer size, measured unit/playground areas, include expansion, scan/exclusion/runtime/bundler/cache integration and focused tests. Counting differences from tracked-file investigation are within the stated basis. Unlike baseline, completes sizing rather than asking only for new semantics."
+    },
+    "03-rename": {
+      "grade": "correct",
+      "gradeReason": "Finds the exact implementation/public export and 71-file scope; separates unrelated Rollup API text, inventories callers/tests/docs, preserves normalization behavior, proposes a deprecated alias and staged migration, and identifies plugin-legacy peer-version compatibility. The proposed alias needs declaration-build validation, which is explicitly planned rather than claimed performed."
+    },
+    "04-refactor": {
+      "grade": "correct",
+      "gradeReason": "Keeps extraction local and follows the existing transform override TODO. Preserves object identity, pluginCode short circuit, truthiness and position precedence, file/frame/map behavior, original-error propagation and location cleanup; provides concrete public-hook characterization tests. No broad public API or claimed test run."
+    },
+    "05-dead": {
+      "grade": "correct",
+      "gradeReason": "Rejects deletion as dead code, proves the live evaluator/startOffset/runner/fetchModule/source-map chain, explains cached runtime padding plus strict-directive offset, and uses actual history. Any fixed-three-line alternative is explicitly a cross-runtime compatibility decision requiring tests, not an unused-code removal."
+    },
+    "06-risk": {
+      "grade": "correct",
+      "gradeReason": "Uses concrete config/runtime dependency evidence and historical fixes; gives measured co-change neighbors with explicit date/boundary handling and reviewer identities backed by author history. Calls out shallow history, broad-commit noise, unavailable review discussion/availability and absent CODEOWNERS. No ownership certainty or execution claims."
+    },
+    "07-cycle": {
+      "grade": "correct",
+      "gradeReason": "Shows both named runtime import directions separately from type-only imports and actual uses, proposes a narrow server/options extraction with type-only back references and compatibility reexports, and explicitly limits the result to the direct cycle because preview introduces another path. Does not claim a runtime failure or completed test run; explicit regression-test detail is limited."
+    },
+    "08-hmr": {
+      "grade": "correct",
+      "gradeReason": "Traces transport registration and serialization, full-reload selection by triggeredBy/importer roots or all roots, no-selection behavior, whole-graph invalidation, bundled-runtime/client reset, sequential reimport, closed guards and outdated-dependency suppression. Distinguishes selection from invalidation and ordinary runner reload from browser reload."
+    },
+    "09-line": {
+      "grade": "correct",
+      "gradeReason": "Quotes the exact corrected literal with to inserted after lead. One shell read restricted to env.ts; no unrelated inspection or Skyplate use."
+    },
+    "10-read": {
+      "grade": "correct",
+      "gradeReason": "Explains the cleanUrl regex and splitFileAndPostfix slicing and supplies the requested query-plus-fragment example. One shell read restricted to shared/utils.ts; no Skyplate use."
+    }
+  },
+  "claude": {
+    "01-env": {
+      "grade": "correct",
+      "gradeReason": "Covers mode/envDir, four-file precedence, expansion, Vite Task and process.env layers, prefix validation, client replacement/injection, and concrete unit/playground tests. Uses direct implementation evidence and states dependencies and tests were not run."
+    },
+    "02-size": {
+      "grade": "correct",
+      "gradeReason": "Uses measured six-file/4094-line optimizer totals and separately measured source/test/playground areas; traces manual includes, scanner/runtime/bundler exclusions, config mutation and cache hashing, with concrete bounded helper changes and regression tests. Distinguishes unspecified desired semantics and labels proposed behavior changes. Rough playground counting differences are within the baseline rubric."
+    },
+    "03-rename": {
+      "grade": "correct",
+      "gradeReason": "Finds exact normalization behavior, public export, 71-file/258-occurrence inventory, staged typed deprecated alias, tests/docs, external Rollup-name exclusion and plugin-legacy peer floor. Maintains runtime behavior and distinguishes unmeasured external consumers. Concrete validation is proposed, not claimed run."
+    },
+    "04-refactor": {
+      "grade": "correct",
+      "gradeReason": "Follows the existing TODO with a narrow context/subclass boundary, local helpers and no new public API. Preserves identity, early-return and truthiness behavior, position precedence, original-error failure path, file/frame handling, exactly-once source-map side effects and cleanup. Provides concrete characterization tests including empty input and nested this.load behavior. No tests claimed run."
+    },
+    "05-dead": {
+      "grade": "correct",
+      "gradeReason": "Rejects dead-code deletion, proves the one direct evaluator caller and default-runner/source-map chain, explains cached engine wrapper padding plus strict offset, actual lazy-evaluation history and concrete source-map regression tests. A fixed-offset alternative is explicitly a cross-runtime compatibility tradeoff requiring verification."
+    },
+    "06-risk": {
+      "grade": "correct",
+      "gradeReason": "Combines Skyplate complexity, symbols, dependencies and coupling with independent git range/co-change/author investigation. Gives concrete risky config regions, actual neighboring files, area-specific reviewers and clone limits. Explicitly detects and rejects Pierre Carrier shallow-boundary ownership rather than repeating it as genuine expertise."
+    },
+    "07-cycle": {
+      "grade": "correct",
+      "gradeReason": "Shows exact runtime and type-only imports, verifies the one-hop reverse edge, proposes a narrow server-options extraction with explicit moved dependencies and test import updates, and distinguishes the removed direct edge from remaining preview/barrel transitive cycles. Includes appropriate validation without claiming execution."
+    },
+    "08-hmr": {
+      "grade": "correct",
+      "gradeReason": "Traces transport normalization/registration, serialized handler, triggeredBy file variants and importer roots, no-entry behavior, full graph invalidation, sequential reimport/error guards and bundled-runtime/client reset. Gives concrete regression-test locations and labels untested inferred paths."
+    },
+    "09-line": {
+      "grade": "correct",
+      "gradeReason": "Quotes the exact corrected literal. Both Grep calls are confined to env.ts, with no unrelated file/test inspection and no Skyplate. Unlike baseline, preserves the one-file control scope."
+    },
+    "10-read": {
+      "grade": "correct",
+      "gradeReason": "Accurately explains regex removal from the first query/fragment delimiter and postfix slicing, including both delimiters in one example. Grep and Read are restricted to the specified shared/utils.ts file. No execution falsely claimed."
+    }
+  }
+}

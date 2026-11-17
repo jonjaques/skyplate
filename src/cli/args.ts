@@ -19,6 +19,10 @@ Usage
   skyplate [path] [options]              analyze <path> (default: .) and write a report folder
   skyplate serve <dir> [--port N] [--open]
                                           serve an existing report folder over http
+  skyplate bench <path> [--out <new-dir>] [--skeleton]
+                                          write a local anonymous benchmark, never upload it
+  skyplate bench synth <benchmark.json> --out <new-dir>
+                                          regenerate synthetic tree and imports from a skeleton
   skyplate mcp [path...] [--refresh <mode>]
                                           run an MCP server on stdio for coding agents;
                                           paths are opened (analyzed) at startup
@@ -37,6 +41,9 @@ What to analyze
       --no-git             skip git history (no churn, ownership, hotspots)
       --max-commits <n>    newest commits to analyze (default: ${DEFAULT_OPTIONS.maxCommits})
       --no-symbols         skip the TypeScript/JavaScript code-intelligence pass
+      --workers <n>       worker threads (default: cores minus one)
+      --max-read-bytes <size>   stream files above this size (default: 8m)
+      --ts-max-refs <n>    cap stored TypeScript references (default: 600000)
       --ts-max-files <n>   skip that pass when more TS/JS files than this (default: ${DEFAULT_OPTIONS.tsMaxFiles})
 
 MCP server
@@ -74,6 +81,9 @@ export interface AnalyzeCommand {
     maxSourceFile: number;
     maxSourceTotal: number;
     tsMaxFiles: number;
+    tsMaxRefs?: number;
+    maxReadBytes?: number;
+    workers?: number;
     redactPaths: boolean;
   };
 }
@@ -93,7 +103,12 @@ export interface McpCommand {
   options: AnalyzeCommand["options"];
 }
 
-export type Command = AnalyzeCommand | ServeCommand | McpCommand | { kind: "help" } | { kind: "version" };
+export interface BenchCommand {
+  kind: "bench"; path: string; out?: string; quiet: boolean; skeleton: boolean; options: AnalyzeCommand["options"];
+}
+export interface SynthesizeCommand { kind: "synthesize"; file: string; out: string }
+
+export type Command = BenchCommand | SynthesizeCommand | AnalyzeCommand | ServeCommand | McpCommand | { kind: "help" } | { kind: "version" };
 
 const REFRESH_MODES = ["on_read", "on_change", "manual"] as const;
 
@@ -141,6 +156,10 @@ export function parseCommand(argv: string[]): Command {
         "max-commits": { type: "string" },
         "no-symbols": { type: "boolean" },
         "ts-max-files": { type: "string" },
+        "ts-max-refs": { type: "string" },
+        "max-read-bytes": { type: "string" },
+        workers: { type: "string" },
+        skeleton: { type: "boolean" },
         "no-source": { type: "boolean" },
         "max-source-file": { type: "string" },
         "max-source-total": { type: "string" },
@@ -157,6 +176,7 @@ export function parseCommand(argv: string[]): Command {
   if (v.help) return { kind: "help" };
   if (v.version) return { kind: "version" };
 
+  if (v.skeleton !== undefined && positionals[0] !== "bench") throw new UsageError("--skeleton is an option of skyplate bench");
   if (positionals[0] === "serve") {
     if (positionals.length !== 2) throw new UsageError("serve takes exactly one report folder: skyplate serve <dir>");
     return { kind: "serve", dir: positionals[1]!, port: parsePort(v.port), open: !!v.open };
@@ -173,8 +193,20 @@ export function parseCommand(argv: string[]): Command {
     maxSourceTotal: v["max-source-total"] !== undefined ? parseSize(v["max-source-total"], "--max-source-total") : DEFAULT_OPTIONS.maxSourceTotal,
     tsMaxFiles: v["ts-max-files"] !== undefined ? parseCount(v["ts-max-files"], "--ts-max-files", 0) : DEFAULT_OPTIONS.tsMaxFiles,
     redactPaths: !!v["redact-paths"],
+    ...(v["ts-max-refs"] !== undefined ? { tsMaxRefs: parseCount(v["ts-max-refs"], "--ts-max-refs", 0) } : {}),
+    ...(v["max-read-bytes"] !== undefined ? { maxReadBytes: parseSize(v["max-read-bytes"], "--max-read-bytes") } : {}),
+    ...(v.workers !== undefined ? { workers: parseCount(v.workers, "--workers") } : {}),
   };
 
+  if (positionals[0] === "bench") {
+    for (const flag of ["open", "serve", "port", "json"] as const) if (v[flag] !== undefined) throw new UsageError(`--${flag} is not an option of skyplate bench`);
+    if (positionals[1] === "synth") {
+      if (positionals.length !== 3 || !v.out) throw new UsageError("use skyplate bench synth <benchmark.json> --out <new-dir>");
+      return { kind: "synthesize", file: positionals[2]!, out: v.out };
+    }
+    if (positionals.length !== 2) throw new UsageError("use skyplate bench <path> [--out <new-dir>] [--skeleton]");
+    return { kind: "bench", path: positionals[1]!, ...(v.out !== undefined ? { out: v.out } : {}), quiet: !!v.quiet, skeleton: !!v.skeleton, options };
+  }
   if (positionals[0] === "mcp") {
     // stdout is the protocol channel, so nothing that writes a report or serves one belongs here;
     // build_report and serve_report are the server's own tools for that.

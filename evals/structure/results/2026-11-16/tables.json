@@ -1,0 +1,438 @@
+{
+  "projects": [
+    {
+      "name": "requests",
+      "files": 128,
+      "selectedLanguages": {
+        "python": 37
+      }
+    },
+    {
+      "name": "chi",
+      "files": 111,
+      "selectedLanguages": {
+        "go": 90
+      }
+    },
+    {
+      "name": "ripgrep",
+      "files": 225,
+      "selectedLanguages": {
+        "rust": 102
+      }
+    },
+    {
+      "name": "junit",
+      "files": 2467,
+      "selectedLanguages": {
+        "java": 1813,
+        "kotlin": 154
+      }
+    },
+    {
+      "name": "curl",
+      "files": 4579,
+      "selectedLanguages": {
+        "c": 1072,
+        "c++": 2
+      }
+    },
+    {
+      "name": "rails",
+      "files": 5040,
+      "selectedLanguages": {
+        "ruby": 3599
+      }
+    },
+    {
+      "name": "kubernetes",
+      "files": 32005,
+      "selectedLanguages": {
+        "shell": 314,
+        "c": 6,
+        "go": 18291,
+        "python": 7
+      }
+    }
+  ],
+  "imports": [
+    {
+      "name": "requests",
+      "language": "python",
+      "statements": 325,
+      "files": 37,
+      "internal": 119,
+      "external": 206,
+      "unresolved": 0,
+      "self": 0,
+      "internalPercent": 36.61538461538461,
+      "externalPercent": 63.38461538461539,
+      "unresolvedPercent": 0.0,
+      "reviewedAcrossSelectedLanguages": 20
+    },
+    {
+      "name": "chi",
+      "language": "go",
+      "statements": 389,
+      "files": 90,
+      "internal": 59,
+      "external": 330,
+      "unresolved": 0,
+      "self": 0,
+      "internalPercent": 15.167095115681233,
+      "externalPercent": 84.83290488431876,
+      "unresolvedPercent": 0.0,
+      "reviewedAcrossSelectedLanguages": 20
+    },
+    {
+      "name": "ripgrep",
+      "language": "rust",
+      "statements": 1136,
+      "files": 102,
+      "internal": 593,
+      "external": 445,
+      "unresolved": 98,
+      "self": 90,
+      "internalPercent": 52.20070422535211,
+      "externalPercent": 39.17253521126761,
+      "unresolvedPercent": 8.626760563380282,
+      "reviewedAcrossSelectedLanguages": 20
+    },
+    {
+      "name": "junit",
+      "language": "java",
+      "statements": 18006,
+      "files": 1813,
+      "internal": 9893,
+      "external": 8113,
+      "unresolved": 0,
+      "self": 47,
+      "internalPercent": 54.94279684549595,
+      "externalPercent": 45.05720315450405,
+      "unresolvedPercent": 0.0,
+      "reviewedAcrossSelectedLanguages": 20
+    },
+    {
+      "name": "junit",
+      "language": "kotlin",
+      "statements": 1076,
+      "files": 154,
+      "internal": 672,
+      "external": 404,
+      "unresolved": 0,
+      "self": 2,
+      "internalPercent": 62.45353159851301,
+      "externalPercent": 37.54646840148699,
+      "unresolvedPercent": 0.0,
+      "reviewedAcrossSelectedLanguages": 20
+    },
+    {
+      "name": "curl",
+      "language": "c",
+      "statements": 4246,
+      "files": 1072,
+      "internal": 3227,
+      "external": 1017,
+      "unresolved": 2,
+      "self": 1,
+      "internalPercent": 76.00094206311823,
+      "externalPercent": 23.951954780970325,
+      "unresolvedPercent": 0.047103155911446065,
+      "reviewedAcrossSelectedLanguages": 20
+    },
+    {
+      "name": "curl",
+      "language": "c++",
+      "statements": 8,
+      "files": 2,
+      "internal": 2,
+      "external": 6,
+      "unresolved": 0,
+      "self": 0,
+      "internalPercent": 25.0,
+      "externalPercent": 75.0,
+      "unresolvedPercent": 0.0,
+      "reviewedAcrossSelectedLanguages": 20
+    },
+    {
+      "name": "rails",
+      "language": "ruby",
+      "statements": 6883,
+      "files": 3599,
+      "internal": 6158,
+      "external": 724,
+      "unresolved": 1,
+      "self": 14,
+      "internalPercent": 89.46680226645358,
+      "externalPercent": 10.518669184948424,
+      "unresolvedPercent": 0.01452854859799506,
+      "reviewedAcrossSelectedLanguages": 20
+    },
+    {
+      "name": "kubernetes",
+      "language": "shell",
+      "statements": 233,
+      "files": 314,
+      "internal": 223,
+      "external": 0,
+      "unresolved": 10,
+      "self": 0,
+      "internalPercent": 95.70815450643777,
+      "externalPercent": 0.0,
+      "unresolvedPercent": 4.291845493562231,
+      "reviewedAcrossSelectedLanguages": 20
+    },
+    {
+      "name": "kubernetes",
+      "language": "c",
+      "statements": 21,
+      "files": 6,
+      "internal": 0,
+      "external": 21,
+      "unresolved": 0,
+      "self": 0,
+      "internalPercent": 0.0,
+      "externalPercent": 100.0,
+      "unresolvedPercent": 0.0,
+      "reviewedAcrossSelectedLanguages": 20
+    },
+    {
+      "name": "kubernetes",
+      "language": "go",
+      "statements": 113595,
+      "files": 18291,
+      "internal": 74372,
+      "external": 39223,
+      "unresolved": 0,
+      "self": 0,
+      "internalPercent": 65.47119151371099,
+      "externalPercent": 34.52880848628901,
+      "unresolvedPercent": 0.0,
+      "reviewedAcrossSelectedLanguages": 20
+    },
+    {
+      "name": "kubernetes",
+      "language": "python",
+      "statements": 26,
+      "files": 7,
+      "internal": 1,
+      "external": 25,
+      "unresolved": 0,
+      "self": 0,
+      "internalPercent": 3.8461538461538463,
+      "externalPercent": 96.15384615384616,
+      "unresolvedPercent": 0.0,
+      "reviewedAcrossSelectedLanguages": 20
+    }
+  ],
+  "detection": {
+    "reviewed": 120,
+    "languageAccepted": 119,
+    "categoryAcceptedUnderPathRubric": 120
+  },
+  "complexity": {
+    "all": {
+      "files": 29,
+      "rhoRadonSum": 0.7326519084622077,
+      "rhoDecisions": 0.7819456357814946
+    },
+    "production": {
+      "files": 16,
+      "rhoRadonSum": 0.8529215349381679,
+      "rhoDecisions": 0.965129189817975
+    },
+    "tests": {
+      "files": 13,
+      "rhoRadonSum": 0.5588474989949611,
+      "rhoDecisions": 0.5459840015756398
+    }
+  },
+  "packageProjection": [
+    {
+      "name": "chi",
+      "internalImports": 59,
+      "cappedImports": 10,
+      "nominalProjectedPairs": 531,
+      "actualProjectedPairs": 391,
+      "projectionCoverage": 0.736346516007533,
+      "largestPackages": [
+        [
+          "middleware",
+          31
+        ],
+        [
+          ".",
+          5
+        ],
+        [
+          "_examples/todos-resource",
+          3
+        ],
+        [
+          "_examples/versions/data",
+          2
+        ],
+        [
+          "_examples/custom-handler",
+          1
+        ]
+      ]
+    },
+    {
+      "name": "kubernetes",
+      "internalImports": 74372,
+      "cappedImports": 10410,
+      "nominalProjectedPairs": 702926,
+      "actualProjectedPairs": 531462,
+      "projectionCoverage": 0.7560710515758415,
+      "largestPackages": [
+        [
+          "vendor/golang.org/x/sys/unix",
+          284
+        ],
+        [
+          "staging/src/k8s.io/client-go/applyconfigurations/core/v1",
+          219
+        ],
+        [
+          "vendor/github.com/prometheus/procfs",
+          70
+        ],
+        [
+          "vendor/github.com/vishvananda/netlink",
+          62
+        ],
+        [
+          "vendor/golang.org/x/sys/cpu",
+          58
+        ]
+      ]
+    }
+  ],
+  "history": [
+    {
+      "path": "b.py",
+      "hotspot": 0.9208,
+      "commits": 5,
+      "added": 10,
+      "deleted": 3,
+      "authors": 2,
+      "owner": 0,
+      "ownership": 0.7,
+      "created": 1704110400,
+      "modified": 1704801600
+    },
+    {
+      "path": "c.py",
+      "hotspot": 0.8271,
+      "commits": 4,
+      "added": 7,
+      "deleted": 0,
+      "authors": 2,
+      "owner": 0,
+      "ownership": 0.5714,
+      "created": 1704110400,
+      "modified": 1704628800
+    },
+    {
+      "path": "d.py",
+      "hotspot": 0.5646,
+      "commits": 2,
+      "added": 5,
+      "deleted": 0,
+      "authors": 2,
+      "owner": 0,
+      "ownership": 0.8,
+      "created": 1704110400,
+      "modified": 1704888000
+    },
+    {
+      "path": "renamed.py",
+      "hotspot": 1,
+      "commits": 6,
+      "added": 10,
+      "deleted": 3,
+      "authors": 2,
+      "owner": 0,
+      "ownership": 0.7,
+      "created": 1704110400,
+      "modified": 1704801600
+    }
+  ],
+  "kubernetesPhases": [
+    {
+      "name": "kubernetes-nogit",
+      "timingsMs": {
+        "walk": 284,
+        "detect": 592,
+        "files": 1125,
+        "imports": 383,
+        "graph": 42,
+        "stats": 14,
+        "layout": 5227,
+        "findings": 7,
+        "total": 7662,
+        "write": 14
+      },
+      "wallSeconds": 7.77,
+      "maxRssBytes": 1322500096,
+      "maxRssGiB": 1.2316741943359375
+    },
+    {
+      "name": "kubernetes-cap50",
+      "timingsMs": {
+        "walk": 308,
+        "detect": 626,
+        "git": 1469,
+        "files": 1486,
+        "imports": 458,
+        "graph": 62,
+        "stats": 22,
+        "layout": 5844,
+        "findings": 10,
+        "total": 8797,
+        "write": 11
+      },
+      "wallSeconds": 8.9,
+      "maxRssBytes": 1327431680,
+      "maxRssGiB": 1.23626708984375
+    },
+    {
+      "name": "kubernetes",
+      "timingsMs": {
+        "walk": 265,
+        "detect": 397,
+        "files": 1313,
+        "imports": 423,
+        "graph": 45,
+        "layout": 5052,
+        "git": 507594,
+        "stats": 14,
+        "findings": 14,
+        "total": 508355,
+        "write": 17
+      },
+      "wallSeconds": 509.2,
+      "maxRssBytes": 2665938944,
+      "maxRssGiB": 2.48284912109375
+    }
+  ],
+  "graphChains": [
+    {
+      "files": 100000,
+      "edges": 99999,
+      "ms": 24.754292,
+      "rss": 39387880,
+      "cycles": 0,
+      "rankLast": 1
+    },
+    {
+      "files": 1000000,
+      "edges": 999999,
+      "ms": 85.690042,
+      "rss": 193315656,
+      "cycles": 0,
+      "rankLast": 1
+    }
+  ]
+}

@@ -1,0 +1,62 @@
+bun test v1.4.4 (38afee6c8)
+
+../../../../../../../..<checkout>/test/ts.test.ts:
+(pass) projects > one configured project owns every TS/JS file [0.05ms]
+(pass) projects > engine is the installed typescript [0.04ms]
+(pass) projects > unresolved counts only names the checker could not bind (one deliberate one in app.ts)
+(pass) symbols > module symbols, one per file, at line 0 [0.03ms]
+(pass) symbols > functions: position, extent, doc, params, signature [0.02ms]
+(pass) symbols > arrow consts are functions named by their variable
+(pass) symbols > overloads are one symbol spanning every signature and the implementation
+(pass) symbols > flags from modifiers and JSDoc [0.10ms]
+(pass) symbols > class members: methods, accessors, statics, private names, parameter properties [0.07ms]
+(pass) symbols > interfaces, type aliases, enums, namespaces [0.04ms]
+(pass) symbols > React conventions: components and hooks [0.01ms]
+(pass) symbols > used as a JSX tag makes a component, even rendering nothing or loaded lazily [0.01ms]
+(pass) symbols > `const useX = call()` is a hook only when the call returns something callable
+(pass) symbols > JavaScript with JSDoc gets doc and checker-inferred signature
+(pass) symbols > locals and parameters are not symbols [0.01ms]
+(pass) references > a function: imports, calls from every file, the JS file included [0.03ms]
+(pass) references > renamed re-exports and default exports resolve to the original declaration [0.02ms]
+(pass) references > a namespace import references the module; its members resolve through it [0.03ms]
+(pass) references > type-only imports, type positions, heritage clauses [0.02ms]
+(pass) references > method calls through an interface, statics, private names [0.05ms]
+(pass) references > a get/set pair: writes go to the setter, reads through the interface to its property [0.04ms]
+(pass) references > a member access on a union credits every member that declares it [0.03ms]
+(pass) references > an object literal in a union context writes only the members it is
+(pass) references > a type and a value under one name: values go to the value, imports to both [0.03ms]
+(pass) references > an implementation and an override reference the member they implement [0.04ms]
+(pass) references > constructors: `new` credits the class and its constructor, `super()` the base constructor [0.02ms]
+(pass) references > string literals naming members: `T["p"]` types and `o["p"]` element access [0.01ms]
+(pass) references > a call through `as`, `satisfies` or `<T>` is still a call
+(pass) references > JSDoc `{@link X}`, `{@link X.y}` and `@see X` reference their targets
+(pass) references > writes: assignment and increment [0.01ms]
+(pass) references > JSX: tags (opening only), attributes and destructured props reach the props interface [0.02ms]
+(pass) references > contextually typed object literals write the interface's properties [0.01ms]
+(pass) references > an ambient global declared in a .d.ts
+(pass) references > top-level statements are made by the module symbol
+(pass) references > every reference slices to its identifier, including after astral characters [0.22ms]
+(pass) references > references are grouped by file and sorted by position; fileRefStart slices them [0.04ms]
+(pass) aggregates > totals per symbol
+(pass) aggregates > callers leave out the type hierarchy, so they agree with the record's incoming edges [0.07ms]
+(pass) aggregates > a recursive function is not its own caller (buildTables) [0.11ms]
+(pass) aggregates > call table rows aggregate by (from, to, kind) [0.04ms]
+(pass) aggregates > unused exports: exported, and nothing outside its file uses it (re-exports do not count) [0.05ms]
+(pass) limits > maxRefs caps the heaviest symbols first and keeps totals, edges and flags [22.37ms]
+(pass) limits > maxFiles: more TS/JS files than the cap returns null and says why [0.08ms]
+(pass) limits > nothing to analyze returns null [0.03ms]
+(pass) limits > skip: a generated or vendored file has no symbols, and references into it are counted, not stored [19.54ms]
+(pass) limits > never throws: an unusable root is reported, not raised [22.08ms]
+(pass) CommonJS without a config > files land in the inferred project [0.02ms]
+(pass) CommonJS without a config > module.exports = require('./x') hands x's export through, so calls reach the function [0.05ms]
+(pass) CommonJS without a config > export = function run() is placed at its name, not at `export`
+(pass) CommonJS without a config > exports.x = function, module.exports = X, prototype methods [0.02ms]
+(pass) CommonJS without a config > require bindings resolve to what the module exports [0.02ms]
+(pass) doc comments with every link form > the analysis survives, and the summary keeps each link as written [0.06ms]
+(pass) a circular tsconfig `extends` > is skipped with a reason, and its files are still analyzed without it [27.29ms]
+(pass) a circular tsconfig `extends` > one the walker did not list cannot hang the analysis either: the request is bounded [1501.71ms]
+
+ 54 pass
+ 0 fail
+ 711 expect() calls
+Ran 54 tests across 1 file. [1.70s]

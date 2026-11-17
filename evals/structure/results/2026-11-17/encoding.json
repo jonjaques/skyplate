@@ -1,0 +1,44 @@
+{
+  "file": {
+    "id": 0,
+    "path": "japanese.py",
+    "name": "japanese.py",
+    "dir": 0,
+    "ext": "py",
+    "language": "python",
+    "category": "code",
+    "detection": "extension",
+    "bytes": 193,
+    "binary": false,
+    "generated": false,
+    "vendored": false,
+    "minified": false,
+    "secret": false,
+    "lines": 1,
+    "code": 1,
+    "comment": 0,
+    "blank": 0,
+    "longestLine": 192,
+    "complexity": 1,
+    "maxDepth": 0,
+    "functions": 0,
+    "todos": 0,
+    "imports": 0,
+    "fanIn": 0,
+    "fanOut": 0,
+    "rank": 0,
+    "cycle": -1,
+    "hash": "e8cb379c842a3dc8",
+    "hotspot": 0,
+    "src": 0
+  },
+  "source": [
+    [
+      0,
+      "message = \"“ú–{Œê‚Ì•¶Í‚Å‚·B“ú–{Œê‚Ì•¶Í‚Å‚·B“ú–{Œê‚Ì•¶Í‚Å‚·B“ú–{Œê‚Ì•¶Í‚Å‚·B“ú–{Œê‚Ì•¶Í‚Å‚·B“ú–{Œê‚Ì•¶Í‚Å‚·B“ú–{Œê‚Ì•¶Í‚Å‚·B“ú–{Œê‚Ì•¶Í‚Å‚·B“ú–{Œê‚Ì•¶Í‚Å‚·B“ú–{Œê‚Ì•¶Í‚Å‚·B\"\n"
+    ]
+  ],
+  "expected": "message = \"日本語の文章です。日本語の文章です。日本語の文章です。日本語の文章です。日本語の文章です。日本語の文章です。日本語の文章です。日本語の文章です。日本語の文章です。日本語の文章です。\"\n",
+  "sourceMatchesShiftJis": false,
+  "reproducesS7": true
+}

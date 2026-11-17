@@ -1,0 +1,1 @@
+{"compilerOptions":{"strict":true,"allowJs":true,"checkJs":true,"target":"ESNext","module":"ESNext","moduleResolution":"Bundler","jsx":"preserve","experimentalDecorators":true,"baseUrl":".","paths":{"@local/*":["packages/*/src"]},"customConditions":["source"]},"include":["**/*"]}

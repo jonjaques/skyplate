@@ -1,0 +1,1381 @@
+[
+  {
+    "name": "open",
+    "args": {
+      "path": "<checkout>",
+      "watch": false,
+      "wait_seconds": 120
+    },
+    "ms": 1507.384,
+    "isError": false,
+    "data": {
+      "project": {
+        "id": "starchart",
+        "kind": "live",
+        "path": "<checkout>",
+        "name": "skyplate",
+        "state": "ready",
+        "files": 268,
+        "analyzed": "2026-11-17T02:42:52.531Z",
+        "watching": "no (not started)"
+      },
+      "overview": {
+        "project": {
+          "name": "skyplate",
+          "root": "<checkout>",
+          "description": "Point Skyplate at any project and get a static report folder: a 3D plate of every file, a statistics dashboard, a source reader, and TypeScript code intelligence where picking a function lights up every file that calls it.",
+          "license": "Apache-2.0",
+          "readme": "README.md",
+          "generatedAt": "2026-11-17T02:42:52.525Z",
+          "tool": "skyplate 0.2.0"
+        },
+        "totals": {
+          "files": 268,
+          "dirs": 50,
+          "lines": 68279,
+          "code": 54584,
+          "comment": 8477,
+          "bytes": 3170662,
+          "generated": 6,
+          "vendored": 6,
+          "binary": 0,
+          "ignored": 10
+        },
+        "languages": [
+          {
+            "name": "TypeScript",
+            "files": 145,
+            "code": 35149,
+            "share": 0.644
+          },
+          {
+            "name": "TSX",
+            "files": 81,
+            "code": 13700,
+            "share": 0.251
+          },
+          {
+            "name": "JSON",
+            "files": 6,
+            "code": 1846,
+            "share": 0.034
+          },
+          {
+            "name": "Markdown",
+            "files": 9,
+            "code": 1494,
+            "share": 0.027
+          },
+          {
+            "name": "Text",
+            "files": 7,
+            "code": 1314,
+            "share": 0.024
+          },
+          {
+            "name": "HTML",
+            "files": 7,
+            "code": 724,
+            "share": 0.013
+          },
+          {
+            "name": "CSS",
+            "files": 2,
+            "code": 227,
+            "share": 0.004
+          },
+          {
+            "name": "YAML",
+            "files": 3,
+            "code": 41,
+            "share": 0.001
+          },
+          {
+            "name": "JSON with Comments",
+            "files": 2,
+            "code": 42,
+            "share": 0.001
+          },
+          {
+            "name": "Ignore List",
+            "files": 1,
+            "code": 26,
+            "share": 0
+          }
+        ],
+        "categories": [
+          {
+            "category": "code",
+            "files": 186,
+            "lines": 51676
+          },
+          {
+            "category": "test",
+            "files": 42,
+            "lines": 9796
+          },
+          {
+            "category": "docs",
+            "files": 11,
+            "lines": 1996
+          },
+          {
+            "category": "config",
+            "files": 9,
+            "lines": 1591
+          },
+          {
+            "category": "markup",
+            "files": 7,
+            "lines": 746
+          },
+          {
+            "category": "unknown",
+            "files": 5,
+            "lines": 1457
+          },
+          {
+            "category": "image",
+            "files": 3,
+            "lines": 11
+          },
+          {
+            "category": "style",
+            "files": 2,
+            "lines": 326
+          },
+          {
+            "category": "build",
+            "files": 1,
+            "lines": 47
+          },
+          {
+            "category": "data",
+            "files": 1,
+            "lines": 34
+          },
+          {
+            "category": "lockfile",
+            "files": 1,
+            "lines": 599
+          }
+        ],
+        "structure": {
+          "importEdges": 846,
+          "resolvedImports": 854,
+          "externalImports": 290,
+          "unresolvedImports": 0,
+          "cycles": 1,
+          "largestCycle": 3,
+          "typeOnlyEdges": 107,
+          "typeOnlyLoops": 2,
+          "modules": 18,
+          "externals": 44,
+          "manifests": [
+            "package.json"
+          ]
+        },
+        "codeIntelligence": {
+          "engine": "typescript 7.0.2",
+          "files": 224,
+          "symbols": 4746,
+          "references": 29312,
+          "unresolved": 592,
+          "unusedExports": 209,
+          "unresolvedShare": 0.02
+        },
+        "stats": {
+          "medianLinesPerFile": 147,
+          "p90LinesPerFile": 612,
+          "medianComplexity": 15,
+          "p90Complexity": 125.6,
+          "commentRatio": 0.149,
+          "testRatio": 0.23,
+          "duplicateGroups": 0
+        },
+        "hotspots": [
+          "src/viewer/galaxy/engine.ts",
+          "src/viewer/galaxy/GalaxyView.tsx",
+          "src/viewer/galaxy/Labels.tsx",
+          "src/viewer/galaxy/Chrome.tsx",
+          "src/core/pipeline.ts"
+        ],
+        "hubs": [
+          "src/shared/schema.ts",
+          "src/viewer/lib/utils.ts",
+          "src/viewer/state/store.ts",
+          "src/core/contracts.ts",
+          "src/viewer/model/indices.ts"
+        ],
+        "findings": [
+          "[warning] 31 files have a complexity over 100; src/mcp/query.ts tops the list at 720 (complex-files)",
+          "[notice] src/viewer/galaxy/engine.ts is the top hotspot: 7 commits, complexity 208 (top-hotspots)",
+          "[notice] One import cycle ties 3 files together (import-cycles)",
+          "[notice] src/shared/schema.ts is imported by 80 files (god-files)",
+          "[notice] 7 files exceed 1,000 lines of code; the largest is src/mcp/query.ts (1,760) (large-files)",
+          "[notice] Test files are 23% of source files (42 for 183) (low-test-ratio)",
+          "[notice] 186 exported symbols are never used outside their own file (unused-exports)",
+          "[info] 5% of files (12) carry 26% of all line churn (hotspot-concentration)",
+          "[info] 2 import loops close only through `import type`; the largest ties 4 files together (type-only-loops)",
+          "[info] 9 TODO/FIXME markers in 3 files; src/shared/schema.ts has the most (4) (todo-dense)",
+          "[info] cn is the most widely used symbol: 220 references from 49 files (most-referenced)"
+        ]
+      }
+    }
+  },
+  {
+    "name": "search_symbols",
+    "args": {
+      "query": "analyzeTypeScript",
+      "limit": 5
+    },
+    "ms": 8.164332999999942,
+    "isError": false,
+    "data": {
+      "matched": 2,
+      "symbols": [
+        {
+          "id": 1571,
+          "name": "analyzeTypeScript",
+          "kind": "function",
+          "at": "src/core/ts/index.ts:52",
+          "refs": 13,
+          "callers": 2,
+          "signature": "AnalyzeTypeScript",
+          "flags": [
+            "exported",
+            "async"
+          ]
+        },
+        {
+          "id": 311,
+          "name": "AnalyzeTypeScript",
+          "kind": "type",
+          "at": "src/core/contracts.ts:260",
+          "refs": 2,
+          "callers": 1,
+          "signature": "type AnalyzeTypeScript = (input: TsInput) => Promise<CodeSymbols | null>;",
+          "flags": [
+            "exported"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "name": "symbol",
+    "args": {
+      "name": "analyzeTypeScript",
+      "impact_depth": 3
+    },
+    "ms": 3.091250000000173,
+    "isError": false,
+    "data": {
+      "id": 1571,
+      "name": "analyzeTypeScript",
+      "kind": "function",
+      "at": "src/core/ts/index.ts:52",
+      "endLine": 97,
+      "signature": "AnalyzeTypeScript",
+      "flags": [
+        "exported",
+        "async"
+      ],
+      "complexity": 8,
+      "params": 1,
+      "counts": {
+        "refs": 13,
+        "callers": 2,
+        "files": 2
+      },
+      "calledBy": {
+        "count": 2,
+        "rows": [
+          {
+            "id": 4703,
+            "name": "(top level of test/ts.test.ts)",
+            "kind": "module",
+            "count": 10,
+            "how": [
+              "call"
+            ],
+            "site": "test/ts.test.ts:45"
+          },
+          {
+            "id": 1453,
+            "name": "startTypeScript",
+            "kind": "function",
+            "count": 1,
+            "how": [
+              "call"
+            ],
+            "site": "src/core/pipeline.ts:1063"
+          }
+        ]
+      },
+      "calls": {
+        "count": 9,
+        "rows": [
+          {
+            "id": 1601,
+            "name": "Compiler",
+            "kind": "class",
+            "count": 2,
+            "how": [
+              "new",
+              "type"
+            ],
+            "site": "src/core/ts/index.ts:76"
+          },
+          {
+            "id": 1572,
+            "name": "analyze",
+            "kind": "function",
+            "count": 1,
+            "how": [
+              "call"
+            ],
+            "site": "src/core/ts/index.ts:90"
+          },
+          {
+            "id": 1608,
+            "name": "Compiler.close",
+            "kind": "method",
+            "count": 1,
+            "how": [
+              "call"
+            ],
+            "site": "src/core/ts/index.ts:95"
+          },
+          {
+            "id": 1605,
+            "name": "Compiler.constructor",
+            "kind": "constructor",
+            "count": 1,
+            "how": [
+              "new"
+            ],
+            "site": "src/core/ts/index.ts:81"
+          },
+          {
+            "id": 1589,
+            "name": "findCandidates",
+            "kind": "function",
+            "count": 1,
+            "how": [
+              "call"
+            ],
+            "site": "src/core/ts/index.ts:62"
+          },
+          {
+            "id": 1616,
+            "name": "message",
+            "kind": "function",
+            "count": 1,
+            "how": [
+              "call"
+            ],
+            "site": "src/core/ts/index.ts:92"
+          },
+          {
+            "id": 310,
+            "name": "TsInput.onProgress",
+            "kind": "property",
+            "count": 1,
+            "how": [
+              "call"
+            ],
+            "site": "src/core/ts/index.ts:56"
+          },
+          {
+            "id": 1618,
+            "name": "planProjects",
+            "kind": "function",
+            "count": 1,
+            "how": [
+              "call"
+            ],
+            "site": "src/core/ts/index.ts:82"
+          },
+          {
+            "id": 1593,
+            "name": "screenConfigs",
+            "kind": "function",
+            "count": 1,
+            "how": [
+              "call"
+            ],
+            "site": "src/core/ts/index.ts:80"
+          }
+        ]
+      },
+      "otherUses": {
+        "count": 8,
+        "rows": [
+          {
+            "id": 1583,
+            "name": "Plan.projects",
+            "kind": "property",
+            "count": 4,
+            "how": [
+              "read"
+            ],
+            "site": "src/core/ts/index.ts:83"
+          },
+          {
+            "id": 308,
+            "name": "TsInput.maxFiles",
+            "kind": "property",
+            "count": 2,
+            "how": [
+              "read"
+            ],
+            "site": "src/core/ts/index.ts:64"
+          },
+          {
+            "id": 302,
+            "name": "TsInput.root",
+            "kind": "property",
+            "count": 2,
+            "how": [
+              "read"
+            ],
+            "site": "src/core/ts/index.ts:69"
+          },
+          {
+            "id": 1602,
+            "name": "Compiler.api",
+            "kind": "property",
+            "count": 1,
+            "how": [
+              "read"
+            ],
+            "site": "src/core/ts/index.ts:90"
+          },
+          {
+            "id": 307,
+            "name": "TsInput.configs",
+            "kind": "property",
+            "count": 1,
+            "how": [
+              "read"
+            ],
+            "site": "src/core/ts/index.ts:80"
+          },
+          {
+            "id": 1580,
+            "name": "OwnedProject.files",
+            "kind": "property",
+            "count": 1,
+            "how": [
+              "read"
+            ],
+            "site": "src/core/ts/index.ts:87"
+          },
+          {
+            "id": 1592,
+            "name": "Screened.hidden",
+            "kind": "property",
+            "count": 1,
+            "how": [
+              "read"
+            ],
+            "site": "src/core/ts/index.ts:81"
+          },
+          {
+            "id": 1591,
+            "name": "Screened.open",
+            "kind": "property",
+            "count": 1,
+            "how": [
+              "read"
+            ],
+            "site": "src/core/ts/index.ts:82"
+          }
+        ]
+      },
+      "typesUsed": {
+        "count": 1,
+        "rows": [
+          {
+            "id": 311,
+            "name": "AnalyzeTypeScript",
+            "kind": "type",
+            "count": 1,
+            "how": [
+              "type"
+            ],
+            "site": "src/core/ts/index.ts:52"
+          }
+        ]
+      },
+      "references": {
+        "total": 13,
+        "stored": 13,
+        "byFile": [
+          {
+            "path": "src/core/pipeline.ts",
+            "at": [
+              "54:10 import",
+              "1063:10 call"
+            ]
+          },
+          {
+            "path": "test/ts.test.ts",
+            "at": [
+              "17:10 import",
+              "45:21 call",
+              "594:22 call",
+              "617:21 call",
+              "623:18 call",
+              "630:22 call",
+              "642:21 call",
+              "695:16 call",
+              "776:15 call",
+              "817:21 call",
+              "829:23 call"
+            ]
+          }
+        ]
+      },
+      "impact": {
+        "depth": 3,
+        "symbols": 11,
+        "byDepth": [
+          2,
+          1,
+          8
+        ],
+        "files": 9,
+        "fileList": [
+          {
+            "path": "src/core/pipeline.ts",
+            "depth": 1
+          },
+          {
+            "path": "test/ts.test.ts",
+            "depth": 1
+          },
+          {
+            "path": "src/cli/main.ts",
+            "depth": 3
+          },
+          {
+            "path": "src/mcp/workspace.ts",
+            "depth": 3
+          },
+          {
+            "path": "test/git.test.ts",
+            "depth": 3
+          },
+          {
+            "path": "test/pipeline.test.ts",
+            "depth": 3
+          },
+          {
+            "path": "test/public-api.test.ts",
+            "depth": 3
+          },
+          {
+            "path": "test/seam-shapes.test.ts",
+            "depth": 3
+          },
+          {
+            "path": "test/validate.test.ts",
+            "depth": 3
+          }
+        ],
+        "nearest": [
+          {
+            "id": 1453,
+            "name": "startTypeScript",
+            "depth": 1,
+            "at": "src/core/pipeline.ts:1050"
+          },
+          {
+            "id": 4703,
+            "name": "(top level of test/ts.test.ts)",
+            "depth": 1,
+            "at": "test/ts.test.ts:1"
+          },
+          {
+            "id": 1450,
+            "name": "analyzeProject",
+            "depth": 2,
+            "at": "src/core/pipeline.ts:478"
+          },
+          {
+            "id": 2214,
+            "name": "Workspace.start",
+            "depth": 3,
+            "at": "src/mcp/workspace.ts:430"
+          },
+          {
+            "id": 2221,
+            "name": "Workspace.build",
+            "depth": 3,
+            "at": "src/mcp/workspace.ts:589"
+          },
+          {
+            "id": 165,
+            "name": "analyzeCommand",
+            "depth": 3,
+            "at": "src/cli/main.ts:98"
+          },
+          {
+            "id": 4577,
+            "name": "(top level of test/git.test.ts)",
+            "depth": 3,
+            "at": "test/git.test.ts:1"
+          },
+          {
+            "id": 4670,
+            "name": "(top level of test/pipeline.test.ts)",
+            "depth": 3,
+            "at": "test/pipeline.test.ts:1"
+          },
+          {
+            "id": 4686,
+            "name": "(top level of test/public-api.test.ts)",
+            "depth": 3,
+            "at": "test/public-api.test.ts:1"
+          },
+          {
+            "id": 4690,
+            "name": "(top level of test/seam-shapes.test.ts)",
+            "depth": 3,
+            "at": "test/seam-shapes.test.ts:1"
+          },
+          {
+            "id": 4715,
+            "name": "(top level of test/validate.test.ts)",
+            "depth": 3,
+            "at": "test/validate.test.ts:1"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "name": "symbol",
+    "args": {
+      "name": "run",
+      "limit": 3
+    },
+    "ms": 0.9534579999999551,
+    "isError": true,
+    "data": [
+      {
+        "type": "text",
+        "text": "8 symbols are named \"run\"; pass id, or narrow with path or kind: #4627 function at test/manifests.test.ts:10; #4465 function at test/cli.test.ts:22; #4011 method at src/viewer/shell/CommandPalette.tsx:47; #1468 method at src/core/pool.ts:44; #4525 method at test/fixtures/ts/src/members.ts:38; #4529 method at test/fixtures/ts/src/members.ts:45; #2707 method at src/shared/web.ts:1131; #4532 method at test/fixtures/ts/src/members.ts:55"
+      }
+    ]
+  },
+  {
+    "name": "search_symbols",
+    "args": {
+      "unused_kind": "unreferenced",
+      "limit": 10
+    },
+    "ms": 1.4429169999998521,
+    "isError": false,
+    "data": {
+      "matched": 55,
+      "unusedExports": {
+        "unreferenced": 55,
+        "used-in-own-file": 148,
+        "entry-export": 6,
+        "public-api": 0
+      },
+      "symbols": [
+        {
+          "id": 1011,
+          "name": "hasHeuristic",
+          "kind": "function",
+          "at": "src/core/languages/heuristics.ts:64",
+          "refs": 0,
+          "callers": 0,
+          "signature": "(lowerName: string) => boolean",
+          "flags": [
+            "exported",
+            "unused-export",
+            "unreferenced"
+          ],
+          "doc": "True when some heuristic covers this filename's extension."
+        },
+        {
+          "id": 2848,
+          "name": "symbolInScope",
+          "kind": "function",
+          "at": "src/viewer/charts/data.ts:536",
+          "refs": 0,
+          "callers": 0,
+          "signature": "(symbols: CodeSymbols, i: number, mask: Uint8Array) => boolean",
+          "flags": [
+            "exported",
+            "unused-export",
+            "unreferenced"
+          ]
+        },
+        {
+          "id": 3030,
+          "name": "useLink",
+          "kind": "hook",
+          "at": "src/viewer/charts/kit/link.ts:10",
+          "refs": 0,
+          "callers": 0,
+          "signature": "() => { hover: (target: Target | null) => void; select: (target: Target | null) => void; }",
+          "flags": [
+            "exported",
+            "unused-export",
+            "unreferenced"
+          ]
+        },
+        {
+          "id": 3031,
+          "name": "useHoveredId",
+          "kind": "hook",
+          "at": "src/viewer/charts/kit/link.ts:20",
+          "refs": 0,
+          "callers": 0,
+          "signature": "(kind: Target[\"kind\"]) => number",
+          "flags": [
+            "exported",
+            "unused-export",
+            "unreferenced"
+          ],
+          "doc": "Hover target of one kind, as an id (-1 when the hover is something else)."
+        },
+        {
+          "id": 3032,
+          "name": "useSelectedId",
+          "kind": "hook",
+          "at": "src/viewer/charts/kit/link.ts:24",
+          "refs": 0,
+          "callers": 0,
+          "signature": "(kind: Target[\"kind\"]) => number",
+          "flags": [
+            "exported",
+            "unused-export",
+            "unreferenced"
+          ]
+        },
+        {
+          "id": 3038,
+          "name": "barPath",
+          "kind": "function",
+          "at": "src/viewer/charts/kit/marks.ts:22",
+          "refs": 0,
+          "callers": 0,
+          "signature": "(x0: number, x1: number, y: number, height: number, r?: number) => string",
+          "flags": [
+            "exported",
+            "unused-export",
+            "unreferenced"
+          ],
+          "doc": "Horizontal bar from a baseline at x0 out to x1 (x1 > x0), rounded only at the right end."
+        },
+        {
+          "id": 3044,
+          "name": "barThickness",
+          "kind": "function",
+          "at": "src/viewer/charts/kit/marks.ts:55",
+          "refs": 0,
+          "callers": 0,
+          "signature": "(band: number, ratio?: number) => number",
+          "flags": [
+            "exported",
+            "unused-export",
+            "unreferenced"
+          ],
+          "doc": "Bar thickness for a band: capped at 24px, leaving the rest of the band as air."
+        },
+        {
+          "id": 3185,
+          "name": "Checkbox",
+          "kind": "component",
+          "at": "src/viewer/components/ui/checkbox.tsx:6",
+          "refs": 1,
+          "callers": 0,
+          "signature": "({ className, ...props }: React.ComponentProps<typeof CheckboxPrimitive.Root>) => React.JSX.Element",
+          "flags": [
+            "exported",
+            "unused-export",
+            "unreferenced"
+          ]
+        },
+        {
+          "id": 3188,
+          "name": "CommandDialog",
+          "kind": "component",
+          "at": "src/viewer/components/ui/command.tsx:32",
+          "refs": 1,
+          "callers": 0,
+          "signature": "({ title, description, children, className, showCloseButton, ...props }: React.ComponentProps<typeof Dialog> & { title?: string; description?: string; classNam\u2026",
+          "flags": [
+            "exported",
+            "unused-export",
+            "unreferenced"
+          ]
+        },
+        {
+          "id": 3193,
+          "name": "CommandSeparator",
+          "kind": "component",
+          "at": "src/viewer/components/ui/command.tsx:129",
+          "refs": 1,
+          "callers": 0,
+          "signature": "({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.Separator>) => React.JSX.Element",
+          "flags": [
+            "exported",
+            "unused-export",
+            "unreferenced"
+          ]
+        }
+      ],
+      "more": 45
+    }
+  },
+  {
+    "name": "seams",
+    "args": {
+      "path": "src/core/ts",
+      "limit": 5
+    },
+    "ms": 5.187791999999945,
+    "isError": false,
+    "data": {
+      "modules": 18,
+      "partition": "the analyzer's modules (package roots kept whole), with any module over a quarter of the code split into its subdirectories",
+      "sortedBy": "hotspot",
+      "rows": [
+        {
+          "module": "src/viewer/charts",
+          "selector": {
+            "path": "src/viewer/charts",
+            "scope": "module"
+          },
+          "files": 36,
+          "testFiles": 1,
+          "code": 5099,
+          "complexity": 987,
+          "hotspotMass": 11.43,
+          "hottest": "src/viewer/charts/sections/Composition.tsx",
+          "interface": 4,
+          "couldHide": 29,
+          "internalExports": 97,
+          "testsPastInterface": 14,
+          "relays": 2,
+          "inbound": 1,
+          "outbound": 18,
+          "commits": 5,
+          "spread": 6.5,
+          "leaving": 1,
+          "spreadBasis": 2,
+          "sweeps": 3,
+          "hiddenCoupling": 0
+        },
+        {
+          "module": "src/core",
+          "selector": {
+            "path": "src/core",
+            "scope": "module"
+          },
+          "files": 23,
+          "code": 9169,
+          "complexity": 3467,
+          "hotspotMass": 10.87,
+          "hottest": "src/core/pipeline.ts",
+          "interface": 79,
+          "couldHide": 22,
+          "internalExports": 78,
+          "testsPastInterface": 51,
+          "relays": 3,
+          "inbound": 12,
+          "outbound": 9,
+          "commits": 11,
+          "spread": 4.5,
+          "leaving": 1,
+          "spreadBasis": 8,
+          "sweeps": 3,
+          "hiddenCoupling": 4
+        },
+        {
+          "module": "src/viewer/galaxy",
+          "selector": {
+            "path": "src/viewer/galaxy",
+            "scope": "module"
+          },
+          "files": 19,
+          "testFiles": 4,
+          "code": 5457,
+          "complexity": 1291,
+          "hotspotMass": 10,
+          "hottest": "src/viewer/galaxy/engine.ts",
+          "interface": 1,
+          "couldHide": 26,
+          "internalExports": 76,
+          "testsPastInterface": 41,
+          "relays": 2,
+          "inbound": 1,
+          "outbound": 20,
+          "commits": 8,
+          "spread": 4.2,
+          "leaving": 1,
+          "spreadBasis": 5,
+          "sweeps": 3,
+          "hiddenCoupling": 15
+        },
+        {
+          "module": "src/viewer/shell",
+          "selector": {
+            "path": "src/viewer/shell",
+            "scope": "module"
+          },
+          "files": 26,
+          "code": 4228,
+          "complexity": 768,
+          "hotspotMass": 9.55,
+          "hottest": "src/viewer/shell/CommandPalette.tsx",
+          "interface": 44,
+          "couldHide": 7,
+          "internalExports": 47,
+          "testsPastInterface": 8,
+          "relays": 3,
+          "inbound": 11,
+          "outbound": 30,
+          "commits": 8,
+          "spread": 5.8,
+          "leaving": 1,
+          "spreadBasis": 5,
+          "sweeps": 3,
+          "hiddenCoupling": 7
+        },
+        {
+          "module": "src/core/ts",
+          "selector": {
+            "path": "src/core/ts",
+            "scope": "module"
+          },
+          "files": 10,
+          "code": 2334,
+          "complexity": 920,
+          "hotspotMass": 4.11,
+          "hottest": "src/core/ts/syntax.ts",
+          "interface": 7,
+          "couldHide": 5,
+          "internalExports": 43,
+          "testsPastInterface": 7,
+          "relays": 0,
+          "inbound": 1,
+          "outbound": 2,
+          "commits": 6,
+          "spread": 5.5,
+          "leaving": 1,
+          "spreadBasis": 4,
+          "sweeps": 2,
+          "hiddenCoupling": 0
+        }
+      ],
+      "more": 13,
+      "legend": {
+        "hotspotMass": "sum of the module's file hotspot scores (each 0-1); the sort key for hotspot",
+        "interface": "symbols declared here that code outside uses, directly or through their members",
+        "couldHide": "exported, used only in its own file: it can lose `export`",
+        "internalExports": "exported for sibling files of the module only: implementation, though TypeScript needs the `export`",
+        "testsPastInterface": "symbols that are not interface but that tests use (the module's own tests included): tests reaching past the interface; overlaps couldHide and internalExports",
+        "relays": "functions whose body is one in-repo call (deletion-test candidates; package calls are invisible, so read before deleting)",
+        "commits": "every analyzed commit that touched a file here",
+        "spread": "other modules (with code) the module's commits also touch, on average: how far a change here travels. Over commits of 55 files or fewer, spreadBasis of them; wider ones are sweeps",
+        "leaving": "share of those commits that touch any other module at all (the old spread; near 1 in a squash-merge history)",
+        "files": "own production code files; tests counted separately; config, data, generated and vendored files excluded",
+        "hiddenCoupling": "cross-module production-code pairs that change together with no import path within four hops in either direction"
+      },
+      "notes": []
+    }
+  },
+  {
+    "name": "seam",
+    "args": {
+      "path": "src/core/ts",
+      "limit": 8
+    },
+    "ms": 2.96158400000013,
+    "isError": false,
+    "data": {
+      "module": "src/core/ts",
+      "selector": {
+        "path": "src/core/ts",
+        "scope": "path"
+      },
+      "implementation": {
+        "files": 10,
+        "code": 2334,
+        "complexity": 920,
+        "functions": 137,
+        "hottest": [
+          {
+            "path": "src/core/ts/syntax.ts",
+            "hotspot": 0.644
+          },
+          {
+            "path": "src/core/ts/declarations.ts",
+            "hotspot": 0.544
+          },
+          {
+            "path": "src/core/ts/references.ts",
+            "hotspot": 0.523
+          },
+          {
+            "path": "src/core/ts/resolve.ts",
+            "hotspot": 0.484
+          },
+          {
+            "path": "src/core/ts/projects.ts",
+            "hotspot": 0.465
+          }
+        ]
+      },
+      "tests": {
+        "files": 0,
+        "code": 0
+      },
+      "imports": {
+        "inbound": {
+          "files": 1,
+          "testFiles": 1,
+          "from": [
+            {
+              "dir": "src/core",
+              "files": 1
+            }
+          ]
+        },
+        "outbound": {
+          "files": 2,
+          "to": [
+            {
+              "dir": "src/core",
+              "files": 1
+            },
+            {
+              "dir": "src/shared",
+              "files": 1
+            }
+          ]
+        },
+        "cyclesAcross": []
+      },
+      "interface": {
+        "symbols": 7,
+        "declared": 295,
+        "uses": 7,
+        "callers": 2,
+        "files": 1,
+        "rows": [
+          {
+            "id": 1558,
+            "name": "HostImport",
+            "kind": "interface",
+            "at": "src/core/ts/hosts.ts:35",
+            "uses": 1,
+            "files": 1,
+            "viaMembers": 4
+          },
+          {
+            "id": 1559,
+            "name": "HostImport.from",
+            "kind": "property",
+            "at": "src/core/ts/hosts.ts:37",
+            "uses": 1,
+            "files": 1
+          },
+          {
+            "id": 1560,
+            "name": "HostImport.to",
+            "kind": "property",
+            "at": "src/core/ts/hosts.ts:39",
+            "uses": 1,
+            "files": 1
+          },
+          {
+            "id": 1561,
+            "name": "HostImport.line",
+            "kind": "property",
+            "at": "src/core/ts/hosts.ts:41",
+            "uses": 1,
+            "files": 1
+          },
+          {
+            "id": 1562,
+            "name": "HostImport.names",
+            "kind": "property",
+            "at": "src/core/ts/hosts.ts:43",
+            "uses": 1,
+            "files": 1
+          },
+          {
+            "id": 1568,
+            "name": "applyHostImports",
+            "kind": "function",
+            "at": "src/core/ts/hosts.ts:58",
+            "uses": 1,
+            "files": 1,
+            "complexity": 31
+          },
+          {
+            "id": 1571,
+            "name": "analyzeTypeScript",
+            "kind": "function",
+            "at": "src/core/ts/index.ts:52",
+            "uses": 1,
+            "files": 1,
+            "testUses": 10,
+            "complexity": 8
+          }
+        ]
+      },
+      "couldHide": {
+        "count": 5,
+        "rows": [
+          {
+            "id": 1581,
+            "name": "Plan",
+            "at": "src/core/ts/projects.ts:25",
+            "insideUses": 1
+          },
+          {
+            "id": 1590,
+            "name": "Screened",
+            "at": "src/core/ts/projects.ts:56",
+            "insideUses": 1
+          },
+          {
+            "id": 1685,
+            "name": "ProjectCache",
+            "at": "src/core/ts/resolve.ts:47",
+            "insideUses": 5
+          },
+          {
+            "id": 1718,
+            "name": "NewSymbol",
+            "at": "src/core/ts/store.ts:69",
+            "insideUses": 1
+          },
+          {
+            "id": 1839,
+            "name": "Tables",
+            "at": "src/core/ts/tables.ts:13",
+            "insideUses": 1
+          }
+        ]
+      },
+      "externalExports": {
+        "count": 0,
+        "rows": []
+      },
+      "internalExports": {
+        "count": 43,
+        "rows": [
+          {
+            "id": 1550,
+            "name": "collectDeclarations",
+            "at": "src/core/ts/declarations.ts:48",
+            "siblingFiles": 1
+          },
+          {
+            "id": 1552,
+            "name": "linkRequireExports",
+            "at": "src/core/ts/declarations.ts:539",
+            "siblingFiles": 1
+          },
+          {
+            "id": 1577,
+            "name": "OwnedProject",
+            "at": "src/core/ts/projects.ts:17",
+            "siblingFiles": 1
+          },
+          {
+            "id": 1589,
+            "name": "findCandidates",
+            "at": "src/core/ts/projects.ts:42",
+            "siblingFiles": 1
+          },
+          {
+            "id": 1593,
+            "name": "screenConfigs",
+            "at": "src/core/ts/projects.ts:78",
+            "siblingFiles": 1
+          },
+          {
+            "id": 1601,
+            "name": "Compiler",
+            "at": "src/core/ts/projects.ts:214",
+            "siblingFiles": 1
+          },
+          {
+            "id": 1616,
+            "name": "message",
+            "at": "src/core/ts/projects.ts:342",
+            "siblingFiles": 1
+          },
+          {
+            "id": 1618,
+            "name": "planProjects",
+            "at": "src/core/ts/projects.ts:348",
+            "siblingFiles": 1
+          }
+        ],
+        "more": 35
+      },
+      "testsPastInterface": {
+        "count": 7,
+        "rows": [
+          {
+            "id": 1600,
+            "name": "limits",
+            "at": "src/core/ts/projects.ts:206",
+            "testFiles": [
+              "test/ts.test.ts"
+            ]
+          },
+          {
+            "id": 1707,
+            "name": "REF",
+            "at": "src/core/ts/store.ts:11",
+            "testFiles": [
+              "test/ts.test.ts"
+            ]
+          },
+          {
+            "id": 1733,
+            "name": "SymbolStore",
+            "at": "src/core/ts/store.ts:87",
+            "testFiles": [
+              "test/ts.test.ts"
+            ]
+          },
+          {
+            "id": 1754,
+            "name": "SymbolStore.add",
+            "at": "src/core/ts/store.ts:124",
+            "testFiles": [
+              "test/ts.test.ts"
+            ]
+          },
+          {
+            "id": 1758,
+            "name": "RefStore",
+            "at": "src/core/ts/store.ts:162",
+            "testFiles": [
+              "test/ts.test.ts"
+            ]
+          },
+          {
+            "id": 1768,
+            "name": "RefStore.push",
+            "at": "src/core/ts/store.ts:173",
+            "testFiles": [
+              "test/ts.test.ts"
+            ]
+          },
+          {
+            "id": 1847,
+            "name": "buildTables",
+            "at": "src/core/ts/tables.ts:23",
+            "testFiles": [
+              "test/ts.test.ts"
+            ]
+          }
+        ]
+      },
+      "testFiles": [
+        "test/ts.test.ts"
+      ],
+      "unusedExports": {
+        "count": 5,
+        "rows": [
+          "Plan (src/core/ts/projects.ts:25)",
+          "Screened (src/core/ts/projects.ts:56)",
+          "ProjectCache (src/core/ts/resolve.ts:47)",
+          "NewSymbol (src/core/ts/store.ts:69)",
+          "Tables (src/core/ts/tables.ts:13)"
+        ]
+      },
+      "relays": [],
+      "adapters": [],
+      "interfacesWithoutDeclaredAdapters": 14,
+      "locality": {
+        "commits": 6,
+        "sweepWidth": 55,
+        "sweeps": 2,
+        "spread": 5.5,
+        "spreadBasis": 4,
+        "leaving": 1,
+        "alsoTouchOutside": 4,
+        "changesWith": [
+          {
+            "dir": "scripts",
+            "commits": 3
+          },
+          {
+            "dir": "src/core",
+            "commits": 3
+          },
+          {
+            "dir": "src/core/git",
+            "commits": 3
+          },
+          {
+            "dir": "src/core/imports",
+            "commits": 3
+          },
+          {
+            "dir": "src/core/languages",
+            "commits": 3
+          },
+          {
+            "dir": "src/cli",
+            "commits": 2
+          },
+          {
+            "dir": "src/shared",
+            "commits": 2
+          },
+          {
+            "dir": "bin",
+            "commits": 1
+          }
+        ],
+        "coChange": []
+      },
+      "notes": [
+        "interface = symbols code outside uses; external package imports are not in the report, so read the module's import statements for its dependency categories"
+      ]
+    }
+  },
+  {
+    "name": "symbol",
+    "args": {
+      "path": "src/core/ts/index.ts",
+      "line": 53
+    },
+    "ms": 0.19812500000011823,
+    "isError": true,
+    "data": [
+      {
+        "type": "text",
+        "text": "pass a symbol id or name"
+      }
+    ]
+  },
+  {
+    "name": "close",
+    "args": {},
+    "ms": 0.2911670000000868,
+    "isError": false,
+    "data": {
+      "closed": "starchart"
+    }
+  }
+]

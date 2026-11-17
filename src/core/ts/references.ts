@@ -19,6 +19,7 @@ import {
   commonJsTarget,
   headerText,
   isAssignmentOperator,
+  isFunctionLike,
   isRequireCall,
   NodeFlags,
   SyntaxKind as K,
@@ -120,6 +121,9 @@ export function walkReferences(sf: TsSourceFile, decls: FileDecls, store: Symbol
     let inType = types.pop()!;
     const k = n.kind;
 
+    // Locals are not recorded symbols, but their decisions still stop at their own body.
+    // Preserve the enclosing caller for references; only complexity loses its recipient.
+    if (isFunctionLike(n) || k === K.ClassStaticBlockDeclaration) fn = -1;
     const own = decls.scopes.get(n.index);
     if (own !== undefined) {
       sym = own;

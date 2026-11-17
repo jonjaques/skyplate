@@ -1,0 +1,201 @@
+{
+  "paths": [
+    "packages/app/src/index.ts",
+    "packages/app/tsconfig.json",
+    "packages/lib/src/index.ts",
+    "packages/lib/tsconfig.json",
+    "tsconfig.base.json",
+    "tsconfig.json"
+  ],
+  "symbols": {
+    "engine": {
+      "name": "typescript",
+      "version": "7.0.2"
+    },
+    "projects": [
+      {
+        "config": "packages/app/tsconfig.json",
+        "files": 1,
+        "ms": 4
+      },
+      {
+        "config": "packages/lib/tsconfig.json",
+        "files": 1,
+        "ms": 1
+      }
+    ],
+    "symbols": {
+      "name": [
+        "index.ts",
+        "app",
+        "index.ts",
+        "referenced"
+      ],
+      "kind": [
+        "module",
+        "function",
+        "module",
+        "function"
+      ],
+      "file": [
+        0,
+        0,
+        2,
+        2
+      ],
+      "line": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "col": [
+        0,
+        53,
+        0,
+        16
+      ],
+      "endLine": [
+        1,
+        0,
+        1,
+        0
+      ],
+      "parent": [
+        -1,
+        -1,
+        -1,
+        -1
+      ],
+      "flags": [
+        0,
+        2049,
+        0,
+        1
+      ],
+      "signature": [
+        "",
+        "() => number",
+        "",
+        "(x: number) => number"
+      ],
+      "doc": [
+        "",
+        "",
+        "",
+        ""
+      ],
+      "complexity": [
+        0,
+        1,
+        0,
+        1
+      ],
+      "params": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "refs": [
+        0,
+        0,
+        0,
+        2
+      ],
+      "callers": [
+        0,
+        0,
+        0,
+        1
+      ],
+      "files": [
+        0,
+        0,
+        0,
+        1
+      ]
+    },
+    "refs": {
+      "symbol": [
+        3,
+        3
+      ],
+      "file": [
+        0,
+        0
+      ],
+      "line": [
+        0,
+        0
+      ],
+      "col": [
+        8,
+        66
+      ],
+      "len": [
+        10,
+        10
+      ],
+      "kind": [
+        6,
+        2
+      ],
+      "from": [
+        0,
+        1
+      ]
+    },
+    "calls": {
+      "from": [
+        0,
+        1
+      ],
+      "to": [
+        3,
+        3
+      ],
+      "kind": [
+        6,
+        2
+      ],
+      "count": [
+        1,
+        1
+      ]
+    },
+    "fileRefStart": [
+      0,
+      2,
+      2,
+      2,
+      2,
+      2,
+      2
+    ],
+    "moduleSymbol": [
+      0,
+      -1,
+      2,
+      -1,
+      -1,
+      -1
+    ],
+    "stats": {
+      "files": 2,
+      "symbols": 4,
+      "references": 2,
+      "unresolved": 0,
+      "unusedExports": 1,
+      "truncated": 0,
+      "ms": 33
+    }
+  },
+  "logs": [
+    "TypeScript: skipping tsconfig.base.json (a base config other configs extend)",
+    "TypeScript: skipping tsconfig.json (a solution config with no files of its own)",
+    "TypeScript: 2 project(s), 2 files",
+    "TypeScript: packages/app/tsconfig.json: 1 files, 2 references, 4 ms",
+    "TypeScript: packages/lib/tsconfig.json: 1 files, 0 references, 1 ms"
+  ]
+}

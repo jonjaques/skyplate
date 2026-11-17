@@ -1,0 +1,162 @@
+[
+  {
+    "path": "middleware/path_rewrite_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "package middleware\n\nimport (\n\t\"net/http\"\n\t\"net/http/httptest\"\n\t\"testing\"\n\n\t\"github.com/go-chi/chi/v5\""
+  },
+  {
+    "path": "middleware/strip.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "package middleware\n\nimport (\n\t\"fmt\"\n\t\"net/http\"\n\t\"strings\"\n\n\t\"github.com/go-chi/chi/v5\""
+  },
+  {
+    "path": "middleware/route_headers_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "package middleware\n\nimport (\n\t\"net/http\"\n\t\"net/http/httptest\"\n\t\"sync/atomic\"\n\t\"testing\"\n)"
+  },
+  {
+    "path": "middleware/realip.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "package middleware\n\n// Ported from Goji's middleware, source:\n// https://github.com/zenazn/goji/tree/master/web/middleware\n\nimport (\n\t\"net\"\n\t\"net/http\""
+  },
+  {
+    "path": "middleware/timeout.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "package middleware\n\nimport (\n\t\"context\"\n\t\"net/http\"\n\t\"time\"\n)\n"
+  },
+  {
+    "path": "CONTRIBUTING.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "# Contributing\n\n## Prerequisites\n\n1. [Install Go][go-install].\n2. Download the sources and switch the working directory:\n\n    ```bash"
+  },
+  {
+    "path": "SECURITY.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "# Reporting Security Issues\n\nWe appreciate your efforts to responsibly disclose your findings, and will make every effort to acknowledge your contributions.\n\nTo report a security issue, please use the GitHub Security Advisory [\"Report a Vulnerability\"](https://github.com/go-chi/chi/security/advisories/new) tab.\n"
+  },
+  {
+    "path": "_examples/versions/go.sum",
+    "language": "go-checksums",
+    "category": "lockfile",
+    "generated": true,
+    "vendored": false,
+    "head": "github.com/ajg/form v1.5.1 h1:t9c7v8JUKu/XxOGBU0yjNpaMloxGEJhUkqFRq0ibGeU=\ngithub.com/ajg/form v1.5.1/go.mod h1:uL1WgH+h2mgNtvBq0339dVnzXdBETtL2LeUXaIv25UY=\ngithub.com/go-chi/chi/v5 v5.1.0 h1:acVI1TYaD+hhedDJ3r54HyA6sExp3HfXq7QWEEY/xMw=\ngithub.com/go-chi/chi/v5 v5.1.0/go.mod h1:DslCQbL2OYiznFReuXYUmQ2hGd1aDpCnlMNITLSKoi8=\ngithub.com/go-chi/render v1.0.3 h1:AsXqd2a1/INaIfUSKq3G5uA8weYx20FOsM7uSoCyyt4=\ngithub.com/go-chi/render v1.0.3/go.mod h1:/gr3hVkmYR0YlEy3LxCuVRFzEu9Ruok+gFqbIofjao0=\n"
+  },
+  {
+    "path": "middleware/wrap_writer_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "package middleware\n\nimport (\n\t\"bytes\"\n\t\"io\"\n\t\"net/http\"\n\t\"net/http/httptest\"\n\t\"strings\""
+  },
+  {
+    "path": "middleware/sunset.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "package middleware\n\nimport (\n\t\"net/http\"\n\t\"time\"\n)\n\n// Sunset announces when a route will stop working, per RFC 8594."
+  },
+  {
+    "path": "_examples/versions/go.mod",
+    "language": "go-module",
+    "category": "config",
+    "generated": false,
+    "vendored": false,
+    "head": "module versions\n\ngo 1.16\n\nrequire (\n\tgithub.com/go-chi/chi/v5 v5.1.0\n\tgithub.com/go-chi/render v1.0.3\n)"
+  },
+  {
+    "path": "CHANGELOG.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "# Changelog\n\n## v5.0.12 (2024-02-16)\n\n- History of changes: see https://github.com/go-chi/chi/compare/v5.0.11...v5.0.12\n\n\n## v5.0.11 (2023-12-19)"
+  },
+  {
+    "path": "chain.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "package chi\n\nimport \"net/http\"\n\n// Chain returns a Middlewares type from a slice of middleware handlers.\nfunc Chain(middlewares ...func(http.Handler) http.Handler) Middlewares {\n\treturn Middlewares(middlewares)\n}"
+  },
+  {
+    "path": ".github/FUNDING.yml",
+    "language": "yaml",
+    "category": "config",
+    "generated": false,
+    "vendored": false,
+    "head": "# These are supported funding model platforms\n\ngithub: [pkieltyka] # Replace with up to 4 GitHub Sponsors-enabled usernames e.g., [user1, user2]\npatreon: # Replace with a single Patreon username\nopen_collective: # Replace with a single Open Collective username\nko_fi: # Replace with a single Ko-fi username\ntidelift: # Replace with a single Tidelift platform-name/package-name e.g., npm/babel\ncommunity_bridge: # Replace with a single Community Bridge project-name e.g., cloud-foundry"
+  },
+  {
+    "path": "middleware/client_ip_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "package middleware\n\nimport (\n\t\"net/http\"\n\t\"net/http/httptest\"\n\t\"net/netip\"\n\t\"testing\"\n"
+  },
+  {
+    "path": "_examples/todos-resource/todos.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "package main\n\nimport (\n\t\"net/http\"\n\n\t\"github.com/go-chi/chi/v5\"\n)\n"
+  },
+  {
+    "path": "README.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "# <img alt=\"chi\" src=\"https://cdn.rawgit.com/go-chi/chi/master/_examples/chi.svg\" width=\"220\" />\n\n\n[![GoDoc Widget]][GoDoc]\n\n`chi` is a lightweight, idiomatic and composable router for building Go HTTP services. It's\nespecially good at helping you write large REST API services that are kept maintainable as your\nproject grows and changes. `chi` is built on the new `context` package introduced in Go 1.7 to"
+  },
+  {
+    "path": "context_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "package chi\n\nimport (\n\t\"context\"\n\t\"testing\"\n)\n\n// TestRoutePattern tests correct in-the-middle wildcard removals."
+  },
+  {
+    "path": "middleware/request_size.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "package middleware\n\nimport (\n\t\"net/http\"\n)\n\n// RequestSize is a middleware that will limit request sizes to a specified\n// number of bytes. It uses MaxBytesReader to do so."
+  },
+  {
+    "path": "pattern_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "package chi\n\nimport (\n\t\"net/http\"\n\t\"net/http/httptest\"\n\t\"testing\"\n)\n"
+  }
+]

@@ -1,0 +1,410 @@
+[
+  {
+    "path": "_examples/todos-resource/todos.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 5,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/request_id_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 8,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/content_type_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 8,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "_examples/versions/main.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 12,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "_examples/graceful/main.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5/middleware",
+    "kind": "import",
+    "line": 13,
+    "status": "internal",
+    "to": "middleware/middleware.go",
+    "also": [
+      "middleware/basic_auth.go",
+      "middleware/clean_path.go",
+      "middleware/client_ip.go",
+      "middleware/compress.go",
+      "middleware/content_charset.go",
+      "middleware/content_encoding.go",
+      "middleware/content_type.go",
+      "middleware/deprecation.go",
+      "middleware/get_head.go",
+      "middleware/heartbeat.go",
+      "middleware/logger.go",
+      "middleware/maybe.go",
+      "middleware/nocache.go",
+      "middleware/page_route.go",
+      "middleware/path_rewrite.go",
+      "middleware/profiler.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/clean_path.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 6,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/strip.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 7,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/get_head.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 5,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/heartbeat_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 7,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "_examples/versions/presenter/v2/article.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5/_examples/versions/data",
+    "kind": "import",
+    "line": 6,
+    "status": "internal",
+    "to": "_examples/versions/data/article.go",
+    "also": [
+      "_examples/versions/data/errors.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/supress_notfound.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 5,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/request_size_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 10,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "_examples/versions/main.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5/_examples/versions/presenter/v2",
+    "kind": "import",
+    "line": 15,
+    "status": "internal",
+    "to": "_examples/versions/presenter/v2/article.go",
+    "also": [],
+    "self": false
+  },
+  {
+    "path": "_examples/custom-method/main.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5/middleware",
+    "kind": "import",
+    "line": 6,
+    "status": "internal",
+    "to": "middleware/middleware.go",
+    "also": [
+      "middleware/basic_auth.go",
+      "middleware/clean_path.go",
+      "middleware/client_ip.go",
+      "middleware/compress.go",
+      "middleware/content_charset.go",
+      "middleware/content_encoding.go",
+      "middleware/content_type.go",
+      "middleware/deprecation.go",
+      "middleware/get_head.go",
+      "middleware/heartbeat.go",
+      "middleware/logger.go",
+      "middleware/maybe.go",
+      "middleware/nocache.go",
+      "middleware/page_route.go",
+      "middleware/path_rewrite.go",
+      "middleware/profiler.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "_examples/fileserver/main.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5/middleware",
+    "kind": "import",
+    "line": 24,
+    "status": "internal",
+    "to": "middleware/middleware.go",
+    "also": [
+      "middleware/basic_auth.go",
+      "middleware/clean_path.go",
+      "middleware/client_ip.go",
+      "middleware/compress.go",
+      "middleware/content_charset.go",
+      "middleware/content_encoding.go",
+      "middleware/content_type.go",
+      "middleware/deprecation.go",
+      "middleware/get_head.go",
+      "middleware/heartbeat.go",
+      "middleware/logger.go",
+      "middleware/maybe.go",
+      "middleware/nocache.go",
+      "middleware/page_route.go",
+      "middleware/path_rewrite.go",
+      "middleware/profiler.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/get_head_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 7,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "_examples/todos-resource/main.go",
+    "language": "go",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 9,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/url_format_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 7,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/client_ip_example_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 7,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  },
+  {
+    "path": "middleware/strip_test.go",
+    "language": "go",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "spec": "github.com/go-chi/chi/v5",
+    "kind": "import",
+    "line": 9,
+    "status": "internal",
+    "to": "chain.go",
+    "also": [
+      "chi.go",
+      "context.go",
+      "mux.go",
+      "tree.go"
+    ],
+    "self": false
+  }
+]

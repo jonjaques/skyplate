@@ -1,0 +1,192 @@
+[
+  {
+    "name": "open",
+    "args": {
+      "path": ".",
+      "watch": false,
+      "wait_seconds": 120
+    },
+    "ms": 110.319083,
+    "isError": false,
+    "data": {
+      "project": {
+        "id": "pagination",
+        "kind": "live",
+        "path": ".",
+        "name": "pagination",
+        "state": "ready",
+        "files": 1,
+        "analyzed": "2026-11-17T16:24:21.858Z",
+        "watching": "no (not started)"
+      },
+      "overview": {
+        "project": {
+          "name": "pagination",
+          "root": ".",
+          "generatedAt": "2026-11-17T16:24:21.858Z",
+          "tool": "skyplate 0.2.0"
+        },
+        "totals": {
+          "files": 1,
+          "dirs": 1,
+          "lines": 3001,
+          "code": 3001,
+          "comment": 0,
+          "bytes": 24024,
+          "generated": 0,
+          "vendored": 0,
+          "binary": 0,
+          "ignored": 0
+        },
+        "languages": [
+          {
+            "name": "TypeScript",
+            "files": 1,
+            "code": 3001,
+            "share": 1
+          }
+        ],
+        "categories": [
+          {
+            "category": "code",
+            "files": 1,
+            "lines": 3001
+          }
+        ],
+        "structure": {
+          "importEdges": 0,
+          "resolvedImports": 0,
+          "externalImports": 0,
+          "unresolvedImports": 0,
+          "cycles": 0,
+          "modules": 0,
+          "externals": 0,
+          "manifests": []
+        },
+        "codeIntelligence": {
+          "engine": "typescript 7.0.2",
+          "files": 1,
+          "symbols": 2,
+          "references": 3000,
+          "unresolved": 0,
+          "unusedExports": 1,
+          "unresolvedShare": 0
+        },
+        "stats": {
+          "medianLinesPerFile": 3001,
+          "p90LinesPerFile": 3001,
+          "medianComplexity": 1,
+          "p90Complexity": 1,
+          "commentRatio": 0,
+          "testRatio": 0,
+          "duplicateGroups": 0
+        },
+        "hotspots": [],
+        "hubs": [],
+        "findings": [
+          "[notice] 1 file exceeds 1,000 lines of code; the largest is x.ts (3,001) (large-files)",
+          "[info] 1 exported symbol is never used outside its own file (unused-exports)",
+          "[info] many is the most widely used symbol: 3,000 references from 1 file (most-referenced)"
+        ]
+      },
+      "next": {
+        "tool": "map_codebase",
+        "arguments": {
+          "project": "pagination"
+        }
+      }
+    }
+  },
+  {
+    "name": "status",
+    "args": {
+      "project": ".",
+      "wait_seconds": 45
+    },
+    "ms": 0.6574170000000095,
+    "isError": false,
+    "data": {
+      "id": "pagination",
+      "kind": "live",
+      "path": ".",
+      "name": "pagination",
+      "state": "ready",
+      "files": 1,
+      "analyzed": "2026-11-17T16:24:21.858Z",
+      "watching": "no (not started)"
+    }
+  },
+  {
+    "name": "symbol",
+    "args": {
+      "project": ".",
+      "name": "many",
+      "limit": 500,
+      "references_offset": 0
+    },
+    "ms": 3.2722909999999956,
+    "isError": false,
+    "data": {
+      "references": {
+        "total": 3000,
+        "stored": 3000,
+        "more": 500,
+        "nextOffset": 2500
+      },
+      "returned": 2500,
+      "first": "x.ts:2:1 call",
+      "last": "x.ts:2501:1 call",
+      "locationsSha256": "487a19b58422789b185392c6d9562e70f0787a93accc0cbc9df62f7dd696bda9"
+    }
+  },
+  {
+    "name": "symbol",
+    "args": {
+      "project": ".",
+      "name": "many",
+      "limit": 500,
+      "references_offset": 2500
+    },
+    "ms": 1.1379590000000235,
+    "isError": false,
+    "data": {
+      "references": {
+        "total": 3000,
+        "stored": 3000,
+        "offset": 2500
+      },
+      "returned": 500,
+      "first": "x.ts:2502:1 call",
+      "last": "x.ts:3001:1 call",
+      "locationsSha256": "9a5c8fc2c726aa47551788621ee0696eaf1ab73cc58e6b37faf96a2f1be44cff"
+    }
+  },
+  {
+    "name": "symbol",
+    "args": {
+      "project": ".",
+      "name": "many",
+      "limit": 500,
+      "offset": 2500
+    },
+    "ms": 0.40491700000001174,
+    "isError": true,
+    "data": [
+      {
+        "type": "text",
+        "text": "Input validation error: Invalid arguments for tool symbol: unknown argument \"offset\"; this tool takes: project, id, name, path, kind, references, impact_depth, references_offset, limit, wait_seconds"
+      }
+    ]
+  },
+  {
+    "name": "close",
+    "args": {
+      "project": "."
+    },
+    "ms": 0.3824999999999932,
+    "isError": false,
+    "data": {
+      "closed": "pagination"
+    }
+  }
+]

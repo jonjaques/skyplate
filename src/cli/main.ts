@@ -69,6 +69,10 @@ export async function main(argv: string[]): Promise<number> {
       const { runMcp } = await import("../mcp/main");
       return await runMcp(cmd);
     }
+    if (cmd.kind === "bench" || cmd.kind === "synthesize") {
+      const { benchCommand } = await import("./bench");
+      return await benchCommand(cmd);
+    }
     return await analyzeCommand(cmd);
   } catch (e) {
     if (e instanceof UsageError) {

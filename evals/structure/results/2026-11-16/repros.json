@@ -1,0 +1,380 @@
+[
+  {
+    "name": "python-submodule",
+    "files": {
+      "pkg/__init__.py": "",
+      "pkg/child.py": "VALUE=1",
+      "app.py": "from pkg import child\n"
+    },
+    "result": [
+      {
+        "spec": "pkg",
+        "kind": "import",
+        "line": 0,
+        "file": 1,
+        "target": "pkg/__init__.py"
+      }
+    ],
+    "manifests": {
+      "manifests": [],
+      "dependencies": []
+    },
+    "entries": []
+  },
+  {
+    "name": "python-namespace",
+    "files": {
+      "src/acme/util.py": "VALUE=1",
+      "src/acme/app.py": "from acme import util\n"
+    },
+    "result": [
+      {
+        "spec": "acme",
+        "kind": "import",
+        "line": 0,
+        "external": {
+          "name": "acme",
+          "ecosystem": "pypi"
+        }
+      }
+    ],
+    "manifests": {
+      "manifests": [],
+      "dependencies": []
+    },
+    "entries": []
+  },
+  {
+    "name": "rust-custom-bin",
+    "files": {
+      "Cargo.toml": "[package]\nname=\"demo\"\nversion=\"0.1.0\"\n[[bin]]\nname=\"demo\"\npath=\"cli/main.rs\"\n",
+      "cli/main.rs": "mod helper;\nuse crate::helper::run;\nfn main(){run()}\n",
+      "cli/helper.rs": "pub fn run(){}"
+    },
+    "result": [
+      {
+        "spec": "helper",
+        "kind": "include",
+        "line": 0,
+        "unresolved": true
+      },
+      {
+        "spec": "crate::helper::run",
+        "kind": "import",
+        "line": 1,
+        "unresolved": true
+      }
+    ],
+    "manifests": {
+      "manifests": [
+        {
+          "path": "Cargo.toml",
+          "kind": "Cargo.toml",
+          "ecosystem": "cargo",
+          "name": "demo",
+          "version": "0.1.0",
+          "dependencies": 0
+        }
+      ],
+      "dependencies": []
+    },
+    "entries": []
+  },
+  {
+    "name": "jvm-no-explicit-import",
+    "files": {
+      "src/main/java/demo/A.java": "package demo; class A { B value; }",
+      "src/main/java/demo/B.java": "package demo; class B {}"
+    },
+    "result": [],
+    "manifests": {
+      "manifests": [],
+      "dependencies": []
+    },
+    "entries": []
+  },
+  {
+    "name": "jvm-coordinate",
+    "files": {
+      "pom.xml": "<project><dependencies><dependency><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId><version>2.0.0</version></dependency></dependencies></project>",
+      "src/A.java": "import org.slf4j.Logger;\nclass A {}"
+    },
+    "result": [
+      {
+        "spec": "org.slf4j.Logger",
+        "kind": "import",
+        "line": 0,
+        "external": {
+          "name": "org.slf4j.Logger",
+          "ecosystem": "maven"
+        }
+      }
+    ],
+    "manifests": {
+      "manifests": [
+        {
+          "path": "pom.xml",
+          "kind": "pom.xml",
+          "ecosystem": "maven",
+          "dependencies": 1
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "org.slf4j:slf4j-api",
+          "ecosystem": "maven",
+          "version": "2.0.0",
+          "declaredIn": [
+            "pom.xml"
+          ],
+          "scope": "runtime",
+          "importers": 0
+        }
+      ]
+    },
+    "entries": []
+  },
+  {
+    "name": "python-dist-name",
+    "files": {
+      "pyproject.toml": "[project]\nname=\"app\"\nversion=\"0.1\"\ndependencies=[\"PyYAML\"]\n",
+      "app.py": "import yaml\n"
+    },
+    "result": [
+      {
+        "spec": "yaml",
+        "kind": "import",
+        "line": 0,
+        "external": {
+          "name": "yaml",
+          "ecosystem": "pypi"
+        }
+      }
+    ],
+    "manifests": {
+      "manifests": [
+        {
+          "path": "pyproject.toml",
+          "kind": "pyproject.toml",
+          "ecosystem": "pypi",
+          "name": "app",
+          "version": "0.1",
+          "dependencies": 1
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "pyyaml",
+          "ecosystem": "pypi",
+          "declaredIn": [
+            "pyproject.toml"
+          ],
+          "scope": "runtime",
+          "importers": 0
+        }
+      ]
+    },
+    "entries": []
+  },
+  {
+    "name": "go-cap",
+    "files": {
+      "go.mod": "module example.com/test\ngo 1.23\n",
+      "app/main.go": "package main\nimport \"example.com/test/pkg\"\nfunc main(){}",
+      "pkg/f00.go": "package pkg\n",
+      "pkg/f01.go": "package pkg\n",
+      "pkg/f02.go": "package pkg\n",
+      "pkg/f03.go": "package pkg\n",
+      "pkg/f04.go": "package pkg\n",
+      "pkg/f05.go": "package pkg\n",
+      "pkg/f06.go": "package pkg\n",
+      "pkg/f07.go": "package pkg\n",
+      "pkg/f08.go": "package pkg\n",
+      "pkg/f09.go": "package pkg\n",
+      "pkg/f10.go": "package pkg\n",
+      "pkg/f11.go": "package pkg\n",
+      "pkg/f12.go": "package pkg\n",
+      "pkg/f13.go": "package pkg\n",
+      "pkg/f14.go": "package pkg\n",
+      "pkg/f15.go": "package pkg\n",
+      "pkg/f16.go": "package pkg\n",
+      "pkg/f17.go": "package pkg\n",
+      "pkg/f18.go": "package pkg\n",
+      "pkg/f19.go": "package pkg\n",
+      "pkg/f20.go": "package pkg\n",
+      "pkg/f21.go": "package pkg\n",
+      "pkg/f22.go": "package pkg\n",
+      "pkg/f23.go": "package pkg\n"
+    },
+    "result": [
+      {
+        "spec": "example.com/test/pkg",
+        "kind": "import",
+        "line": 1,
+        "file": 2,
+        "also": [
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18
+        ],
+        "target": "pkg/f00.go",
+        "siblings": [
+          "pkg/f01.go",
+          "pkg/f02.go",
+          "pkg/f03.go",
+          "pkg/f04.go",
+          "pkg/f05.go",
+          "pkg/f06.go",
+          "pkg/f07.go",
+          "pkg/f08.go",
+          "pkg/f09.go",
+          "pkg/f10.go",
+          "pkg/f11.go",
+          "pkg/f12.go",
+          "pkg/f13.go",
+          "pkg/f14.go",
+          "pkg/f15.go",
+          "pkg/f16.go"
+        ]
+      }
+    ],
+    "manifests": {
+      "manifests": [
+        {
+          "path": "go.mod",
+          "kind": "go.mod",
+          "ecosystem": "go",
+          "name": "example.com/test",
+          "dependencies": 0
+        }
+      ],
+      "dependencies": []
+    },
+    "entries": []
+  },
+  {
+    "name": "c-extensionless",
+    "files": {
+      "main.c": "#include <projectheader>\n",
+      "include/projectheader": "typedef int Value;"
+    },
+    "result": [
+      {
+        "spec": "<projectheader>",
+        "kind": "include",
+        "line": 0,
+        "external": {
+          "name": "projectheader",
+          "ecosystem": "system"
+        }
+      }
+    ],
+    "manifests": {
+      "manifests": [],
+      "dependencies": []
+    },
+    "entries": []
+  },
+  {
+    "name": "c-search-order",
+    "files": {
+      "src/main.c": "#include \"api.h\"\n",
+      "src/unrelated/api.h": "",
+      "include/api.h": ""
+    },
+    "result": [
+      {
+        "spec": "api.h",
+        "kind": "include",
+        "line": 0,
+        "file": 2,
+        "target": "src/unrelated/api.h"
+      }
+    ],
+    "manifests": {
+      "manifests": [],
+      "dependencies": []
+    },
+    "entries": []
+  },
+  {
+    "name": "known-graph",
+    "graph": {
+      "fanIn": [
+        0,
+        2,
+        2,
+        0
+      ],
+      "fanOut": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "rank": [
+        0.08108108108108109,
+        1,
+        1,
+        0.08108108108108109
+      ],
+      "cycle": [
+        -1,
+        0,
+        0,
+        -1
+      ],
+      "summary": {
+        "edges": 4,
+        "connected": 4,
+        "cycles": [
+          {
+            "id": 0,
+            "files": [
+              1,
+              2
+            ]
+          }
+        ],
+        "modules": [
+          {
+            "dir": 1,
+            "ca": 0,
+            "ce": 2,
+            "instability": 1
+          },
+          {
+            "dir": 2,
+            "ca": 2,
+            "ce": 0,
+            "instability": 0
+          }
+        ],
+        "moduleMatrix": [
+          [
+            0,
+            2
+          ],
+          [
+            0,
+            2
+          ]
+        ],
+        "moduleDepth": 1
+      }
+    }
+  }
+]

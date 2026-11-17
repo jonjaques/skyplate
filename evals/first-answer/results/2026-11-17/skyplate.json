@@ -1,0 +1,72 @@
+{
+  "analyzerCommit": "e4b548cb3e71dc1c3edc3479b9f596a18c14dc3a",
+  "inputCommit": "e4b548cb3e71dc1c3edc3479b9f596a18c14dc3a",
+  "bun": "1.4.4",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "query": "benchmark privacy",
+  "coldProcess": true,
+  "cacheState": "OS and filesystem caches uncontrolled",
+  "calls": [
+    {
+      "tool": "map_codebase",
+      "callMs": 1606.697959,
+      "sinceStartMs": 1663.484541,
+      "partial": false,
+      "state": null
+    },
+    {
+      "tool": "locate_code",
+      "callMs": 5.422041000000036,
+      "sinceStartMs": 1668.9488330000001,
+      "partial": false,
+      "state": null
+    },
+    {
+      "tool": "history",
+      "callMs": 0.7941670000000158,
+      "sinceStartMs": 1669.74925,
+      "partial": false,
+      "state": null
+    },
+    {
+      "tool": "status",
+      "callMs": 0.3396660000000793,
+      "sinceStartMs": 1670.091458,
+      "partial": false,
+      "state": "ready"
+    }
+  ],
+  "firstMap": {
+    "tool": "map_codebase",
+    "callMs": 1606.697959,
+    "sinceStartMs": 1663.484541,
+    "partial": false,
+    "state": null
+  },
+  "firstLocate": {
+    "tool": "locate_code",
+    "callMs": 5.422041000000036,
+    "sinceStartMs": 1668.9488330000001,
+    "partial": false,
+    "state": null
+  },
+  "historyState": "ready",
+  "firstStatus": {
+    "state": "ready",
+    "partial": false,
+    "files": 510,
+    "job": null
+  },
+  "fullReadyObservedMs": 1670.1179160000002,
+  "stoppedAfterFirst": false,
+  "shutdown": {
+    "exitCode": 0,
+    "clean": true,
+    "forced": false,
+    "ms": 14.994042000000036,
+    "stderrBytes": 0,
+    "protocolError": null
+  },
+  "failure": null
+}

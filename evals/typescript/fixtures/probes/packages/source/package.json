@@ -1,0 +1,1 @@
+{"name":"@probe/source","type":"module","exports":{"source":"./src/index.ts","default":"./dist/index.js"}}

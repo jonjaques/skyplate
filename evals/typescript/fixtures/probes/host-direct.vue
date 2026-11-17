@@ -1,0 +1,1 @@
+<script setup lang="ts">import {aliasOnly} from './alias-only'; aliasOnly();</script><template><div/></template>

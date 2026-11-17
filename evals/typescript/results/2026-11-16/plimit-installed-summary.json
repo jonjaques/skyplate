@@ -1,0 +1,25 @@
+{
+  "root": ".",
+  "paths": 17,
+  "candidates": 6,
+  "configs": 0,
+  "elapsed": 122.29983399999999,
+  "rss": 42288,
+  "stats": {
+    "files": 6,
+    "symbols": 38,
+    "references": 139,
+    "unresolved": 116,
+    "unusedExports": 4,
+    "truncated": 0,
+    "ms": 122
+  },
+  "projects": [
+    {
+      "config": "",
+      "files": 6,
+      "ms": 55
+    }
+  ],
+  "logs": []
+}

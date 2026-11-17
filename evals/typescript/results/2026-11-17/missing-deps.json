@@ -1,0 +1,410 @@
+{
+  "report": {
+    "schemaVersion": 2,
+    "tool": {
+      "name": "skyplate",
+      "version": "0.2.0"
+    },
+    "generatedAt": "2026-11-17T16:24:21.835Z",
+    "timings": {
+      "walk": 4,
+      "detect": 12,
+      "files": 2,
+      "imports": 1,
+      "graph": 0,
+      "layout": 1,
+      "typescript": 26,
+      "stats": 0,
+      "findings": 0,
+      "total": 42
+    },
+    "project": {
+      "name": "missing-deps",
+      "root": "."
+    },
+    "options": {
+      "git": false,
+      "source": true,
+      "includeIgnored": false,
+      "maxCommits": 20000
+    },
+    "totals": {
+      "files": 2,
+      "dirs": 1,
+      "bytes": 122,
+      "lines": 2,
+      "code": 2,
+      "comment": 0,
+      "blank": 0,
+      "binaryFiles": 0,
+      "generatedFiles": 0,
+      "vendoredFiles": 0,
+      "ignored": 0,
+      "languages": 2
+    },
+    "languages": [
+      {
+        "id": "json",
+        "name": "JSON",
+        "type": "data",
+        "files": 1,
+        "bytes": 47,
+        "lines": 1,
+        "code": 1,
+        "comment": 0,
+        "blank": 0,
+        "slot": 0
+      },
+      {
+        "id": "typescript",
+        "name": "TypeScript",
+        "type": "programming",
+        "files": 1,
+        "bytes": 75,
+        "lines": 1,
+        "code": 1,
+        "comment": 0,
+        "blank": 0,
+        "slot": 1
+      }
+    ],
+    "categories": [
+      {
+        "category": "code",
+        "files": 1,
+        "bytes": 75,
+        "lines": 1
+      },
+      {
+        "category": "config",
+        "files": 1,
+        "bytes": 47,
+        "lines": 1
+      }
+    ],
+    "dirs": [
+      {
+        "id": 0,
+        "path": "",
+        "name": "missing-deps",
+        "parent": -1,
+        "depth": 0,
+        "dirs": [],
+        "files": [
+          0,
+          1
+        ],
+        "totalFiles": 2,
+        "totalBytes": 122,
+        "totalLines": 2,
+        "totalCode": 2,
+        "dominantLanguage": "typescript"
+      }
+    ],
+    "files": [
+      {
+        "id": 0,
+        "path": "index.ts",
+        "name": "index.ts",
+        "dir": 0,
+        "ext": "ts",
+        "language": "typescript",
+        "category": "code",
+        "detection": "heuristic",
+        "bytes": 75,
+        "binary": false,
+        "generated": false,
+        "vendored": false,
+        "minified": false,
+        "secret": false,
+        "lines": 1,
+        "code": 1,
+        "comment": 0,
+        "blank": 0,
+        "longestLine": 74,
+        "complexity": 1,
+        "maxDepth": 1,
+        "functions": 1,
+        "todos": 0,
+        "imports": 1,
+        "fanIn": 0,
+        "fanOut": 0,
+        "rank": 0,
+        "cycle": -1,
+        "hash": "a243d1ad52252b26",
+        "hotspot": 0,
+        "src": 0
+      },
+      {
+        "id": 1,
+        "path": "package.json",
+        "name": "package.json",
+        "dir": 0,
+        "ext": "json",
+        "language": "json",
+        "category": "config",
+        "detection": "heuristic",
+        "bytes": 47,
+        "binary": false,
+        "generated": false,
+        "vendored": false,
+        "minified": false,
+        "secret": false,
+        "lines": 1,
+        "code": 1,
+        "comment": 0,
+        "blank": 0,
+        "longestLine": 47,
+        "complexity": 0,
+        "maxDepth": 0,
+        "functions": 0,
+        "todos": 0,
+        "imports": 0,
+        "fanIn": 0,
+        "fanOut": 0,
+        "rank": 0,
+        "cycle": -1,
+        "hash": "80241671bda2b625",
+        "hotspot": 0,
+        "src": 0,
+        "facts": {
+          "keys": 2
+        }
+      }
+    ],
+    "edges": {
+      "from": [],
+      "to": [],
+      "kind": []
+    },
+    "graph": {
+      "edges": 0,
+      "connected": 0,
+      "cycles": [],
+      "modules": [],
+      "moduleMatrix": [],
+      "moduleDepth": 0,
+      "resolved": 0,
+      "external": 1,
+      "unresolved": 0
+    },
+    "externals": [
+      {
+        "name": "react",
+        "ecosystem": "npm",
+        "version": "^19",
+        "declaredIn": [
+          "package.json"
+        ],
+        "scope": "runtime",
+        "importers": 1
+      }
+    ],
+    "manifests": [
+      {
+        "path": "package.json",
+        "kind": "package.json",
+        "ecosystem": "npm",
+        "dependencies": 1
+      }
+    ],
+    "stats": {
+      "linesPerFile": {
+        "count": 1,
+        "sum": 1,
+        "min": 1,
+        "max": 1,
+        "mean": 1,
+        "median": 1,
+        "p90": 1,
+        "p99": 1,
+        "gini": 0,
+        "log2Bins": [
+          1
+        ]
+      },
+      "complexityPerFile": {
+        "count": 1,
+        "sum": 1,
+        "min": 1,
+        "max": 1,
+        "mean": 1,
+        "median": 1,
+        "p90": 1,
+        "p99": 1,
+        "gini": 0,
+        "log2Bins": [
+          1
+        ]
+      },
+      "commentRatio": 0,
+      "testRatio": 0,
+      "duplicates": []
+    },
+    "findings": [
+      {
+        "id": "unused-exports",
+        "severity": "info",
+        "title": "1 exported symbol is never used outside its own file",
+        "detail": "Of these, 1 is referenced nowhere at all. Dead exports widen the surface a change has to consider. Some may be public API used outside this repository; index.ts has the most (1).",
+        "files": [
+          0
+        ],
+        "metric": {
+          "label": "Unused exports",
+          "value": 1
+        }
+      }
+    ],
+    "layout": {
+      "graph": [
+        -1.28,
+        -0.65,
+        0.36,
+        2.37,
+        2.07,
+        0.11
+      ],
+      "radius": 3.15
+    },
+    "source": {
+      "chunks": [
+        "data/source/0000.js"
+      ],
+      "embedded": 2,
+      "skipped": {
+        "binary": 0,
+        "tooLarge": 0,
+        "overBudget": 0,
+        "disabled": 0
+      },
+      "maxFileBytes": 524288,
+      "maxTotalBytes": 67108864
+    },
+    "symbols": {
+      "url": "data/symbols.js",
+      "engine": {
+        "name": "typescript",
+        "version": "7.0.2"
+      },
+      "stats": {
+        "files": 1,
+        "symbols": 2,
+        "references": 0,
+        "unresolved": 2,
+        "unusedExports": 1,
+        "truncated": 0,
+        "ms": 26
+      }
+    },
+    "warnings": []
+  },
+  "symbols": {
+    "engine": {
+      "name": "typescript",
+      "version": "7.0.2"
+    },
+    "projects": [
+      {
+        "config": "",
+        "files": 1,
+        "ms": 1
+      }
+    ],
+    "symbols": {
+      "name": [
+        "index.ts",
+        "state"
+      ],
+      "kind": [
+        "module",
+        "function"
+      ],
+      "file": [
+        0,
+        0
+      ],
+      "line": [
+        0,
+        0
+      ],
+      "col": [
+        0,
+        47
+      ],
+      "endLine": [
+        1,
+        0
+      ],
+      "parent": [
+        -1,
+        -1
+      ],
+      "flags": [
+        0,
+        2049
+      ],
+      "signature": [
+        "",
+        "() => any"
+      ],
+      "doc": [
+        "",
+        ""
+      ],
+      "complexity": [
+        0,
+        1
+      ],
+      "params": [
+        0,
+        0
+      ],
+      "refs": [
+        0,
+        0
+      ],
+      "callers": [
+        0,
+        0
+      ],
+      "files": [
+        0,
+        0
+      ]
+    },
+    "refs": {
+      "symbol": [],
+      "file": [],
+      "line": [],
+      "col": [],
+      "len": [],
+      "kind": [],
+      "from": []
+    },
+    "calls": {
+      "from": [],
+      "to": [],
+      "kind": [],
+      "count": []
+    },
+    "fileRefStart": [
+      0,
+      0,
+      0
+    ],
+    "moduleSymbol": [
+      0,
+      -1
+    ],
+    "stats": {
+      "files": 1,
+      "symbols": 2,
+      "references": 0,
+      "unresolved": 2,
+      "unusedExports": 1,
+      "truncated": 0,
+      "ms": 26
+    }
+  }
+}

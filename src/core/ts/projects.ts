@@ -8,6 +8,7 @@
  * index, not by project.
  */
 
+import type { DiagnosticCode } from "../bench/diagnostics";
 import type { ChildProcess } from "node:child_process";
 import { readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
@@ -75,7 +76,7 @@ export interface Screened {
  * `tsconfig.json` / `jsconfig.json` are kept even when extended: editors treat them as real.
  * A third kind is dropped because opening it hangs the compiler: see Screened.hidden.
  */
-export function screenConfigs(root: string, configs: string[], log: (m: string) => void): Screened {
+export function screenConfigs(root: string, configs: string[], log: (m: string, code?: DiagnosticCode, count?: number) => void): Screened {
   const parsed = new Map<string, Record<string, unknown>>();
   const extended = new Set<string>();
   for (const rel of configs) {
@@ -85,10 +86,10 @@ export function screenConfigs(root: string, configs: string[], log: (m: string) 
     try {
       text = readFileSync(abs, "utf8");
     } catch (e) {
-      log(`TypeScript: skipping ${rel}: ${message(e)}`);
+      log(`TypeScript: skipping ${rel}: ${message(e)}`, "ts_config_unreadable");
       continue;
     }
-    const json = parseConfig(text);
+    const json = parseConfig(text, () => log(`TypeScript: ${rel} is not valid JSONC; left to the compiler to read`, "ts_config_invalid"));
     parsed.set(abs, json);
     for (const e of extendsSpecs(json)) {
       if (e.startsWith(".") || isAbsolute(e)) extended.add(extendsPath(abs, e) ?? resolve(dirname(abs), e));
@@ -99,15 +100,15 @@ export function screenConfigs(root: string, configs: string[], log: (m: string) 
   for (const [abs, json] of parsed) {
     const name = basename(abs);
     if (hidden.has(abs)) {
-      log(`TypeScript: skipping ${relative(root, abs)}: its "extends" chain is circular, which the compiler cannot open`);
+      log(`TypeScript: skipping ${relative(root, abs)}: its "extends" chain is circular, which the compiler cannot open`, "ts_config_circular");
       continue;
     }
     if (extended.has(abs) && !PRIMARY_NAME.test(name)) {
-      log(`TypeScript: skipping ${relative(root, abs)} (a base config other configs extend)`);
+      log(`TypeScript: skipping ${relative(root, abs)} (a base config other configs extend)`, "ts_config_base");
       continue;
     }
     if (Array.isArray(json.files) && json.files.length === 0 && !json.include) {
-      log(`TypeScript: skipping ${relative(root, abs)} (a solution config with no files of its own)`);
+      log(`TypeScript: skipping ${relative(root, abs)} (a solution config with no files of its own)`, "ts_config_solution");
       continue;
     }
     out.push(abs);
@@ -115,12 +116,13 @@ export function screenConfigs(root: string, configs: string[], log: (m: string) 
   return { open: out.sort(), hidden: [...hidden].sort() };
 }
 
-function parseConfig(text: string): Record<string, unknown> {
+function parseConfig(text: string, onInvalid?: () => void): Record<string, unknown> {
   try {
     const value = Bun.JSONC.parse(text);
     if (value && typeof value === "object") return value as Record<string, unknown>;
   } catch {
     // The compiler copes with a malformed config better than we can; open it and let it.
+    onInvalid?.();
   }
   return {};
 }
@@ -246,15 +248,15 @@ export class Compiler {
   }
 
   /** Close politely, bounded, then make sure the child is gone either way. */
-  async close(log: (m: string) => void): Promise<void> {
+  async close(log: (m: string, code?: DiagnosticCode, count?: number) => void): Promise<void> {
     // The child is spawned on the first request and forgotten by close(); hold on to it first.
     const child = childOf(this.api);
     try {
       const closing = this.api.close();
       closing.catch(() => {});
-      if ((await bounded(closing, 5000)) === TIMED_OUT) log("TypeScript: the compiler did not close within 5 s; stopped it");
+      if ((await bounded(closing, 5000)) === TIMED_OUT) log("TypeScript: the compiler did not close within 5 s; stopped it", "ts_timeout");
     } catch (e) {
-      log(`TypeScript: closing the compiler failed: ${message(e)}`);
+      log(`TypeScript: closing the compiler failed: ${message(e)}`, "ts_config_failed");
     }
     kill(child);
   }
@@ -294,13 +296,13 @@ function kill(child: ChildProcess | undefined): void {
  * A config that times out costs the child, and the configs already opened in it, so those are
  * reopened at the end in whichever child survived.
  */
-async function openConfigs(compiler: Compiler, configs: string[], root: string, ms: number, log: (m: string) => void): Promise<Snapshot | undefined> {
+async function openConfigs(compiler: Compiler, configs: string[], root: string, ms: number, log: (m: string, code?: DiagnosticCode, count?: number) => void): Promise<Snapshot | undefined> {
   try {
     const snap = await compiler.update({ openProjects: configs }, ms);
     if (snap !== "timeout") return snap;
-    log(`TypeScript: opening ${configs.length} configs together got no answer in ${seconds(ms)}; retrying one at a time`);
+    log(`TypeScript: opening ${configs.length} configs together got no answer in ${seconds(ms)}; retrying one at a time`, "ts_timeout");
   } catch (e) {
-    log(`TypeScript: opening ${configs.length} configs together failed (${message(e)}); retrying one at a time`);
+    log(`TypeScript: opening ${configs.length} configs together failed (${message(e)}); retrying one at a time`, "ts_config_failed");
   }
   let snap: Snapshot | undefined;
   const good: string[] = [];
@@ -309,7 +311,7 @@ async function openConfigs(compiler: Compiler, configs: string[], root: string, 
     try {
       const s = await compiler.update({ openProjects: [c] }, ms);
       if (s === "timeout") {
-        log(`TypeScript: skipping ${relative(root, c)}: the compiler did not answer in ${seconds(ms)} (failed)`);
+        log(`TypeScript: skipping ${relative(root, c)}: the compiler did not answer in ${seconds(ms)} (failed)`, "ts_timeout");
         lost ||= good.length > 0;
         snap = undefined;
         continue;
@@ -317,7 +319,7 @@ async function openConfigs(compiler: Compiler, configs: string[], root: string, 
       snap = s;
       good.push(c);
     } catch (e) {
-      log(`TypeScript: skipping ${relative(root, c)}: ${message(e)}`);
+      log(`TypeScript: skipping ${relative(root, c)}: ${message(e)}`, "ts_config_failed");
     }
   }
   if (lost) snap = await reopen(compiler, good, ms, log);
@@ -325,14 +327,14 @@ async function openConfigs(compiler: Compiler, configs: string[], root: string, 
 }
 
 /** Open `configs` in a fresh child, after a restart dropped them. */
-async function reopen(compiler: Compiler, configs: string[], ms: number, log: (m: string) => void): Promise<Snapshot | undefined> {
+async function reopen(compiler: Compiler, configs: string[], ms: number, log: (m: string, code?: DiagnosticCode, count?: number) => void): Promise<Snapshot | undefined> {
   if (!configs.length) return undefined;
   try {
     const snap = await compiler.update({ openProjects: configs }, ms);
     if (snap !== "timeout") return snap;
-    log(`TypeScript: reopening ${configs.length} configs after a restart got no answer in ${seconds(ms)} (failed)`);
+    log(`TypeScript: reopening ${configs.length} configs after a restart got no answer in ${seconds(ms)} (failed)`, "ts_timeout");
   } catch (e) {
-    log(`TypeScript: reopening ${configs.length} configs after a restart failed: ${message(e)}`);
+    log(`TypeScript: reopening ${configs.length} configs after a restart failed: ${message(e)}`, "ts_config_failed");
   }
   return undefined;
 }
@@ -351,7 +353,7 @@ export async function planProjects(
   root: string,
   candidates: number[],
   configs: string[],
-  log: (m: string) => void,
+  log: (m: string, code?: DiagnosticCode, count?: number) => void,
 ): Promise<Plan | undefined> {
   const ms = limits.snapshotMs(candidates.length);
   const absOf = (id: number) => root + "/" + input.paths[id]!;
@@ -372,7 +374,7 @@ export async function planProjects(
       try {
         names = await p.program.getSourceFileNames();
       } catch (e) {
-        log(`TypeScript: cannot list files of ${p.configFileName}: ${message(e)}`);
+        log(`TypeScript: cannot list files of ${p.configFileName}: ${message(e)}`, "ts_config_failed");
         continue;
       }
       for (const n of names) {
@@ -403,7 +405,7 @@ export async function planProjects(
       if (s === "timeout") {
         // Most likely a circular config the walker never listed, above or beside these files.
         // The restart took the configured projects with it; bring those back without them.
-        log(`TypeScript: opening ${leftovers.length} files outside any config got no answer in ${seconds(ms)} (failed); leaving them out`);
+        log(`TypeScript: opening ${leftovers.length} files outside any config got no answer in ${seconds(ms)} (failed); leaving them out`, "ts_timeout");
         snap = await reopen(compiler, configs.filter((c) => live.has(realpathOr(c))), ms, log);
         owners = snap ? await contained(snap) : new Map();
       } else {
@@ -411,7 +413,7 @@ export async function planProjects(
         owners = await contained(snap);
       }
     } catch (e) {
-      log(`TypeScript: opening ${leftovers.length} files outside any config failed: ${message(e)}`);
+      log(`TypeScript: opening ${leftovers.length} files outside any config failed: ${message(e)}`, "ts_config_failed");
     }
   }
   if (!snap) return undefined;

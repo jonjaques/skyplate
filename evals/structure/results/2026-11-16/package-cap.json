@@ -1,0 +1,62 @@
+[
+  {
+    "name": "chi",
+    "internalImports": 59,
+    "cappedImports": 10,
+    "nominalProjectedPairs": 531,
+    "actualProjectedPairs": 391,
+    "projectionCoverage": 0.736346516007533,
+    "largestPackages": [
+      [
+        "middleware",
+        31
+      ],
+      [
+        ".",
+        5
+      ],
+      [
+        "_examples/todos-resource",
+        3
+      ],
+      [
+        "_examples/versions/data",
+        2
+      ],
+      [
+        "_examples/custom-handler",
+        1
+      ]
+    ]
+  },
+  {
+    "name": "kubernetes",
+    "internalImports": 74372,
+    "cappedImports": 10410,
+    "nominalProjectedPairs": 702926,
+    "actualProjectedPairs": 531462,
+    "projectionCoverage": 0.7560710515758415,
+    "largestPackages": [
+      [
+        "vendor/golang.org/x/sys/unix",
+        284
+      ],
+      [
+        "staging/src/k8s.io/client-go/applyconfigurations/core/v1",
+        219
+      ],
+      [
+        "vendor/github.com/prometheus/procfs",
+        70
+      ],
+      [
+        "vendor/github.com/vishvananda/netlink",
+        62
+      ],
+      [
+        "vendor/golang.org/x/sys/cpu",
+        58
+      ]
+    ]
+  }
+]
