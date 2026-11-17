@@ -50,8 +50,12 @@ src/core/bench/           `skyplate bench`: index (run, write, Markdown), privac
                           vocabulary and its validator), shape, diagnostics (the pipeline's
                           side channel), workload (canned queries), recorder (MCP usage),
                           skeleton (anonymous structure and its generator)
-docs/                     benchmark.md (the benchmark's privacy contract and fields), audits/
-                          (dated measurements of the analyzers), brand/
+docs/                     benchmark.md (the benchmark's privacy contract and fields), roadmap/
+                          (README: the plan and release scope; defects.md; enhancements.md;
+                          research/: the dated studies behind them), brand/
+evals/                    rerunnable measurements behind the roadmap: adoption, typescript,
+                          structure, first-answer, benchmark (each with a README and dated
+                          results/; fixtures/ are inputs, excluded from the typecheck)
 src/viewer/               React app: state/ (zustand store, loaders, URL), model/ (derived
                           indexes), galaxy/ (engine, shaders, hoverIntent, clicks, groups:
                           hulls, picking, levels), charts/ (+ kit/), shell/ (rail, nav, top bar,
@@ -196,3 +200,12 @@ The impeccable design hook runs on edits. Its findings are design feedback, not 
 `bun test` builds small fixture repos. For realistic checks, run the CLI on a few public
 clones (a TypeScript monorepo, a Python project, a Go project) and open the reports. Never
 analyze into, or write inside, a repository you don't own.
+
+`evals/` holds the repeatable version of those checks, and `docs/roadmap/README.md` says which
+one a change should rerun before a release. Commit new results beside the old under a new date
+(`results/<date>/`), never over them, and update the numbers in the roadmap from them. Eval
+scripts clone their corpora outside the repo and write only to a fresh `--out`. Never commit an
+agent session's raw transcript: it carries the machine's environment (home paths, installed
+skills and plugins, session ids), and this repository is public. A defect found goes in
+`docs/roadmap/defects.md` with the next ID in its group and a repro; a fix moves it to Fixed
+with the version that fixed it.

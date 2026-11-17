@@ -91,7 +91,7 @@ To make it a habit in one repository, paste this into its `AGENTS.md` or `CLAUDE
 matters more than it looks: in a one-pass measurement on a 3,000-file repository, Codex called
 Skyplate on none of eight task prompts from the tool descriptions alone and on all eight with
 this instruction, while Claude Code used it on six from the descriptions alone
-([the record](docs/audits/2026-11-code-intelligence/agent-adoption.md)).
+([the record](docs/roadmap/research/agent-adoption.md)).
 
 > Before exploring unfamiliar or large areas, use Skyplate `map_codebase` and `locate_code`
 > to choose directories and files, then read the strongest evidence. Before a rename, move,
@@ -167,6 +167,10 @@ anomaly code points at.
 - **Findings.** Plain-language observations backed by the numbers, each naming the files or
   people involved.
 
+How accurate each of these is, what is known to be wrong, and what comes next are in
+[the roadmap](docs/roadmap/README.md), with [known defects](docs/roadmap/defects.md) and
+[planned enhancements](docs/roadmap/enhancements.md) kept apart.
+
 ## Development
 
 From a checkout, `bun install` and then `bun run skyplate <path>` runs the CLI from source; the
@@ -182,6 +186,10 @@ bun scripts/brand.ts                            # regenerate the mark, wordmark 
 ```
 
 `bun run report:dev` writes a report of Skyplate itself into `.skyplate/dev`.
+
+The measurements behind the roadmap are rerunnable from [`evals/`](evals/): agent adoption,
+TypeScript accuracy against an independent language service, structure and history on seven
+languages, the first answer on a large repository, and the benchmark's privacy checks.
 
 ## License
 
