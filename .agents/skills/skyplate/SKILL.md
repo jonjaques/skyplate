@@ -78,7 +78,8 @@ hold numbers and Skyplate's own vocabulary only: phase timings, resolution rates
 took effect, answer sizes, anomaly codes and this session's tool usage. No path, name, code,
 author or date. Nothing is uploaded, and you must not upload or paste the files anywhere
 yourself: tell the user where they are and that `benchmark.md` is the whole content, for them
-to read and decide. Pass `skeleton: true` only after asking; it also keeps the exact shape of
+to read and decide. If they choose to share it, the repository's "Share a benchmark" issue form
+is the place. Pass `skeleton: true` only after asking; it also keeps the exact shape of
 the directory tree and import graph. Without the server: `bunx skyplate bench /abs/project`.
 
 ## Temporary stdio client

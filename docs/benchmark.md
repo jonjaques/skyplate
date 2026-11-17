@@ -3,7 +3,8 @@
 `skyplate bench <path>` measures Skyplate on a repository that its maintainer cannot see.
 It writes `benchmark.json` and `benchmark.md` locally. It has no upload, network request,
 telemetry enrollment or persistent identity. You decide whether to share either file after
-reading it. The Markdown is the JSON laid out as lists and tables: every value in one is in
+reading it; if you do, the [Share a benchmark](https://github.com/jonjaques/skyplate/issues/new?template=benchmark.yml)
+issue form is where it goes. The Markdown is the JSON laid out as lists and tables: every value in one is in
 the other, and it contains no extra diagnostic details.
 
 An agent can make the same files through the MCP server's `benchmark` tool. That one also

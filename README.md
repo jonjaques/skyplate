@@ -148,7 +148,9 @@ can rebuild a synthetic repository of the same shape (`skyplate bench synth`); t
 revealing, and off by default. An agent can make the same files with the MCP server's
 `benchmark` tool, which adds how the tools were used in that session.
 [docs/benchmark.md](docs/benchmark.md) is the privacy contract, every field, and what each
-anomaly code points at.
+anomaly code points at. To hand one back, paste `benchmark.md` into a
+[Share a benchmark](https://github.com/jonjaques/skyplate/issues/new?template=benchmark.yml)
+issue.
 
 ## What it measures
 
