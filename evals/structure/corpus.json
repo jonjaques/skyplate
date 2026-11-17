@@ -1,0 +1,78 @@
+[
+  {
+    "name": "requests",
+    "url": "https://github.com/psf/requests.git",
+    "commit": "3c7baaa05ab4aa49cc819ce3a819d260de19c157",
+    "depth": 50,
+    "languages": [
+      "python"
+    ],
+    "cloneSeconds": 1.06
+  },
+  {
+    "name": "chi",
+    "url": "https://github.com/go-chi/chi.git",
+    "commit": "c64ed7d6635f33a8b2feaff7dcfa55677023ac7d",
+    "depth": 50,
+    "languages": [
+      "go"
+    ],
+    "cloneSeconds": 0.77
+  },
+  {
+    "name": "ripgrep",
+    "url": "https://github.com/BurntSushi/ripgrep.git",
+    "commit": "178cc027e283fd965cb72d0a7395b219eada170c",
+    "depth": 50,
+    "languages": [
+      "rust"
+    ],
+    "cloneSeconds": 0.98
+  },
+  {
+    "name": "junit",
+    "url": "https://github.com/junit-team/junit-framework.git",
+    "commit": "e5198f9b098c550e66d378650f78bac8883e2a72",
+    "depth": 50,
+    "languages": [
+      "java",
+      "kotlin"
+    ],
+    "cloneSeconds": 1.77
+  },
+  {
+    "name": "curl",
+    "url": "https://github.com/curl/curl.git",
+    "commit": "fb6f021d9a5744aa800da17bb9c0ec5b6238c088",
+    "depth": 50,
+    "languages": [
+      "c",
+      "c++"
+    ],
+    "cloneSeconds": 1.99
+  },
+  {
+    "name": "rails",
+    "url": "https://github.com/rails/rails.git",
+    "commit": "04988cc35d4281173f6327c07609f49227b5ccf9",
+    "depth": 50,
+    "languages": [
+      "ruby"
+    ],
+    "cloneSeconds": 220.35
+  },
+  {
+    "name": "kubernetes",
+    "url": "https://github.com/kubernetes/kubernetes.git",
+    "commit": "074eb5db5bbe70923fd2d0af4dc2d0091a539253",
+    "depth": 50,
+    "languages": [
+      "go",
+      "python",
+      "c",
+      "c++",
+      "shell"
+    ],
+    "cloneSeconds": 47.91
+  }
+]

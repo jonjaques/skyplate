@@ -1,0 +1,23 @@
+{
+  "sky": {
+    "urlSource": "../../package.json#repository.url",
+    "commit": "f0f874f82700ec5e5c62beef457e74de95d5841d",
+    "states": ["bare", "installed"]
+  },
+  "query": {
+    "url": "https://github.com/TanStack/query.git",
+    "commit": "d63a027c26b2489b8be065ad76f638e36216854a",
+    "states": ["bare"],
+    "installed": "Not measured: the original package manager rejected the workspace configuration"
+  },
+  "express": {
+    "url": "https://github.com/expressjs/express.git",
+    "commit": "43fca52d28a422c8be48fd489cbd4f2d6152bab6",
+    "states": ["bare", "installed"]
+  },
+  "plimit": {
+    "url": "https://github.com/sindresorhus/p-limit.git",
+    "commit": "a8a6fbec4e0e866d6d779b10889bb4f5567e70eb",
+    "states": ["bare", "installed"]
+  }
+}

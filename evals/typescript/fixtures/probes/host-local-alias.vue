@@ -1,0 +1,1 @@
+<script setup>import {exposedLocal} from './host-local-alias';exposedLocal();</script>

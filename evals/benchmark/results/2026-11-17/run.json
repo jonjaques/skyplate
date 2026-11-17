@@ -1,0 +1,28 @@
+{
+  "analyzerCommit": "e4b548cb3e71dc1c3edc3479b9f596a18c14dc3a",
+  "inputCommit": "e4b548cb3e71dc1c3edc3479b9f596a18c14dc3a",
+  "bun": "1.4.4",
+  "platform": "darwin",
+  "architecture": "arm64",
+  "workers": 2,
+  "maxCommits": "default",
+  "wallMs": 2512.51925,
+  "benchmarkMs": 2100,
+  "shape": {
+    "files": 508,
+    "dirs": 104,
+    "edges": 979,
+    "countsMatch": true,
+    "edgesAndTypesMatch": true,
+    "parentsMatch": true,
+    "membershipsMatch": true
+  },
+  "canary": {
+    "tokens": 24,
+    "jsonAndMarkdownPrivate": true,
+    "markdownMutationCaught": true,
+    "jsonMutationCaught": true,
+    "failures": 0,
+    "reportValidation": []
+  }
+}

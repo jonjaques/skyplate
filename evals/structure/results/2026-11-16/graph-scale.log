@@ -1,0 +1,35 @@
+[
+  {
+    files: 100000,
+    edges: 99999,
+    ms: 24.754292,
+    rss: 39387880,
+    cycles: 0,
+    rankLast: 1,
+  }, {
+    files: 1000000,
+    edges: 999999,
+    ms: 85.690042,
+    rss: 193315656,
+    cycles: 0,
+    rankLast: 1,
+  }
+]
+        0.12 real         0.19 user         0.02 sys
+           248954880  maximum resident set size
+                   0  average shared memory size
+                   0  average unshared data size
+                   0  average unshared stack size
+               15323  page reclaims
+                  54  page faults
+                   0  swaps
+                   0  block input operations
+                   0  block output operations
+                   0  messages sent
+                   0  messages received
+                   0  signals received
+                   0  voluntary context switches
+                 935  involuntary context switches
+          4073736757  instructions retired
+           873146874  cycles elapsed
+           224150344  peak memory footprint

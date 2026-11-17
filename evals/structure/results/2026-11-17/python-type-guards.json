@@ -1,0 +1,67 @@
+{
+  "guardedImports": 18,
+  "guardedOnlyPairs": 12,
+  "pairs": [
+    [
+      "src/requests/_types.py",
+      "src/requests/auth.py"
+    ],
+    [
+      "src/requests/_types.py",
+      "src/requests/cookies.py"
+    ],
+    [
+      "src/requests/_types.py",
+      "src/requests/models.py"
+    ],
+    [
+      "src/requests/_types.py",
+      "src/requests/structures.py"
+    ],
+    [
+      "src/requests/api.py",
+      "src/requests/_types.py"
+    ],
+    [
+      "src/requests/auth.py",
+      "src/requests/models.py"
+    ],
+    [
+      "src/requests/cookies.py",
+      "src/requests/models.py"
+    ],
+    [
+      "src/requests/exceptions.py",
+      "src/requests/models.py"
+    ],
+    [
+      "src/requests/hooks.py",
+      "src/requests/_types.py"
+    ],
+    [
+      "src/requests/hooks.py",
+      "src/requests/models.py"
+    ],
+    [
+      "src/requests/models.py",
+      "src/requests/adapters.py"
+    ],
+    [
+      "src/requests/utils.py",
+      "src/requests/models.py"
+    ]
+  ],
+  "originalCycles": [
+    [
+      "src/requests/models.py",
+      "src/requests/_types.py",
+      "src/requests/cookies.py",
+      "src/requests/utils.py",
+      "src/requests/auth.py",
+      "src/requests/exceptions.py",
+      "src/requests/adapters.py",
+      "src/requests/hooks.py"
+    ]
+  ],
+  "runtimeCyclesAfterGuardRemoval": []
+}

@@ -1,0 +1,315 @@
+{
+  "repos": {
+    "sky-installed": {
+      "samples": 26,
+      "totals": {
+        "refs": {
+          "tp": 375,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "calls": {
+          "tp": 59,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "callers": {
+          "tp": 36,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        }
+      }
+    },
+    "query-bare": {
+      "samples": 18,
+      "totals": {
+        "refs": {
+          "tp": 1447,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "calls": {
+          "tp": 707,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "callers": {
+          "tp": 100,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        }
+      }
+    },
+    "express-installed": {
+      "samples": 16,
+      "totals": {
+        "refs": {
+          "tp": 909,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1,
+          "recall": 0.9989010989010989
+        },
+        "calls": {
+          "tp": 699,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1,
+          "recall": 0.9985714285714286
+        },
+        "callers": {
+          "tp": 118,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1,
+          "recall": 0.9915966386554622
+        }
+      }
+    },
+    "plimit-installed": {
+      "samples": 12,
+      "totals": {
+        "refs": {
+          "tp": 35,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "calls": {
+          "tp": 23,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "callers": {
+          "tp": 9,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        }
+      }
+    }
+  },
+  "strata": {
+    "function": {
+      "samples": 25,
+      "totals": {
+        "refs": {
+          "tp": 1198,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "calls": {
+          "tp": 783,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "callers": {
+          "tp": 152,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        }
+      }
+    },
+    "type/interface/class": {
+      "samples": 13,
+      "totals": {
+        "refs": {
+          "tp": 568,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "calls": {
+          "tp": 256,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "callers": {
+          "tp": 30,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        }
+      }
+    },
+    "method": {
+      "samples": 14,
+      "totals": {
+        "refs": {
+          "tp": 187,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1,
+          "recall": 0.9946808510638298
+        },
+        "calls": {
+          "tp": 156,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1,
+          "recall": 0.9936305732484076
+        },
+        "callers": {
+          "tp": 48,
+          "fp": 0,
+          "fn": 1,
+          "precision": 1,
+          "recall": 0.9795918367346939
+        }
+      }
+    },
+    "getter": {
+      "samples": 1,
+      "totals": {
+        "refs": {
+          "tp": 2,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "calls": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": null,
+          "recall": null
+        },
+        "callers": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": null,
+          "recall": null
+        }
+      }
+    },
+    "property": {
+      "samples": 11,
+      "totals": {
+        "refs": {
+          "tp": 445,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "calls": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": null,
+          "recall": null
+        },
+        "callers": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": null,
+          "recall": null
+        }
+      }
+    },
+    "variable": {
+      "samples": 3,
+      "totals": {
+        "refs": {
+          "tp": 39,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "calls": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": null,
+          "recall": null
+        },
+        "callers": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": null,
+          "recall": null
+        }
+      }
+    },
+    "React function": {
+      "samples": 5,
+      "totals": {
+        "refs": {
+          "tp": 327,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "calls": {
+          "tp": 293,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        },
+        "callers": {
+          "tp": 33,
+          "fp": 0,
+          "fn": 0,
+          "precision": 1,
+          "recall": 1
+        }
+      }
+    }
+  },
+  "total": {
+    "refs": {
+      "tp": 2766,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1,
+      "recall": 0.9996385977593061
+    },
+    "calls": {
+      "tp": 1488,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1,
+      "recall": 0.9993284083277367
+    },
+    "callers": {
+      "tp": 263,
+      "fp": 0,
+      "fn": 1,
+      "precision": 1,
+      "recall": 0.9962121212121212
+    }
+  }
+}

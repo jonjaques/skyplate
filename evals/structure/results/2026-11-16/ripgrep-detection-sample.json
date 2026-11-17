@@ -1,0 +1,162 @@
+[
+  {
+    "path": "crates/globset/src/lib.rs",
+    "language": "rust",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "/*!\nThe globset crate provides cross platform single glob and glob set matching.\n\nGlob set matching is the process of matching one or more glob patterns against\na single candidate path simultaneously, and returning all of the globs that\nmatched. For example, given this set of globs:\n\n* `*.rs`"
+  },
+  {
+    "path": "benchsuite/runs/2016-12-24-archlinux-cheetah/summary",
+    "language": "text",
+    "category": "unknown",
+    "generated": false,
+    "vendored": false,
+    "head": "linux_alternates (pattern: ERR_SYS|PME_TURN_OFF|LINK_REQ_RST|CFG_BME_EVT)\n-------------------------------------------------------------------------\nrg (ignore)         0.094 +/- 0.005 (lines: 68)\nrg (whitelist)*     0.069 +/- 0.003 (lines: 68)*\n\nlinux_alternates_casei (pattern: ERR_SYS|PME_TURN_OFF|LINK_REQ_RST|CFG_BME_EVT)\n-------------------------------------------------------------------------------\nrg (ignore)         0.104 +/- 0.003 (lines: 160)"
+  },
+  {
+    "path": "tests/misc.rs",
+    "language": "rust",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "use crate::hay::SHERLOCK;\nuse crate::util::{Dir, TestCommand, cmd_exists, sort_lines};\n\n// This file contains \"miscellaneous\" tests that were either written before\n// features were tracked more explicitly, or were simply written without\n// linking them to a specific issue number. We should try to minimize the\n// addition of more tests in this file and instead add them to either the\n// regression test suite or the feature test suite (found in regression.rs and"
+  },
+  {
+    "path": "crates/cli/src/human.rs",
+    "language": "rust",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "/// An error that occurs when parsing a human readable size description.\n///\n/// This error provides an end user friendly message describing why the\n/// description couldn't be parsed and what the expected format is.\n#[derive(Clone, Debug, Eq, PartialEq)]\npub struct ParseSizeError {\n    original: String,\n    kind: ParseSizeErrorKind,"
+  },
+  {
+    "path": "crates/cli/src/decompress.rs",
+    "language": "rust",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "use std::{\n    ffi::{OsStr, OsString},\n    fs::File,\n    io,\n    path::{Path, PathBuf},\n    process::Command,\n};\n"
+  },
+  {
+    "path": "fuzz/Cargo.toml",
+    "language": "toml",
+    "category": "config",
+    "generated": false,
+    "vendored": false,
+    "head": "[package]\nname = \"fuzz\"\nversion = \"0.0.1\"\npublish = false\nedition = \"2024\"\n\n[package.metadata]\ncargo-fuzz = true"
+  },
+  {
+    "path": "crates/core/flags/doc/template.long.help",
+    "language": "text",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "ripgrep !!VERSION!!\nAndrew Gallant <jamslam@gmail.com>\n\nripgrep (rg) recursively searches the current directory for lines matching\na regex pattern. By default, ripgrep will respect gitignore rules and\nautomatically skip hidden files/directories and binary files.\n\nUse -h for short descriptions and --help for more details."
+  },
+  {
+    "path": "CONTRIBUTING.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "# Contributing\n\n## Use of AI\n\nAll use of AI in contributions must follow the\n[AI Policy](https://github.com/BurntSushi/ripgrep/blob/master/AI_POLICY.md).\n\nContributions not following the AI Policy will be closed."
+  },
+  {
+    "path": "crates/ignore/COPYING",
+    "language": "text",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "This project is dual-licensed under the Unlicense and MIT licenses.\n\nYou may use this code under the terms of either license.\n"
+  },
+  {
+    "path": "crates/searcher/src/testutil.rs",
+    "language": "rust",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "use std::io::{self, Write};\n\nuse {\n    bstr::ByteSlice,\n    grep_matcher::{\n        LineMatchKind, LineTerminator, Match, Matcher, NoCaptures, NoError,\n    },\n    regex::bytes::{Regex, RegexBuilder},"
+  },
+  {
+    "path": "crates/matcher/README.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "grep-matcher\n------------\nThis crate provides a low level interface for describing regular expression\nmatchers. The `grep` crate uses this interface in order to make the regex\nengine it uses pluggable.\n\n[![Build status](https://github.com/BurntSushi/ripgrep/workflows/ci/badge.svg)](https://github.com/BurntSushi/ripgrep/actions)\n[![](https://img.shields.io/crates/v/grep-matcher.svg)](https://crates.io/crates/grep-matcher)"
+  },
+  {
+    "path": "crates/grep/COPYING",
+    "language": "text",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "This project is dual-licensed under the Unlicense and MIT licenses.\n\nYou may use this code under the terms of either license.\n"
+  },
+  {
+    "path": "tests/binary.rs",
+    "language": "rust",
+    "category": "test",
+    "generated": false,
+    "vendored": false,
+    "head": "use crate::util::{Dir, TestCommand};\n\n// This file contains a smattering of tests specifically for checking ripgrep's\n// handling of binary files. There's quite a bit of discussion on this in this\n// bug report: https://github.com/BurntSushi/ripgrep/issues/306\n\n// Our haystack is the first 2,133 lines of Gutenberg's copy of \"A Study in\n// Scarlet,\" with a NUL byte at line 1870: `abcdef\\x00`."
+  },
+  {
+    "path": "crates/printer/src/path.rs",
+    "language": "rust",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "use std::{io, path::Path};\n\nuse termcolor::WriteColor;\n\nuse crate::{\n    color::ColorSpecs,\n    hyperlink::{self, HyperlinkConfig},\n    util::PrinterPath,"
+  },
+  {
+    "path": "benchsuite/runs/2018-01-08-archlinux-cheetah/summary",
+    "language": "text",
+    "category": "unknown",
+    "generated": false,
+    "vendored": false,
+    "head": "linux_alternates (pattern: ERR_SYS|PME_TURN_OFF|LINK_REQ_RST|CFG_BME_EVT)\n-------------------------------------------------------------------------\nrg (ignore)         0.100 +/- 0.003 (lines: 68)\nag (ignore)         0.501 +/- 0.033 (lines: 68)\ngit grep (ignore)   0.267 +/- 0.004 (lines: 68)\nrg (whitelist)*     0.090 +/- 0.001 (lines: 68)*\nucg (whitelist)     0.135 +/- 0.003 (lines: 68)\n"
+  },
+  {
+    "path": "crates/cli/src/lib.rs",
+    "language": "rust",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "/*!\nThis crate provides common routines used in command line applications, with a\nfocus on routines useful for search oriented applications. As a utility\nlibrary, there is no central type or function. However, a key focus of this\ncrate is to improve failure modes and provide user friendly error messages\nwhen things go wrong.\n\nTo the best extent possible, everything in this crate works on Windows, macOS"
+  },
+  {
+    "path": "crates/searcher/examples/search-stdin.rs",
+    "language": "rust",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "use std::env;\nuse std::error::Error;\nuse std::io;\nuse std::process;\n\nuse grep_regex::RegexMatcher;\nuse grep_searcher::Searcher;\nuse grep_searcher::sinks::UTF8;"
+  },
+  {
+    "path": "benchsuite/benchsuite",
+    "language": "python",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "#!/usr/bin/env python3\n\n'''\nbenchsuite is a benchmark runner for comparing command line search tools.\n'''\n\nimport argparse\nimport csv"
+  },
+  {
+    "path": "crates/regex/src/ban.rs",
+    "language": "rust",
+    "category": "code",
+    "generated": false,
+    "vendored": false,
+    "head": "use regex_syntax::hir::{\n    self, ClassBytesRange, ClassUnicodeRange, Hir, HirKind,\n};\n\nuse crate::error::{Error, ErrorKind};\n\n/// Returns an error when a sub-expression in `expr` must match `byte`.\npub(crate) fn check(expr: &Hir, byte: u8) -> Result<(), Error> {"
+  },
+  {
+    "path": "CHANGELOG.md",
+    "language": "markdown",
+    "category": "docs",
+    "generated": false,
+    "vendored": false,
+    "head": "TBD\n===\nUnreleased changes. Release notes have not yet been written.\n\n\n15.2.0 (2026-07-15)\n===================\nThis release fixes a number of bugs related to gitignore matching as well as"
+  }
+]

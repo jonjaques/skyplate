@@ -1,0 +1,1 @@
+export function bad(){return 2};export const x=bad();

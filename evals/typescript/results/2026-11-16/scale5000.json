@@ -1,0 +1,54 @@
+{
+  "count": 5000,
+  "cap": 20000,
+  "runs": [
+    {
+      "elapsed": 493.155875,
+      "stats": {
+        "files": 5000,
+        "symbols": 10000,
+        "references": 9998,
+        "unresolved": 0,
+        "unusedExports": 1,
+        "truncated": 0,
+        "ms": 492
+      },
+      "projects": [
+        {
+          "config": "tsconfig.json",
+          "files": 5000,
+          "ms": 351
+        }
+      ],
+      "logs": [
+        "TypeScript: 1 project(s), 5000 files",
+        "TypeScript: tsconfig.json: 5000 files, 9998 references, 285 ms"
+      ],
+      "maxRSSKiB": 215792
+    },
+    {
+      "elapsed": 455.2796659999999,
+      "stats": {
+        "files": 5000,
+        "symbols": 10000,
+        "references": 9998,
+        "unresolved": 0,
+        "unusedExports": 1,
+        "truncated": 0,
+        "ms": 455
+      },
+      "projects": [
+        {
+          "config": "tsconfig.json",
+          "files": 5000,
+          "ms": 328
+        }
+      ],
+      "logs": [
+        "TypeScript: 1 project(s), 5000 files",
+        "TypeScript: tsconfig.json: 5000 files, 9998 references, 267 ms"
+      ],
+      "maxRSSKiB": 286624
+    }
+  ]
+}

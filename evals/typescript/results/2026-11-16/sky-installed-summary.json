@@ -1,0 +1,30 @@
+{
+  "root": ".",
+  "paths": 268,
+  "candidates": 227,
+  "configs": 2,
+  "elapsed": 1574.6595829999999,
+  "rss": 235472,
+  "stats": {
+    "files": 227,
+    "symbols": 4767,
+    "references": 29363,
+    "unresolved": 592,
+    "unusedExports": 212,
+    "truncated": 0,
+    "ms": 1573
+  },
+  "projects": [
+    {
+      "config": "test/fixtures/ts/tsconfig.json",
+      "files": 11,
+      "ms": 15
+    },
+    {
+      "config": "tsconfig.json",
+      "files": 216,
+      "ms": 1376
+    }
+  ],
+  "logs": []
+}

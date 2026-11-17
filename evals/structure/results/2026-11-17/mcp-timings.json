@@ -1,0 +1,111 @@
+[
+  {
+    "name": "open",
+    "args": {
+      "watch": false,
+      "symbols": false,
+      "wait_seconds": 120
+    },
+    "ms": 182.323917,
+    "isError": false
+  },
+  {
+    "name": "files",
+    "args": {
+      "sort": "complexity",
+      "limit": 5
+    },
+    "ms": 1.6235410000000456,
+    "isError": false
+  },
+  {
+    "name": "file",
+    "args": {
+      "path": "src/requests/sessions.py",
+      "limit": 5
+    },
+    "ms": 1.0650420000000054,
+    "isError": false
+  },
+  {
+    "name": "dir",
+    "args": {
+      "path": "src/requests",
+      "limit": 5
+    },
+    "ms": 0.6499580000000265,
+    "isError": false
+  },
+  {
+    "name": "graph",
+    "args": {
+      "view": "dependents"
+    },
+    "ms": 0.5184580000000096,
+    "isError": true
+  },
+  {
+    "name": "graph",
+    "args": {
+      "view": "dependents",
+      "path": "src/requests/sessions.py",
+      "depth": 3,
+      "limit": 10
+    },
+    "ms": 0.3421669999999608,
+    "isError": false
+  },
+  {
+    "name": "graph",
+    "args": {
+      "view": "modules",
+      "limit": 5
+    },
+    "ms": 0.21383299999996552,
+    "isError": false
+  },
+  {
+    "name": "history",
+    "args": {
+      "view": "coupling",
+      "path": "src/requests/sessions.py",
+      "limit": 5
+    },
+    "ms": 0.5558749999999577,
+    "isError": false
+  },
+  {
+    "name": "history",
+    "args": {
+      "view": "ownership",
+      "path": "src/requests",
+      "limit": 5
+    },
+    "ms": 0.3236660000000029,
+    "isError": false
+  },
+  {
+    "name": "dependencies",
+    "args": {
+      "filter": "unused",
+      "limit": 100
+    },
+    "ms": 0.6647500000000264,
+    "isError": false
+  },
+  {
+    "name": "findings",
+    "args": {},
+    "ms": 0.42116699999996854,
+    "isError": false
+  },
+  {
+    "name": "search_symbols",
+    "args": {
+      "query": "Session",
+      "limit": 5
+    },
+    "ms": 0.4878339999999639,
+    "isError": true
+  }
+]

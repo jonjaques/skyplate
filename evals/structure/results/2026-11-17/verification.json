@@ -1,0 +1,37 @@
+{
+  "baseline": {
+    "pass": 671,
+    "skip": 2,
+    "fail": 0,
+    "assertions": 10370
+  },
+  "final": {
+    "pass": 671,
+    "skip": 2,
+    "fail": 0,
+    "assertions": 10370,
+    "files": 34,
+    "duration": "17.59s"
+  },
+  "typecheck": {
+    "passed": true,
+    "files": 267
+  },
+  "privacyScan": {
+    "plainText": true,
+    "decompressedGzip": true
+  },
+  "requiredReruns": {
+    "smallCorpus": "requests",
+    "historyFixtures": true,
+    "encodingSpecimen": true,
+    "firstAnswer": [
+      "skyplate",
+      "requests"
+    ],
+    "benchmarkSelf": true,
+    "canaryMutationControls": true,
+    "skeletonRoundTrip": true
+  },
+  "outsideAssignedDirectoriesChanged": false
+}

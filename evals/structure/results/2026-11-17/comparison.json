@@ -1,0 +1,43 @@
+{
+  "analyzerBefore": "f0f874f82700ec5e5c62beef457e74de95d5841d",
+  "analyzerAfter": "e4b548cb3e71dc1c3edc3479b9f596a18c14dc3a",
+  "inputCommitMatches": true,
+  "statementCountsUnchanged": true,
+  "complexityUnchangedUsingRetainedOracle": true,
+  "typeGuardPairsUnchanged": true,
+  "historyChecks": {
+    "b.py": true,
+    "b.py-ownership": true,
+    "c.py": true,
+    "c.py-ownership": true,
+    "d.py": true,
+    "d.py-ownership": true,
+    "renamed.py": true,
+    "renamed.py-ownership": true,
+    "coupling": true,
+    "truckFactor": true,
+    "identityFusion": true,
+    "renamePairs": true,
+    "renameShared": true,
+    "renameHotspots": true
+  },
+  "encodingStillReproducesS7": true,
+  "graphChains": [
+    {
+      "files": 100000,
+      "beforeMs": 24.754292,
+      "afterMs": 23.868584
+    },
+    {
+      "files": 1000000,
+      "beforeMs": 85.690042,
+      "afterMs": 85.228708
+    }
+  ],
+  "interpretation": [
+    "The analyzer commit changed but the measured small structure and history contracts did not",
+    "Correlation reused the old parser output; it does not revalidate a newer parser",
+    "Single-run timing differences have uncontrolled load and are not a regression estimate",
+    "Large corpora and native builds were not rerun"
+  ]
+}

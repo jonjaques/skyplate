@@ -1,0 +1,1 @@
+<script setup>import {renamed} from './renamed';renamed();</script><template><div/></template>

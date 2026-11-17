@@ -1,0 +1,28 @@
+{
+  "provenance": "Transcribed from the study summary supplied with this eval task; no raw timing log was retained beside staged.ts",
+  "project": {
+    "url": "https://github.com/kubernetes/kubernetes.git",
+    "commit": null,
+    "depth": 50,
+    "files": 32016,
+    "commits": 17521
+  },
+  "analyzerCommit": null,
+  "query": "scheduler preemption",
+  "unscaledStructureGrace": {
+    "firstMapSinceStartMs": 6200
+  },
+  "scaledStructureGrace": {
+    "firstMapSinceStartMs": 2100,
+    "locateCallMs": 24,
+    "partial": true,
+    "historyStillRunning": true,
+    "cleanShutdown": true,
+    "fullReadyObservedMs": null
+  },
+  "limitations": [
+    "Neither the clone commit nor the analyzer commit was captured in the retained timing client",
+    "The structure corpus used a separately recorded Kubernetes commit and different file and history counts",
+    "The original client closed after status; it did not wait for full analysis"
+  ]
+}

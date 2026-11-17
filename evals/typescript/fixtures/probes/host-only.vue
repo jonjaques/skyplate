@@ -1,0 +1,1 @@
+<script setup>import {hostOnly} from './host-barrel';hostOnly();</script><template><div/></template>

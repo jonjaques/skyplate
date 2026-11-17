@@ -1,0 +1,82 @@
+{
+  "cargoTargets": [
+    {
+      "kind": [
+        "bench"
+      ],
+      "name": "bench",
+      "path": "crates/globset/benches/bench.rs"
+    },
+    {
+      "kind": [
+        "example"
+      ],
+      "name": "simplegrep",
+      "path": "crates/grep/examples/simplegrep.rs"
+    },
+    {
+      "kind": [
+        "test"
+      ],
+      "name": "integration",
+      "path": "crates/matcher/tests/tests.rs"
+    },
+    {
+      "kind": [
+        "example"
+      ],
+      "name": "search-stdin",
+      "path": "crates/searcher/examples/search-stdin.rs"
+    },
+    {
+      "kind": [
+        "example"
+      ],
+      "name": "walk",
+      "path": "crates/ignore/examples/walk.rs"
+    },
+    {
+      "kind": [
+        "test"
+      ],
+      "name": "gitignore_matched_path_or_any_parents_tests",
+      "path": "crates/ignore/tests/gitignore_matched_path_or_any_parents_tests.rs"
+    },
+    {
+      "kind": [
+        "test"
+      ],
+      "name": "gitignore_skip_bom",
+      "path": "crates/ignore/tests/gitignore_skip_bom.rs"
+    },
+    {
+      "kind": [
+        "bench"
+      ],
+      "name": "workloads",
+      "path": "crates/ignore/benches/workloads.rs"
+    },
+    {
+      "kind": [
+        "bin"
+      ],
+      "name": "rg",
+      "path": "crates/core/main.rs"
+    },
+    {
+      "kind": [
+        "test"
+      ],
+      "name": "integration",
+      "path": "tests/tests.rs"
+    },
+    {
+      "kind": [
+        "custom-build"
+      ],
+      "name": "build-script-build",
+      "path": "build.rs"
+    }
+  ],
+  "skyplateEntries": []
+}

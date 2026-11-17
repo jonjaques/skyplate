@@ -1,0 +1,971 @@
+[
+  {
+    "id": 1,
+    "name": "Access",
+    "kind": "class",
+    "file": "accessors.ts",
+    "line": 1,
+    "signature": "class Access",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "accessors.ts:2:42 new from useAccess"
+    ]
+  },
+  {
+    "id": 2,
+    "name": "Access.v",
+    "kind": "property",
+    "file": "accessors.ts",
+    "line": 1,
+    "signature": "number",
+    "complexity": 0,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "accessors.ts:1:60 read from Access.value",
+      "accessors.ts:1:88 write from Access.value"
+    ]
+  },
+  {
+    "id": 3,
+    "name": "Access.value",
+    "kind": "getter",
+    "file": "accessors.ts",
+    "line": 1,
+    "signature": "number",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "accessors.ts:2:72 read from useAccess"
+    ]
+  },
+  {
+    "id": 4,
+    "name": "Access.value",
+    "kind": "setter",
+    "file": "accessors.ts",
+    "line": 1,
+    "signature": "number",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "accessors.ts:2:54 write from useAccess"
+    ]
+  },
+  {
+    "id": 5,
+    "name": "Access.constructor",
+    "kind": "constructor",
+    "file": "accessors.ts",
+    "line": 1,
+    "signature": "constructor()",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "accessors.ts:2:42 new from useAccess"
+    ]
+  },
+  {
+    "id": 6,
+    "name": "useAccess",
+    "kind": "hook",
+    "file": "accessors.ts",
+    "line": 2,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 8,
+    "name": "aliasOnly",
+    "kind": "function",
+    "file": "alias-only.ts",
+    "line": 1,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": false,
+    "host": [
+      "host-direct.vue"
+    ],
+    "refs": [
+      "alias-only.ts:1:39 export from alias-only.ts"
+    ]
+  },
+  {
+    "id": 10,
+    "name": "ambient",
+    "kind": "variable",
+    "file": "ambient-use.ts",
+    "line": 1,
+    "signature": "number",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 12,
+    "name": "AMBIENT_NUMBER",
+    "kind": "variable",
+    "file": "ambient.d.ts",
+    "line": 1,
+    "signature": "number",
+    "complexity": 0,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "ambient-use.ts:1:22 read from ambient"
+    ]
+  },
+  {
+    "id": 14,
+    "name": "./field",
+    "kind": "namespace",
+    "file": "augmentation.ts",
+    "line": 2,
+    "signature": "module './field'",
+    "complexity": 0,
+    "unused": false,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 15,
+    "name": "./field.Field",
+    "kind": "interface",
+    "file": "augmentation.ts",
+    "line": 2,
+    "signature": "interface Field",
+    "complexity": 0,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "augmentation.ts:3:50 type from augmentation"
+    ]
+  },
+  {
+    "id": 16,
+    "name": "./field.Field.augmented",
+    "kind": "property",
+    "file": "augmentation.ts",
+    "line": 2,
+    "signature": "number",
+    "complexity": 0,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "augmentation.ts:3:66 read from augmentation"
+    ]
+  },
+  {
+    "id": 17,
+    "name": "augmentation",
+    "kind": "function",
+    "file": "augmentation.ts",
+    "line": 3,
+    "signature": "(x: import('./field').Field) => number",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 19,
+    "name": "Binding",
+    "kind": "interface",
+    "file": "binding.ts",
+    "line": 1,
+    "signature": "interface Binding",
+    "complexity": 0,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "binding.ts:2:31 type from readBinding",
+      "binding.ts:3:29 type from readPlain",
+      "jsdoc.js:1:33 type from documented"
+    ]
+  },
+  {
+    "id": 20,
+    "name": "Binding.prop",
+    "kind": "property",
+    "file": "binding.ts",
+    "line": 1,
+    "signature": "number",
+    "complexity": 0,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "binding.ts:2:47 read from readBinding",
+      "binding.ts:3:45 read from readPlain",
+      "jsdoc.js:2:40 read from documented"
+    ]
+  },
+  {
+    "id": 21,
+    "name": "readBinding",
+    "kind": "function",
+    "file": "binding.ts",
+    "line": 2,
+    "signature": "(b: Binding) => number",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 22,
+    "name": "readPlain",
+    "kind": "function",
+    "file": "binding.ts",
+    "line": 3,
+    "signature": "(b: Binding) => number",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 24,
+    "name": "cb",
+    "kind": "function",
+    "file": "callbacks.ts",
+    "line": 1,
+    "signature": "(x?: number) => number",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "callbacks.ts:2:38 read from callbacks",
+      "callbacks.ts:2:54 read from callbacks",
+      "callbacks.ts:2:69 read from callbacks",
+      "callbacks.ts:2:78 read from callbacks",
+      "callbacks.ts:2:95 read from callbacks",
+      "callbacks.ts:2:115 read from callbacks",
+      "callbacks.ts:2:133 call from callbacks"
+    ]
+  },
+  {
+    "id": 25,
+    "name": "callbacks",
+    "kind": "function",
+    "file": "callbacks.ts",
+    "line": 2,
+    "signature": "() => void",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 27,
+    "name": "dec",
+    "kind": "function",
+    "file": "decorators.ts",
+    "line": 1,
+    "signature": "(x: any) => void",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "decorators.ts:2:2 call from Decorated"
+    ]
+  },
+  {
+    "id": 28,
+    "name": "Decorated",
+    "kind": "class",
+    "file": "decorators.ts",
+    "line": 3,
+    "signature": "@dec export class Decorated",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 30,
+    "name": "equals",
+    "kind": "function",
+    "file": "equals.cts",
+    "line": 1,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "equals.cts:1:39 export from equals.cts",
+      "require.cjs:1:7 import from require.cjs",
+      "require.cjs:1:34 call from require.cjs"
+    ]
+  },
+  {
+    "id": 32,
+    "name": "consume",
+    "kind": "function",
+    "file": "es-use.ts",
+    "line": 4,
+    "signature": "() => Promise<void>",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 34,
+    "name": "Field",
+    "kind": "class",
+    "file": "field.ts",
+    "line": 1,
+    "signature": "class Field",
+    "complexity": 0,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "augmentation.ts:3:50 type from augmentation",
+      "field.ts:2:29 new from fieldValue"
+    ]
+  },
+  {
+    "id": 35,
+    "name": "Field.field",
+    "kind": "method",
+    "file": "field.ts",
+    "line": 1,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "field.ts:2:37 call from fieldValue"
+    ]
+  },
+  {
+    "id": 36,
+    "name": "fieldValue",
+    "kind": "variable",
+    "file": "field.ts",
+    "line": 2,
+    "signature": "number",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 38,
+    "name": "Root",
+    "kind": "interface",
+    "file": "heritage.ts",
+    "line": 1,
+    "signature": "interface Root",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "heritage.ts:2:33 extends from Middle",
+      "heritage.ts:5:29 type from dispatch"
+    ]
+  },
+  {
+    "id": 39,
+    "name": "Root.run",
+    "kind": "method",
+    "file": "heritage.ts",
+    "line": 1,
+    "signature": "() => void",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "heritage.ts:2:40 extends from Middle.run",
+      "heritage.ts:5:39 call from dispatch"
+    ]
+  },
+  {
+    "id": 40,
+    "name": "Middle",
+    "kind": "interface",
+    "file": "heritage.ts",
+    "line": 2,
+    "signature": "interface Middle extends Root",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "heritage.ts:3:30 implements from Base"
+    ]
+  },
+  {
+    "id": 41,
+    "name": "Middle.run",
+    "kind": "method",
+    "file": "heritage.ts",
+    "line": 2,
+    "signature": "() => void",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "heritage.ts:3:39 implements from Base.run"
+    ]
+  },
+  {
+    "id": 42,
+    "name": "Base",
+    "kind": "class",
+    "file": "heritage.ts",
+    "line": 3,
+    "signature": "class Base implements Middle",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "heritage.ts:4:27 extends from Leaf"
+    ]
+  },
+  {
+    "id": 43,
+    "name": "Base.run",
+    "kind": "method",
+    "file": "heritage.ts",
+    "line": 3,
+    "signature": "() => void",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "heritage.ts:4:34 extends from Leaf.run"
+    ]
+  },
+  {
+    "id": 44,
+    "name": "Leaf",
+    "kind": "class",
+    "file": "heritage.ts",
+    "line": 4,
+    "signature": "class Leaf extends Base",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "heritage.ts:6:14 new from heritage.ts"
+    ]
+  },
+  {
+    "id": 45,
+    "name": "Leaf.run",
+    "kind": "method",
+    "file": "heritage.ts",
+    "line": 4,
+    "signature": "() => void",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 46,
+    "name": "dispatch",
+    "kind": "function",
+    "file": "heritage.ts",
+    "line": 5,
+    "signature": "(x: Root) => void",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "heritage.ts:6:1 call from heritage.ts"
+    ]
+  },
+  {
+    "id": 49,
+    "name": "localOnly",
+    "kind": "function",
+    "file": "host-local-alias.ts",
+    "line": 1,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "host-local-alias.ts:1:31 export from host-local-alias.ts"
+    ]
+  },
+  {
+    "id": 52,
+    "name": "hostRenamedOnly",
+    "kind": "function",
+    "file": "host-rename-value.ts",
+    "line": 1,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "host-rename-barrel.ts:1:9 export from host-rename-barrel.ts"
+    ]
+  },
+  {
+    "id": 54,
+    "name": "hostOnly",
+    "kind": "function",
+    "file": "host-value.ts",
+    "line": 1,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 56,
+    "name": "documented",
+    "kind": "function",
+    "file": "jsdoc.js",
+    "line": 2,
+    "signature": "(b: import('./binding').Binding) => number",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 58,
+    "name": "AliasProps",
+    "kind": "type",
+    "file": "jsx.tsx",
+    "line": 1,
+    "signature": "type AliasProps = { label: string; onClick():void };",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "jsx.tsx:3:29 type from AliasComp"
+    ]
+  },
+  {
+    "id": 59,
+    "name": "InterfaceProps",
+    "kind": "interface",
+    "file": "jsx.tsx",
+    "line": 2,
+    "signature": "interface InterfaceProps",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "jsx.tsx:4:33 type from InterfaceComp"
+    ]
+  },
+  {
+    "id": 60,
+    "name": "InterfaceProps.label",
+    "kind": "property",
+    "file": "jsx.tsx",
+    "line": 2,
+    "signature": "string",
+    "complexity": 0,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "jsx.tsx:5:73 write from el"
+    ]
+  },
+  {
+    "id": 61,
+    "name": "InterfaceProps.onClick",
+    "kind": "method",
+    "file": "jsx.tsx",
+    "line": 2,
+    "signature": "() => void",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "jsx.tsx:5:83 write from el"
+    ]
+  },
+  {
+    "id": 62,
+    "name": "AliasComp",
+    "kind": "component",
+    "file": "jsx.tsx",
+    "line": 3,
+    "signature": "(p: AliasProps) => null",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "jsx.tsx:5:20 jsx from el"
+    ]
+  },
+  {
+    "id": 63,
+    "name": "InterfaceComp",
+    "kind": "component",
+    "file": "jsx.tsx",
+    "line": 4,
+    "signature": "(p: InterfaceProps) => null",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "jsx.tsx:5:59 jsx from el"
+    ]
+  },
+  {
+    "id": 64,
+    "name": "el",
+    "kind": "variable",
+    "file": "jsx.tsx",
+    "line": 5,
+    "signature": "el=<><AliasComp label='a' onClick={()=>{}}/><InterfaceComp label='b' onClick={()=>{}}/></>",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 66,
+    "name": "outer",
+    "kind": "function",
+    "file": "local.ts",
+    "line": 1,
+    "signature": "() => 0 | 1",
+    "complexity": 2,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 68,
+    "name": "Merged",
+    "kind": "interface",
+    "file": "merging.ts",
+    "line": 1,
+    "signature": "interface Merged",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "merging.ts:4:28 type from mergeUse"
+    ]
+  },
+  {
+    "id": 69,
+    "name": "Merged.a",
+    "kind": "property",
+    "file": "merging.ts",
+    "line": 1,
+    "signature": "string",
+    "complexity": 0,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "merging.ts:4:46 read from mergeUse"
+    ]
+  },
+  {
+    "id": 70,
+    "name": "Merged",
+    "kind": "interface",
+    "file": "merging.ts",
+    "line": 2,
+    "signature": "interface Merged",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 71,
+    "name": "Merged.b",
+    "kind": "property",
+    "file": "merging.ts",
+    "line": 2,
+    "signature": "string",
+    "complexity": 0,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "merging.ts:4:50 read from mergeUse"
+    ]
+  },
+  {
+    "id": 72,
+    "name": "Merged",
+    "kind": "namespace",
+    "file": "merging.ts",
+    "line": 3,
+    "signature": "namespace Merged",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "merging.ts:4:52 read from mergeUse"
+    ]
+  },
+  {
+    "id": 73,
+    "name": "Merged.id",
+    "kind": "variable",
+    "file": "merging.ts",
+    "line": 3,
+    "signature": "1",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "merging.ts:4:59 read from mergeUse"
+    ]
+  },
+  {
+    "id": 74,
+    "name": "mergeUse",
+    "kind": "function",
+    "file": "merging.ts",
+    "line": 4,
+    "signature": "(x: Merged) => string",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 76,
+    "name": "neverRunsCallback",
+    "kind": "function",
+    "file": "nested-complexity.ts",
+    "line": 1,
+    "signature": "() => number",
+    "complexity": 2,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 78,
+    "name": "object",
+    "kind": "variable",
+    "file": "object.ts",
+    "line": 1,
+    "signature": "{ method(): number; arrow: () => number; }",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "object.ts:2:29 read from useObject",
+      "object.ts:2:45 read from useObject"
+    ]
+  },
+  {
+    "id": 79,
+    "name": "useObject",
+    "kind": "hook",
+    "file": "object.ts",
+    "line": 2,
+    "signature": "() => void",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 81,
+    "name": "overloaded",
+    "kind": "function",
+    "file": "overloads.ts",
+    "line": 1,
+    "signature": "{ (x: string): string; (x: number): number; }",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "overloads.ts:4:19 call from over"
+    ]
+  },
+  {
+    "id": 82,
+    "name": "over",
+    "kind": "variable",
+    "file": "overloads.ts",
+    "line": 4,
+    "signature": "number",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 84,
+    "name": "distFn",
+    "kind": "function",
+    "file": "packages/built/src/index.ts",
+    "line": 1,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 86,
+    "name": "sourceFn",
+    "kind": "function",
+    "file": "packages/source/src/index.ts",
+    "line": 1,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "workspace-use.ts:1:9 import from workspace-use.ts",
+      "workspace-use.ts:1:92 call from pkg"
+    ]
+  },
+  {
+    "id": 90,
+    "name": "cjs",
+    "kind": "function",
+    "file": "require.cjs",
+    "line": 2,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "require-use.cjs:1:8 import from require-use.cjs",
+      "require-use.cjs:1:38 call from require-use.cjs"
+    ]
+  },
+  {
+    "id": 92,
+    "name": "original",
+    "kind": "function",
+    "file": "source.ts",
+    "line": 1,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "es-use.ts:3:10 import from es-use.ts",
+      "es-use.ts:4:43 call from consume",
+      "es-use.ts:4:55 call from consume",
+      "renamed.ts:1:9 export from renamed.ts"
+    ]
+  },
+  {
+    "id": 93,
+    "name": "extra",
+    "kind": "function",
+    "file": "source.ts",
+    "line": 2,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "es-use.ts:4:99 call from consume"
+    ]
+  },
+  {
+    "id": 94,
+    "name": "defaultFn",
+    "kind": "function",
+    "file": "source.ts",
+    "line": 3,
+    "signature": "() => number",
+    "complexity": 1,
+    "unused": false,
+    "host": [],
+    "refs": [
+      "es-use.ts:1:8 import from es-use.ts",
+      "es-use.ts:4:33 call from consume"
+    ]
+  },
+  {
+    "id": 97,
+    "name": "tag",
+    "kind": "function",
+    "file": "tagged.ts",
+    "line": 1,
+    "signature": "(s: TemplateStringsArray) => string",
+    "complexity": 1,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "tagged.ts:2:16 call from t"
+    ]
+  },
+  {
+    "id": 98,
+    "name": "t",
+    "kind": "variable",
+    "file": "tagged.ts",
+    "line": 2,
+    "signature": "string",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 100,
+    "name": "Mode",
+    "kind": "type",
+    "file": "typeof.ts",
+    "line": 1,
+    "signature": "type Mode='x';",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 101,
+    "name": "Mode",
+    "kind": "variable",
+    "file": "typeof.ts",
+    "line": 2,
+    "signature": "{ x: number; }",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": [
+      "typeof.ts:3:29 type from ModeType"
+    ]
+  },
+  {
+    "id": 102,
+    "name": "ModeType",
+    "kind": "type",
+    "file": "typeof.ts",
+    "line": 3,
+    "signature": "type ModeType=typeof Mode;",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": []
+  },
+  {
+    "id": 104,
+    "name": "pkg",
+    "kind": "variable",
+    "file": "workspace-use.ts",
+    "line": 1,
+    "signature": "number",
+    "complexity": 0,
+    "unused": true,
+    "host": [],
+    "refs": []
+  }
+]

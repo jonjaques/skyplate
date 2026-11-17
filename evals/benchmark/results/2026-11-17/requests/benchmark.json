@@ -1,0 +1,4076 @@
+{
+  "format": "skyplate-benchmark",
+  "version": 1,
+  "privacy": {
+    "level": "skeleton",
+    "coarsening": "power-of-two",
+    "durations": "two-significant-figures",
+    "ratios": "hundredths",
+    "retainsShape": true
+  },
+  "environment": {
+    "skyplate": [
+      0,
+      2,
+      0
+    ],
+    "reportSchema": 2,
+    "bun": [
+      1,
+      4,
+      4
+    ],
+    "platform": "darwin",
+    "architecture": "arm64",
+    "cores": 16,
+    "memoryBytes": 34359738368
+  },
+  "options": [
+    {
+      "code": "includeIgnored",
+      "value": 0
+    },
+    {
+      "code": "git",
+      "value": 1
+    },
+    {
+      "code": "source",
+      "value": 1
+    },
+    {
+      "code": "symbols",
+      "value": 1
+    },
+    {
+      "code": "layout",
+      "value": 1
+    },
+    {
+      "code": "maxCommits",
+      "value": 32768
+    },
+    {
+      "code": "maxSourceFile",
+      "value": 524288
+    },
+    {
+      "code": "maxSourceTotal",
+      "value": 67108864
+    },
+    {
+      "code": "tsMaxFiles",
+      "value": 32768
+    },
+    {
+      "code": "tsMaxRefs",
+      "value": 1048576
+    },
+    {
+      "code": "redactPaths",
+      "value": 0
+    },
+    {
+      "code": "maxReadBytes",
+      "value": 8388608
+    },
+    {
+      "code": "workers",
+      "value": 2
+    },
+    {
+      "code": "exclude_count",
+      "value": 0
+    }
+  ],
+  "scale": {
+    "totals": [
+      {
+        "code": "files",
+        "value": 128
+      },
+      {
+        "code": "dirs",
+        "value": 32
+      },
+      {
+        "code": "bytes",
+        "value": 8388608
+      },
+      {
+        "code": "lines",
+        "value": 32768
+      },
+      {
+        "code": "code",
+        "value": 16384
+      },
+      {
+        "code": "comment",
+        "value": 4096
+      },
+      {
+        "code": "blank",
+        "value": 4096
+      },
+      {
+        "code": "binaryFiles",
+        "value": 8
+      },
+      {
+        "code": "generatedFiles",
+        "value": 0
+      },
+      {
+        "code": "vendoredFiles",
+        "value": 8
+      },
+      {
+        "code": "ignored",
+        "value": 2
+      },
+      {
+        "code": "languages",
+        "value": 32
+      },
+      {
+        "code": "secrets",
+        "value": 4
+      }
+    ],
+    "languages": [
+      {
+        "language": "batchfile",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 8192
+          },
+          {
+            "code": "lines",
+            "value": 512
+          },
+          {
+            "code": "code",
+            "value": 256
+          },
+          {
+            "code": "comment",
+            "value": 2
+          },
+          {
+            "code": "blank",
+            "value": 64
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "extension",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "binary",
+        "totals": [
+          {
+            "code": "files",
+            "value": 8
+          },
+          {
+            "code": "bytes",
+            "value": 4194304
+          },
+          {
+            "code": "lines",
+            "value": 0
+          },
+          {
+            "code": "code",
+            "value": 0
+          },
+          {
+            "code": "comment",
+            "value": 0
+          },
+          {
+            "code": "blank",
+            "value": 0
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "content",
+            "value": 8
+          }
+        ]
+      },
+      {
+        "language": "codeowners",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 512
+          },
+          {
+            "code": "lines",
+            "value": 8
+          },
+          {
+            "code": "code",
+            "value": 8
+          },
+          {
+            "code": "comment",
+            "value": 2
+          },
+          {
+            "code": "blank",
+            "value": 1
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "filename",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "css",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 512
+          },
+          {
+            "code": "lines",
+            "value": 16
+          },
+          {
+            "code": "code",
+            "value": 8
+          },
+          {
+            "code": "comment",
+            "value": 0
+          },
+          {
+            "code": "blank",
+            "value": 4
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "extension",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "git-revision-list",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 256
+          },
+          {
+            "code": "lines",
+            "value": 8
+          },
+          {
+            "code": "code",
+            "value": 4
+          },
+          {
+            "code": "comment",
+            "value": 0
+          },
+          {
+            "code": "blank",
+            "value": 1
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "filename",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "html",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 2048
+          },
+          {
+            "code": "lines",
+            "value": 64
+          },
+          {
+            "code": "code",
+            "value": 32
+          },
+          {
+            "code": "comment",
+            "value": 0
+          },
+          {
+            "code": "blank",
+            "value": 8
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "heuristic",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "ignore-list",
+        "totals": [
+          {
+            "code": "files",
+            "value": 2
+          },
+          {
+            "code": "bytes",
+            "value": 512
+          },
+          {
+            "code": "lines",
+            "value": 64
+          },
+          {
+            "code": "code",
+            "value": 64
+          },
+          {
+            "code": "comment",
+            "value": 1
+          },
+          {
+            "code": "blank",
+            "value": 8
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "filename",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "language": "ini",
+        "totals": [
+          {
+            "code": "files",
+            "value": 8
+          },
+          {
+            "code": "bytes",
+            "value": 4096
+          },
+          {
+            "code": "lines",
+            "value": 128
+          },
+          {
+            "code": "code",
+            "value": 128
+          },
+          {
+            "code": "comment",
+            "value": 4
+          },
+          {
+            "code": "blank",
+            "value": 16
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "filename",
+            "value": 1
+          },
+          {
+            "code": "extension",
+            "value": 8
+          }
+        ]
+      },
+      {
+        "language": "makefile",
+        "totals": [
+          {
+            "code": "files",
+            "value": 8
+          },
+          {
+            "code": "bytes",
+            "value": 16384
+          },
+          {
+            "code": "lines",
+            "value": 512
+          },
+          {
+            "code": "code",
+            "value": 512
+          },
+          {
+            "code": "comment",
+            "value": 8
+          },
+          {
+            "code": "blank",
+            "value": 64
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "filename",
+            "value": 8
+          }
+        ]
+      },
+      {
+        "language": "markdown",
+        "totals": [
+          {
+            "code": "files",
+            "value": 16
+          },
+          {
+            "code": "bytes",
+            "value": 131072
+          },
+          {
+            "code": "lines",
+            "value": 4096
+          },
+          {
+            "code": "code",
+            "value": 2048
+          },
+          {
+            "code": "comment",
+            "value": 8
+          },
+          {
+            "code": "blank",
+            "value": 1024
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "heuristic",
+            "value": 16
+          }
+        ]
+      },
+      {
+        "language": "pip-requirements",
+        "totals": [
+          {
+            "code": "files",
+            "value": 2
+          },
+          {
+            "code": "bytes",
+            "value": 256
+          },
+          {
+            "code": "lines",
+            "value": 16
+          },
+          {
+            "code": "code",
+            "value": 8
+          },
+          {
+            "code": "comment",
+            "value": 2
+          },
+          {
+            "code": "blank",
+            "value": 0
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "filename",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "language": "python",
+        "totals": [
+          {
+            "code": "files",
+            "value": 64
+          },
+          {
+            "code": "bytes",
+            "value": 524288
+          },
+          {
+            "code": "lines",
+            "value": 16384
+          },
+          {
+            "code": "code",
+            "value": 8192
+          },
+          {
+            "code": "comment",
+            "value": 4096
+          },
+          {
+            "code": "blank",
+            "value": 4096
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "extension",
+            "value": 64
+          }
+        ]
+      },
+      {
+        "language": "restructuredtext",
+        "totals": [
+          {
+            "code": "files",
+            "value": 16
+          },
+          {
+            "code": "bytes",
+            "value": 131072
+          },
+          {
+            "code": "lines",
+            "value": 4096
+          },
+          {
+            "code": "code",
+            "value": 4096
+          },
+          {
+            "code": "comment",
+            "value": 0
+          },
+          {
+            "code": "blank",
+            "value": 1024
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "extension",
+            "value": 16
+          }
+        ]
+      },
+      {
+        "language": "svg",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 1048576
+          },
+          {
+            "code": "lines",
+            "value": 1
+          },
+          {
+            "code": "code",
+            "value": 1
+          },
+          {
+            "code": "comment",
+            "value": 0
+          },
+          {
+            "code": "blank",
+            "value": 0
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "extension",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "text",
+        "totals": [
+          {
+            "code": "files",
+            "value": 32
+          },
+          {
+            "code": "bytes",
+            "value": 32768
+          },
+          {
+            "code": "lines",
+            "value": 1024
+          },
+          {
+            "code": "code",
+            "value": 1024
+          },
+          {
+            "code": "comment",
+            "value": 0
+          },
+          {
+            "code": "blank",
+            "value": 64
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "filename",
+            "value": 8
+          },
+          {
+            "code": "fallback",
+            "value": 16
+          }
+        ]
+      },
+      {
+        "language": "toml",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 4096
+          },
+          {
+            "code": "lines",
+            "value": 128
+          },
+          {
+            "code": "code",
+            "value": 128
+          },
+          {
+            "code": "comment",
+            "value": 2
+          },
+          {
+            "code": "blank",
+            "value": 16
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "extension",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "yaml",
+        "totals": [
+          {
+            "code": "files",
+            "value": 16
+          },
+          {
+            "code": "bytes",
+            "value": 16384
+          },
+          {
+            "code": "lines",
+            "value": 512
+          },
+          {
+            "code": "code",
+            "value": 512
+          },
+          {
+            "code": "comment",
+            "value": 64
+          },
+          {
+            "code": "blank",
+            "value": 64
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "heuristic",
+            "value": 16
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "category": "test",
+        "totals": [
+          {
+            "code": "files",
+            "value": 64
+          },
+          {
+            "code": "bytes",
+            "value": 262144
+          },
+          {
+            "code": "lines",
+            "value": 8192
+          }
+        ]
+      },
+      {
+        "category": "docs",
+        "totals": [
+          {
+            "code": "files",
+            "value": 32
+          },
+          {
+            "code": "bytes",
+            "value": 4194304
+          },
+          {
+            "code": "lines",
+            "value": 8192
+          }
+        ]
+      },
+      {
+        "category": "code",
+        "totals": [
+          {
+            "code": "files",
+            "value": 32
+          },
+          {
+            "code": "bytes",
+            "value": 262144
+          },
+          {
+            "code": "lines",
+            "value": 8192
+          }
+        ]
+      },
+      {
+        "category": "config",
+        "totals": [
+          {
+            "code": "files",
+            "value": 32
+          },
+          {
+            "code": "bytes",
+            "value": 16384
+          },
+          {
+            "code": "lines",
+            "value": 512
+          }
+        ]
+      },
+      {
+        "category": "build",
+        "totals": [
+          {
+            "code": "files",
+            "value": 16
+          },
+          {
+            "code": "bytes",
+            "value": 32768
+          },
+          {
+            "code": "lines",
+            "value": 1024
+          }
+        ]
+      },
+      {
+        "category": "image",
+        "totals": [
+          {
+            "code": "files",
+            "value": 8
+          },
+          {
+            "code": "bytes",
+            "value": 2097152
+          },
+          {
+            "code": "lines",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "category": "style",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 512
+          },
+          {
+            "code": "lines",
+            "value": 16
+          }
+        ]
+      }
+    ],
+    "distributions": [
+      {
+        "metric": "file_bytes",
+        "count": 128,
+        "minimum": 0,
+        "p50": 2048,
+        "p90": 32768,
+        "p99": 1048576,
+        "maximum": 4194304,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 2
+          },
+          {
+            "upper": 1,
+            "count": 1
+          },
+          {
+            "upper": 32,
+            "count": 1
+          },
+          {
+            "upper": 64,
+            "count": 8
+          },
+          {
+            "upper": 128,
+            "count": 4
+          },
+          {
+            "upper": 256,
+            "count": 16
+          },
+          {
+            "upper": 512,
+            "count": 32
+          },
+          {
+            "upper": 1024,
+            "count": 16
+          },
+          {
+            "upper": 2048,
+            "count": 16
+          },
+          {
+            "upper": 4096,
+            "count": 32
+          },
+          {
+            "upper": 8192,
+            "count": 16
+          },
+          {
+            "upper": 16384,
+            "count": 8
+          },
+          {
+            "upper": 32768,
+            "count": 4
+          },
+          {
+            "upper": 65536,
+            "count": 8
+          },
+          {
+            "upper": 131072,
+            "count": 1
+          },
+          {
+            "upper": 262144,
+            "count": 2
+          },
+          {
+            "upper": 524288,
+            "count": 1
+          },
+          {
+            "upper": 1048576,
+            "count": 1
+          },
+          {
+            "upper": 4194304,
+            "count": 1
+          }
+        ]
+      },
+      {
+        "metric": "file_lines",
+        "count": 128,
+        "minimum": 0,
+        "p50": 32,
+        "p90": 512,
+        "p99": 4096,
+        "maximum": 4096,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 8
+          },
+          {
+            "upper": 1,
+            "count": 8
+          },
+          {
+            "upper": 2,
+            "count": 2
+          },
+          {
+            "upper": 4,
+            "count": 8
+          },
+          {
+            "upper": 8,
+            "count": 8
+          },
+          {
+            "upper": 16,
+            "count": 16
+          },
+          {
+            "upper": 32,
+            "count": 32
+          },
+          {
+            "upper": 64,
+            "count": 16
+          },
+          {
+            "upper": 128,
+            "count": 16
+          },
+          {
+            "upper": 256,
+            "count": 16
+          },
+          {
+            "upper": 512,
+            "count": 8
+          },
+          {
+            "upper": 1024,
+            "count": 8
+          },
+          {
+            "upper": 2048,
+            "count": 4
+          },
+          {
+            "upper": 4096,
+            "count": 2
+          }
+        ]
+      },
+      {
+        "metric": "file_depth",
+        "count": 128,
+        "minimum": 0,
+        "p50": 2,
+        "p90": 4,
+        "p99": 4,
+        "maximum": 4,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 16
+          },
+          {
+            "upper": 1,
+            "count": 64
+          },
+          {
+            "upper": 2,
+            "count": 64
+          },
+          {
+            "upper": 4,
+            "count": 32
+          }
+        ]
+      },
+      {
+        "metric": "directory_fanout",
+        "count": 32,
+        "minimum": 1,
+        "p50": 8,
+        "p90": 16,
+        "p99": 32,
+        "maximum": 32,
+        "histogram": [
+          {
+            "upper": 1,
+            "count": 4
+          },
+          {
+            "upper": 2,
+            "count": 4
+          },
+          {
+            "upper": 4,
+            "count": 8
+          },
+          {
+            "upper": 8,
+            "count": 8
+          },
+          {
+            "upper": 16,
+            "count": 4
+          },
+          {
+            "upper": 32,
+            "count": 2
+          }
+        ]
+      },
+      {
+        "metric": "fanIn",
+        "count": 128,
+        "minimum": 0,
+        "p50": 0,
+        "p90": 4,
+        "p99": 16,
+        "maximum": 16,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 128
+          },
+          {
+            "upper": 1,
+            "count": 4
+          },
+          {
+            "upper": 2,
+            "count": 4
+          },
+          {
+            "upper": 4,
+            "count": 8
+          },
+          {
+            "upper": 8,
+            "count": 8
+          },
+          {
+            "upper": 16,
+            "count": 4
+          }
+        ]
+      },
+      {
+        "metric": "fanOut",
+        "count": 128,
+        "minimum": 0,
+        "p50": 0,
+        "p90": 2,
+        "p99": 16,
+        "maximum": 16,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 128
+          },
+          {
+            "upper": 1,
+            "count": 16
+          },
+          {
+            "upper": 2,
+            "count": 4
+          },
+          {
+            "upper": 4,
+            "count": 4
+          },
+          {
+            "upper": 8,
+            "count": 4
+          },
+          {
+            "upper": 16,
+            "count": 4
+          }
+        ]
+      },
+      {
+        "metric": "symbols_per_file",
+        "count": 128,
+        "minimum": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "maximum": 0,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 128
+          }
+        ]
+      },
+      {
+        "metric": "references_per_symbol",
+        "count": 0,
+        "minimum": 0,
+        "p50": 0,
+        "p90": 0,
+        "p99": 0,
+        "maximum": 0,
+        "histogram": []
+      },
+      {
+        "metric": "commits_per_file",
+        "count": 128,
+        "minimum": 1,
+        "p50": 1,
+        "p90": 4,
+        "p99": 16,
+        "maximum": 16,
+        "histogram": [
+          {
+            "upper": 1,
+            "count": 128
+          },
+          {
+            "upper": 2,
+            "count": 16
+          },
+          {
+            "upper": 4,
+            "count": 16
+          },
+          {
+            "upper": 8,
+            "count": 8
+          },
+          {
+            "upper": 16,
+            "count": 2
+          }
+        ]
+      },
+      {
+        "metric": "authors_per_file",
+        "count": 128,
+        "minimum": 1,
+        "p50": 1,
+        "p90": 2,
+        "p99": 8,
+        "maximum": 8,
+        "histogram": [
+          {
+            "upper": 1,
+            "count": 128
+          },
+          {
+            "upper": 2,
+            "count": 32
+          },
+          {
+            "upper": 4,
+            "count": 8
+          },
+          {
+            "upper": 8,
+            "count": 2
+          }
+        ]
+      },
+      {
+        "metric": "age_days",
+        "count": 128,
+        "minimum": 256,
+        "p50": 256,
+        "p90": 256,
+        "p99": 256,
+        "maximum": 256,
+        "histogram": [
+          {
+            "upper": 256,
+            "count": 128
+          }
+        ]
+      },
+      {
+        "metric": "cycle_size",
+        "count": 1,
+        "minimum": 8,
+        "p50": 8,
+        "p90": 8,
+        "p99": 8,
+        "maximum": 8,
+        "histogram": [
+          {
+            "upper": 8,
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "cost": {
+    "totalMs": 93,
+    "samplingMs": 100,
+    "phases": [
+      {
+        "phase": "walk",
+        "status": "ok",
+        "ms": 12,
+        "filesPerSecond": 16384,
+        "bytesPerSecond": 536870912
+      },
+      {
+        "phase": "detect",
+        "status": "ok",
+        "ms": 17,
+        "filesPerSecond": 8192,
+        "bytesPerSecond": 268435456
+      },
+      {
+        "phase": "typescript",
+        "status": "ok",
+        "ms": 0,
+        "filesPerSecond": 0,
+        "bytesPerSecond": 0
+      },
+      {
+        "phase": "files",
+        "status": "ok",
+        "ms": 27,
+        "filesPerSecond": 8192,
+        "bytesPerSecond": 268435456
+      },
+      {
+        "phase": "imports",
+        "status": "ok",
+        "ms": 5,
+        "filesPerSecond": 32768,
+        "bytesPerSecond": 1073741824
+      },
+      {
+        "phase": "graph",
+        "status": "ok",
+        "ms": 1,
+        "filesPerSecond": 131072,
+        "bytesPerSecond": 8589934592
+      },
+      {
+        "phase": "git",
+        "status": "ok",
+        "ms": 35,
+        "filesPerSecond": 4096,
+        "bytesPerSecond": 134217728
+      },
+      {
+        "phase": "stats",
+        "status": "ok",
+        "ms": 0,
+        "filesPerSecond": 0,
+        "bytesPerSecond": 0
+      },
+      {
+        "phase": "layout",
+        "status": "ok",
+        "ms": 15,
+        "filesPerSecond": 16384,
+        "bytesPerSecond": 536870912
+      },
+      {
+        "phase": "findings",
+        "status": "ok",
+        "ms": 1,
+        "filesPerSecond": 131072,
+        "bytesPerSecond": 8589934592
+      }
+    ],
+    "memory": [
+      {
+        "phase": "walk",
+        "status": "start",
+        "rss": 33554432,
+        "heap": 8388608
+      },
+      {
+        "phase": "walk",
+        "status": "done",
+        "rss": 33554432,
+        "heap": 8388608
+      },
+      {
+        "phase": "detect",
+        "status": "start",
+        "rss": 33554432,
+        "heap": 8388608
+      },
+      {
+        "phase": "detect",
+        "status": "done",
+        "rss": 67108864,
+        "heap": 8388608
+      },
+      {
+        "phase": "git",
+        "status": "start",
+        "rss": 67108864,
+        "heap": 8388608
+      },
+      {
+        "phase": "typescript",
+        "status": "start",
+        "rss": 67108864,
+        "heap": 8388608
+      },
+      {
+        "phase": "files",
+        "status": "start",
+        "rss": 67108864,
+        "heap": 8388608
+      },
+      {
+        "phase": "typescript",
+        "status": "done",
+        "rss": 67108864,
+        "heap": 8388608
+      },
+      {
+        "phase": "files",
+        "status": "done",
+        "rss": 134217728,
+        "heap": 8388608
+      },
+      {
+        "phase": "imports",
+        "status": "start",
+        "rss": 134217728,
+        "heap": 8388608
+      },
+      {
+        "phase": "imports",
+        "status": "done",
+        "rss": 134217728,
+        "heap": 8388608
+      },
+      {
+        "phase": "graph",
+        "status": "start",
+        "rss": 134217728,
+        "heap": 8388608
+      },
+      {
+        "phase": "graph",
+        "status": "done",
+        "rss": 134217728,
+        "heap": 8388608
+      },
+      {
+        "phase": "layout",
+        "status": "start",
+        "rss": 134217728,
+        "heap": 8388608
+      },
+      {
+        "phase": "git",
+        "status": "done",
+        "rss": 134217728,
+        "heap": 8388608
+      },
+      {
+        "phase": "stats",
+        "status": "start",
+        "rss": 134217728,
+        "heap": 8388608
+      },
+      {
+        "phase": "stats",
+        "status": "done",
+        "rss": 134217728,
+        "heap": 8388608
+      },
+      {
+        "phase": "layout",
+        "status": "done",
+        "rss": 134217728,
+        "heap": 8388608
+      },
+      {
+        "phase": "findings",
+        "status": "start",
+        "rss": 134217728,
+        "heap": 8388608
+      },
+      {
+        "phase": "findings",
+        "status": "done",
+        "rss": 134217728,
+        "heap": 8388608
+      }
+    ],
+    "totals": [
+      {
+        "code": "peak_rss",
+        "value": 134217728
+      },
+      {
+        "code": "peak_heap",
+        "value": 16777216
+      },
+      {
+        "code": "high_water_rss",
+        "value": 134217728
+      }
+    ],
+    "workers": [
+      {
+        "code": "size",
+        "value": 2
+      },
+      {
+        "code": "submitted",
+        "value": 32
+      },
+      {
+        "code": "completed",
+        "value": 32
+      },
+      {
+        "code": "failed",
+        "value": 0
+      },
+      {
+        "code": "spawned",
+        "value": 2
+      },
+      {
+        "code": "queuePeak",
+        "value": 8
+      },
+      {
+        "code": "busyPeak",
+        "value": 2
+      },
+      {
+        "code": "waitMs",
+        "value": 256
+      },
+      {
+        "code": "runMs",
+        "value": 128
+      }
+    ],
+    "payloads": [
+      {
+        "code": "report",
+        "value": 131072
+      },
+      {
+        "code": "source_chunk",
+        "value": 1048576
+      },
+      {
+        "code": "assets",
+        "value": 2097152
+      }
+    ],
+    "layout": [
+      {
+        "ms": 0.71,
+        "budgetMs": 150,
+        "siblingBudgetMs": 0,
+        "exceeded": false
+      }
+    ]
+  },
+  "quality": {
+    "errors": [],
+    "imports": [
+      {
+        "language": "python",
+        "internal": 128,
+        "external": 256,
+        "unresolved": 0,
+        "unresolvedShare": 0,
+        "shapes": []
+      }
+    ],
+    "rates": [
+      {
+        "code": "ts_coverage",
+        "value": 0
+      },
+      {
+        "code": "ts_unresolved_share",
+        "value": 0
+      },
+      {
+        "code": "unused_export_share",
+        "value": 0
+      }
+    ],
+    "typescript": [
+      {
+        "code": "present",
+        "value": 0
+      },
+      {
+        "code": "eligible",
+        "value": 0
+      },
+      {
+        "code": "covered",
+        "value": 0
+      },
+      {
+        "code": "projects",
+        "value": 0
+      },
+      {
+        "code": "references",
+        "value": 0
+      },
+      {
+        "code": "symbols",
+        "value": 0
+      },
+      {
+        "code": "unresolved",
+        "value": 0
+      },
+      {
+        "code": "uninstalledManifests",
+        "value": 0
+      },
+      {
+        "code": "hostFiles",
+        "value": 0
+      }
+    ],
+    "unusedExports": [
+      {
+        "code": "exports",
+        "value": 0
+      },
+      {
+        "code": "unusedExports",
+        "value": 0
+      }
+    ],
+    "entryPoints": [],
+    "cycles": [
+      {
+        "code": "runtime_cycles",
+        "value": 1
+      },
+      {
+        "code": "type_cycles",
+        "value": 0
+      }
+    ],
+    "validation": [],
+    "diagnostics": [
+      {
+        "code": "warnings_total",
+        "value": 2
+      },
+      {
+        "code": "git_shallow",
+        "value": 1
+      },
+      {
+        "code": "history_boundary",
+        "value": 1
+      }
+    ]
+  },
+  "limits": [
+    {
+      "code": "rust_use_cap",
+      "value": 0
+    },
+    {
+      "code": "rust_statement_cap",
+      "value": 0
+    },
+    {
+      "code": "pagerank_iteration_cap",
+      "value": 0
+    },
+    {
+      "code": "module_split_cap",
+      "value": 0
+    },
+    {
+      "code": "git_coupling_cap",
+      "value": 0
+    },
+    {
+      "code": "git_sweep_threshold",
+      "value": 32
+    },
+    {
+      "code": "git_sweep_commits",
+      "value": 1
+    },
+    {
+      "code": "asset_size_cap",
+      "value": 0
+    },
+    {
+      "code": "source_secret_disabled",
+      "value": 4
+    },
+    {
+      "code": "source_binary_disabled",
+      "value": 8
+    },
+    {
+      "code": "symbols_disabled",
+      "value": 0
+    },
+    {
+      "code": "git_disabled",
+      "value": 0
+    },
+    {
+      "code": "text_read_cap",
+      "value": 0
+    },
+    {
+      "code": "binary_read_cap",
+      "value": 0
+    },
+    {
+      "code": "ts_file_cap",
+      "value": 0
+    },
+    {
+      "code": "ts_reference_cap",
+      "value": 0
+    },
+    {
+      "code": "package_sibling_cap",
+      "value": 0
+    },
+    {
+      "code": "git_rename_limit",
+      "value": 0
+    },
+    {
+      "code": "git_move_limit",
+      "value": 0
+    },
+    {
+      "code": "shallow",
+      "value": 1
+    },
+    {
+      "code": "truncated",
+      "value": 1
+    },
+    {
+      "code": "analyzedCommits",
+      "value": 64
+    },
+    {
+      "code": "totalCommits",
+      "value": 64
+    },
+    {
+      "code": "source_file_cap",
+      "value": 1
+    },
+    {
+      "code": "source_total_cap",
+      "value": 0
+    },
+    {
+      "code": "source_disabled",
+      "value": 0
+    }
+  ],
+  "queries": [
+    {
+      "tool": "overview",
+      "rank": "cold",
+      "status": "ok",
+      "ms": 0.22,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "map_codebase",
+      "rank": "cold",
+      "status": "ok",
+      "ms": 0.71,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "locate_code",
+      "rank": "top_hotspot",
+      "status": "ok",
+      "ms": 0.7,
+      "responseBytes": 1024,
+      "tokens": 256,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "change_impact",
+      "rank": "top_hotspot",
+      "status": "ok",
+      "ms": 0.68,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "change_impact",
+      "rank": "most_referenced",
+      "status": "skipped",
+      "ms": 0,
+      "responseBytes": 0,
+      "tokens": 0,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "files",
+      "rank": "top_hotspot",
+      "status": "ok",
+      "ms": 0.25,
+      "responseBytes": 16384,
+      "tokens": 4096,
+      "truncated": 128,
+      "error": "none"
+    },
+    {
+      "tool": "dir",
+      "rank": "largest_directory",
+      "status": "ok",
+      "ms": 0.22,
+      "responseBytes": 8192,
+      "tokens": 2048,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "dir",
+      "rank": "median_directory",
+      "status": "ok",
+      "ms": 0.045,
+      "responseBytes": 2048,
+      "tokens": 512,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "file",
+      "rank": "top_hotspot",
+      "status": "ok",
+      "ms": 0.17,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "file",
+      "rank": "median_file",
+      "status": "ok",
+      "ms": 0.021,
+      "responseBytes": 1024,
+      "tokens": 256,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "symbol",
+      "rank": "most_referenced",
+      "status": "skipped",
+      "ms": 0,
+      "responseBytes": 0,
+      "tokens": 0,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "search_symbols",
+      "rank": "most_referenced",
+      "status": "skipped",
+      "ms": 0,
+      "responseBytes": 0,
+      "tokens": 0,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "seams",
+      "rank": "cold",
+      "status": "ok",
+      "ms": 0.4,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "seam",
+      "rank": "largest_directory",
+      "status": "ok",
+      "ms": 0.32,
+      "responseBytes": 1024,
+      "tokens": 256,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "seam",
+      "rank": "median_directory",
+      "status": "ok",
+      "ms": 0.051,
+      "responseBytes": 1024,
+      "tokens": 256,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "graph",
+      "rank": "top_hotspot",
+      "status": "ok",
+      "ms": 0.12,
+      "responseBytes": 1024,
+      "tokens": 256,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "history",
+      "rank": "cold",
+      "status": "ok",
+      "ms": 0.13,
+      "responseBytes": 1024,
+      "tokens": 256,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "dependencies",
+      "rank": "cold",
+      "status": "ok",
+      "ms": 0.11,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 32,
+      "error": "none"
+    },
+    {
+      "tool": "overview",
+      "rank": "warm",
+      "status": "ok",
+      "ms": 0.057,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    }
+  ],
+  "anomalies": [],
+  "failures": [],
+  "session": {
+    "calls": [],
+    "transitions": []
+  },
+  "skeleton": {
+    "dirs": [
+      {
+        "parent": 5
+      },
+      {
+        "parent": 2
+      },
+      {
+        "parent": 18
+      },
+      {
+        "parent": 18
+      },
+      {
+        "parent": 12
+      },
+      {
+        "parent": 1
+      },
+      {
+        "parent": 18
+      },
+      {
+        "parent": 1
+      },
+      {
+        "parent": 1
+      },
+      {
+        "parent": 18
+      },
+      {
+        "parent": 6
+      },
+      {
+        "parent": 9
+      },
+      {
+        "parent": 18
+      },
+      {
+        "parent": 9
+      },
+      {
+        "parent": 12
+      },
+      {
+        "parent": 9
+      },
+      {
+        "parent": 9
+      },
+      {
+        "parent": 9
+      },
+      {
+        "parent": -1
+      },
+      {
+        "parent": 9
+      },
+      {
+        "parent": 2
+      },
+      {
+        "parent": 8
+      },
+      {
+        "parent": 8
+      },
+      {
+        "parent": 7
+      }
+    ],
+    "files": [
+      {
+        "dir": 18,
+        "language": "toml",
+        "category": "config",
+        "bytes": 4096,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 2048,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 4096,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 0,
+        "language": "text",
+        "category": "test",
+        "bytes": 4096,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 0,
+        "language": "makefile",
+        "category": "test",
+        "bytes": 512,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 4,
+        "language": "markdown",
+        "category": "config",
+        "bytes": 256,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 8192,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "git-revision-list",
+        "category": "config",
+        "bytes": 256,
+        "lines": 8,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 8,
+        "language": "markdown",
+        "category": "docs",
+        "bytes": 256,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 12,
+        "language": "markdown",
+        "category": "docs",
+        "bytes": 4096,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 3,
+        "language": "binary",
+        "category": "docs",
+        "bytes": 4194304,
+        "lines": 0,
+        "binary": true,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 20,
+        "language": "python",
+        "category": "test",
+        "bytes": 8192,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 23,
+        "language": "ini",
+        "category": "test",
+        "bytes": 1024,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 512,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 21,
+        "language": "text",
+        "category": "test",
+        "bytes": 2048,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 8192,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 8192,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 9,
+        "language": "python",
+        "category": "code",
+        "bytes": 16384,
+        "lines": 512,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 9,
+        "language": "pip-requirements",
+        "category": "config",
+        "bytes": 128,
+        "lines": 4,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 21,
+        "language": "text",
+        "category": "test",
+        "bytes": 4096,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 16384,
+        "lines": 512,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 15,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 8192,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 4096,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 14,
+        "language": "yaml",
+        "category": "build",
+        "bytes": 1024,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 65536,
+        "lines": 2048,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "pip-requirements",
+        "category": "config",
+        "bytes": 128,
+        "lines": 8,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 8192,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "ignore-list",
+        "category": "config",
+        "bytes": 512,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 20,
+        "language": "python",
+        "category": "test",
+        "bytes": 0,
+        "lines": 0,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 23,
+        "language": "makefile",
+        "category": "test",
+        "bytes": 512,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 32768,
+        "lines": 1024,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 19,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 4096,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 15,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 2048,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 22,
+        "language": "makefile",
+        "category": "test",
+        "bytes": 512,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 8,
+        "language": "makefile",
+        "category": "test",
+        "bytes": 256,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 21,
+        "language": "ini",
+        "category": "test",
+        "bytes": 512,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 14,
+        "language": "yaml",
+        "category": "build",
+        "bytes": 2048,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "text",
+        "category": "config",
+        "bytes": 128,
+        "lines": 4,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 19,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 1024,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 22,
+        "language": "text",
+        "category": "test",
+        "bytes": 2048,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 19,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 1024,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 65536,
+        "lines": 1024,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 9,
+        "language": "makefile",
+        "category": "build",
+        "bytes": 8192,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 1,
+        "language": "markdown",
+        "category": "docs",
+        "bytes": 512,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 23,
+        "language": "text",
+        "category": "test",
+        "bytes": 4096,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 14,
+        "language": "yaml",
+        "category": "build",
+        "bytes": 1024,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 512,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 7,
+        "language": "makefile",
+        "category": "test",
+        "bytes": 128,
+        "lines": 8,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 131072,
+        "lines": 4096,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "markdown",
+        "category": "docs",
+        "bytes": 65536,
+        "lines": 4096,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 65536,
+        "lines": 2048,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 8192,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 32768,
+        "lines": 1024,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 1024,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 23,
+        "language": "text",
+        "category": "test",
+        "bytes": 2048,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 512,
+        "lines": 8,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 0,
+        "language": "ini",
+        "category": "test",
+        "bytes": 1024,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 19,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 4096,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 512,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 9,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 8192,
+        "lines": 512,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 3,
+        "language": "svg",
+        "category": "image",
+        "bytes": 1048576,
+        "lines": 1,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 12,
+        "language": "markdown",
+        "category": "config",
+        "bytes": 8192,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 21,
+        "language": "text",
+        "category": "test",
+        "bytes": 2048,
+        "lines": 32,
+        "binary": false,
+        "secret": true,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 3,
+        "language": "text",
+        "category": "docs",
+        "bytes": 64,
+        "lines": 1,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 14,
+        "language": "yaml",
+        "category": "build",
+        "bytes": 4096,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 4,
+        "language": "markdown",
+        "category": "config",
+        "bytes": 1024,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 15,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 32768,
+        "lines": 1024,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 17,
+        "language": "html",
+        "category": "docs",
+        "bytes": 2048,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": true
+      },
+      {
+        "dir": 22,
+        "language": "ini",
+        "category": "test",
+        "bytes": 512,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 19,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 256,
+        "lines": 8,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 9,
+        "language": "batchfile",
+        "category": "code",
+        "bytes": 8192,
+        "lines": 512,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 22,
+        "language": "text",
+        "category": "test",
+        "bytes": 64,
+        "lines": 1,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 15,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 65536,
+        "lines": 2048,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "yaml",
+        "category": "config",
+        "bytes": 1024,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 0,
+        "language": "text",
+        "category": "test",
+        "bytes": 2048,
+        "lines": 32,
+        "binary": false,
+        "secret": true,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 13,
+        "language": "text",
+        "category": "docs",
+        "bytes": 2048,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": true
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 2048,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 19,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 512,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "makefile",
+        "category": "build",
+        "bytes": 1024,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 3,
+        "language": "binary",
+        "category": "image",
+        "bytes": 262144,
+        "lines": 0,
+        "binary": true,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 3,
+        "language": "binary",
+        "category": "image",
+        "bytes": 16384,
+        "lines": 0,
+        "binary": true,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 512,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 512,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 8192,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 12,
+        "language": "markdown",
+        "category": "docs",
+        "bytes": 512,
+        "lines": 8,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 13,
+        "language": "python",
+        "category": "code",
+        "bytes": 8192,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": true
+      },
+      {
+        "dir": 18,
+        "language": "markdown",
+        "category": "docs",
+        "bytes": 4096,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 512,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 4,
+        "language": "markdown",
+        "category": "config",
+        "bytes": 256,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "yaml",
+        "category": "config",
+        "bytes": 512,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 14,
+        "language": "yaml",
+        "category": "test",
+        "bytes": 4096,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 12,
+        "language": "markdown",
+        "category": "docs",
+        "bytes": 4096,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 14,
+        "language": "yaml",
+        "category": "build",
+        "bytes": 1024,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 14,
+        "language": "yaml",
+        "category": "build",
+        "bytes": 4096,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 12,
+        "language": "codeowners",
+        "category": "config",
+        "bytes": 512,
+        "lines": 8,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 8192,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 0,
+        "language": "text",
+        "category": "test",
+        "bytes": 2048,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 9,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 4096,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 13,
+        "language": "ignore-list",
+        "category": "config",
+        "bytes": 32,
+        "lines": 4,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": true
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 16384,
+        "lines": 512,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "text",
+        "category": "docs",
+        "bytes": 16384,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 8192,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 23,
+        "language": "text",
+        "category": "test",
+        "bytes": 2048,
+        "lines": 32,
+        "binary": false,
+        "secret": true,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 1024,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 7,
+        "language": "markdown",
+        "category": "docs",
+        "bytes": 256,
+        "lines": 4,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 12,
+        "language": "yaml",
+        "category": "config",
+        "bytes": 1024,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 9,
+        "language": "text",
+        "category": "config",
+        "bytes": 1,
+        "lines": 1,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "text",
+        "category": "config",
+        "bytes": 0,
+        "lines": 0,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 22,
+        "language": "text",
+        "category": "test",
+        "bytes": 2048,
+        "lines": 32,
+        "binary": false,
+        "secret": true,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 11,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 8192,
+        "lines": 256,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 2,
+        "language": "python",
+        "category": "test",
+        "bytes": 256,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 12,
+        "language": "yaml",
+        "category": "config",
+        "bytes": 64,
+        "lines": 1,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 12,
+        "language": "markdown",
+        "category": "config",
+        "bytes": 512,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "text",
+        "category": "docs",
+        "bytes": 64,
+        "lines": 2,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 16,
+        "language": "binary",
+        "category": "image",
+        "bytes": 524288,
+        "lines": 0,
+        "binary": true,
+        "secret": false,
+        "generated": false,
+        "vendored": true
+      },
+      {
+        "dir": 18,
+        "language": "ini",
+        "category": "config",
+        "bytes": 64,
+        "lines": 2,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 11,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 64,
+        "lines": 4,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 14,
+        "language": "yaml",
+        "category": "build",
+        "bytes": 512,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "ini",
+        "category": "config",
+        "bytes": 512,
+        "lines": 32,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 2048,
+        "lines": 64,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 19,
+        "language": "restructuredtext",
+        "category": "docs",
+        "bytes": 4096,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 18,
+        "language": "python",
+        "category": "build",
+        "bytes": 256,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 3,
+        "language": "binary",
+        "category": "image",
+        "bytes": 262144,
+        "lines": 0,
+        "binary": true,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 16,
+        "language": "css",
+        "category": "style",
+        "bytes": 512,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": true
+      },
+      {
+        "dir": 21,
+        "language": "makefile",
+        "category": "test",
+        "bytes": 512,
+        "lines": 16,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 32768,
+        "lines": 1024,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 10,
+        "language": "python",
+        "category": "code",
+        "bytes": 4096,
+        "lines": 128,
+        "binary": false,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      },
+      {
+        "dir": 3,
+        "language": "binary",
+        "category": "image",
+        "bytes": 16384,
+        "lines": 0,
+        "binary": true,
+        "secret": false,
+        "generated": false,
+        "vendored": false
+      }
+    ],
+    "edges": [
+      {
+        "from": 1,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 2,
+        "to": 15,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 6,
+        "to": 15,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 15,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 16,
+        "to": 11,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 16,
+        "to": 101,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 17,
+        "to": 101,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 20,
+        "to": 1,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 20,
+        "to": 24,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 20,
+        "to": 30,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 20,
+        "to": 50,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 20,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 22,
+        "to": 46,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 24,
+        "to": 1,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 24,
+        "to": 15,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 24,
+        "to": 30,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 24,
+        "to": 46,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 24,
+        "to": 50,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 24,
+        "to": 83,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 24,
+        "to": 87,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 24,
+        "to": 95,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 24,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 26,
+        "to": 41,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 26,
+        "to": 50,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 26,
+        "to": 83,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 30,
+        "to": 1,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 30,
+        "to": 50,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 30,
+        "to": 83,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 30,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 1,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 6,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 15,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 20,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 24,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 30,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 50,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 83,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 95,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 119,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 125,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 41,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 11,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 13,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 15,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 20,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 30,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 41,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 50,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 53,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 58,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 81,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 95,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 101,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 119,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 125,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 48,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 50,
+        "to": 1,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 50,
+        "to": 6,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 50,
+        "to": 15,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 50,
+        "to": 20,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 50,
+        "to": 24,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 50,
+        "to": 30,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 50,
+        "to": 83,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 50,
+        "to": 95,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 50,
+        "to": 119,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 50,
+        "to": 125,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 50,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 52,
+        "to": 1,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 52,
+        "to": 15,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 52,
+        "to": 24,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 52,
+        "to": 30,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 52,
+        "to": 81,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 52,
+        "to": 101,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 53,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 55,
+        "to": 125,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 76,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 82,
+        "to": 101,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 83,
+        "to": 15,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 83,
+        "to": 20,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 83,
+        "to": 30,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 83,
+        "to": 50,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 95,
+        "to": 50,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 95,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 99,
+        "to": 11,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 99,
+        "to": 58,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 99,
+        "to": 101,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 99,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 101,
+        "to": 6,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 101,
+        "to": 24,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 101,
+        "to": 26,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 101,
+        "to": 41,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 101,
+        "to": 46,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 101,
+        "to": 50,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 101,
+        "to": 53,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 101,
+        "to": 95,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 103,
+        "to": 22,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 110,
+        "to": 101,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 119,
+        "to": 50,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 119,
+        "to": 83,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 125,
+        "to": 15,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 125,
+        "to": 20,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 125,
+        "to": 24,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 125,
+        "to": 30,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 125,
+        "to": 50,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 125,
+        "to": 83,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 125,
+        "to": 95,
+        "kind": "import",
+        "type": false
+      },
+      {
+        "from": 125,
+        "to": 126,
+        "kind": "import",
+        "type": false
+      }
+    ]
+  }
+}

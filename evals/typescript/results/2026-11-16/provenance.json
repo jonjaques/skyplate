@@ -1,0 +1,214 @@
+{
+  "studyDate": "2026-11-16",
+  "analyzerRevision": "f0f874f82700ec5e5c62beef457e74de95d5841d",
+  "bun": "1.4.4",
+  "analyzerTypeScript": "7.0.2",
+  "oracleTypeScript": "5.9.3",
+  "inputs": {
+    "measure.ts": {
+      "bytes": 1190,
+      "sha256": "6e453c174f40a965aa9d3ba7b0b1c91e74f62f4e487c4ddb71ac3de25883e4ae"
+    },
+    "oracle.ts": {
+      "bytes": 8747,
+      "sha256": "9afce076325056952a5eb1f8de42cfdb04fe99ae1cb71db3298556dded2cc6db"
+    },
+    "probes.ts": {
+      "bytes": 8010,
+      "sha256": "4f50f00908caefd70afdf67f822c7b5aad9f3f1f4e32c3f8cd3c5b779ddb7a18"
+    },
+    "failure-cap.ts": {
+      "bytes": 3396,
+      "sha256": "4c97baefe4b8bd22cbec8e8966beab630a5f7dfdc648845bcaa3b408404d4246"
+    },
+    "pagination.ts": {
+      "bytes": 1104,
+      "sha256": "cff62c3c5f034c6eb4f61ec0f2a761508f7528ef979f784f9c6680ff284d6c9f"
+    },
+    "dogfood.ts": {
+      "bytes": 1522,
+      "sha256": "76e7d0d8258dcc71ff4078fcdb0f66b5031b9edec8598b7337ebec9eed4943d7"
+    },
+    "scale.ts": {
+      "bytes": 1350,
+      "sha256": "5207f606ea2073ec203bb4b6d24e623ad69a7d8f247beaa72a9f9116253d6934"
+    },
+    "workspace-probe.ts": {
+      "bytes": 1491,
+      "sha256": "0a3d51d3b0d8771e37ab6ec8c78c9a3e176894aeb90cd1069d2e572b4cbb21d8"
+    },
+    "summarize.py": {
+      "bytes": 2288,
+      "sha256": "51bc89d3c38ec8b3a8a9ca92824b2f4225d17384235fe33394c7ffb88a3b25e1"
+    },
+    "samples.json": {
+      "bytes": 4412,
+      "sha256": "77bf8d865b14148b0074b771aa496bfecd4d000dc899822d0dc3f74d35eab5c5"
+    },
+    "external-evidence.md": {
+      "bytes": 5578,
+      "sha256": "b8e57d12f737c3516cc5e8795913ae6d56d8fc7f106050b9cc520025a6c3e9de"
+    },
+    "sky-bare.json": {
+      "bytes": 1451885,
+      "sha256": "712b2142ae1f716f87c514bf62db794321aef3537a1ba474e6bcfeb5de3df02e"
+    },
+    "sky-bare-oracle.json": {
+      "bytes": 76812,
+      "sha256": "e67ab3741881fbe12c9daa484e34ff2416ff8437bb0b9f4ccc8bc93eb1ca1fb3"
+    },
+    "sky-installed.json": {
+      "bytes": 1498926,
+      "sha256": "6dee2f3bbcfea71ebfd8138975c6cbafa046cac665a57bd69886d8a80dd9f1cd"
+    },
+    "sky-installed-oracle.json": {
+      "bytes": 173944,
+      "sha256": "0123d739d85d97a32dc91aedb18bbd0d2f43cbf0591afced42b98b8bc86ae3d9"
+    },
+    "query-bare.json": {
+      "bytes": 2818871,
+      "sha256": "9a93ef6410331fc79615ec4961a06c007a5e011a0098afeede8da1e8dcbf72ad"
+    },
+    "query-bare-oracle.json": {
+      "bytes": 702520,
+      "sha256": "78d72c2fd370085654ff65af93567d937c958146dfceb89a4550357778b93dad"
+    },
+    "express-bare.json": {
+      "bytes": 96792,
+      "sha256": "1cdba0d1cb632e87e8d3e9df553072624f8688c2d933283fd6bc4b08d3cd057a"
+    },
+    "express-bare-oracle.json": {
+      "bytes": 451482,
+      "sha256": "a94de948071569a223d0eb5ad13cea0174730a7da8609ccbae7922b9a6e33f99"
+    },
+    "express-installed.json": {
+      "bytes": 96785,
+      "sha256": "3499ce9ae26cc432606db519957a209d2bcf8b3d578161495bb0a8120dc74e6e"
+    },
+    "express-installed-oracle.json": {
+      "bytes": 451487,
+      "sha256": "d0d71fc6e72ae2877839dad20774558418dbd66edbea4e41ff66ce2614af6c11"
+    },
+    "plimit-bare.json": {
+      "bytes": 8802,
+      "sha256": "45aa1e054f256cba1ba2ec7ad5d7c08797a3326ef73189563af152381178d934"
+    },
+    "plimit-bare-oracle.json": {
+      "bytes": 21957,
+      "sha256": "b8f613aeac0447333133386fbf10b1e05dad840b760edafe53b6a10c615dc1f9"
+    },
+    "plimit-installed.json": {
+      "bytes": 8781,
+      "sha256": "4bb4bb8a69398fadf6174e5c77957c9dbd819ecee50ef7e1962393ba5528426b"
+    },
+    "plimit-installed-oracle.json": {
+      "bytes": 21962,
+      "sha256": "333cc26833e7d4e287b40dc19cb83f9807f77025952258cfb9a3f8697e506a52"
+    },
+    "summary-results.json": {
+      "bytes": 3914,
+      "sha256": "e9c68524045bbf2449b5de309007b15ff12ecf55b4dc269222a03e50fcede75f"
+    },
+    "probe-rows.json": {
+      "bytes": 19305,
+      "sha256": "66fb51afdb6e3efa0e016f9d0f98e9f73d8dee7f909a12686e8ccecee66d4f1b"
+    },
+    "probe-queries.json": {
+      "bytes": 9272,
+      "sha256": "09de2f37e64f7dff4bc5c8e00f09f255d7a4ca2ea8109cdbdd3650b0d5c2cb62"
+    },
+    "probes.json": {
+      "bytes": 84147,
+      "sha256": "9a00d2e6c71ac8447e1afbd32c757f6f3de9aaa4278121956ce8fca36220db7f"
+    },
+    "partial-failure.json": {
+      "bytes": 14099,
+      "sha256": "01ac261a363ec4b62f2aaab4342544360923e18b3e0e3ddcab8f75695645aeb0"
+    },
+    "missing-deps.json": {
+      "bytes": 7712,
+      "sha256": "938b745b290755ec6e3d6ed9947d130adbde71033044b0efa30bbfff9d850a8f"
+    },
+    "cap-recursion.json": {
+      "bytes": 568,
+      "sha256": "175aa6f73d93dcaae7f1933fdd647c8458c700c34f6867396d72f5ad9ac9cd72"
+    },
+    "seam-cap.json": {
+      "bytes": 3882,
+      "sha256": "b91ee9e25cf55c8c352329bb8e287c97970c15951aad4ce6a70e03d3fb3127a0"
+    },
+    "prototype-probe.json": {
+      "bytes": 1277,
+      "sha256": "175e80bc416de698d09629f2de4a935e1d117bbd8455c55c34f1339174df0012"
+    },
+    "workspace-probe.json": {
+      "bytes": 2973,
+      "sha256": "13ae9da9d422af095a7a5450e08a9e909796ff6a03427b4a02597dde3572a9ef"
+    },
+    "scale100.json": {
+      "bytes": 686,
+      "sha256": "247caca821446dea5420249b6b8727a5e8b19430f3a6beb1696acc985aade986"
+    },
+    "scale100-time.txt": {
+      "bytes": 777,
+      "sha256": "826e67dbef4553c5869083bdfc904f735b0ebfe1da7efe02c7c8b13176de5394"
+    },
+    "scale1000.json": {
+      "bytes": 697,
+      "sha256": "76dc56b6780fb71c1791392c4aac6a9a9fa352d073edc4cce17b72510c922fcc"
+    },
+    "scale1000-time.txt": {
+      "bytes": 777,
+      "sha256": "014f2088fe211d8b49b03c2530188c34e2db7bbdb6ad7fcd29fb3a221094a62c"
+    },
+    "scale5000.json": {
+      "bytes": 703,
+      "sha256": "50c5e5ad1e269668d75de0acaf57fa9c90f14b395299d3f00ca40ae09b7c4c70"
+    },
+    "scale5000-time.txt": {
+      "bytes": 777,
+      "sha256": "2b75b091c49c7ccebee362c3adf3dda67f18b5c364f0cce8252772c0c75700cc"
+    },
+    "scale20000.json": {
+      "bytes": 729,
+      "sha256": "360416962ff59d58fcdb1fc21db0255ecb58cfaa38edfb7235fe20f3d888755b"
+    },
+    "scale20000-time.txt": {
+      "bytes": 777,
+      "sha256": "b0910dbd418e7ad139e0503eed5e70ae756724311542e43de7eaf9322f69290a"
+    },
+    "scale20001.json": {
+      "bytes": 353,
+      "sha256": "aaa5d38738bca6a3fb9b2ba7df4bf193ed9ce5f1ec3c48057ad5d8cc6551f3f8"
+    },
+    "scale20001-time.txt": {
+      "bytes": 777,
+      "sha256": "d2f7a0bae4a73cef675a8029623f0bb80b5fed6bfa3056d4e66a7bafa4a84867"
+    },
+    "pagination-mcp.json": {
+      "bytes": 250054,
+      "sha256": "e0c868714fee06897e8029e728d54a97b6d807134e5b4183cb3806fc5f262a11"
+    },
+    "mcp.jsonl": {
+      "bytes": 46158,
+      "sha256": "10ad75eb1eef5c153231467747145a23883a008b868cefda1b9cbd767b486c09"
+    },
+    "query-install.log": {
+      "bytes": 586,
+      "sha256": "ca6b244d80efbb5981523642ea073936e370978f9059f2736844878e168ee9c4"
+    },
+    "ts-tests.log": {
+      "bytes": 5098,
+      "sha256": "f24d6a8761919d868d9043d2ddc8adf406954b2953c577d5e0bdf042205b3f16"
+    }
+  },
+  "transformations": [
+    "Absolute roots replaced by relative paths or placeholders",
+    "Oracle source excerpts omitted; all selected locations retained",
+    "Full corpus analyzer dumps replaced by summary objects",
+    "MCP duplicate text renderings omitted when structured data exists",
+    "MCP git and ownership identity fields omitted",
+    "Wrapped installer path omitted; parse error and YAML retained",
+    "Corpus progress logs limited to the first 20 failures or caps"
+  ]
+}

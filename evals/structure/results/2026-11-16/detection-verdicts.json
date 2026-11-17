@@ -1,0 +1,1082 @@
+[
+  {
+    "repo": "chi",
+    "path": "middleware/path_rewrite_test.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "middleware/strip.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "middleware/route_headers_test.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "middleware/realip.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "middleware/timeout.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "CONTRIBUTING.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "SECURITY.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "_examples/versions/go.sum",
+    "observedLanguage": "go-checksums",
+    "expectedLanguage": "go-checksums",
+    "category": "lockfile",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "middleware/wrap_writer_test.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "middleware/sunset.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "_examples/versions/go.mod",
+    "observedLanguage": "go-module",
+    "expectedLanguage": "go-module",
+    "category": "config",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "CHANGELOG.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "chain.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": ".github/FUNDING.yml",
+    "observedLanguage": "yaml",
+    "expectedLanguage": "yaml",
+    "category": "config",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "middleware/client_ip_test.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "_examples/todos-resource/todos.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "README.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "context_test.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "middleware/request_size.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "chi",
+    "path": "pattern_test.go",
+    "observedLanguage": "go",
+    "expectedLanguage": "go",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "lib/curl_printf.h",
+    "observedLanguage": "c",
+    "expectedLanguage": "c",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "lib/cfilters.h",
+    "observedLanguage": "c",
+    "expectedLanguage": "c",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "docs/cmdline-opts/write-out.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "tests/data/test1117",
+    "observedLanguage": "xml",
+    "expectedLanguage": "xml",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "tests/data/test357",
+    "observedLanguage": "xml",
+    "expectedLanguage": "xml",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "tests/data/test19",
+    "observedLanguage": "xml",
+    "expectedLanguage": "xml",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "lib/vtls/hostcheck.c",
+    "observedLanguage": "c",
+    "expectedLanguage": "c",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "tests/data/test866",
+    "observedLanguage": "xml",
+    "expectedLanguage": "xml",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "tests/data/test809",
+    "observedLanguage": "xml",
+    "expectedLanguage": "xml",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "docs/cmdline-opts/proxy-ssl-allow-beast.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "tests/data/test830",
+    "observedLanguage": "xml",
+    "expectedLanguage": "xml",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": ".github/scripts/verify-synopsis.pl",
+    "observedLanguage": "perl",
+    "expectedLanguage": "perl",
+    "category": "build",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "tests/data/test2081",
+    "observedLanguage": "xml",
+    "expectedLanguage": "xml",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "tests/data/test373",
+    "observedLanguage": "xml",
+    "expectedLanguage": "xml",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "docs/examples/multi-app.c",
+    "observedLanguage": "c",
+    "expectedLanguage": "c",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "tests/data/test1361",
+    "observedLanguage": "xml",
+    "expectedLanguage": "xml",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "docs/libcurl/opts/CURLOPT_SSL_SIGNATURE_ALGORITHMS.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "lib/cf-recvbuf.c",
+    "observedLanguage": "c",
+    "expectedLanguage": "c",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "docs/TODO.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "curl",
+    "path": "tests/http/test_32_ftps_vsftpd.py",
+    "observedLanguage": "python",
+    "expectedLanguage": "python",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-vintage-engine/src/test/java/org/junit/vintage/engine/VintageTestEngineDiscoveryTests.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-jupiter-api/src/testFixtures/java/org/junit/jupiter/api/extension/DisabledInEclipse.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-platform-engine/src/main/java/org/junit/platform/engine/support/descriptor/EngineDescriptor.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-platform-suite-api/src/main/java/org/junit/platform/suite/api/ConfigurationParameters.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "documentation/src/test/java/example/AutoCloseDemo.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "platform-tooling-support-tests/projects/graalvm-starter/build.gradle.kts",
+    "observedLanguage": "gradle-kotlin-dsl",
+    "expectedLanguage": "gradle-kotlin-dsl",
+    "category": "build",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-platform-suite-api/src/main/java/org/junit/platform/suite/api/ConfigurationParametersResource.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-platform-commons/src/main/java/org/junit/platform/commons/support/ResourceSupport.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-platform-engine/src/main/java/org/junit/platform/engine/support/store/NamespacedHierarchicalStore.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "gradle/plugins/common/src/main/kotlin/junitbuild/deps/ByteBuddyAlignmentRule.kt",
+    "observedLanguage": "kotlin",
+    "expectedLanguage": "kotlin",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "jupiter-tests/src/test/java/org/junit/jupiter/api/AssertArrayEqualsAssertionsTests.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "documentation/src/test/kotlin/example/kotlin/callbacks/Logger.kt",
+    "observedLanguage": "kotlin",
+    "expectedLanguage": "kotlin",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "jupiter-tests/src/test/java/org/junit/jupiter/engine/JupiterTestEngineTests.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "jupiter-tests/src/test/java/org/junit/jupiter/engine/OverloadedTestMethodTests.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "platform-tests/src/test/resources/console/details/report/Report-reportSingleEntryWithSingleMapping-none-ascii.out.txt",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-platform-testkit/src/main/java/org/junit/platform/testkit/engine/EngineExecutionResults.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-jupiter-params/src/main/java/org/junit/jupiter/params/provider/CsvFileArgumentsProvider.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-platform-suite-engine/src/main/java/org/junit/platform/suite/engine/package-info.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-platform-console/src/main/java/org/junit/platform/console/output/ColorPalette.java",
+    "observedLanguage": "java",
+    "expectedLanguage": "java",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "junit",
+    "path": "junit-platform-console-standalone/junit-platform-console-standalone.gradle.kts",
+    "observedLanguage": "gradle-kotlin-dsl",
+    "expectedLanguage": "gradle-kotlin-dsl",
+    "category": "build",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "activerecord/lib/active_record/tasks/postgresql_database_tasks.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "railties/lib/rails/generators/test_unit/authentication/templates/test/mailers/previews/passwords_mailer_preview.rb.tt",
+    "observedLanguage": "text",
+    "expectedLanguage": "ruby",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": false
+  },
+  {
+    "repo": "rails",
+    "path": "activerecord/test/cases/relation/and_test.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "actionpack/Rakefile",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "build",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "activerecord/test/cases/test_fixtures_test.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "activejob/test/jobs/inherited_job.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "activesupport/test/error_reporter_test.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "actionpack/lib/abstract_controller/asset_paths.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "activesupport/test/ractors_test.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "actionpack/test/fixtures/load_me.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "actionview/lib/action_view/path_set.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "activerecord/test/migrations/scope/2_mysql_only.mysql.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "actiontext/test/dummy/lib/assets/.keep",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "actionview/lib/action_view/renderer/abstract_renderer.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "actionmailbox/lib/rails/generators/test_unit/mailbox_generator.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "actioncable/test/stubs/test_socket.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "actionpack/lib/action_dispatch/middleware/templates/rescues/invalid_statement.text.erb",
+    "observedLanguage": "html+erb",
+    "expectedLanguage": "html+erb",
+    "category": "markup",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "tools/rail_inspector/test/rail_inspector/visitor/hash_to_string_test.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "activemodel/lib/active_model/type/helpers/timezone.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "rails",
+    "path": "actioncable/lib/action_cable/channel/test_case.rb",
+    "observedLanguage": "ruby",
+    "expectedLanguage": "ruby",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "tests/certs/mtls/client/client.pem",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "docs/api.rst",
+    "observedLanguage": "restructuredtext",
+    "expectedLanguage": "restructuredtext",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "src/requests/__init__.py",
+    "observedLanguage": "python",
+    "expectedLanguage": "python",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "docs/_themes/flask_theme_support.py",
+    "observedLanguage": "python",
+    "expectedLanguage": "python",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "tests/test_utils.py",
+    "observedLanguage": "python",
+    "expectedLanguage": "python",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "NOTICE",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": ".github/workflows/close-issues.yml",
+    "observedLanguage": "yaml",
+    "expectedLanguage": "yaml",
+    "category": "build",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "docs/community/vulnerabilities.rst",
+    "observedLanguage": "restructuredtext",
+    "expectedLanguage": "restructuredtext",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "tests/certs/valid/server/server.pem",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "tests/certs/mtls/client/client.csr",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "ext/LICENSE",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "tests/certs/expired/server/server.csr",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "src/requests/utils.py",
+    "observedLanguage": "python",
+    "expectedLanguage": "python",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": ".github/FUNDING.yml",
+    "observedLanguage": "yaml",
+    "expectedLanguage": "yaml",
+    "category": "config",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "README.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "HISTORY.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "tests/utils.py",
+    "observedLanguage": "python",
+    "expectedLanguage": "python",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "tests/certs/README.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": "docs/community/faq.rst",
+    "observedLanguage": "restructuredtext",
+    "expectedLanguage": "restructuredtext",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "requests",
+    "path": ".github/ISSUE_TEMPLATE/Feature_request.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "config",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/globset/src/lib.rs",
+    "observedLanguage": "rust",
+    "expectedLanguage": "rust",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "benchsuite/runs/2016-12-24-archlinux-cheetah/summary",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "unknown",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "tests/misc.rs",
+    "observedLanguage": "rust",
+    "expectedLanguage": "rust",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/cli/src/human.rs",
+    "observedLanguage": "rust",
+    "expectedLanguage": "rust",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/cli/src/decompress.rs",
+    "observedLanguage": "rust",
+    "expectedLanguage": "rust",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "fuzz/Cargo.toml",
+    "observedLanguage": "toml",
+    "expectedLanguage": "toml",
+    "category": "config",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/core/flags/doc/template.long.help",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "CONTRIBUTING.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/ignore/COPYING",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/searcher/src/testutil.rs",
+    "observedLanguage": "rust",
+    "expectedLanguage": "rust",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/matcher/README.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/grep/COPYING",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "tests/binary.rs",
+    "observedLanguage": "rust",
+    "expectedLanguage": "rust",
+    "category": "test",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/printer/src/path.rs",
+    "observedLanguage": "rust",
+    "expectedLanguage": "rust",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "benchsuite/runs/2018-01-08-archlinux-cheetah/summary",
+    "observedLanguage": "text",
+    "expectedLanguage": "text",
+    "category": "unknown",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/cli/src/lib.rs",
+    "observedLanguage": "rust",
+    "expectedLanguage": "rust",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/searcher/examples/search-stdin.rs",
+    "observedLanguage": "rust",
+    "expectedLanguage": "rust",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "benchsuite/benchsuite",
+    "observedLanguage": "python",
+    "expectedLanguage": "python",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "crates/regex/src/ban.rs",
+    "observedLanguage": "rust",
+    "expectedLanguage": "rust",
+    "category": "code",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  },
+  {
+    "repo": "ripgrep",
+    "path": "CHANGELOG.md",
+    "observedLanguage": "markdown",
+    "expectedLanguage": "markdown",
+    "category": "docs",
+    "categoryAcceptedUnderPathRubric": true,
+    "languageAccepted": true
+  }
+]

@@ -1,0 +1,4649 @@
+[
+  {
+    "name": "requests",
+    "by": {
+      "python": {
+        "files": 37,
+        "internal": 119,
+        "external": 206,
+        "unresolved": 0,
+        "self": 0
+      }
+    },
+    "valid": [],
+    "entries": [],
+    "unresolved": [],
+    "unused": [
+      {
+        "name": "httpbin",
+        "ecosystem": "pypi",
+        "version": "~=0.10.0",
+        "declaredIn": [
+          "pyproject.toml",
+          "requirements-dev.txt"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "pyopenssl",
+        "ecosystem": "pypi",
+        "declaredIn": [
+          "pyproject.toml"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "pyright",
+        "ecosystem": "pypi",
+        "declaredIn": [
+          "pyproject.toml"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "pysocks",
+        "ecosystem": "pypi",
+        "version": ">=1.5.6, !=1.5.7",
+        "declaredIn": [
+          "pyproject.toml"
+        ],
+        "scope": "optional",
+        "importers": 0
+      },
+      {
+        "name": "pytest-cov",
+        "ecosystem": "pypi",
+        "declaredIn": [
+          "pyproject.toml",
+          "requirements-dev.txt"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "pytest-httpbin",
+        "ecosystem": "pypi",
+        "version": "==2.1.0",
+        "declaredIn": [
+          "pyproject.toml",
+          "requirements-dev.txt"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "pytest-mock",
+        "ecosystem": "pypi",
+        "declaredIn": [
+          "pyproject.toml"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "pytest-xdist",
+        "ecosystem": "pypi",
+        "declaredIn": [
+          "pyproject.toml"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "sphinx",
+        "ecosystem": "pypi",
+        "version": "==7.2.6",
+        "declaredIn": [
+          "docs/requirements.txt"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "wheel",
+        "ecosystem": "pypi",
+        "declaredIn": [
+          "requirements-dev.txt"
+        ],
+        "scope": "dev",
+        "importers": 0
+      }
+    ]
+  },
+  {
+    "name": "chi",
+    "by": {
+      "go": {
+        "files": 90,
+        "internal": 59,
+        "external": 330,
+        "unresolved": 0,
+        "self": 0
+      }
+    },
+    "valid": [],
+    "entries": [],
+    "unresolved": [],
+    "unused": []
+  },
+  {
+    "name": "ripgrep",
+    "by": {
+      "rust": {
+        "files": 102,
+        "internal": 593,
+        "external": 445,
+        "unresolved": 98,
+        "self": 90
+      }
+    },
+    "valid": [],
+    "entries": [],
+    "unresolved": [
+      {
+        "path": "crates/core/flags/complete/bash.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::defs::FLAGS",
+        "kind": "import",
+        "line": 4,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/complete/fish.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::CompletionType",
+        "kind": "import",
+        "line": 4,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/complete/fish.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::defs::FLAGS",
+        "kind": "import",
+        "line": 4,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/complete/powershell.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::defs::FLAGS",
+        "kind": "import",
+        "line": 4,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::Category",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::Flag",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::FlagValue",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::BinaryMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::BoundaryMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::BufferMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::CaseMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::ColorChoice",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::ContextMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::EncodingMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::EngineChoice",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::GenerateMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::LoggingMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::LowArgs",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::MmapMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::Mode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::PatternSource",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::SearchMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::SortMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::SortModeKind",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::SpecialMode",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::TypeChange",
+        "kind": "import",
+        "line": 23,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::parse::parse_low_raw",
+        "kind": "import",
+        "line": 34,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::ContextSeparator",
+        "kind": "import",
+        "line": 1172,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::ContextSeparator",
+        "kind": "import",
+        "line": 1190,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::FieldContextSeparator",
+        "kind": "import",
+        "line": 1812,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/defs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::FieldMatchSeparator",
+        "kind": "import",
+        "line": 1920,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/doc/help.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::Category",
+        "kind": "import",
+        "line": 10,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/doc/help.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::Flag",
+        "kind": "import",
+        "line": 10,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/doc/help.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::defs::FLAGS",
+        "kind": "import",
+        "line": 10,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/doc/help.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::doc::version",
+        "kind": "import",
+        "line": 10,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/doc/man.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::Flag",
+        "kind": "import",
+        "line": 6,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/doc/man.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::defs::FLAGS",
+        "kind": "import",
+        "line": 6,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/doc/man.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::doc::version",
+        "kind": "import",
+        "line": 6,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::BinaryMode",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::BoundaryMode",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::BufferMode",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::CaseMode",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::ColorChoice",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::ContextMode",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::ContextSeparator",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::EncodingMode",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::EngineChoice",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::FieldContextSeparator",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::FieldMatchSeparator",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::LowArgs",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::MmapMode",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::Mode",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::PatternSource",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::SearchMode",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::SortMode",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::SortModeKind",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::TypeChange",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::haystack::Haystack",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::haystack::HaystackBuilder",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::search::PatternMatcher",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::search::Printer",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::search::SearchWorker",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/hiargs.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::search::SearchWorkerBuilder",
+        "kind": "import",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::complete::bash::generate",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::complete::fish::generate",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::complete::powershell::generate",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::complete::zsh::generate",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::doc::help::generate_long",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::doc::help::generate_short",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::doc::man::generate",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::doc::version::generate_long",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::doc::version::generate_pcre2",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::doc::version::generate_short",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::hiargs::HiArgs",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::GenerateMode",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::Mode",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::SearchMode",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::SpecialMode",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::parse::ParseResult",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/mod.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::parse::parse",
+        "kind": "import",
+        "line": 17,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/parse.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::Flag",
+        "kind": "import",
+        "line": 8,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/parse.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::FlagValue",
+        "kind": "import",
+        "line": 8,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/parse.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::defs::FLAGS",
+        "kind": "import",
+        "line": 8,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/parse.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::hiargs::HiArgs",
+        "kind": "import",
+        "line": 8,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/parse.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::LoggingMode",
+        "kind": "import",
+        "line": 8,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/parse.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::LowArgs",
+        "kind": "import",
+        "line": 8,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/flags/parse.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::lowargs::SpecialMode",
+        "kind": "import",
+        "line": 8,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/main.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::HiArgs",
+        "kind": "import",
+        "line": 8,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/main.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::SearchMode",
+        "kind": "import",
+        "line": 8,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/main.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "messages",
+        "kind": "include",
+        "line": 11,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/main.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "flags",
+        "kind": "include",
+        "line": 13,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/main.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "haystack",
+        "kind": "include",
+        "line": 14,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/main.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "logger",
+        "kind": "include",
+        "line": 15,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/main.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "search",
+        "kind": "include",
+        "line": 16,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/main.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::Mode",
+        "kind": "import",
+        "line": 77,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/main.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::ParseResult",
+        "kind": "import",
+        "line": 77,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/main.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::GenerateMode",
+        "kind": "import",
+        "line": 355,
+        "status": "unresolved"
+      },
+      {
+        "path": "crates/core/main.rs",
+        "language": "rust",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "crate::flags::SpecialMode",
+        "kind": "import",
+        "line": 383,
+        "status": "unresolved"
+      }
+    ],
+    "unused": [
+      {
+        "name": "arbitrary",
+        "ecosystem": "cargo",
+        "version": "1.3.2",
+        "declaredIn": [
+          "crates/globset/Cargo.toml"
+        ],
+        "scope": "optional",
+        "importers": 0
+      },
+      {
+        "name": "crossbeam-channel",
+        "ecosystem": "cargo",
+        "version": "0.5.15",
+        "declaredIn": [
+          "crates/ignore/Cargo.toml"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "encoding_rs",
+        "ecosystem": "cargo",
+        "version": "0.8.33",
+        "declaredIn": [
+          "crates/searcher/Cargo.toml"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "glob",
+        "ecosystem": "cargo",
+        "version": "0.3.1",
+        "declaredIn": [
+          "crates/globset/Cargo.toml"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "lexopt",
+        "ecosystem": "cargo",
+        "version": "0.3.0",
+        "declaredIn": [
+          "Cargo.toml"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "libc",
+        "ecosystem": "cargo",
+        "version": "0.2.148",
+        "declaredIn": [
+          "crates/cli/Cargo.toml"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "libfuzzer-sys",
+        "ecosystem": "cargo",
+        "version": "0.4",
+        "declaredIn": [
+          "fuzz/Cargo.toml"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "textwrap",
+        "ecosystem": "cargo",
+        "version": "0.16.0",
+        "declaredIn": [
+          "Cargo.toml"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "tikv-jemallocator",
+        "ecosystem": "cargo",
+        "version": "0.7.0",
+        "declaredIn": [
+          "Cargo.toml"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      }
+    ]
+  },
+  {
+    "name": "junit",
+    "by": {
+      "java": {
+        "files": 1813,
+        "internal": 9893,
+        "external": 8113,
+        "unresolved": 0,
+        "self": 47
+      },
+      "kotlin": {
+        "files": 154,
+        "internal": 672,
+        "external": 404,
+        "unresolved": 0,
+        "self": 2
+      }
+    },
+    "valid": [],
+    "entries": [
+      {
+        "path": ".github/scripts/checkBuildReproducibility.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": ".github/scripts/waitForUrl.sh",
+        "entry": "workflow step"
+      }
+    ],
+    "unresolved": [],
+    "unused": [
+      {
+        "name": "@antora/collector-extension",
+        "ecosystem": "npm",
+        "version": "1.0.3",
+        "declaredIn": [
+          "documentation/package.json"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "@antora/lunr-extension",
+        "ecosystem": "npm",
+        "version": "1.0.0-alpha.13",
+        "declaredIn": [
+          "documentation/package.json"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "@asciidoctor/tabs",
+        "ecosystem": "npm",
+        "version": "^1.0.0-beta.6",
+        "declaredIn": [
+          "documentation/package.json"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "@springio/antora-extensions",
+        "ecosystem": "npm",
+        "version": "1.14.13",
+        "declaredIn": [
+          "documentation/package.json"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "@springio/antora-xref-extension",
+        "ecosystem": "npm",
+        "version": "^1.0.0-alpha.5",
+        "declaredIn": [
+          "documentation/package.json"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "antora",
+        "ecosystem": "npm",
+        "version": "3.2.2",
+        "declaredIn": [
+          "documentation/package.json"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "biz.aQute.bnd:biz.aQute.bndlib",
+        "ecosystem": "maven",
+        "version": "7.5.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "com.fasterxml.jackson.core:jackson-databind",
+        "ecosystem": "maven",
+        "declaredIn": [
+          "gradle/plugins/antora/build.gradle.kts"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "com.fasterxml.woodstox:woodstox-core",
+        "ecosystem": "maven",
+        "version": "7.3.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "com.google.errorprone:error_prone_core",
+        "ecosystem": "maven",
+        "version": "2.52.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "com.google.jimfs:jimfs",
+        "ecosystem": "maven",
+        "version": "1.3.2",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer",
+        "ecosystem": "maven",
+        "version": "20261110.1",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "com.gradle:develocity-testing-annotations",
+        "ecosystem": "maven",
+        "version": "2.0.1",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "com.pinterest.ktlint:ktlint-cli",
+        "ecosystem": "maven",
+        "version": "1.8.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "com.puppycrawl.tools:checkstyle",
+        "ecosystem": "maven",
+        "version": "14.4.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "com.tngtech.archunit:archunit-junit5",
+        "ecosystem": "maven",
+        "version": "1.5.1",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "com.uber.nullaway:nullaway",
+        "ecosystem": "maven",
+        "version": "0.14.3",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "commons-io:commons-io",
+        "ecosystem": "maven",
+        "version": "2.22.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "de.siegmar:fastcsv",
+        "ecosystem": "maven",
+        "version": "4.4.1",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "de.skuzzle.test:snapshot-tests-junit5",
+        "ecosystem": "maven",
+        "version": "1.11.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "de.skuzzle.test:snapshot-tests-xml",
+        "ecosystem": "maven",
+        "version": "1.11.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "gg.jte:jte",
+        "ecosystem": "maven",
+        "version": "3.2.5",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "info.picocli:picocli",
+        "ecosystem": "maven",
+        "version": "4.7.7",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "io.github.alien-tools:roseau-cli",
+        "ecosystem": "maven",
+        "version": "0.7.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "io.github.classgraph:classgraph",
+        "ecosystem": "maven",
+        "version": "6.0.2",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "io.spring.nohttp:nohttp-checkstyle",
+        "ecosystem": "maven",
+        "version": "0.0.11",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "jakarta.json:jakarta.json-api",
+        "ecosystem": "maven",
+        "version": "2.1.3",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "jakarta.xml.bind:jakarta.xml.bind-api",
+        "ecosystem": "maven",
+        "version": "4.0.5",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "junit:junit",
+        "ecosystem": "maven",
+        "version": "[4.12,)",
+        "declaredIn": [
+          "gradle/libs.versions.toml",
+          "platform-tooling-support-tests/projects/graalvm-starter/build.gradle.kts",
+          "platform-tooling-support-tests/projects/vintage/build.gradle.kts",
+          "platform-tooling-support-tests/projects/vintage/pom.xml"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "junitbuild.base:build-parameters",
+        "ecosystem": "maven",
+        "declaredIn": [
+          "gradle/plugins/antora/build.gradle.kts",
+          "gradle/plugins/common/build.gradle.kts",
+          "gradle/plugins/publishing/build.gradle.kts"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "junitbuild.base:code-generator-model",
+        "ecosystem": "maven",
+        "declaredIn": [
+          "gradle/plugins/code-generator/build.gradle.kts"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "junitbuild.base:dsl-extensions",
+        "ecosystem": "maven",
+        "declaredIn": [
+          "gradle/plugins/backward-compatibility/build.gradle.kts",
+          "gradle/plugins/code-generator/build.gradle.kts",
+          "gradle/plugins/common/build.gradle.kts",
+          "gradle/plugins/javadoc/build.gradle.kts",
+          "gradle/plugins/publishing/build.gradle.kts"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "net.bytebuddy:byte-buddy",
+        "ecosystem": "maven",
+        "version": "1.18.16",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apache.ant:ant",
+        "ecosystem": "maven",
+        "version": "1.10.18",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apache.ant:ant-junit",
+        "ecosystem": "maven",
+        "version": "1.10.18",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apache.ant:ant-junitlauncher",
+        "ecosystem": "maven",
+        "version": "1.10.18",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apache.groovy:groovy",
+        "ecosystem": "maven",
+        "version": "6.0.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apache.logging.log4j:log4j-bom",
+        "ecosystem": "maven",
+        "version": "2.26.1",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apache.logging.log4j:log4j-core",
+        "ecosystem": "maven",
+        "version": "2.26.1",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apache.logging.log4j:log4j-jul",
+        "ecosystem": "maven",
+        "version": "2.26.1",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apache.maven.plugins:maven-compiler-plugin",
+        "ecosystem": "maven",
+        "version": "3.16.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apache.maven.plugins:maven-surefire-plugin",
+        "ecosystem": "maven",
+        "version": "3.6.1",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apache.maven:apache-maven",
+        "ecosystem": "maven",
+        "version": "3.10.1",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apache.servicemix.bundles:org.apache.servicemix.bundles.junit",
+        "ecosystem": "maven",
+        "version": "4.13.2_1",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.apiguardian:apiguardian-api",
+        "ecosystem": "maven",
+        "version": "1.1.2",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.assertj:assertj-core",
+        "ecosystem": "maven",
+        "version": "3.27.7",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.codehaus.groovy:groovy-bom",
+        "ecosystem": "maven",
+        "version": "2.5.23",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.codehaus.plexus:plexus-utils",
+        "ecosystem": "maven",
+        "declaredIn": [
+          "gradle/plugins/common/build.gradle.kts"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "org.eclipse.parsson:parsson",
+        "ecosystem": "maven",
+        "version": "1.1.9",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.eclipse.platform:org.eclipse.platform",
+        "ecosystem": "maven",
+        "version": "4.41.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.glassfish.jaxb:jaxb-runtime",
+        "ecosystem": "maven",
+        "version": "4.0.9",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.hamcrest:hamcrest",
+        "ecosystem": "maven",
+        "version": "3.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.jacoco:jacoco",
+        "ecosystem": "maven",
+        "version": "0.8.16",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.jetbrains.kotlinx:kotlinx-coroutines-core",
+        "ecosystem": "maven",
+        "version": "1.11.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml",
+          "platform-tooling-support-tests/projects/kotlin-coroutines/build.gradle.kts"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "org.jetbrains.kotlinx:kotlinx-coroutines-test",
+        "ecosystem": "maven",
+        "version": "1.11.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.jooq:joox",
+        "ecosystem": "maven",
+        "version": "2.0.2",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.jspecify:jspecify",
+        "ecosystem": "maven",
+        "version": "1.0.1",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.junit.jupiter:junit-jupiter",
+        "ecosystem": "maven",
+        "version": "$junitVersion",
+        "declaredIn": [
+          "platform-tooling-support-tests/projects/graalvm-starter/build.gradle.kts",
+          "platform-tooling-support-tests/projects/gradle-kotlin-extensions/build.gradle.kts",
+          "platform-tooling-support-tests/projects/jupiter-starter/build.gradle.kts",
+          "platform-tooling-support-tests/projects/jupiter-starter/pom.xml",
+          "platform-tooling-support-tests/projects/kotlin-coroutines/build.gradle.kts",
+          "platform-tooling-support-tests/projects/maven-surefire-compatibility/pom.xml",
+          "platform-tooling-support-tests/projects/reflection-tests/build.gradle.kts",
+          "platform-tooling-support-tests/projects/spring-boot-executable-jar/app/pom.xml"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "org.junit.jupiter:junit-jupiter-api",
+        "ecosystem": "maven",
+        "version": "$junitVersion",
+        "declaredIn": [
+          "platform-tooling-support-tests/projects/gradle-missing-engine/build.gradle.kts",
+          "platform-tooling-support-tests/projects/spring-boot-executable-jar/tests/pom.xml"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "org.junit.jupiter:junit-jupiter-engine",
+        "ecosystem": "maven",
+        "version": "$junitVersion",
+        "declaredIn": [
+          "platform-tooling-support-tests/projects/reflection-tests/build.gradle.kts"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "org.junit.platform:junit-platform-commons",
+        "ecosystem": "maven",
+        "version": "${junit.version}",
+        "declaredIn": [
+          "platform-tooling-support-tests/projects/jupiter-starter/pom.xml"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "org.junit.platform:junit-platform-configuration-api",
+        "ecosystem": "maven",
+        "declaredIn": [
+          "platform-tooling-support-tests/projects/maven-junit-platform-configuration-processor/pom.xml"
+        ],
+        "scope": "optional",
+        "importers": 0
+      },
+      {
+        "name": "org.junit.platform:junit-platform-console",
+        "ecosystem": "maven",
+        "declaredIn": [
+          "platform-tooling-support-tests/projects/spring-boot-executable-jar/app/pom.xml"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "org.junit.platform:junit-platform-launcher",
+        "ecosystem": "maven",
+        "version": "$junitVersion",
+        "declaredIn": [
+          "platform-tooling-support-tests/projects/gradle-kotlin-extensions/build.gradle.kts",
+          "platform-tooling-support-tests/projects/gradle-missing-engine/build.gradle.kts",
+          "platform-tooling-support-tests/projects/kotlin-coroutines/build.gradle.kts",
+          "platform-tooling-support-tests/projects/reflection-tests/build.gradle.kts",
+          "platform-tooling-support-tests/projects/vintage/build.gradle.kts"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "org.junit.platform:junit-platform-reporting",
+        "ecosystem": "maven",
+        "version": "$junitVersion",
+        "declaredIn": [
+          "platform-tooling-support-tests/projects/graalvm-starter/build.gradle.kts",
+          "platform-tooling-support-tests/projects/jupiter-starter/build.gradle.kts",
+          "platform-tooling-support-tests/projects/jupiter-starter/pom.xml"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "org.junit.platform:junit-platform-suite",
+        "ecosystem": "maven",
+        "version": "$junitVersion",
+        "declaredIn": [
+          "platform-tooling-support-tests/projects/graalvm-starter/build.gradle.kts"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "org.junit.vintage:junit-vintage-engine",
+        "ecosystem": "maven",
+        "version": "$junitVersion",
+        "declaredIn": [
+          "platform-tooling-support-tests/projects/graalvm-starter/build.gradle.kts",
+          "platform-tooling-support-tests/projects/vintage/build.gradle.kts",
+          "platform-tooling-support-tests/projects/vintage/pom.xml"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "org.mockito:mockito-bom",
+        "ecosystem": "maven",
+        "version": "5.24.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.mockito:mockito-core",
+        "ecosystem": "maven",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.mockito:mockito-junit-jupiter",
+        "ecosystem": "maven",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.moditect.jfrunit:jfrunit-core",
+        "ecosystem": "maven",
+        "version": "1.0.0.Alpha2",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.openjdk.jmh:jmh-core",
+        "ecosystem": "maven",
+        "version": "1.37",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.openjdk.jmh:jmh-generator-annprocess",
+        "ecosystem": "maven",
+        "version": "1.37",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.opentest4j.reporting:open-test-reporting-cli",
+        "ecosystem": "maven",
+        "version": "0.3.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.opentest4j.reporting:open-test-reporting-events",
+        "ecosystem": "maven",
+        "version": "0.3.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.opentest4j.reporting:open-test-reporting-tooling-core",
+        "ecosystem": "maven",
+        "version": "0.3.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.opentest4j.reporting:open-test-reporting-tooling-spi",
+        "ecosystem": "maven",
+        "version": "0.3.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.opentest4j:opentest4j",
+        "ecosystem": "maven",
+        "version": "1.3.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.slf4j:slf4j-jdk14",
+        "ecosystem": "maven",
+        "version": "2.0.20",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.spockframework:spock-core",
+        "ecosystem": "maven",
+        "version": "1.3-groovy-2.5",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.xmlunit:xmlunit-assertj3",
+        "ecosystem": "maven",
+        "version": "2.14.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.xmlunit:xmlunit-jakarta-jaxb-impl",
+        "ecosystem": "maven",
+        "version": "2.14.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.xmlunit:xmlunit-placeholders",
+        "ecosystem": "maven",
+        "version": "2.14.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "org.yaml:snakeyaml",
+        "ecosystem": "maven",
+        "declaredIn": [
+          "gradle/plugins/antora/build.gradle.kts"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "tech.picnic.error-prone-support:error-prone-contrib",
+        "ecosystem": "maven",
+        "version": "0.30.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "tools.jackson.core:jackson-databind",
+        "ecosystem": "maven",
+        "version": "3.3.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "tools.jackson.dataformat:jackson-dataformat-yaml",
+        "ecosystem": "maven",
+        "version": "3.3.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      },
+      {
+        "name": "tools.jackson.module:jackson-module-kotlin",
+        "ecosystem": "maven",
+        "version": "3.3.0",
+        "declaredIn": [
+          "gradle/libs.versions.toml"
+        ],
+        "scope": "unknown",
+        "importers": 0
+      }
+    ]
+  },
+  {
+    "name": "curl",
+    "by": {
+      "c": {
+        "files": 1072,
+        "internal": 3227,
+        "external": 1017,
+        "unresolved": 2,
+        "self": 1
+      },
+      "c++": {
+        "files": 2,
+        "internal": 2,
+        "external": 6,
+        "unresolved": 0,
+        "self": 0
+      }
+    },
+    "valid": [],
+    "entries": [
+      {
+        "path": ".github/scripts/cmp-pkg-config.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": ".github/scripts/codespell.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": ".github/scripts/distfiles.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": ".github/scripts/labelercheck.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": ".github/scripts/shellcheck-ci.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": ".github/scripts/shellcheck.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": ".github/scripts/typos.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": ".github/scripts/yamlcheck.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": "scripts/cmakelint.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": "scripts/cmakeopts.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": "scripts/installcheck.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": "scripts/perlcheck.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": "scripts/pythonlint.sh",
+        "entry": "workflow step"
+      },
+      {
+        "path": "tests/cmake/test.sh",
+        "entry": "workflow step"
+      }
+    ],
+    "unresolved": [
+      {
+        "path": "lib/curl_setup.h",
+        "language": "c",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "curl_config.h",
+        "kind": "include",
+        "line": 134,
+        "status": "unresolved"
+      },
+      {
+        "path": "tests/libtest/unitcheck.h",
+        "language": "c",
+        "category": "test",
+        "generated": false,
+        "vendored": false,
+        "spec": "unitprotos.h",
+        "kind": "include",
+        "line": 26,
+        "status": "unresolved"
+      }
+    ],
+    "unused": [
+      {
+        "name": "cmakelang",
+        "ecosystem": "pypi",
+        "version": "==0.6.13",
+        "declaredIn": [
+          ".github/scripts/requirements.txt"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "codespell",
+        "ecosystem": "pypi",
+        "version": "==2.4.3",
+        "declaredIn": [
+          ".github/scripts/requirements.txt"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "proselint",
+        "ecosystem": "pypi",
+        "version": "==0.16.0",
+        "declaredIn": [
+          ".github/scripts/requirements-proselint.txt"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "pyspelling",
+        "ecosystem": "pypi",
+        "version": "==2.13",
+        "declaredIn": [
+          ".github/scripts/requirements-docs.txt"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "pytest-xdist",
+        "ecosystem": "pypi",
+        "version": "==3.8.0",
+        "declaredIn": [
+          "tests/http/requirements.txt"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "reuse",
+        "ecosystem": "pypi",
+        "version": "==6.3.0",
+        "declaredIn": [
+          ".github/scripts/requirements.txt"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "ruff",
+        "ecosystem": "pypi",
+        "version": "==0.17.3",
+        "declaredIn": [
+          ".github/scripts/requirements.txt"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      }
+    ]
+  },
+  {
+    "name": "rails",
+    "by": {
+      "ruby": {
+        "files": 3599,
+        "internal": 6158,
+        "external": 724,
+        "unresolved": 1,
+        "self": 14
+      }
+    },
+    "valid": [],
+    "entries": [
+      {
+        "path": "actioncable/app/assets/javascripts/actioncable.esm.js",
+        "entry": "package main"
+      },
+      {
+        "path": "actioncable/app/assets/javascripts/actioncable.js",
+        "entry": "package main"
+      },
+      {
+        "path": "actioncable/rollup.config.js",
+        "entry": "package script"
+      },
+      {
+        "path": "actioncable/rollup.config.test.js",
+        "entry": "package script"
+      },
+      {
+        "path": "actioncable/test/javascript/run_web_test_runner.mjs",
+        "entry": "package script"
+      },
+      {
+        "path": "actioncable/web-test-runner.config.mjs",
+        "entry": "tool config"
+      },
+      {
+        "path": "actiontext/app/assets/javascripts/actiontext.esm.js",
+        "entry": "package main"
+      },
+      {
+        "path": "actiontext/app/assets/javascripts/actiontext.js",
+        "entry": "package main"
+      },
+      {
+        "path": "actiontext/rollup.config.js",
+        "entry": "package script"
+      },
+      {
+        "path": "activestorage/app/assets/javascripts/activestorage.esm.js",
+        "entry": "package main"
+      },
+      {
+        "path": "activestorage/app/assets/javascripts/activestorage.js",
+        "entry": "package main"
+      },
+      {
+        "path": "activestorage/rollup.config.js",
+        "entry": "package script"
+      },
+      {
+        "path": "eslint.config.mjs",
+        "entry": "tool config"
+      }
+    ],
+    "unresolved": [
+      {
+        "path": "activejob/test/support/integration/jobs_manager.rb",
+        "language": "ruby",
+        "category": "test",
+        "generated": false,
+        "vendored": false,
+        "spec": "./adapters/#{adapter_name}",
+        "kind": "require",
+        "line": 12,
+        "status": "unresolved"
+      }
+    ],
+    "unused": [
+      {
+        "name": "action_text-trix",
+        "ecosystem": "gem",
+        "version": "~> 2.1.16",
+        "declaredIn": [
+          "actiontext/actiontext.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "aws-sdk-sns",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "backburner",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "bootsnap",
+        "ecosystem": "gem",
+        "version": ">= 1.4.4",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "brakeman",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "builder",
+        "ecosystem": "gem",
+        "version": "~> 3.1",
+        "declaredIn": [
+          "actionview/actionview.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "bundler-audit",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "concurrent-ruby",
+        "ecosystem": "gem",
+        "version": "~> 1.0, >= 1.3.1",
+        "declaredIn": [
+          "activesupport/activesupport.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "connection_pool",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile",
+          "activesupport/activesupport.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0,
+        "version": ">= 2.2.5"
+      },
+      {
+        "name": "cssbundling-rails",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "dartsass-rails",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "debug",
+        "ecosystem": "gem",
+        "version": ">= 1.1.0",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "erubi",
+        "ecosystem": "gem",
+        "version": "~> 1.11",
+        "declaredIn": [
+          "actionview/actionview.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "eslint",
+        "ecosystem": "npm",
+        "version": "^9.24.0",
+        "declaredIn": [
+          "actioncable/package.json",
+          "activestorage/package.json"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "globalid",
+        "ecosystem": "gem",
+        "version": ">= 0.6.0",
+        "declaredIn": [
+          "actiontext/actiontext.gemspec",
+          "activejob/activejob.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "google-cloud-storage",
+        "ecosystem": "gem",
+        "version": "~> 1.11",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "jbuilder",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "jsbundling-rails",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "json",
+        "ecosystem": "gem",
+        "version": ">= 2.3.0, !=2.7.0",
+        "declaredIn": [
+          "Gemfile",
+          "activesupport/activesupport.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "kamal",
+        "ecosystem": "gem",
+        "version": ">= 2.1.0",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "libxml-ruby",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "logger",
+        "ecosystem": "gem",
+        "version": ">= 1.4.2",
+        "declaredIn": [
+          "activesupport/activesupport.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "minitest-mock",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "minitest-retry",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "nio4r",
+        "ecosystem": "gem",
+        "version": "~> 2.0",
+        "declaredIn": [
+          "actioncable/actioncable.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "nokogiri",
+        "ecosystem": "gem",
+        "version": ">= 1.8.1, != 1.11.0",
+        "declaredIn": [
+          "Gemfile",
+          "actionpack/actionpack.gemspec",
+          "actiontext/actiontext.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "puma",
+        "ecosystem": "gem",
+        "version": ">= 5.0.3",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "queue_classic",
+        "ecosystem": "gem",
+        "version": ">= 4.0.0",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "qunit",
+        "ecosystem": "npm",
+        "version": "^2.20.0",
+        "declaredIn": [
+          "actioncable/package.json"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "rack-cache",
+        "ecosystem": "gem",
+        "version": "~> 1.2",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "rack-session",
+        "ecosystem": "gem",
+        "version": ">= 1.0.1",
+        "declaredIn": [
+          "actionpack/actionpack.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "rack-test",
+        "ecosystem": "gem",
+        "version": ">= 0.6.3",
+        "declaredIn": [
+          "actionpack/actionpack.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "rackup",
+        "ecosystem": "gem",
+        "version": ">= 1.0.0",
+        "declaredIn": [
+          "railties/railties.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "ractor-dispatch",
+        "ecosystem": "gem",
+        "version": ">= 0.3.0",
+        "declaredIn": [
+          "activesupport/activesupport.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "redis-namespace",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "resque",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "rollup",
+        "ecosystem": "npm",
+        "version": "^2.35.1",
+        "declaredIn": [
+          "actioncable/package.json",
+          "actiontext/package.json",
+          "activestorage/package.json"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "rubocop-md",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "rubocop-minitest",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "rubocop-packaging",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "rubocop-performance",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "rubocop-rails",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "rubocop-rails-omakase",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "rubyzip",
+        "ecosystem": "gem",
+        "version": "~> 2.0",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "securerandom",
+        "ecosystem": "gem",
+        "version": ">= 0.3",
+        "declaredIn": [
+          "activesupport/activesupport.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "selenium-webdriver",
+        "ecosystem": "gem",
+        "version": ">= 4.20.0",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sigstore-cli",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "tools/releaser/Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "solid_cache",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sprockets-rails",
+        "ecosystem": "gem",
+        "version": ">= 2.0.0",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "stackprof",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "stimulus-rails",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "tailwindcss-rails",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "terser",
+        "ecosystem": "gem",
+        "version": ">= 1.1.4",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "thruster",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "turbo-rails",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "tzinfo-data",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "wdm",
+        "ecosystem": "gem",
+        "version": ">= 0.1.0",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "web-console",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "web-test-runner-qunit",
+        "ecosystem": "npm",
+        "version": "^2.0.0",
+        "declaredIn": [
+          "actioncable/package.json"
+        ],
+        "scope": "dev",
+        "importers": 0
+      },
+      {
+        "name": "webrick",
+        "ecosystem": "gem",
+        "declaredIn": [
+          "Gemfile"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "websocket-driver",
+        "ecosystem": "gem",
+        "version": ">= 0.6.1",
+        "declaredIn": [
+          "actioncable/actioncable.gemspec"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      }
+    ]
+  },
+  {
+    "name": "kubernetes",
+    "by": {
+      "shell": {
+        "files": 314,
+        "internal": 223,
+        "external": 0,
+        "unresolved": 10,
+        "self": 0
+      },
+      "c": {
+        "files": 6,
+        "internal": 0,
+        "external": 21,
+        "unresolved": 0,
+        "self": 0
+      },
+      "go": {
+        "files": 18291,
+        "internal": 74372,
+        "external": 39223,
+        "unresolved": 0,
+        "self": 0
+      },
+      "python": {
+        "files": 7,
+        "internal": 1,
+        "external": 25,
+        "unresolved": 0,
+        "self": 0
+      }
+    },
+    "valid": [],
+    "entries": [
+      {
+        "path": "vendor/github.com/anishathalye/porcupine/visualization/xo.config.js",
+        "entry": "tool config"
+      }
+    ],
+    "unresolved": [
+      {
+        "path": "cluster/addons/addon-manager/kube-addons-main.sh",
+        "language": "shell",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "/opt/kube-addons.sh",
+        "kind": "include",
+        "line": 24,
+        "status": "unresolved"
+      },
+      {
+        "path": "cluster/gce/gci/configure-helper.sh",
+        "language": "shell",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "bin/gke-internal-configure-helper.sh",
+        "kind": "include",
+        "line": 3003,
+        "status": "unresolved"
+      },
+      {
+        "path": "cluster/gce/gci/configure-helper.sh",
+        "language": "shell",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "/etc/profile.d/kube_env.sh",
+        "kind": "include",
+        "line": 3056,
+        "status": "unresolved"
+      },
+      {
+        "path": "cluster/gce/gci/configure-helper.sh",
+        "language": "shell",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "kube-env",
+        "kind": "include",
+        "line": 3459,
+        "status": "unresolved"
+      },
+      {
+        "path": "cluster/kube-down.sh",
+        "language": "shell",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "cluster/env.sh",
+        "kind": "include",
+        "line": 25,
+        "status": "unresolved"
+      },
+      {
+        "path": "cluster/kube-up.sh",
+        "language": "shell",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "cluster/env.sh",
+        "kind": "include",
+        "line": 29,
+        "status": "unresolved"
+      },
+      {
+        "path": "cluster/kube-up.sh",
+        "language": "shell",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "/tmp/kube-proxy-env",
+        "kind": "include",
+        "line": 66,
+        "status": "unresolved"
+      },
+      {
+        "path": "cluster/validate-cluster.sh",
+        "language": "shell",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": "cluster/env.sh",
+        "kind": "include",
+        "line": 29,
+        "status": "unresolved"
+      },
+      {
+        "path": "hack/lib/golang.sh",
+        "language": "shell",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": ".gimme/envs/gomaster.env",
+        "kind": "include",
+        "line": 527,
+        "status": "unresolved"
+      },
+      {
+        "path": "hack/lib/golang.sh",
+        "language": "shell",
+        "category": "code",
+        "generated": false,
+        "vendored": false,
+        "spec": ".gimme/envs/gomaster.env",
+        "kind": "include",
+        "line": 529,
+        "status": "unresolved"
+      }
+    ],
+    "unused": [
+      {
+        "name": "bitbucket.org/bertimus9/systemstat",
+        "ecosystem": "go",
+        "version": "v0.5.0",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "cel.dev/cel-go",
+        "ecosystem": "go",
+        "version": "v0.33.2",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/JeffAshton/win_pdh",
+        "ecosystem": "go",
+        "version": "v0.0.0-20161109143554-76bb4ee9f0ab",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/MakeNowJust/heredoc",
+        "ecosystem": "go",
+        "version": "v1.0.0",
+        "declaredIn": [
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/Microsoft/go-winio",
+        "ecosystem": "go",
+        "version": "v0.6.2",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/cri-client/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/Microsoft/hnslib",
+        "ecosystem": "go",
+        "version": "v0.1.3",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/anishathalye/porcupine",
+        "ecosystem": "go",
+        "version": "v1.3.0",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/armon/go-socks5",
+        "ecosystem": "go",
+        "version": "v0.0.0-20160902184237-e75332964ef5",
+        "declaredIn": [
+          "staging/src/k8s.io/streaming/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/blang/semver/v4",
+        "ecosystem": "go",
+        "version": "v4.0.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod",
+          "staging/src/k8s.io/pod-security-admission/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/chai2010/gettext-go",
+        "ecosystem": "go",
+        "version": "v1.0.3",
+        "declaredIn": [
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/container-storage-interface/spec",
+        "ecosystem": "go",
+        "version": "v1.13.0",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/coredns/corefile-migration",
+        "ecosystem": "go",
+        "version": "v1.0.36",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/coreos/go-oidc/v3",
+        "ecosystem": "go",
+        "version": "v3.21.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/coreos/go-systemd/v22",
+        "ecosystem": "go",
+        "version": "v22.7.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/cpuguy83/go-md2man/v2",
+        "ecosystem": "go",
+        "version": "v2.0.6",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/cyphar/filepath-securejoin",
+        "ecosystem": "go",
+        "version": "v0.7.0",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/distribution/reference",
+        "ecosystem": "go",
+        "version": "v0.6.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/emicklei/go-restful/v3",
+        "ecosystem": "go",
+        "version": "v3.14.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cri-streaming/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/exponent-io/jsonpath",
+        "ecosystem": "go",
+        "version": "v0.0.0-20210407135951-1de76d718b3f",
+        "declaredIn": [
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/fatih/camelcase",
+        "ecosystem": "go",
+        "version": "v1.0.0",
+        "declaredIn": [
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/fsnotify/fsnotify",
+        "ecosystem": "go",
+        "version": "v1.9.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cri-client/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/fxamacker/cbor/v2",
+        "ecosystem": "go",
+        "version": "v2.9.4",
+        "declaredIn": [
+          "staging/src/k8s.io/apiextensions-api/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/go-jose/go-jose/v4",
+        "ecosystem": "go",
+        "version": "v4.1.9",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cluster-bootstrap/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/go-logr/logr",
+        "ecosystem": "go",
+        "version": "v1.4.4",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/go-logr/zapr",
+        "ecosystem": "go",
+        "version": "v1.3.0",
+        "declaredIn": [
+          "staging/src/k8s.io/component-base/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/go-openapi/jsonreference",
+        "ecosystem": "go",
+        "version": "v1.0.2",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/godbus/dbus/v5",
+        "ecosystem": "go",
+        "version": "v5.2.4",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/gogo/protobuf",
+        "ecosystem": "go",
+        "version": "v1.3.2",
+        "declaredIn": [
+          "staging/src/k8s.io/code-generator/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/google/cadvisor/lib",
+        "ecosystem": "go",
+        "version": "v0.61.0",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/google/gnostic-models",
+        "ecosystem": "go",
+        "version": "v0.7.1",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/code-generator/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/google/go-cmp",
+        "ecosystem": "go",
+        "version": "v0.7.0",
+        "declaredIn": [
+          "go.mod",
+          "hack/tools/instrumentation/go.mod",
+          "staging/src/k8s.io/api/go.mod",
+          "staging/src/k8s.io/apiextensions-api/go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/cloud-provider/go.mod",
+          "staging/src/k8s.io/code-generator/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod",
+          "staging/src/k8s.io/endpointslice/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod",
+          "staging/src/k8s.io/kube-scheduler/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod",
+          "staging/src/k8s.io/pod-security-admission/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/google/uuid",
+        "ecosystem": "go",
+        "version": "v1.6.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/client-go/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/gorilla/websocket",
+        "ecosystem": "go",
+        "version": "v1.5.4-0.20250319132907-e064f32e3674",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/cri-streaming/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus",
+        "ecosystem": "go",
+        "version": "v1.1.0",
+        "declaredIn": [
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/ishidawataru/sctp",
+        "ecosystem": "go",
+        "version": "v0.0.0-20250521072954-ae8eb7fa7995",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/jonboulle/clockwork",
+        "ecosystem": "go",
+        "version": "v0.5.0",
+        "declaredIn": [
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/liggitt/tabwriter",
+        "ecosystem": "go",
+        "version": "v0.0.0-20181228230101-89fcab3d43de",
+        "declaredIn": [
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/lithammer/dedent",
+        "ecosystem": "go",
+        "version": "v1.1.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/mitchellh/go-wordwrap",
+        "ecosystem": "go",
+        "version": "v1.0.1",
+        "declaredIn": [
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/moby/ipvs",
+        "ecosystem": "go",
+        "version": "v1.1.0",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/moby/spdystream",
+        "ecosystem": "go",
+        "version": "v0.5.1",
+        "declaredIn": [
+          "staging/src/k8s.io/streaming/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/moby/sys/mountinfo",
+        "ecosystem": "go",
+        "version": "v0.7.2",
+        "declaredIn": [
+          "staging/src/k8s.io/mount-utils/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/moby/sys/userns",
+        "ecosystem": "go",
+        "version": "v0.2.1",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/moby/term",
+        "ecosystem": "go",
+        "version": "v0.5.2",
+        "declaredIn": [
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/munnerz/goautoneg",
+        "ecosystem": "go",
+        "version": "v0.0.0-20191010083416-a7dc8b61c822",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/client-go/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/mxk/go-flowrate",
+        "ecosystem": "go",
+        "version": "v0.0.0-20140419014527-cca7078d478f",
+        "declaredIn": [
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/onsi/ginkgo/v2",
+        "ecosystem": "go",
+        "version": "v2.33.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/onsi/gomega",
+        "ecosystem": "go",
+        "version": "v1.44.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod",
+          "staging/src/k8s.io/ktesting/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/opencontainers/cgroups",
+        "ecosystem": "go",
+        "version": "v0.1.0",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/opencontainers/selinux",
+        "ecosystem": "go",
+        "version": "v1.15.1",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/peterbourgon/diskv/v3",
+        "ecosystem": "go",
+        "version": "v3.0.1",
+        "declaredIn": [
+          "staging/src/k8s.io/client-go/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/pmezard/go-difflib",
+        "ecosystem": "go",
+        "version": "v1.0.1-0.20181226105442-5d4384ee4fb2",
+        "declaredIn": [
+          "go.mod",
+          "hack/tools/golangci-lint/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/prometheus/client_golang",
+        "ecosystem": "go",
+        "version": "v1.25.0",
+        "declaredIn": [
+          "hack/tools/instrumentation/go.mod",
+          "staging/src/k8s.io/component-base/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/prometheus/client_model",
+        "ecosystem": "go",
+        "version": "v0.6.3",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/component-base/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/prometheus/common",
+        "ecosystem": "go",
+        "version": "v0.73.1",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/component-base/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/prometheus/procfs",
+        "ecosystem": "go",
+        "version": "v0.22.0",
+        "declaredIn": [
+          "staging/src/k8s.io/component-base/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/robfig/cron/v3",
+        "ecosystem": "go",
+        "version": "v3.0.1",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/russross/blackfriday/v2",
+        "ecosystem": "go",
+        "version": "v2.1.0",
+        "declaredIn": [
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/spf13/cobra",
+        "ecosystem": "go",
+        "version": "v1.10.2",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/cloud-provider/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod",
+          "staging/src/k8s.io/pod-security-admission/go.mod",
+          "staging/src/k8s.io/sample-apiserver/go.mod",
+          "staging/src/k8s.io/sample-cli-plugin/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/spf13/pflag",
+        "ecosystem": "go",
+        "version": "v1.0.10",
+        "declaredIn": [
+          "go.mod",
+          "hack/tools/instrumentation/go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/cloud-provider/go.mod",
+          "staging/src/k8s.io/code-generator/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/controller-manager/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod",
+          "staging/src/k8s.io/pod-security-admission/go.mod",
+          "staging/src/k8s.io/sample-cli-plugin/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/stretchr/testify",
+        "ecosystem": "go",
+        "version": "v1.12.1",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-api/go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/cloud-provider/go.mod",
+          "staging/src/k8s.io/cluster-bootstrap/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/controller-manager/go.mod",
+          "staging/src/k8s.io/cri-client/go.mod",
+          "staging/src/k8s.io/cri-streaming/go.mod",
+          "staging/src/k8s.io/csi-translation-lib/go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod",
+          "staging/src/k8s.io/endpointslice/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod",
+          "staging/src/k8s.io/kubelet/go.mod",
+          "staging/src/k8s.io/metrics/go.mod",
+          "staging/src/k8s.io/mount-utils/go.mod",
+          "staging/src/k8s.io/pod-security-admission/go.mod",
+          "staging/src/k8s.io/sample-apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/vishvananda/netlink",
+        "ecosystem": "go",
+        "version": "v1.3.1",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "github.com/vishvananda/netns",
+        "ecosystem": "go",
+        "version": "v0.0.5",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.etcd.io/etcd/api/v3",
+        "ecosystem": "go",
+        "version": "v3.7.3",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.etcd.io/etcd/client/pkg/v3",
+        "ecosystem": "go",
+        "version": "v3.7.3",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.etcd.io/etcd/client/v3",
+        "ecosystem": "go",
+        "version": "v3.7.3",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.etcd.io/etcd/server/v3",
+        "ecosystem": "go",
+        "version": "v3.7.3",
+        "declaredIn": [
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.opentelemetry.io/contrib/instrumentation/github.com/emicklei/go-restful/otelrestful",
+        "ecosystem": "go",
+        "version": "v0.72.0",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc",
+        "ecosystem": "go",
+        "version": "v0.72.0",
+        "declaredIn": [
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cri-client/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp",
+        "ecosystem": "go",
+        "version": "v0.72.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/component-base/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.opentelemetry.io/otel",
+        "ecosystem": "go",
+        "version": "v1.47.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/cri-client/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc",
+        "ecosystem": "go",
+        "version": "v1.45.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/component-base/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.opentelemetry.io/otel/metric",
+        "ecosystem": "go",
+        "version": "v1.47.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.opentelemetry.io/otel/sdk",
+        "ecosystem": "go",
+        "version": "v1.47.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/cri-client/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.opentelemetry.io/otel/trace",
+        "ecosystem": "go",
+        "version": "v1.47.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/cri-client/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.opentelemetry.io/proto/otlp",
+        "ecosystem": "go",
+        "version": "v1.11.0",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.uber.org/goleak",
+        "ecosystem": "go",
+        "version": "v1.3.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/cri-streaming/go.mod",
+          "staging/src/k8s.io/ktesting/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.uber.org/zap",
+        "ecosystem": "go",
+        "version": "v1.27.1",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/component-base/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "go.yaml.in/yaml/v2",
+        "ecosystem": "go",
+        "version": "v2.4.4",
+        "declaredIn": [
+          "go.mod",
+          "hack/tools/instrumentation/go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/code-generator/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "golang.org/x/crypto",
+        "ecosystem": "go",
+        "version": "v0.58.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "golang.org/x/net",
+        "ecosystem": "go",
+        "version": "v0.62.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod",
+          "staging/src/k8s.io/streaming/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "golang.org/x/oauth2",
+        "ecosystem": "go",
+        "version": "v0.37.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/controller-manager/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "golang.org/x/sync",
+        "ecosystem": "go",
+        "version": "v0.24.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "golang.org/x/sys",
+        "ecosystem": "go",
+        "version": "v0.49.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/cri-client/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod",
+          "staging/src/k8s.io/mount-utils/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "golang.org/x/term",
+        "ecosystem": "go",
+        "version": "v0.47.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/client-go/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "golang.org/x/text",
+        "ecosystem": "go",
+        "version": "v0.43.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/code-generator/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "golang.org/x/time",
+        "ecosystem": "go",
+        "version": "v0.16.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/cloud-provider/go.mod",
+          "staging/src/k8s.io/sample-controller/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "google.golang.org/genproto/googleapis/api",
+        "ecosystem": "go",
+        "version": "v0.0.0-20260817212433-ac3dfec99bb1",
+        "declaredIn": [
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "google.golang.org/genproto/googleapis/rpc",
+        "ecosystem": "go",
+        "version": "v0.0.0-20260928230214-8a89bd6388cc",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "google.golang.org/grpc",
+        "ecosystem": "go",
+        "version": "v1.85.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cri-api/go.mod",
+          "staging/src/k8s.io/cri-client/go.mod",
+          "staging/src/k8s.io/cri-streaming/go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod",
+          "staging/src/k8s.io/externaljwt/go.mod",
+          "staging/src/k8s.io/kms/go.mod",
+          "staging/src/k8s.io/kubelet/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "google.golang.org/protobuf",
+        "ecosystem": "go",
+        "version": "v1.36.12",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/cri-api/go.mod",
+          "staging/src/k8s.io/cri-client/go.mod",
+          "staging/src/k8s.io/externaljwt/go.mod",
+          "staging/src/k8s.io/kms/go.mod",
+          "staging/src/k8s.io/kubelet/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "gopkg.in/evanphx/json-patch.v4",
+        "ecosystem": "go",
+        "version": "v4.13.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "gopkg.in/inf.v0",
+        "ecosystem": "go",
+        "version": "v0.9.1",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "gopkg.in/natefinch/lumberjack.v2",
+        "ecosystem": "go",
+        "version": "v2.2.1",
+        "declaredIn": [
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "k8s.io/gengo/v2",
+        "ecosystem": "go",
+        "version": "v2.0.0-20260408192533-25e2208e0dc3",
+        "declaredIn": [
+          "staging/src/k8s.io/code-generator/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "k8s.io/klog/v2",
+        "ecosystem": "go",
+        "version": "v2.140.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/api/go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/cloud-provider/go.mod",
+          "staging/src/k8s.io/cluster-bootstrap/go.mod",
+          "staging/src/k8s.io/code-generator/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/component-helpers/go.mod",
+          "staging/src/k8s.io/controller-manager/go.mod",
+          "staging/src/k8s.io/cri-client/go.mod",
+          "staging/src/k8s.io/cri-streaming/go.mod",
+          "staging/src/k8s.io/csi-translation-lib/go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod",
+          "staging/src/k8s.io/endpointslice/go.mod",
+          "staging/src/k8s.io/ktesting/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod",
+          "staging/src/k8s.io/kube-scheduler/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod",
+          "staging/src/k8s.io/mount-utils/go.mod",
+          "staging/src/k8s.io/pod-security-admission/go.mod",
+          "staging/src/k8s.io/sample-controller/go.mod",
+          "staging/src/k8s.io/streaming/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "k8s.io/kube-openapi",
+        "ecosystem": "go",
+        "version": "v0.0.0-20261014044854-ca3452a79603",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/code-generator/examples/go.mod",
+          "staging/src/k8s.io/code-generator/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod",
+          "staging/src/k8s.io/sample-apiserver/go.mod",
+          "staging/src/k8s.io/sample-controller/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "k8s.io/system-validators",
+        "ecosystem": "go",
+        "version": "v1.12.1",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "k8s.io/utils",
+        "ecosystem": "go",
+        "version": "v0.0.0-20260626114624-be93311217bd",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-api/go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/cloud-provider/go.mod",
+          "staging/src/k8s.io/code-generator/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/component-helpers/go.mod",
+          "staging/src/k8s.io/controller-manager/go.mod",
+          "staging/src/k8s.io/cri-client/go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod",
+          "staging/src/k8s.io/endpointslice/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod",
+          "staging/src/k8s.io/mount-utils/go.mod",
+          "staging/src/k8s.io/pod-security-admission/go.mod",
+          "staging/src/k8s.io/sample-apiserver/go.mod",
+          "staging/src/k8s.io/sample-controller/go.mod",
+          "staging/src/k8s.io/streaming/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sigs.k8s.io/apiserver-network-proxy/konnectivity-client",
+        "ecosystem": "go",
+        "version": "v0.37.1",
+        "declaredIn": [
+          "staging/src/k8s.io/apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sigs.k8s.io/iptables-wrappers",
+        "ecosystem": "go",
+        "version": "v1.0.0",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sigs.k8s.io/json",
+        "ecosystem": "go",
+        "version": "v0.0.0-20250730193827-2d320260d730",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/component-base/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sigs.k8s.io/knftables",
+        "ecosystem": "go",
+        "version": "v0.0.22",
+        "declaredIn": [
+          "go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sigs.k8s.io/kustomize/api",
+        "ecosystem": "go",
+        "version": "v0.21.3",
+        "declaredIn": [
+          "staging/src/k8s.io/cli-runtime/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sigs.k8s.io/kustomize/kustomize/v5",
+        "ecosystem": "go",
+        "version": "v5.8.3",
+        "declaredIn": [
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sigs.k8s.io/kustomize/kyaml",
+        "ecosystem": "go",
+        "version": "v0.21.3",
+        "declaredIn": [
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sigs.k8s.io/randfill",
+        "ecosystem": "go",
+        "version": "v1.0.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/code-generator/go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod",
+          "staging/src/k8s.io/sample-apiserver/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sigs.k8s.io/structured-merge-diff/v7",
+        "ecosystem": "go",
+        "version": "v7.0.1",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-api/go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/code-generator/examples/go.mod",
+          "staging/src/k8s.io/kube-aggregator/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod",
+          "staging/src/k8s.io/sample-apiserver/go.mod",
+          "staging/src/k8s.io/sample-controller/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "sigs.k8s.io/yaml",
+        "ecosystem": "go",
+        "version": "v1.6.0",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/apiextensions-apiserver/go.mod",
+          "staging/src/k8s.io/apimachinery/go.mod",
+          "staging/src/k8s.io/apiserver/go.mod",
+          "staging/src/k8s.io/cli-runtime/go.mod",
+          "staging/src/k8s.io/client-go/go.mod",
+          "staging/src/k8s.io/code-generator/go.mod",
+          "staging/src/k8s.io/ktesting/go.mod",
+          "staging/src/k8s.io/kube-scheduler/go.mod",
+          "staging/src/k8s.io/kubectl/go.mod",
+          "staging/src/k8s.io/pod-security-admission/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      },
+      {
+        "name": "tags.cncf.io/container-device-interface/specs-go",
+        "ecosystem": "go",
+        "version": "v1.1.1",
+        "declaredIn": [
+          "go.mod",
+          "staging/src/k8s.io/dynamic-resource-allocation/go.mod"
+        ],
+        "scope": "runtime",
+        "importers": 0
+      }
+    ]
+  }
+]

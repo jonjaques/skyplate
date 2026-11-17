@@ -1,0 +1,297 @@
+{
+  "baselineRows": 71,
+  "currentRows": 71,
+  "changedRows": [],
+  "changedQueries": [
+    {
+      "name": "Leaf.run",
+      "baseline": {
+        "name": "Leaf.run",
+        "kind": "method",
+        "at": "heritage.ts:4",
+        "endLine": 4,
+        "parent": {
+          "name": "Leaf",
+          "kind": "class"
+        },
+        "signature": "() => void",
+        "complexity": 1,
+        "params": 0,
+        "counts": {
+          "refs": 0,
+          "callers": 0,
+          "files": 0
+        },
+        "calledBy": {
+          "count": 0,
+          "rows": []
+        },
+        "extends": [
+          {
+            "name": "Base.run",
+            "how": "extends",
+            "at": "heritage.ts:3"
+          }
+        ],
+        "references": {
+          "total": 0,
+          "stored": 0,
+          "byFile": []
+        },
+        "impact": {
+          "depth": 3,
+          "symbols": 0,
+          "byDepth": [
+            0,
+            0,
+            0
+          ],
+          "files": 0,
+          "fileList": [],
+          "nearest": []
+        }
+      },
+      "current": {
+        "name": "Leaf.run",
+        "kind": "method",
+        "at": "heritage.ts:4",
+        "endLine": 4,
+        "parent": {
+          "name": "Leaf",
+          "kind": "class"
+        },
+        "signature": "() => void",
+        "complexity": 1,
+        "params": 0,
+        "counts": {
+          "refs": 0,
+          "callers": 0,
+          "files": 0
+        },
+        "calledBy": {
+          "count": 0,
+          "rows": []
+        },
+        "calledThroughBases": [
+          {
+            "base": "Root.run",
+            "baseAt": "heritage.ts:1",
+            "callers": {
+              "count": 1,
+              "rows": [
+                {
+                  "name": "dispatch",
+                  "kind": "function",
+                  "count": 1,
+                  "how": [
+                    "call"
+                  ],
+                  "site": "heritage.ts:5"
+                }
+              ]
+            }
+          }
+        ],
+        "extends": [
+          {
+            "name": "Base.run",
+            "how": "extends",
+            "at": "heritage.ts:3"
+          }
+        ],
+        "references": {
+          "total": 0,
+          "stored": 0,
+          "byFile": []
+        },
+        "impact": {
+          "depth": 3,
+          "symbols": 2,
+          "byDepth": [
+            1,
+            1,
+            0
+          ],
+          "files": 1,
+          "fileList": [
+            {
+              "path": "heritage.ts",
+              "depth": 1
+            }
+          ],
+          "nearest": [
+            {
+              "name": "dispatch",
+              "depth": 1,
+              "at": "heritage.ts:5"
+            },
+            {
+              "name": "(top level of heritage.ts)",
+              "depth": 2,
+              "at": "heritage.ts:1"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Base.run",
+      "baseline": {
+        "name": "Base.run",
+        "kind": "method",
+        "at": "heritage.ts:3",
+        "endLine": 3,
+        "parent": {
+          "name": "Base",
+          "kind": "class"
+        },
+        "signature": "() => void",
+        "complexity": 1,
+        "params": 0,
+        "counts": {
+          "refs": 1,
+          "callers": 0,
+          "files": 1
+        },
+        "calledBy": {
+          "count": 0,
+          "rows": []
+        },
+        "extends": [
+          {
+            "name": "Middle.run",
+            "how": "implements",
+            "at": "heritage.ts:2"
+          }
+        ],
+        "extendedBy": [
+          {
+            "name": "Leaf.run",
+            "how": "extends",
+            "at": "heritage.ts:4"
+          }
+        ],
+        "references": {
+          "total": 1,
+          "stored": 1,
+          "byFile": [
+            {
+              "path": "heritage.ts",
+              "at": [
+                "4:34 extends"
+              ]
+            }
+          ]
+        },
+        "impact": {
+          "depth": 3,
+          "symbols": 0,
+          "byDepth": [
+            0,
+            0,
+            0
+          ],
+          "files": 0,
+          "fileList": [],
+          "nearest": []
+        }
+      },
+      "current": {
+        "name": "Base.run",
+        "kind": "method",
+        "at": "heritage.ts:3",
+        "endLine": 3,
+        "parent": {
+          "name": "Base",
+          "kind": "class"
+        },
+        "signature": "() => void",
+        "complexity": 1,
+        "params": 0,
+        "counts": {
+          "refs": 1,
+          "callers": 0,
+          "files": 1
+        },
+        "calledBy": {
+          "count": 0,
+          "rows": []
+        },
+        "calledThroughBases": [
+          {
+            "base": "Root.run",
+            "baseAt": "heritage.ts:1",
+            "callers": {
+              "count": 1,
+              "rows": [
+                {
+                  "name": "dispatch",
+                  "kind": "function",
+                  "count": 1,
+                  "how": [
+                    "call"
+                  ],
+                  "site": "heritage.ts:5"
+                }
+              ]
+            }
+          }
+        ],
+        "extends": [
+          {
+            "name": "Middle.run",
+            "how": "implements",
+            "at": "heritage.ts:2"
+          }
+        ],
+        "extendedBy": [
+          {
+            "name": "Leaf.run",
+            "how": "extends",
+            "at": "heritage.ts:4"
+          }
+        ],
+        "references": {
+          "total": 1,
+          "stored": 1,
+          "byFile": [
+            {
+              "path": "heritage.ts",
+              "at": [
+                "4:34 extends"
+              ]
+            }
+          ]
+        },
+        "impact": {
+          "depth": 3,
+          "symbols": 2,
+          "byDepth": [
+            1,
+            1,
+            0
+          ],
+          "files": 1,
+          "fileList": [
+            {
+              "path": "heritage.ts",
+              "depth": 1
+            }
+          ],
+          "nearest": [
+            {
+              "name": "dispatch",
+              "depth": 1,
+              "at": "heritage.ts:5"
+            },
+            {
+              "name": "(top level of heritage.ts)",
+              "depth": 2,
+              "at": "heritage.ts:1"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

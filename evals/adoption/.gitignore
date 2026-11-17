@@ -1,0 +1,10 @@
+# Fresh runs contain private instructions, arguments and provider session data.
+*.events.jsonl
+*.mcp.jsonl
+*.invocation.json
+*.mcp-config.json
+*.pid.json
+*.help.txt
+*.stderr
+*.tmp/
+*.answer.md

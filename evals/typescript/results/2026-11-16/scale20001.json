@@ -1,0 +1,20 @@
+{
+  "count": 20001,
+  "cap": 20000,
+  "runs": [
+    {
+      "elapsed": 1.065584000000058,
+      "logs": [
+        "TypeScript: skipped, 20001 TS/JS files exceed the limit of 20000 (raise maxFiles to analyze them)"
+      ],
+      "maxRSSKiB": 25504
+    },
+    {
+      "elapsed": 0.41037500000004457,
+      "logs": [
+        "TypeScript: skipped, 20001 TS/JS files exceed the limit of 20000 (raise maxFiles to analyze them)"
+      ],
+      "maxRSSKiB": 25952
+    }
+  ]
+}

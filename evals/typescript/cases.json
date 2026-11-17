@@ -1,0 +1,268 @@
+{
+  "compilerFiles": [
+    {
+      "file": "accessors.ts",
+      "scenario": "Getter reads, setter writes, constructor invocation",
+      "defects": []
+    },
+    {
+      "file": "alias-only.ts",
+      "scenario": "Direct host import control and exported alias",
+      "defects": [
+        "T2"
+      ]
+    },
+    {
+      "file": "ambient-use.ts",
+      "scenario": "Ambient global consumer",
+      "defects": []
+    },
+    {
+      "file": "ambient.d.ts",
+      "scenario": "Ambient global declaration",
+      "defects": []
+    },
+    {
+      "file": "augmentation.ts",
+      "scenario": "Module augmentation member and type use",
+      "defects": []
+    },
+    {
+      "file": "binding.ts",
+      "scenario": "Destructuring rename and shorthand reads",
+      "defects": []
+    },
+    {
+      "file": "callbacks.ts",
+      "scenario": "Callback, event registration, array, alias, optional call and call/apply/bind",
+      "defects": []
+    },
+    {
+      "file": "decorators.ts",
+      "scenario": "Decorator invocation",
+      "defects": []
+    },
+    {
+      "file": "equals.cts",
+      "scenario": "Export assignment",
+      "defects": []
+    },
+    {
+      "file": "es-use.ts",
+      "scenario": "Default, namespace, star, renamed and dynamic import consumers",
+      "defects": []
+    },
+    {
+      "file": "field.ts",
+      "scenario": "Arrow class field and new expression",
+      "defects": []
+    },
+    {
+      "file": "heritage.ts",
+      "scenario": "Whole inherited dispatch family",
+      "defects": [
+        "T3"
+      ]
+    },
+    {
+      "file": "host-barrel.ts",
+      "scenario": "Host star barrel",
+      "defects": [
+        "T2"
+      ]
+    },
+    {
+      "file": "host-local-alias.ts",
+      "scenario": "Local exported alias used only by a host",
+      "defects": [
+        "T2"
+      ]
+    },
+    {
+      "file": "host-rename-barrel.ts",
+      "scenario": "Renamed host barrel",
+      "defects": [
+        "T2"
+      ]
+    },
+    {
+      "file": "host-rename-value.ts",
+      "scenario": "Declaration behind renamed host barrel",
+      "defects": [
+        "T2"
+      ]
+    },
+    {
+      "file": "host-value.ts",
+      "scenario": "Declaration behind star host barrel",
+      "defects": [
+        "T2"
+      ]
+    },
+    {
+      "file": "jsdoc.js",
+      "scenario": "JSDoc import type and typed property reference",
+      "defects": []
+    },
+    {
+      "file": "jsx.tsx",
+      "scenario": "JSX component and interface/type-literal property pair",
+      "defects": [
+        "T1"
+      ]
+    },
+    {
+      "file": "local.ts",
+      "scenario": "Omitted local callable and outer complexity",
+      "defects": [
+        "T9"
+      ]
+    },
+    {
+      "file": "merging.ts",
+      "scenario": "Merged interfaces, namespace and name ambiguity",
+      "defects": []
+    },
+    {
+      "file": "nested-complexity.ts",
+      "scenario": "Uncalled arrow branch attributed to outer function",
+      "defects": [
+        "T9"
+      ]
+    },
+    {
+      "file": "object.ts",
+      "scenario": "Omitted object methods and arrow members",
+      "defects": [
+        "T1"
+      ]
+    },
+    {
+      "file": "overloads.ts",
+      "scenario": "Adjacent overload anchor and implementation extent",
+      "defects": []
+    },
+    {
+      "file": "packages/built/src/index.ts",
+      "scenario": "Workspace package exporting ignored dist declarations",
+      "defects": []
+    },
+    {
+      "file": "packages/source/src/index.ts",
+      "scenario": "Workspace package exporting source under a custom condition",
+      "defects": []
+    },
+    {
+      "file": "renamed.ts",
+      "scenario": "Renamed ES re-export",
+      "defects": []
+    },
+    {
+      "file": "require-use.cjs",
+      "scenario": "Destructured require consumer",
+      "defects": []
+    },
+    {
+      "file": "require.cjs",
+      "scenario": "CommonJS require and export binding",
+      "defects": []
+    },
+    {
+      "file": "source.ts",
+      "scenario": "ES named and default declarations",
+      "defects": []
+    },
+    {
+      "file": "star.ts",
+      "scenario": "ES star re-export",
+      "defects": []
+    },
+    {
+      "file": "tagged.ts",
+      "scenario": "Tagged template invocation",
+      "defects": []
+    },
+    {
+      "file": "typeof.ts",
+      "scenario": "Same-named type and value with typeof query",
+      "defects": []
+    },
+    {
+      "file": "workspace-use.ts",
+      "scenario": "Source versus dist workspace consumers",
+      "defects": []
+    }
+  ],
+  "hostCompanions": [
+    {
+      "file": "host-alias.svelte",
+      "defects": [
+        "T2"
+      ],
+      "role": "Host consumer; direct-import control or unsupported alias/barrel"
+    },
+    {
+      "file": "host-direct.vue",
+      "defects": [
+        "T2"
+      ],
+      "role": "Host consumer; direct-import control or unsupported alias/barrel"
+    },
+    {
+      "file": "host-local-alias.vue",
+      "defects": [
+        "T2"
+      ],
+      "role": "Host consumer; direct-import control or unsupported alias/barrel"
+    },
+    {
+      "file": "host-only.vue",
+      "defects": [
+        "T2"
+      ],
+      "role": "Host consumer; direct-import control or unsupported alias/barrel"
+    },
+    {
+      "file": "host-rename-only.svelte",
+      "defects": [
+        "T2"
+      ],
+      "role": "Host consumer; direct-import control or unsupported alias/barrel"
+    },
+    {
+      "file": "host-renamed.vue",
+      "defects": [
+        "T2"
+      ],
+      "role": "Host consumer; direct-import control or unsupported alias/barrel"
+    },
+    {
+      "file": "host-star.astro",
+      "defects": [
+        "T2"
+      ],
+      "role": "Host consumer; direct-import control or unsupported alias/barrel"
+    }
+  ],
+  "faultFixtures": {
+    "failures": [
+      "T4"
+    ],
+    "missing-deps": [
+      "T7"
+    ],
+    "cap": [
+      "T6"
+    ],
+    "pagination": [
+      "T5"
+    ],
+    "seam-cap": [
+      "T6"
+    ],
+    "prototype-probe": [
+      "T8"
+    ],
+    "workspace-probe": []
+  }
+}

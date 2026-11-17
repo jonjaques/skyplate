@@ -1,0 +1,1 @@
+<script>import {exposed} from './host-rename-barrel';exposed();</script>

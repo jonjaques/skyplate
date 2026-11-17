@@ -1,0 +1,46 @@
+initial
+
+4	0	a.py
+4	0	b.py
+4	0	c.py
+4	0	d.py
+feature 0
+
+1	0	a.py
+1	0	b.py
+feature 1
+
+1	0	a.py
+1	0	b.py
+feature 2
+
+1	0	a.py
+1	0	b.py
+c feature 0
+
+1	0	c.py
+c feature 1
+
+1	0	c.py
+c feature 2
+
+1	0	c.py
+rename
+
+0	0	a.py => renamed.py
+format only
+
+3	3	b.py
+3	3	renamed.py
+bot touch
+
+1	0	d.py
+identity split test
+empty squash-style commit
+
+format only
+rename
+feature 2
+feature 1
+feature 0
+initial

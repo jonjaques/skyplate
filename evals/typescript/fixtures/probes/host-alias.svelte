@@ -1,0 +1,1 @@
+<script lang="ts">import {exportedAlias} from './alias-only';exportedAlias();</script>

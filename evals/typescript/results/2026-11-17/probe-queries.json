@@ -1,0 +1,587 @@
+{
+  "Leaf.run": {
+    "id": 45,
+    "name": "Leaf.run",
+    "kind": "method",
+    "at": "heritage.ts:4",
+    "endLine": 4,
+    "parent": {
+      "id": 44,
+      "name": "Leaf",
+      "kind": "class"
+    },
+    "signature": "() => void",
+    "complexity": 1,
+    "params": 0,
+    "counts": {
+      "refs": 0,
+      "callers": 0,
+      "files": 0
+    },
+    "calledBy": {
+      "count": 0,
+      "rows": []
+    },
+    "calledThroughBases": [
+      {
+        "base": "Root.run",
+        "baseAt": "heritage.ts:1",
+        "callers": {
+          "count": 1,
+          "rows": [
+            {
+              "id": 46,
+              "name": "dispatch",
+              "kind": "function",
+              "count": 1,
+              "how": [
+                "call"
+              ],
+              "site": "heritage.ts:5"
+            }
+          ]
+        }
+      }
+    ],
+    "extends": [
+      {
+        "id": 43,
+        "name": "Base.run",
+        "how": "extends",
+        "at": "heritage.ts:3"
+      }
+    ],
+    "references": {
+      "total": 0,
+      "stored": 0,
+      "byFile": []
+    },
+    "impact": {
+      "depth": 3,
+      "symbols": 2,
+      "byDepth": [
+        1,
+        1,
+        0
+      ],
+      "files": 1,
+      "fileList": [
+        {
+          "path": "heritage.ts",
+          "depth": 1
+        }
+      ],
+      "nearest": [
+        {
+          "id": 46,
+          "name": "dispatch",
+          "depth": 1,
+          "at": "heritage.ts:5"
+        },
+        {
+          "id": 37,
+          "name": "(top level of heritage.ts)",
+          "depth": 2,
+          "at": "heritage.ts:1"
+        }
+      ]
+    }
+  },
+  "Base.run": {
+    "id": 43,
+    "name": "Base.run",
+    "kind": "method",
+    "at": "heritage.ts:3",
+    "endLine": 3,
+    "parent": {
+      "id": 42,
+      "name": "Base",
+      "kind": "class"
+    },
+    "signature": "() => void",
+    "complexity": 1,
+    "params": 0,
+    "counts": {
+      "refs": 1,
+      "callers": 0,
+      "files": 1
+    },
+    "calledBy": {
+      "count": 0,
+      "rows": []
+    },
+    "calledThroughBases": [
+      {
+        "base": "Root.run",
+        "baseAt": "heritage.ts:1",
+        "callers": {
+          "count": 1,
+          "rows": [
+            {
+              "id": 46,
+              "name": "dispatch",
+              "kind": "function",
+              "count": 1,
+              "how": [
+                "call"
+              ],
+              "site": "heritage.ts:5"
+            }
+          ]
+        }
+      }
+    ],
+    "extends": [
+      {
+        "id": 41,
+        "name": "Middle.run",
+        "how": "implements",
+        "at": "heritage.ts:2"
+      }
+    ],
+    "extendedBy": [
+      {
+        "id": 45,
+        "name": "Leaf.run",
+        "how": "extends",
+        "at": "heritage.ts:4"
+      }
+    ],
+    "references": {
+      "total": 1,
+      "stored": 1,
+      "byFile": [
+        {
+          "path": "heritage.ts",
+          "at": [
+            "4:34 extends"
+          ]
+        }
+      ]
+    },
+    "impact": {
+      "depth": 3,
+      "symbols": 2,
+      "byDepth": [
+        1,
+        1,
+        0
+      ],
+      "files": 1,
+      "fileList": [
+        {
+          "path": "heritage.ts",
+          "depth": 1
+        }
+      ],
+      "nearest": [
+        {
+          "id": 46,
+          "name": "dispatch",
+          "depth": 1,
+          "at": "heritage.ts:5"
+        },
+        {
+          "id": 37,
+          "name": "(top level of heritage.ts)",
+          "depth": 2,
+          "at": "heritage.ts:1"
+        }
+      ]
+    }
+  },
+  "Middle.run": {
+    "id": 41,
+    "name": "Middle.run",
+    "kind": "method",
+    "at": "heritage.ts:2",
+    "endLine": 2,
+    "parent": {
+      "id": 40,
+      "name": "Middle",
+      "kind": "interface"
+    },
+    "signature": "() => void",
+    "complexity": 1,
+    "params": 0,
+    "counts": {
+      "refs": 1,
+      "callers": 0,
+      "files": 1
+    },
+    "calledBy": {
+      "count": 0,
+      "rows": []
+    },
+    "calledThroughBases": [
+      {
+        "base": "Root.run",
+        "baseAt": "heritage.ts:1",
+        "callers": {
+          "count": 1,
+          "rows": [
+            {
+              "id": 46,
+              "name": "dispatch",
+              "kind": "function",
+              "count": 1,
+              "how": [
+                "call"
+              ],
+              "site": "heritage.ts:5"
+            }
+          ]
+        }
+      }
+    ],
+    "extends": [
+      {
+        "id": 39,
+        "name": "Root.run",
+        "how": "extends",
+        "at": "heritage.ts:1"
+      }
+    ],
+    "extendedBy": [
+      {
+        "id": 43,
+        "name": "Base.run",
+        "how": "implements",
+        "at": "heritage.ts:3"
+      }
+    ],
+    "references": {
+      "total": 1,
+      "stored": 1,
+      "byFile": [
+        {
+          "path": "heritage.ts",
+          "at": [
+            "3:39 implements"
+          ]
+        }
+      ]
+    },
+    "impact": {
+      "depth": 3,
+      "symbols": 2,
+      "byDepth": [
+        1,
+        1,
+        0
+      ],
+      "files": 1,
+      "fileList": [
+        {
+          "path": "heritage.ts",
+          "depth": 1
+        }
+      ],
+      "nearest": [
+        {
+          "id": 46,
+          "name": "dispatch",
+          "depth": 1,
+          "at": "heritage.ts:5"
+        },
+        {
+          "id": 37,
+          "name": "(top level of heritage.ts)",
+          "depth": 2,
+          "at": "heritage.ts:1"
+        }
+      ]
+    }
+  },
+  "hostOnly": {
+    "id": 54,
+    "name": "hostOnly",
+    "kind": "function",
+    "at": "host-value.ts:1",
+    "endLine": 1,
+    "signature": "() => number",
+    "flags": [
+      "exported",
+      "unused-export"
+    ],
+    "unusedExport": "unreferenced",
+    "complexity": 1,
+    "params": 0,
+    "counts": {
+      "refs": 0,
+      "callers": 0,
+      "files": 0
+    },
+    "calledBy": {
+      "count": 0,
+      "rows": []
+    },
+    "references": {
+      "total": 0,
+      "stored": 0,
+      "byFile": []
+    },
+    "impact": {
+      "depth": 3,
+      "symbols": 0,
+      "byDepth": [
+        0,
+        0,
+        0
+      ],
+      "files": 0,
+      "fileList": [],
+      "nearest": []
+    }
+  },
+  "aliasOnly": {
+    "id": 8,
+    "name": "aliasOnly",
+    "kind": "function",
+    "at": "alias-only.ts:1",
+    "endLine": 1,
+    "signature": "() => number",
+    "flags": [
+      "exported"
+    ],
+    "complexity": 1,
+    "params": 0,
+    "counts": {
+      "refs": 1,
+      "callers": 0,
+      "files": 1
+    },
+    "calledBy": {
+      "count": 0,
+      "rows": []
+    },
+    "importedByHostFiles": [
+      "host-direct.vue:1"
+    ],
+    "references": {
+      "total": 1,
+      "stored": 1,
+      "byFile": [
+        {
+          "path": "alias-only.ts",
+          "at": [
+            "1:39 export"
+          ]
+        }
+      ]
+    },
+    "impact": {
+      "depth": 3,
+      "symbols": 0,
+      "byDepth": [
+        0,
+        0,
+        0
+      ],
+      "files": 0,
+      "fileList": [],
+      "nearest": []
+    }
+  },
+  "neverRunsCallback": {
+    "id": 76,
+    "name": "neverRunsCallback",
+    "kind": "function",
+    "at": "nested-complexity.ts:1",
+    "endLine": 1,
+    "signature": "() => number",
+    "flags": [
+      "exported",
+      "unused-export"
+    ],
+    "unusedExport": "unreferenced",
+    "complexity": 2,
+    "params": 0,
+    "counts": {
+      "refs": 0,
+      "callers": 0,
+      "files": 0
+    },
+    "calledBy": {
+      "count": 0,
+      "rows": []
+    },
+    "references": {
+      "total": 0,
+      "stored": 0,
+      "byFile": []
+    },
+    "impact": {
+      "depth": 3,
+      "symbols": 0,
+      "byDepth": [
+        0,
+        0,
+        0
+      ],
+      "files": 0,
+      "fileList": [],
+      "nearest": []
+    }
+  },
+  "cb": {
+    "id": 24,
+    "name": "cb",
+    "kind": "function",
+    "at": "callbacks.ts:1",
+    "endLine": 1,
+    "signature": "(x?: number) => number",
+    "flags": [
+      "exported",
+      "unused-export"
+    ],
+    "unusedExport": "used-in-own-file",
+    "complexity": 1,
+    "params": 1,
+    "counts": {
+      "refs": 7,
+      "callers": 1,
+      "files": 1
+    },
+    "calledBy": {
+      "count": 1,
+      "rows": [
+        {
+          "id": 25,
+          "name": "callbacks",
+          "kind": "function",
+          "count": 7,
+          "how": [
+            "read",
+            "call"
+          ],
+          "site": "callbacks.ts:2"
+        }
+      ]
+    },
+    "references": {
+      "total": 7,
+      "stored": 7,
+      "byFile": [
+        {
+          "path": "callbacks.ts",
+          "at": [
+            "2:38 read",
+            "2:54 read",
+            "2:69 read",
+            "2:78 read",
+            "2:95 read",
+            "2:115 read",
+            "2:133 call"
+          ]
+        }
+      ]
+    },
+    "impact": {
+      "depth": 3,
+      "symbols": 1,
+      "byDepth": [
+        1,
+        0,
+        0
+      ],
+      "files": 1,
+      "fileList": [
+        {
+          "path": "callbacks.ts",
+          "depth": 1
+        }
+      ],
+      "nearest": [
+        {
+          "id": 25,
+          "name": "callbacks",
+          "depth": 1,
+          "at": "callbacks.ts:2"
+        }
+      ]
+    }
+  },
+  "Merged": {
+    "error": "Error: 3 symbols are named \"Merged\"; pass id, or narrow with path or kind: #68 interface at merging.ts:1; #72 namespace at merging.ts:3; #70 interface at merging.ts:2"
+  },
+  "seam": {
+    "module": "object.ts",
+    "selector": {
+      "path": "object.ts",
+      "scope": "path"
+    },
+    "implementation": {
+      "files": 1,
+      "code": 2,
+      "complexity": 1,
+      "functions": 2,
+      "hottest": []
+    },
+    "tests": {
+      "files": 0,
+      "code": 0
+    },
+    "imports": {
+      "inbound": {
+        "files": 0,
+        "testFiles": 0,
+        "from": []
+      },
+      "outbound": {
+        "files": 0,
+        "to": []
+      },
+      "cyclesAcross": []
+    },
+    "interface": {
+      "symbols": 0,
+      "declared": 2,
+      "uses": 0,
+      "callers": 0,
+      "files": 0,
+      "rows": []
+    },
+    "couldHide": {
+      "count": 1,
+      "rows": [
+        {
+          "id": 78,
+          "name": "object",
+          "at": "object.ts:1",
+          "insideUses": 2
+        }
+      ]
+    },
+    "externalExports": {
+      "count": 0,
+      "rows": []
+    },
+    "internalExports": {
+      "count": 0,
+      "rows": []
+    },
+    "testsPastInterface": {
+      "count": 0,
+      "rows": []
+    },
+    "testFiles": [],
+    "unusedExports": {
+      "count": 2,
+      "rows": [
+        "object (object.ts:1)",
+        "useObject (object.ts:2)"
+      ]
+    },
+    "relays": [],
+    "adapters": [],
+    "interfacesWithoutDeclaredAdapters": 0,
+    "owners": [],
+    "unmeasured": {
+      "locality": "no git history (not a repository, or analyzed with --no-git)"
+    },
+    "notes": [
+      "interface = symbols code outside uses; external package imports are not in the report, so read the module's import statements for its dependency categories"
+    ]
+  }
+}

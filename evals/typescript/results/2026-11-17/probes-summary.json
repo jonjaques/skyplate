@@ -1,0 +1,13 @@
+{
+  "stats": {
+    "files": 34,
+    "symbols": 105,
+    "references": 71,
+    "unresolved": 0,
+    "unusedExports": 44,
+    "truncated": 0,
+    "ms": 94,
+    "hostFiles": 7
+  },
+  "warnings": []
+}

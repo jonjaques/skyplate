@@ -1,0 +1,501 @@
+{
+  "files": [
+    {
+      "path": "b.py",
+      "hotspot": 0.9208,
+      "git": {
+        "commits": 5,
+        "added": 10,
+        "deleted": 3,
+        "authors": 2,
+        "owner": 0,
+        "ownership": 0.7,
+        "created": 1704110400,
+        "modified": 1704801600
+      }
+    },
+    {
+      "path": "c.py",
+      "hotspot": 0.8271,
+      "git": {
+        "commits": 4,
+        "added": 7,
+        "deleted": 0,
+        "authors": 2,
+        "owner": 0,
+        "ownership": 0.5714,
+        "created": 1704110400,
+        "modified": 1704628800
+      }
+    },
+    {
+      "path": "d.py",
+      "hotspot": 0.5646,
+      "git": {
+        "commits": 2,
+        "added": 5,
+        "deleted": 0,
+        "authors": 2,
+        "owner": 0,
+        "ownership": 0.8,
+        "created": 1704110400,
+        "modified": 1704888000
+      }
+    },
+    {
+      "path": "renamed.py",
+      "hotspot": 1,
+      "git": {
+        "commits": 6,
+        "added": 10,
+        "deleted": 3,
+        "authors": 2,
+        "owner": 0,
+        "ownership": 0.7,
+        "created": 1704110400,
+        "modified": 1704801600
+      }
+    }
+  ],
+  "git": {
+    "branch": "main",
+    "head": "bcf1187f1a",
+    "totalCommits": 12,
+    "analyzedCommits": 12,
+    "truncated": false,
+    "shallow": false,
+    "first": 1704110400,
+    "last": 1705060800,
+    "authors": [
+      {
+        "id": 0,
+        "name": "Alice Example",
+        "email": "alice@example.test",
+        "commits": 6,
+        "added": 22,
+        "deleted": 0,
+        "first": 1704110400,
+        "last": 1704974400,
+        "owned": 4,
+        "bot": false
+      },
+      {
+        "id": 1,
+        "name": "Bob Example",
+        "email": "bob@example.test",
+        "commits": 4,
+        "added": 3,
+        "deleted": 0,
+        "first": 1704456000,
+        "last": 1705060800,
+        "owned": 0,
+        "bot": false
+      },
+      {
+        "id": 2,
+        "name": "Formatter Bot",
+        "email": "format[bot]@example.test",
+        "commits": 2,
+        "added": 7,
+        "deleted": 6,
+        "first": 1704801600,
+        "last": 1704888000,
+        "owned": 0,
+        "bot": true
+      }
+    ],
+    "commits": {
+      "hash": [
+        "bcf1187f1a",
+        "1f021b5205",
+        "35c03bce47",
+        "71b35ddc57",
+        "65a2719197",
+        "2b837ba6e2",
+        "d9e44d1c5f",
+        "f5dca6dc73",
+        "232f7f39e7",
+        "ad84bade3a",
+        "459f47564d",
+        "165c2043a9"
+      ],
+      "time": [
+        1705060800,
+        1704974400,
+        1704888000,
+        1704801600,
+        1704715200,
+        1704628800,
+        1704542400,
+        1704456000,
+        1704369600,
+        1704283200,
+        1704196800,
+        1704110400
+      ],
+      "author": [
+        1,
+        0,
+        2,
+        2,
+        0,
+        1,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      "added": [
+        0,
+        0,
+        1,
+        6,
+        0,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        16
+      ],
+      "deleted": [
+        0,
+        0,
+        0,
+        6,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "files": [
+        [],
+        [],
+        [
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          3
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          1
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          1,
+          2,
+          3
+        ]
+      ],
+      "width": [
+        0,
+        0,
+        1,
+        2,
+        1,
+        1,
+        1,
+        1,
+        2,
+        2,
+        2,
+        4
+      ],
+      "subject": [
+        "empty squash-style commit",
+        "identity split test",
+        "bot touch",
+        "format only",
+        "rename",
+        "c feature 2",
+        "c feature 1",
+        "c feature 0",
+        "feature 2",
+        "feature 1",
+        "feature 0",
+        "initial"
+      ],
+      "type": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    "weekly": [
+      {
+        "start": 1704067200,
+        "commits": 7,
+        "added": 25,
+        "deleted": 0,
+        "authors": 2
+      },
+      {
+        "start": 1704672000,
+        "commits": 5,
+        "added": 7,
+        "deleted": 6,
+        "authors": 3
+      }
+    ],
+    "punchcard": [
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ]
+    ],
+    "growth": [
+      {
+        "start": 1704067200,
+        "lines": 25,
+        "files": 4
+      },
+      {
+        "start": 1704672000,
+        "lines": 26,
+        "files": 4
+      }
+    ],
+    "languageChurn": {
+      "months": [
+        1704067200
+      ],
+      "series": {
+        "python": [
+          32
+        ]
+      }
+    },
+    "coupling": [
+      {
+        "a": 0,
+        "b": 3,
+        "shared": 5,
+        "degree": 1
+      }
+    ],
+    "sweepFiles": 30,
+    "truckFactor": {
+      "value": 1,
+      "authors": [
+        0
+      ]
+    }
+  },
+  "warnings": []
+}

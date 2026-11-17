@@ -1,0 +1,2005 @@
+{
+  "format": "skyplate-benchmark",
+  "version": 1,
+  "privacy": {
+    "level": "aggregate",
+    "coarsening": "power-of-two",
+    "durations": "two-significant-figures",
+    "ratios": "hundredths",
+    "retainsShape": false
+  },
+  "environment": {
+    "skyplate": [
+      0,
+      2,
+      0
+    ],
+    "reportSchema": 2,
+    "bun": [
+      1,
+      4,
+      4
+    ],
+    "platform": "darwin",
+    "architecture": "arm64",
+    "cores": 16,
+    "memoryBytes": 34359738368
+  },
+  "options": [
+    {
+      "code": "includeIgnored",
+      "value": 0
+    },
+    {
+      "code": "git",
+      "value": 1
+    },
+    {
+      "code": "source",
+      "value": 1
+    },
+    {
+      "code": "symbols",
+      "value": 1
+    },
+    {
+      "code": "layout",
+      "value": 1
+    },
+    {
+      "code": "maxCommits",
+      "value": 32768
+    },
+    {
+      "code": "maxSourceFile",
+      "value": 524288
+    },
+    {
+      "code": "maxSourceTotal",
+      "value": 67108864
+    },
+    {
+      "code": "tsMaxFiles",
+      "value": 32768
+    },
+    {
+      "code": "tsMaxRefs",
+      "value": 1048576
+    },
+    {
+      "code": "redactPaths",
+      "value": 0
+    },
+    {
+      "code": "maxReadBytes",
+      "value": 8388608
+    },
+    {
+      "code": "workers",
+      "value": 0
+    },
+    {
+      "code": "exclude_count",
+      "value": 0
+    }
+  ],
+  "scale": {
+    "totals": [
+      {
+        "code": "files",
+        "value": 512
+      },
+      {
+        "code": "dirs",
+        "value": 64
+      },
+      {
+        "code": "bytes",
+        "value": 4194304
+      },
+      {
+        "code": "lines",
+        "value": 131072
+      },
+      {
+        "code": "code",
+        "value": 65536
+      },
+      {
+        "code": "comment",
+        "value": 16384
+      },
+      {
+        "code": "blank",
+        "value": 8192
+      },
+      {
+        "code": "binaryFiles",
+        "value": 0
+      },
+      {
+        "code": "generatedFiles",
+        "value": 8
+      },
+      {
+        "code": "vendoredFiles",
+        "value": 16
+      },
+      {
+        "code": "ignored",
+        "value": 8
+      },
+      {
+        "code": "languages",
+        "value": 16
+      },
+      {
+        "code": "secrets",
+        "value": 0
+      }
+    ],
+    "languages": [
+      {
+        "language": "css",
+        "totals": [
+          {
+            "code": "files",
+            "value": 2
+          },
+          {
+            "code": "bytes",
+            "value": 16384
+          },
+          {
+            "code": "lines",
+            "value": 512
+          },
+          {
+            "code": "code",
+            "value": 256
+          },
+          {
+            "code": "comment",
+            "value": 128
+          },
+          {
+            "code": "blank",
+            "value": 32
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "extension",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "language": "html",
+        "totals": [
+          {
+            "code": "files",
+            "value": 8
+          },
+          {
+            "code": "bytes",
+            "value": 131072
+          },
+          {
+            "code": "lines",
+            "value": 1024
+          },
+          {
+            "code": "code",
+            "value": 1024
+          },
+          {
+            "code": "comment",
+            "value": 32
+          },
+          {
+            "code": "blank",
+            "value": 4
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "heuristic",
+            "value": 8
+          }
+        ]
+      },
+      {
+        "language": "ignore-list",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 1024
+          },
+          {
+            "code": "lines",
+            "value": 64
+          },
+          {
+            "code": "code",
+            "value": 32
+          },
+          {
+            "code": "comment",
+            "value": 16
+          },
+          {
+            "code": "blank",
+            "value": 16
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "filename",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "javascript",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 512
+          },
+          {
+            "code": "lines",
+            "value": 32
+          },
+          {
+            "code": "code",
+            "value": 8
+          },
+          {
+            "code": "comment",
+            "value": 8
+          },
+          {
+            "code": "blank",
+            "value": 2
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "extension",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "json",
+        "totals": [
+          {
+            "code": "files",
+            "value": 8
+          },
+          {
+            "code": "bytes",
+            "value": 262144
+          },
+          {
+            "code": "lines",
+            "value": 4096
+          },
+          {
+            "code": "code",
+            "value": 2048
+          },
+          {
+            "code": "comment",
+            "value": 0
+          },
+          {
+            "code": "blank",
+            "value": 512
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "heuristic",
+            "value": 8
+          },
+          {
+            "code": "filename",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "json-with-comments",
+        "totals": [
+          {
+            "code": "files",
+            "value": 2
+          },
+          {
+            "code": "bytes",
+            "value": 2048
+          },
+          {
+            "code": "lines",
+            "value": 64
+          },
+          {
+            "code": "code",
+            "value": 64
+          },
+          {
+            "code": "comment",
+            "value": 8
+          },
+          {
+            "code": "blank",
+            "value": 8
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "filename",
+            "value": 2
+          }
+        ]
+      },
+      {
+        "language": "markdown",
+        "totals": [
+          {
+            "code": "files",
+            "value": 16
+          },
+          {
+            "code": "bytes",
+            "value": 262144
+          },
+          {
+            "code": "lines",
+            "value": 4096
+          },
+          {
+            "code": "code",
+            "value": 2048
+          },
+          {
+            "code": "comment",
+            "value": 4
+          },
+          {
+            "code": "blank",
+            "value": 512
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "heuristic",
+            "value": 16
+          }
+        ]
+      },
+      {
+        "language": "svg",
+        "totals": [
+          {
+            "code": "files",
+            "value": 4
+          },
+          {
+            "code": "bytes",
+            "value": 16384
+          },
+          {
+            "code": "lines",
+            "value": 16
+          },
+          {
+            "code": "code",
+            "value": 16
+          },
+          {
+            "code": "comment",
+            "value": 2
+          },
+          {
+            "code": "blank",
+            "value": 0
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "extension",
+            "value": 4
+          }
+        ]
+      },
+      {
+        "language": "text",
+        "totals": [
+          {
+            "code": "files",
+            "value": 8
+          },
+          {
+            "code": "bytes",
+            "value": 131072
+          },
+          {
+            "code": "lines",
+            "value": 2048
+          },
+          {
+            "code": "code",
+            "value": 2048
+          },
+          {
+            "code": "comment",
+            "value": 0
+          },
+          {
+            "code": "blank",
+            "value": 512
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "filename",
+            "value": 2
+          },
+          {
+            "code": "fallback",
+            "value": 8
+          }
+        ]
+      },
+      {
+        "language": "toml",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 256
+          },
+          {
+            "code": "lines",
+            "value": 16
+          },
+          {
+            "code": "code",
+            "value": 8
+          },
+          {
+            "code": "comment",
+            "value": 4
+          },
+          {
+            "code": "blank",
+            "value": 4
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "extension",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "tsx",
+        "totals": [
+          {
+            "code": "files",
+            "value": 128
+          },
+          {
+            "code": "bytes",
+            "value": 1048576
+          },
+          {
+            "code": "lines",
+            "value": 16384
+          },
+          {
+            "code": "code",
+            "value": 16384
+          },
+          {
+            "code": "comment",
+            "value": 2048
+          },
+          {
+            "code": "blank",
+            "value": 1024
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "heuristic",
+            "value": 128
+          }
+        ]
+      },
+      {
+        "language": "typescript",
+        "totals": [
+          {
+            "code": "files",
+            "value": 256
+          },
+          {
+            "code": "bytes",
+            "value": 4194304
+          },
+          {
+            "code": "lines",
+            "value": 65536
+          },
+          {
+            "code": "code",
+            "value": 65536
+          },
+          {
+            "code": "comment",
+            "value": 8192
+          },
+          {
+            "code": "blank",
+            "value": 4096
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "heuristic",
+            "value": 256
+          }
+        ]
+      },
+      {
+        "language": "yaml",
+        "totals": [
+          {
+            "code": "files",
+            "value": 4
+          },
+          {
+            "code": "bytes",
+            "value": 4096
+          },
+          {
+            "code": "lines",
+            "value": 64
+          },
+          {
+            "code": "code",
+            "value": 64
+          },
+          {
+            "code": "comment",
+            "value": 16
+          },
+          {
+            "code": "blank",
+            "value": 4
+          }
+        ],
+        "diagnostics": [
+          {
+            "code": "heuristic",
+            "value": 4
+          }
+        ]
+      }
+    ],
+    "categories": [
+      {
+        "category": "code",
+        "totals": [
+          {
+            "code": "files",
+            "value": 256
+          },
+          {
+            "code": "bytes",
+            "value": 4194304
+          },
+          {
+            "code": "lines",
+            "value": 65536
+          }
+        ]
+      },
+      {
+        "category": "test",
+        "totals": [
+          {
+            "code": "files",
+            "value": 64
+          },
+          {
+            "code": "bytes",
+            "value": 524288
+          },
+          {
+            "code": "lines",
+            "value": 16384
+          }
+        ]
+      },
+      {
+        "category": "docs",
+        "totals": [
+          {
+            "code": "files",
+            "value": 16
+          },
+          {
+            "code": "bytes",
+            "value": 262144
+          },
+          {
+            "code": "lines",
+            "value": 4096
+          }
+        ]
+      },
+      {
+        "category": "config",
+        "totals": [
+          {
+            "code": "files",
+            "value": 16
+          },
+          {
+            "code": "bytes",
+            "value": 65536
+          },
+          {
+            "code": "lines",
+            "value": 2048
+          }
+        ]
+      },
+      {
+        "category": "markup",
+        "totals": [
+          {
+            "code": "files",
+            "value": 8
+          },
+          {
+            "code": "bytes",
+            "value": 131072
+          },
+          {
+            "code": "lines",
+            "value": 1024
+          }
+        ]
+      },
+      {
+        "category": "unknown",
+        "totals": [
+          {
+            "code": "files",
+            "value": 8
+          },
+          {
+            "code": "bytes",
+            "value": 131072
+          },
+          {
+            "code": "lines",
+            "value": 2048
+          }
+        ]
+      },
+      {
+        "category": "image",
+        "totals": [
+          {
+            "code": "files",
+            "value": 4
+          },
+          {
+            "code": "bytes",
+            "value": 16384
+          },
+          {
+            "code": "lines",
+            "value": 16
+          }
+        ]
+      },
+      {
+        "category": "style",
+        "totals": [
+          {
+            "code": "files",
+            "value": 2
+          },
+          {
+            "code": "bytes",
+            "value": 16384
+          },
+          {
+            "code": "lines",
+            "value": 512
+          }
+        ]
+      },
+      {
+        "category": "build",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 4096
+          },
+          {
+            "code": "lines",
+            "value": 64
+          }
+        ]
+      },
+      {
+        "category": "data",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 1024
+          },
+          {
+            "code": "lines",
+            "value": 64
+          }
+        ]
+      },
+      {
+        "category": "lockfile",
+        "totals": [
+          {
+            "code": "files",
+            "value": 1
+          },
+          {
+            "code": "bytes",
+            "value": 131072
+          },
+          {
+            "code": "lines",
+            "value": 1024
+          }
+        ]
+      }
+    ],
+    "distributions": [
+      {
+        "metric": "file_bytes",
+        "count": 512,
+        "minimum": 128,
+        "p50": 8192,
+        "p90": 32768,
+        "p99": 131072,
+        "maximum": 262144,
+        "histogram": [
+          {
+            "upper": 128,
+            "count": 4
+          },
+          {
+            "upper": 256,
+            "count": 8
+          },
+          {
+            "upper": 512,
+            "count": 16
+          },
+          {
+            "upper": 1024,
+            "count": 32
+          },
+          {
+            "upper": 2048,
+            "count": 32
+          },
+          {
+            "upper": 4096,
+            "count": 64
+          },
+          {
+            "upper": 8192,
+            "count": 64
+          },
+          {
+            "upper": 16384,
+            "count": 64
+          },
+          {
+            "upper": 32768,
+            "count": 64
+          },
+          {
+            "upper": 65536,
+            "count": 32
+          },
+          {
+            "upper": 131072,
+            "count": 8
+          },
+          {
+            "upper": 262144,
+            "count": 1
+          }
+        ]
+      },
+      {
+        "metric": "file_lines",
+        "count": 512,
+        "minimum": 1,
+        "p50": 256,
+        "p90": 1024,
+        "p99": 2048,
+        "maximum": 4096,
+        "histogram": [
+          {
+            "upper": 1,
+            "count": 2
+          },
+          {
+            "upper": 2,
+            "count": 1
+          },
+          {
+            "upper": 4,
+            "count": 4
+          },
+          {
+            "upper": 8,
+            "count": 8
+          },
+          {
+            "upper": 16,
+            "count": 8
+          },
+          {
+            "upper": 32,
+            "count": 32
+          },
+          {
+            "upper": 64,
+            "count": 64
+          },
+          {
+            "upper": 128,
+            "count": 64
+          },
+          {
+            "upper": 256,
+            "count": 64
+          },
+          {
+            "upper": 512,
+            "count": 64
+          },
+          {
+            "upper": 1024,
+            "count": 32
+          },
+          {
+            "upper": 2048,
+            "count": 16
+          },
+          {
+            "upper": 4096,
+            "count": 1
+          }
+        ]
+      },
+      {
+        "metric": "file_depth",
+        "count": 512,
+        "minimum": 0,
+        "p50": 4,
+        "p90": 4,
+        "p99": 4,
+        "maximum": 4,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 16
+          },
+          {
+            "upper": 1,
+            "count": 64
+          },
+          {
+            "upper": 2,
+            "count": 64
+          },
+          {
+            "upper": 4,
+            "count": 256
+          }
+        ]
+      },
+      {
+        "metric": "directory_fanout",
+        "count": 64,
+        "minimum": 1,
+        "p50": 4,
+        "p90": 32,
+        "p99": 32,
+        "maximum": 32,
+        "histogram": [
+          {
+            "upper": 1,
+            "count": 16
+          },
+          {
+            "upper": 2,
+            "count": 8
+          },
+          {
+            "upper": 4,
+            "count": 16
+          },
+          {
+            "upper": 8,
+            "count": 16
+          },
+          {
+            "upper": 16,
+            "count": 4
+          },
+          {
+            "upper": 32,
+            "count": 8
+          }
+        ]
+      },
+      {
+        "metric": "fanIn",
+        "count": 512,
+        "minimum": 0,
+        "p50": 1,
+        "p90": 8,
+        "p99": 64,
+        "maximum": 128,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 128
+          },
+          {
+            "upper": 1,
+            "count": 64
+          },
+          {
+            "upper": 2,
+            "count": 64
+          },
+          {
+            "upper": 4,
+            "count": 64
+          },
+          {
+            "upper": 8,
+            "count": 32
+          },
+          {
+            "upper": 16,
+            "count": 32
+          },
+          {
+            "upper": 32,
+            "count": 2
+          },
+          {
+            "upper": 64,
+            "count": 4
+          },
+          {
+            "upper": 128,
+            "count": 1
+          }
+        ]
+      },
+      {
+        "metric": "fanOut",
+        "count": 512,
+        "minimum": 0,
+        "p50": 1,
+        "p90": 16,
+        "p99": 32,
+        "maximum": 32,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 128
+          },
+          {
+            "upper": 1,
+            "count": 64
+          },
+          {
+            "upper": 2,
+            "count": 64
+          },
+          {
+            "upper": 4,
+            "count": 64
+          },
+          {
+            "upper": 8,
+            "count": 64
+          },
+          {
+            "upper": 16,
+            "count": 32
+          },
+          {
+            "upper": 32,
+            "count": 16
+          }
+        ]
+      },
+      {
+        "metric": "symbols_per_file",
+        "count": 512,
+        "minimum": 0,
+        "p50": 8,
+        "p90": 64,
+        "p99": 256,
+        "maximum": 512,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 64
+          },
+          {
+            "upper": 1,
+            "count": 8
+          },
+          {
+            "upper": 2,
+            "count": 32
+          },
+          {
+            "upper": 4,
+            "count": 32
+          },
+          {
+            "upper": 8,
+            "count": 64
+          },
+          {
+            "upper": 16,
+            "count": 64
+          },
+          {
+            "upper": 32,
+            "count": 64
+          },
+          {
+            "upper": 64,
+            "count": 32
+          },
+          {
+            "upper": 128,
+            "count": 16
+          },
+          {
+            "upper": 256,
+            "count": 8
+          },
+          {
+            "upper": 512,
+            "count": 1
+          }
+        ]
+      },
+      {
+        "metric": "references_per_symbol",
+        "count": 8192,
+        "minimum": 0,
+        "p50": 4,
+        "p90": 16,
+        "p99": 64,
+        "maximum": 512,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 512
+          },
+          {
+            "upper": 1,
+            "count": 2048
+          },
+          {
+            "upper": 2,
+            "count": 1024
+          },
+          {
+            "upper": 4,
+            "count": 1024
+          },
+          {
+            "upper": 8,
+            "count": 1024
+          },
+          {
+            "upper": 16,
+            "count": 512
+          },
+          {
+            "upper": 32,
+            "count": 256
+          },
+          {
+            "upper": 64,
+            "count": 128
+          },
+          {
+            "upper": 128,
+            "count": 32
+          },
+          {
+            "upper": 256,
+            "count": 16
+          },
+          {
+            "upper": 512,
+            "count": 4
+          }
+        ]
+      },
+      {
+        "metric": "commits_per_file",
+        "count": 512,
+        "minimum": 0,
+        "p50": 2,
+        "p90": 8,
+        "p99": 8,
+        "maximum": 16,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 32
+          },
+          {
+            "upper": 1,
+            "count": 128
+          },
+          {
+            "upper": 2,
+            "count": 64
+          },
+          {
+            "upper": 4,
+            "count": 128
+          },
+          {
+            "upper": 8,
+            "count": 32
+          },
+          {
+            "upper": 16,
+            "count": 2
+          }
+        ]
+      },
+      {
+        "metric": "authors_per_file",
+        "count": 512,
+        "minimum": 0,
+        "p50": 1,
+        "p90": 1,
+        "p99": 1,
+        "maximum": 1,
+        "histogram": [
+          {
+            "upper": 0,
+            "count": 32
+          },
+          {
+            "upper": 1,
+            "count": 512
+          }
+        ]
+      },
+      {
+        "metric": "age_days",
+        "count": 512,
+        "minimum": 8,
+        "p50": 32,
+        "p90": 32,
+        "p99": 32,
+        "maximum": 32,
+        "histogram": [
+          {
+            "upper": 8,
+            "count": 32
+          },
+          {
+            "upper": 16,
+            "count": 64
+          },
+          {
+            "upper": 32,
+            "count": 256
+          }
+        ]
+      },
+      {
+        "metric": "cycle_size",
+        "count": 1,
+        "minimum": 4,
+        "p50": 4,
+        "p90": 4,
+        "p99": 4,
+        "maximum": 4,
+        "histogram": [
+          {
+            "upper": 4,
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "cost": {
+    "totalMs": 1400,
+    "samplingMs": 100,
+    "phases": [
+      {
+        "phase": "walk",
+        "status": "ok",
+        "ms": 13,
+        "filesPerSecond": 32768,
+        "bytesPerSecond": 268435456
+      },
+      {
+        "phase": "detect",
+        "status": "ok",
+        "ms": 30,
+        "filesPerSecond": 16384,
+        "bytesPerSecond": 134217728
+      },
+      {
+        "phase": "files",
+        "status": "ok",
+        "ms": 98,
+        "filesPerSecond": 4096,
+        "bytesPerSecond": 67108864
+      },
+      {
+        "phase": "imports",
+        "status": "ok",
+        "ms": 18,
+        "filesPerSecond": 16384,
+        "bytesPerSecond": 268435456
+      },
+      {
+        "phase": "graph",
+        "status": "ok",
+        "ms": 8,
+        "filesPerSecond": 65536,
+        "bytesPerSecond": 536870912
+      },
+      {
+        "phase": "git",
+        "status": "ok",
+        "ms": 210,
+        "filesPerSecond": 2048,
+        "bytesPerSecond": 16777216
+      },
+      {
+        "phase": "layout",
+        "status": "ok",
+        "ms": 130,
+        "filesPerSecond": 4096,
+        "bytesPerSecond": 33554432
+      },
+      {
+        "phase": "typescript",
+        "status": "ok",
+        "ms": 1300,
+        "filesPerSecond": 256,
+        "bytesPerSecond": 4194304
+      },
+      {
+        "phase": "stats",
+        "status": "ok",
+        "ms": 1,
+        "filesPerSecond": 524288,
+        "bytesPerSecond": 4294967296
+      },
+      {
+        "phase": "findings",
+        "status": "ok",
+        "ms": 3,
+        "filesPerSecond": 131072,
+        "bytesPerSecond": 2147483648
+      }
+    ],
+    "memory": [
+      {
+        "phase": "walk",
+        "status": "start",
+        "rss": 33554432,
+        "heap": 8388608
+      },
+      {
+        "phase": "walk",
+        "status": "done",
+        "rss": 33554432,
+        "heap": 8388608
+      },
+      {
+        "phase": "detect",
+        "status": "start",
+        "rss": 33554432,
+        "heap": 8388608
+      },
+      {
+        "phase": "detect",
+        "status": "done",
+        "rss": 268435456,
+        "heap": 8388608
+      },
+      {
+        "phase": "git",
+        "status": "start",
+        "rss": 268435456,
+        "heap": 8388608
+      },
+      {
+        "phase": "typescript",
+        "status": "start",
+        "rss": 268435456,
+        "heap": 8388608
+      },
+      {
+        "phase": "files",
+        "status": "start",
+        "rss": 268435456,
+        "heap": 8388608
+      },
+      {
+        "phase": "files",
+        "status": "done",
+        "rss": 268435456,
+        "heap": 16777216
+      },
+      {
+        "phase": "imports",
+        "status": "start",
+        "rss": 268435456,
+        "heap": 16777216
+      },
+      {
+        "phase": "imports",
+        "status": "done",
+        "rss": 268435456,
+        "heap": 16777216
+      },
+      {
+        "phase": "graph",
+        "status": "start",
+        "rss": 268435456,
+        "heap": 16777216
+      },
+      {
+        "phase": "graph",
+        "status": "done",
+        "rss": 268435456,
+        "heap": 16777216
+      },
+      {
+        "phase": "layout",
+        "status": "start",
+        "rss": 268435456,
+        "heap": 16777216
+      },
+      {
+        "phase": "git",
+        "status": "done",
+        "rss": 268435456,
+        "heap": 33554432
+      },
+      {
+        "phase": "layout",
+        "status": "done",
+        "rss": 536870912,
+        "heap": 134217728
+      },
+      {
+        "phase": "typescript",
+        "status": "done",
+        "rss": 536870912,
+        "heap": 268435456
+      },
+      {
+        "phase": "stats",
+        "status": "start",
+        "rss": 536870912,
+        "heap": 268435456
+      },
+      {
+        "phase": "stats",
+        "status": "done",
+        "rss": 536870912,
+        "heap": 268435456
+      },
+      {
+        "phase": "findings",
+        "status": "start",
+        "rss": 536870912,
+        "heap": 268435456
+      },
+      {
+        "phase": "findings",
+        "status": "done",
+        "rss": 536870912,
+        "heap": 268435456
+      }
+    ],
+    "totals": [
+      {
+        "code": "peak_rss",
+        "value": 536870912
+      },
+      {
+        "code": "peak_heap",
+        "value": 268435456
+      },
+      {
+        "code": "high_water_rss",
+        "value": 536870912
+      }
+    ],
+    "workers": [
+      {
+        "code": "size",
+        "value": 16
+      },
+      {
+        "code": "submitted",
+        "value": 64
+      },
+      {
+        "code": "completed",
+        "value": 64
+      },
+      {
+        "code": "failed",
+        "value": 0
+      },
+      {
+        "code": "spawned",
+        "value": 16
+      },
+      {
+        "code": "queuePeak",
+        "value": 16
+      },
+      {
+        "code": "busyPeak",
+        "value": 16
+      },
+      {
+        "code": "waitMs",
+        "value": 1024
+      },
+      {
+        "code": "runMs",
+        "value": 1024
+      }
+    ],
+    "payloads": [
+      {
+        "code": "report",
+        "value": 262144
+      },
+      {
+        "code": "symbols_payload",
+        "value": 2097152
+      },
+      {
+        "code": "source_chunk",
+        "value": 2097152
+      },
+      {
+        "code": "source_chunk",
+        "value": 2097152
+      },
+      {
+        "code": "source_chunk",
+        "value": 524288
+      },
+      {
+        "code": "assets",
+        "value": 16384
+      }
+    ],
+    "layout": [
+      {
+        "ms": 2,
+        "budgetMs": 150,
+        "siblingBudgetMs": 0,
+        "exceeded": false
+      }
+    ]
+  },
+  "quality": {
+    "errors": [],
+    "imports": [
+      {
+        "language": "typescript",
+        "internal": 512,
+        "external": 256,
+        "unresolved": 1,
+        "unresolvedShare": 0,
+        "shapes": [
+          {
+            "code": "relative",
+            "value": 1
+          }
+        ]
+      },
+      {
+        "language": "tsx",
+        "internal": 512,
+        "external": 256,
+        "unresolved": 0,
+        "unresolvedShare": 0,
+        "shapes": []
+      },
+      {
+        "language": "css",
+        "internal": 1,
+        "external": 2,
+        "unresolved": 0,
+        "unresolvedShare": 0,
+        "shapes": []
+      },
+      {
+        "language": "javascript",
+        "internal": 1,
+        "external": 0,
+        "unresolved": 0,
+        "unresolvedShare": 0,
+        "shapes": []
+      }
+    ],
+    "rates": [
+      {
+        "code": "ts_coverage",
+        "value": 1
+      },
+      {
+        "code": "ts_unresolved_share",
+        "value": 0.02
+      },
+      {
+        "code": "unused_export_share",
+        "value": 0.21
+      }
+    ],
+    "typescript": [
+      {
+        "code": "present",
+        "value": 256
+      },
+      {
+        "code": "eligible",
+        "value": 256
+      },
+      {
+        "code": "covered",
+        "value": 256
+      },
+      {
+        "code": "projects",
+        "value": 2
+      },
+      {
+        "code": "references",
+        "value": 32768
+      },
+      {
+        "code": "symbols",
+        "value": 8192
+      },
+      {
+        "code": "unresolved",
+        "value": 1024
+      },
+      {
+        "code": "uninstalledManifests",
+        "value": 0
+      },
+      {
+        "code": "hostFiles",
+        "value": 0
+      }
+    ],
+    "unusedExports": [
+      {
+        "code": "exports",
+        "value": 2048
+      },
+      {
+        "code": "unusedExports",
+        "value": 256
+      },
+      {
+        "code": "used-in-own-file",
+        "value": 256
+      },
+      {
+        "code": "entry-export",
+        "value": 8
+      },
+      {
+        "code": "unreferenced",
+        "value": 64
+      }
+    ],
+    "entryPoints": [
+      {
+        "code": "package bin",
+        "value": 1
+      },
+      {
+        "code": "package script",
+        "value": 2
+      },
+      {
+        "code": "type declarations",
+        "value": 4
+      }
+    ],
+    "cycles": [
+      {
+        "code": "runtime_cycles",
+        "value": 1
+      },
+      {
+        "code": "type_cycles",
+        "value": 4
+      }
+    ],
+    "validation": [],
+    "diagnostics": [
+      {
+        "code": "warnings_total",
+        "value": 0
+      }
+    ]
+  },
+  "limits": [
+    {
+      "code": "rust_use_cap",
+      "value": 0
+    },
+    {
+      "code": "rust_statement_cap",
+      "value": 0
+    },
+    {
+      "code": "pagerank_iteration_cap",
+      "value": 0
+    },
+    {
+      "code": "module_split_cap",
+      "value": 0
+    },
+    {
+      "code": "git_coupling_cap",
+      "value": 0
+    },
+    {
+      "code": "git_sweep_threshold",
+      "value": 64
+    },
+    {
+      "code": "git_sweep_commits",
+      "value": 4
+    },
+    {
+      "code": "asset_size_cap",
+      "value": 0
+    },
+    {
+      "code": "source_secret_disabled",
+      "value": 0
+    },
+    {
+      "code": "source_binary_disabled",
+      "value": 0
+    },
+    {
+      "code": "symbols_disabled",
+      "value": 0
+    },
+    {
+      "code": "git_disabled",
+      "value": 0
+    },
+    {
+      "code": "text_read_cap",
+      "value": 0
+    },
+    {
+      "code": "binary_read_cap",
+      "value": 0
+    },
+    {
+      "code": "ts_file_cap",
+      "value": 0
+    },
+    {
+      "code": "ts_reference_cap",
+      "value": 0
+    },
+    {
+      "code": "package_sibling_cap",
+      "value": 0
+    },
+    {
+      "code": "git_rename_limit",
+      "value": 0
+    },
+    {
+      "code": "git_move_limit",
+      "value": 0
+    },
+    {
+      "code": "shallow",
+      "value": 0
+    },
+    {
+      "code": "truncated",
+      "value": 0
+    },
+    {
+      "code": "analyzedCommits",
+      "value": 32
+    },
+    {
+      "code": "totalCommits",
+      "value": 32
+    },
+    {
+      "code": "source_file_cap",
+      "value": 0
+    },
+    {
+      "code": "source_total_cap",
+      "value": 0
+    },
+    {
+      "code": "source_disabled",
+      "value": 0
+    }
+  ],
+  "queries": [
+    {
+      "tool": "overview",
+      "rank": "cold",
+      "status": "ok",
+      "ms": 0.4,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "map_codebase",
+      "rank": "cold",
+      "status": "ok",
+      "ms": 2.1,
+      "responseBytes": 8192,
+      "tokens": 2048,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "locate_code",
+      "rank": "top_hotspot",
+      "status": "ok",
+      "ms": 3,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "change_impact",
+      "rank": "top_hotspot",
+      "status": "ok",
+      "ms": 3.4,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "change_impact",
+      "rank": "most_referenced",
+      "status": "ok",
+      "ms": 0.75,
+      "responseBytes": 8192,
+      "tokens": 2048,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "files",
+      "rank": "top_hotspot",
+      "status": "ok",
+      "ms": 0.43,
+      "responseBytes": 16384,
+      "tokens": 4096,
+      "truncated": 256,
+      "error": "none"
+    },
+    {
+      "tool": "dir",
+      "rank": "largest_directory",
+      "status": "ok",
+      "ms": 0.37,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "dir",
+      "rank": "median_directory",
+      "status": "ok",
+      "ms": 0.06,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "file",
+      "rank": "top_hotspot",
+      "status": "ok",
+      "ms": 0.31,
+      "responseBytes": 8192,
+      "tokens": 2048,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "file",
+      "rank": "median_file",
+      "status": "ok",
+      "ms": 0.045,
+      "responseBytes": 2048,
+      "tokens": 512,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "symbol",
+      "rank": "most_referenced",
+      "status": "ok",
+      "ms": 0.82,
+      "responseBytes": 8192,
+      "tokens": 2048,
+      "truncated": 512,
+      "error": "none"
+    },
+    {
+      "tool": "search_symbols",
+      "rank": "most_referenced",
+      "status": "ok",
+      "ms": 0.81,
+      "responseBytes": 8192,
+      "tokens": 2048,
+      "truncated": 256,
+      "error": "none"
+    },
+    {
+      "tool": "seams",
+      "rank": "cold",
+      "status": "ok",
+      "ms": 3.8,
+      "responseBytes": 16384,
+      "tokens": 4096,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "seam",
+      "rank": "largest_directory",
+      "status": "ok",
+      "ms": 5.4,
+      "responseBytes": 16384,
+      "tokens": 4096,
+      "truncated": 2048,
+      "error": "none"
+    },
+    {
+      "tool": "seam",
+      "rank": "median_directory",
+      "status": "ok",
+      "ms": 2.8,
+      "responseBytes": 8192,
+      "tokens": 2048,
+      "truncated": 512,
+      "error": "none"
+    },
+    {
+      "tool": "graph",
+      "rank": "top_hotspot",
+      "status": "ok",
+      "ms": 0.19,
+      "responseBytes": 1024,
+      "tokens": 256,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "history",
+      "rank": "cold",
+      "status": "ok",
+      "ms": 0.17,
+      "responseBytes": 512,
+      "tokens": 128,
+      "truncated": 0,
+      "error": "none"
+    },
+    {
+      "tool": "dependencies",
+      "rank": "cold",
+      "status": "ok",
+      "ms": 0.11,
+      "responseBytes": 8192,
+      "tokens": 2048,
+      "truncated": 8,
+      "error": "none"
+    },
+    {
+      "tool": "overview",
+      "rank": "warm",
+      "status": "ok",
+      "ms": 0.16,
+      "responseBytes": 4096,
+      "tokens": 1024,
+      "truncated": 0,
+      "error": "none"
+    }
+  ],
+  "anomalies": [],
+  "failures": [],
+  "session": {
+    "calls": [],
+    "transitions": []
+  }
+}

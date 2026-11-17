@@ -64,7 +64,8 @@ signature and move work. Size M. Open.
   the type alias; `:251` does not descend ordinary object literals; `src/core/ts/resolve.ts:266`
   drops checker declarations missing from the store.
 - **Repro.** `type P = { label: string; run(): void }; function C(p: P) { return p.label };
-  const o = { m() {} }; o.m();` Probes `object.ts` and `jsx.tsx`.
+  const o = { m() {} }; o.m();` Probes [`object.ts`](../../evals/typescript/fixtures/probes/object.ts) and
+  [`jsx.tsx`](../../evals/typescript/fixtures/probes/jsx.tsx).
 - **Fix.** Traverse type literals and object literals with explicit parents, keeping binder
   handles for member identity, including callable members of function-valued properties.
 - **Done when.** Paired interface/type-alias and class/object fixtures give the same member
@@ -80,8 +81,9 @@ alias does not protect the export.** Severity high for delete advice. Size M. Op
 - **Where.** `src/core/ts/hosts.ts:23` documents the missing forms; `:79` and `:85` match by
   declaration name, so an export under another name is lost.
 - **Repro.** `a.ts` exports `live`, `barrel.ts` re-exports it with `export *`, and a `.vue` file
-  imports `live` from the barrel and calls it. Probes `host-value.ts`, `host-rename-value.ts`
-  and `host-local-alias.ts` with their host importers.
+  imports `live` from the barrel and calls it. Probes [`host-value.ts`](../../evals/typescript/fixtures/probes/host-value.ts),
+  [`host-rename-value.ts`](../../evals/typescript/fixtures/probes/host-rename-value.ts) and
+  [`host-local-alias.ts`](../../evals/typescript/fixtures/probes/host-local-alias.ts) with their host importers.
 - **Fix.** Keep the compiler's exported-name to target-symbol map per module, star expansion and
   default aliases included, and use it for host matching and public API reachability.
 - **Done when.** Every direct, default, alias, star and namespace host fixture is protected
@@ -100,7 +102,7 @@ verdicts.** Severity high for delete advice. Size M. Open. Part of
   projects record only config, files and time (`src/shared/schema.ts:696`).
 - **Repro.** Two one-file projects, each with an exported function and an export that calls it,
   and an exception injected into one project's checker. Result: four unused exports and zero
-  unresolved. Fixture `failures/`, script `failure-cap.ts`.
+  unresolved. Fixture [`failures/`](../../evals/typescript/fixtures/failures/), script `faults.ts`.
 - **Fix.** Carry pass, project and file completion into the schema and the answers. A negative
   verdict needs complete coverage of the possible consumers; positive edges survive with their
   provenance.
@@ -120,7 +122,8 @@ the capped rows.** Severity medium, high for seam and delete advice. Size M. Ope
   from the retained rows.
 - **Repro.** `lib/a.ts` exports `api` and `consumer.ts` calls it: `seam lib` at a reference cap
   of 100 and of 0 gives an interface of 1 and 0. An exported self-recursive function flips from
-  used-in-own-file to unreferenced at the same caps.
+  used-in-own-file to unreferenced at the same caps. Fixtures [`seam-cap/`](../../evals/typescript/fixtures/seam-cap/) and
+  [`cap/`](../../evals/typescript/fixtures/cap/), script `faults.ts`.
 - **Fix.** Store the aggregates the classifications need before capping, or classify from the
   uncapped edges plus file ownership. Counts from retained rows say they are partial.
 - **Done when.** Every seam count and unused class is invariant from a cap of zero to uncapped;
@@ -141,7 +144,7 @@ high: missing package types erase whole interfaces. Size S. Proposed for 0.3.0. 
   `node_modules` directory as success.
 - **Repro.** A nested package that declares and imports React, with no React installed, inside
   a parent whose `node_modules` holds something else: zero references, two unresolved
-  identifiers, no warning. Fixture `missing-deps/`.
+  identifiers, no warning. Fixture [`missing-deps/`](../../evals/typescript/fixtures/missing-deps/).
 - **Fix.** Check that the declared packages resolve from the applicable workspace root, and
   report compiler and import resolution failures as missing dependencies.
 - **Done when.** The fixture warns, and the uninstalled-manifest count is right with and
@@ -156,7 +159,7 @@ CommonJS refactoring. Size M. Open.
   language service finds the call.
 - **Where.** `src/core/ts/declarations.ts:465` notes the binding limit.
 - **Repro.** `function V() { this.lookup("x") }; V.prototype.lookup = function lookup(x) {
-  return x }; new V();`
+  return x }; new V();` Fixture [`prototype-probe/`](../../evals/typescript/fixtures/prototype-probe/index.js).
 - **Fix.** First check whether the TypeScript 7 API exposes the prototype relation. If not, bind
   constructor-`this` calls to same-prototype methods conservatively, with provenance; never
   match method names globally.
@@ -172,7 +175,7 @@ hotspot and relay ranking. Size S. Proposed for 0.3.0.
 - **Where.** `src/core/ts/references.ts:123` changes the counter only at recorded scopes, and
   inner functions are deliberately not recorded (`src/core/ts/declarations.ts:4`).
 - **Repro.** `function outer() { const neverCalled = () => { if (x) return 1; return 2 };
-  return 0 }`. Probe `nested-complexity.ts`.
+  return 0 }`. Probe [`nested-complexity.ts`](../../evals/typescript/fixtures/probes/nested-complexity.ts).
 - **Fix.** Reset attribution at every function boundary. If containment complexity is wanted,
   report it as its own aggregate.
 - **Done when.** The probe gives `outer` a complexity of 1.
@@ -198,7 +201,7 @@ Severity high for cleanup advice. Size L across ecosystems, M for Maven alone. O
   `src/mcp/query.ts:2106`.
 - **Repro.** A Maven project that declares `org.slf4j:slf4j-api` and imports
   `org.slf4j.Logger` gives a declared row with no importers and an undeclared row
-  (`repros.ts`, case `jvm-coordinate`).
+  ([`repros.json`](../../evals/structure/fixtures/repros.json) cases `jvm-coordinate` and `python-dist-name`, run by `repros.ts`).
 - **Fix.** Separate an import namespace from a package coordinate, and join them through
   installed metadata, a lock or build file, or an explicit mapping. An unjoined declaration is
   "unknown", never "unused".
@@ -216,7 +219,7 @@ high for impact and centrality. Size S to mark, L for package nodes. Marking pro
   fan-in depends on filename order.
 - **Where.** `src/core/imports/resolve.ts:24`, `:119`, `:855`; `src/core/pipeline.ts:717`;
   `src/shared/schema.ts:302`.
-- **Repro.** `repros.ts`, case `go-cap`.
+- **Repro.** A 24-file Go package and one importer ([`repros.json`](../../evals/structure/fixtures/repros.json) case `go-cap`).
 - **Fix.** Now: record total and omitted members on the edge and say so in answers. Later:
   package nodes with real membership, and package centrality computed separately.
 - **Done when.** Every projected edge says how many members it stands for; later, chi and
@@ -231,7 +234,8 @@ Size M. Proposed for 0.3.0.
   imports: 18 guarded statements, 12 guarded-only file pairs.
 - **Where.** `src/core/imports/extract.ts:426` never sets type-only for Python; the graph and
   findings then treat the edge as runtime (`src/core/graph.ts:381`, `src/core/findings.ts:101`).
-- **Repro.** `a.py` imports `b` only under `if TYPE_CHECKING`, `b.py` imports `a` at runtime.
+- **Repro.** `a.py` imports `b` only under `if TYPE_CHECKING`, `b.py` imports `a` at runtime
+  ([`repros.json`](../../evals/structure/fixtures/repros.json) case `python-type-guard`; `type-guards.py` measures Requests).
 - **Fix.** Recognize `typing.TYPE_CHECKING` (and its imported aliases) as a guard and mark the
   edges type-only, through the contract TypeScript already uses.
 - **Done when.** The repro shows a type loop and no runtime cycle, and Requests' runtime cycle is
@@ -246,7 +250,7 @@ recall. Size M. Open.
   five `mod` lines).
 - **Where.** `src/core/imports/resolve.ts:948`, `:980`, `:987`, `:1017`, `:1038`.
 - **Repro.** Cargo declares `[[bin]] path = "cli/main.rs"`, which declares `mod helper` and uses
-  `crate::helper::run`: both unresolved (`repros.ts`, case `rust-custom-bin`).
+  `crate::helper::run`: both unresolved ([`repros.json`](../../evals/structure/fixtures/repros.json) case `rust-custom-bin`).
 - **Fix.** Index every Cargo target root and custom library path; map each source file to its
   target's module tree. Honor path fields without running Cargo.
 - **Done when.** ripgrep's 98 resolve and the custom-target fixtures pass. Shares an adapter
@@ -261,7 +265,7 @@ navigation. Size M per ecosystem. Open.
   files sit in the dead-file candidates.
 - **Where.** `src/core/entries.ts:56`, `:158`, `:247`; `src/mcp/query.ts:549`.
 - **Repro.** The `rust-custom-bin` manifest declares `cli/main.rs`; `findEntries` returns
-  nothing.
+  nothing ([`repros.json`](../../evals/structure/fixtures/repros.json)).
 - **Fix.** One typed entry adapter shared with root resolution: Cargo targets and `build.rs`,
   Go `package main`, Python script entry points and `__main__`, JVM main and service
   descriptors, each with a reason. Answers tell "entry discovery unsupported here" from "not an
@@ -279,7 +283,8 @@ high for graph recall. Size M. Open.
 - **Where.** `src/core/imports/extract.ts:427`, `:442`; `src/core/imports/resolve.ts:762`,
   `:783`, `:792`, `:813`.
 - **Repro.** `src/acme/app.py` imports `util` from `acme`, `src/acme/util.py` exists, no
-  `__init__.py`, `src` on the path. And `from pkg import child` with `pkg/child.py`.
+  `__init__.py`, `src` on the path. And `from pkg import child` with `pkg/child.py` ([`repros.json`](../../evals/structure/fixtures/repros.json) cases
+  `python-namespace` and `python-submodule`).
 - **Fix.** Keep imported names; resolve child modules before treating a name as an attribute;
   find source roots and namespace packages from packaging configuration. An unknown absolute
   name is "unresolved", not "external" (this is also where "zero unresolved" comes from).
@@ -293,7 +298,8 @@ to M. Open.
 - **What an agent sees.** Mojibake in embedded source (`“ú–{Œê` for Japanese), and string
   boundaries can shift on backslash-like bytes.
 - **Where.** `src/core/languages/detect.ts:69`, `:110`; `src/core/worker.ts:187`, `:193`.
-- **Repro.** A Shift_JIS Python file with Japanese strings (`encoding.ts`).
+- **Repro.** A Shift_JIS Python file with Japanese strings
+  ([`japanese.py`](../../evals/structure/fixtures/japanese.py), run by `encoding.ts`).
 - **Fix.** One shared decoding module, with the encoding chosen at detection carried into
   measurement and source storage.
 - **Done when.** UTF-8, UTF-16 with BOM, Windows-1252, Shift_JIS, EUC-KR and GB18030 specimens
@@ -307,7 +313,7 @@ S for this case. Proposed for 0.3.0.
 - **What an agent sees.** A project header reported external.
 - **Where.** `src/core/imports/resolve.ts:1188`.
 - **Repro.** `main.c` includes `<projectheader>` and `include/projectheader` exists
-  (`repros.ts`, case `c-extensionless`).
+  ([`repros.json`](../../evals/structure/fixtures/repros.json) case `c-extensionless`).
 - **Fix.** Call only known headers builtin; otherwise look in the repository, and label a
   suffix match as a guess. Build-aware include paths (`compile_commands.json`) are a larger,
   separate step.
@@ -320,7 +326,8 @@ for cleanup advice. Size M. Open.
 
 - **What an agent sees.** `textwrap`, `lexopt` and `encoding_rs` "unused" in ripgrep.
 - **Where.** `src/core/imports/extract.ts:480`, `:535`, `:750`; `src/mcp/query.ts:2106`.
-- **Repro.** A Cargo dependency `textwrap` used only as `textwrap::fill("x", 10)`.
+- **Repro.** A Cargo dependency `textwrap` used only as `textwrap::fill("x", 10)` ([`repros.json`](../../evals/structure/fixtures/repros.json) case
+  `rust-qualified`).
 - **Fix.** Collect qualified crate-root paths and macro invocations in a Rust syntax pass. Until
   then, say "not observed as an import" instead of "unused".
 - **Done when.** ripgrep's three dependencies count as used.
@@ -368,12 +375,13 @@ Proposed for 0.3.0.
 **Impact followed one base level.** Fixed in 0.3.0. `impact_depth: 3` on a method three links
 down an inheritance chain returned nothing; `callsThroughBases` in `src/shared/calls.ts` now
 walks the whole base chain with a cycle guard (tests: chain, loop, diamond in
-`test/shell-derived.test.ts`).
+`test/shell-derived.test.ts`; probe [`heritage.ts`](../../evals/typescript/fixtures/probes/heritage.ts)).
 
 ### T5
 
 **`symbol` returned at most 2,500 reference locations and could not page.** Fixed in 0.3.0.
-`references_offset` pages through every site and the answer returns `nextOffset`. The `offset`
+`references_offset` pages through every site and the answer returns `nextOffset`; the
+[3,000-site fixture](../../evals/typescript/fixtures/pagination/x.ts) now returns all 3,000 in two pages. The `offset`
 an agent tried was dropped silently, which is M1.
 
 ### M1
