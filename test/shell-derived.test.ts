@@ -60,6 +60,40 @@ describe("call hierarchy", () => {
     // The implementation itself is never listed as one of its own callers.
     expect(callsThroughBases(symbols(["read", "read"], [[1, 0, K.implements, 1], [1, 0, K.call, 1]]), 1)).toEqual([]);
   });
+
+  test("callers of a base several links up reach the override at the bottom of the chain", () => {
+    // 0 Root.run, 1 Middle.run extends it, 2 Base.run implements Middle's, 3 Leaf.run overrides
+    // Base's, 4 dispatch calls Root.run. Each override link names only the nearest base.
+    const s = symbols(["run", "run", "run", "run", "dispatch"], [
+      [1, 0, K.extends, 1],
+      [2, 1, K.implements, 1],
+      [3, 2, K.extends, 1],
+      [4, 0, K.call, 1],
+    ]);
+    const through = callsThroughBases(s, 3);
+    expect(through.map((g) => g.base)).toEqual([0]); // the bases between have no callers of their own
+    expect(through[0]!.edges.map((e) => e.symbol)).toEqual([4]);
+    expect(callsThroughBases(s, 2).map((g) => g.base)).toEqual([0]);
+    expect(callsThroughBases(s, 0)).toEqual([]); // the root has no base to be reached through
+  });
+
+  test("a hierarchy recorded as a loop ends, and a diamond lists its shared base once", () => {
+    const loop = symbols(["a", "b", "caller"], [
+      [0, 1, K.extends, 1],
+      [1, 0, K.extends, 1],
+      [2, 1, K.call, 1],
+    ]);
+    expect(callsThroughBases(loop, 0).map((g) => g.base)).toEqual([1]);
+    // 3 implements 1 and 2, which both extend 0; 4 calls 0.
+    const diamond = symbols(["top", "left", "right", "impl", "caller"], [
+      [1, 0, K.extends, 1],
+      [2, 0, K.extends, 1],
+      [3, 1, K.implements, 1],
+      [3, 2, K.implements, 1],
+      [4, 0, K.call, 1],
+    ]);
+    expect(callsThroughBases(diamond, 3).map((g) => g.base)).toEqual([0]);
+  });
 });
 
 describe("dig trail", () => {

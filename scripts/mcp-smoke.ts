@@ -62,13 +62,22 @@ proc.stdin.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initial
 
 const { tools } = await request("tools/list", {});
 const names = tools.map((t: { name: string }) => t.name);
-for (const want of ["open", "symbol", "build_report"]) if (!names.includes(want)) fail(`tools/list has no ${want}: ${names.join(", ")}`);
+for (const want of ["open", "symbol", "build_report", "map_codebase", "locate_code", "change_impact"]) if (!names.includes(want)) fail(`tools/list has no ${want}: ${names.join(", ")}`);
 
-const opened = await request("tools/call", { name: "open", arguments: { path: project, wait_seconds: 120 } }, 150);
+// Lifecycle/watch behavior has integration tests; this checks the installed stdio contract.
+const opened = await request("tools/call", { name: "open", arguments: { path: project, watch: false, wait_seconds: 120 } }, 150);
 const text = opened.content?.[0]?.text ?? "";
 if (opened.isError || JSON.parse(text).project?.state !== "ready") fail(`open did not finish: ${text.slice(0, 400)}`);
 const sym = await request("tools/call", { name: "search_symbols", arguments: {} });
 if (sym.isError) fail(`search_symbols: ${sym.content?.[0]?.text}`);
+for (const [name, args] of [
+  ["map_codebase", { token_budget: 500 }],
+  ["locate_code", { query: "source", content: false, token_budget: 500 }],
+  ["change_impact", { paths: [""], depth: 1, token_budget: 500 }],
+] as const) {
+  const result = await request("tools/call", { name, arguments: args });
+  if (result.isError || !result.structuredContent?.data?.next) fail(`${name}: ${result.content?.[0]?.text}`);
+}
 
 // Closing stdin is how a client says goodbye; a server still running after it leaks.
 proc.stdin.end();

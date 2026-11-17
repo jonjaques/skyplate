@@ -14,6 +14,8 @@ what breaks if you change it carelessly.
 | Serve a report | `bun run skyplate serve <dir> [--open]` |
 | MCP server for agents (stdio) | `bun run skyplate mcp [path...]` |
 | Smoke-test an MCP server over stdio | `bun scripts/mcp-smoke.ts <skyplate-binary> <project-dir>` |
+| Anonymous benchmark of one analysis | `bun run skyplate bench <path> [--out new-dir] [--skeleton]` (`docs/benchmark.md`) |
+| Rebuild a synthetic repository from a skeleton | `bun run skyplate bench synth <benchmark.json> --out <new-dir>` |
 | Viewer dev server (HMR, :4317) | `bun dev` (serves report data from `.skyplate/dev`, or `SKYPLATE_REPORT=<dir>`) |
 | Build the viewer template | `bun run build` → `dist/viewer` (the CLI copies it into every report) |
 | Regenerate the mark, wordmark and favicon | `bun scripts/brand.ts` (needs `woff2_decompress`: `brew install woff2`) |
@@ -34,7 +36,8 @@ src/shared/dmath.ts       sin, cos, atan2, roots from + − × ÷ and sqrt: the 
 src/shared/calls.ts       what the call table means (callers, callees, heritage); viewer and MCP
 src/shared/search.ts      fuzzy ranking: the command palette and the MCP server's search
 src/mcp/                  `skyplate mcp`: main (stdio), server (tools), workspace (projects,
-                          queue, watch, builds), query (answers), report (reads a report folder)
+                          queue, watch, builds, the structure pass), query (answers), changes
+                          (the working tree against HEAD), report (reads a report folder)
 .agents/skills/           agent skills for the MCP server: skyplate (the tools),
                           skyplate-architecture-review, skyplate-deepen (design, adapted from
                           mattpocock/skills, MIT); .claude/skills/* are symlinks to them
@@ -43,6 +46,12 @@ src/core/                 analyzer: walk, languages/, metrics, facts, imports/, 
                           ts/ (TypeScript 7 compiler API), entries (declared entry points),
                           stats, findings, layout, site,
                           pipeline (orchestrates), worker + pool (per-file analysis), validate
+src/core/bench/           `skyplate bench`: index (run, write, Markdown), privacy (the closed
+                          vocabulary and its validator), shape, diagnostics (the pipeline's
+                          side channel), workload (canned queries), recorder (MCP usage),
+                          skeleton (anonymous structure and its generator)
+docs/                     benchmark.md (the benchmark's privacy contract and fields), audits/
+                          (dated measurements of the analyzers), brand/
 src/viewer/               React app: state/ (zustand store, loaders, URL), model/ (derived
                           indexes), galaxy/ (engine, shaders, hoverIntent, clicks, groups:
                           hulls, picking, levels), charts/ (+ kit/), shell/ (rail, nav, top bar,
@@ -89,6 +98,31 @@ src/index.ts              dev server
   path may write to it. Analysis runs in a queue, one at a time, and long work is a job that
   answers after `wait_seconds` rather than outliving a client's deadline. Builds default to the
   user cache directory, never into the project.
+- **Agents reach for a tool that answers the moment they are in.** The server's `instructions`
+  and each skill's `description` are the only text in context before an agent decides to look,
+  so they name moments (about to search a large repository, about to rename, done editing),
+  not measurements. `map_codebase`, `locate_code` and `change_impact` are registered first for
+  the hosts that show tool names only. Every tool goes through `guarded` in `server.ts`, which
+  turns a thrown error into one the model can act on, appends the follow-up hint, and counts
+  the call; every schema is built by `toolArgs`, so an argument a tool does not take is an error
+  naming the ones it does, never a silently different question. Answers that can grow take a
+  `token_budget` and cut rows, never totals (`text.ts` `fitBudget`). A new tool or argument also
+  goes in `TOOLS` / `PARAMS` in `src/core/bench/privacy.ts`; a test fails until it does.
+- **A first analysis answers in two steps.** `workspace.ts` runs a structure pass (no git, no
+  symbols, no layout) and publishes it as a `partial` snapshot before the full analysis, because
+  history took 509 s on a 32k-file repository and the structure 2.5 s. Only tools registered
+  with `"structure"` answer from it, with a note; a symbol or history question sees the analysis
+  as still running. A partial snapshot is never written as a report or reused by a build.
+- **The benchmark is anonymous by construction, not by scrubbing.** Everything in a
+  `skyplate bench` file is a number, a boolean or a string from the lists in
+  `src/core/bench/privacy.ts`, none of them derived from the analyzed project, and
+  `validateBenchmark` fails closed before anything is written. Counts and sizes are powers of
+  two, durations two significant figures, shares hundredths; a precise rate beside a precise
+  duration would be a precise count, so throughputs stay coarse. Never add free text (a message,
+  a path, a name), never add a network call, and extend the canary test (`test/bench.test.ts`)
+  with whatever new source of strings a change touches. The Markdown is a generic layout of the
+  JSON so that no field can be in one and not the other. Extra numbers reach the benchmark
+  through the pipeline's optional diagnostics argument, a side channel; the Report is unchanged.
 - **TypeScript analysis uses the async API** (`typescript/unstable/async`). The sync client
   reads Node-internal pipe handles that Bun does not have.
 - **Never write into an analyzed project.** The CLI refuses to replace a folder that isn't a

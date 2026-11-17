@@ -22,6 +22,7 @@
  */
 
 import { SWEEP_MIN_FILES } from "../core/git/derive";
+import { extractImports } from "../core/imports/extract";
 import { isOwnCode, MIN_HISTORY } from "../core/stats";
 import {
   CALL_KINDS,
@@ -53,8 +54,9 @@ import {
   type Severity,
   type SymbolKind,
 } from "../shared/schema";
-import { rankScored, searchable, type Searchable } from "../shared/search";
-import { at, clip, day, round, share } from "./text";
+import { queryTerms, rankScored, scoreTerm, searchable, SUBSTRING_FLOOR, type Searchable } from "../shared/search";
+import type { WorkingTree } from "./changes";
+import { at, clip, day, fitBudget, round, share } from "./text";
 
 /** A question that cannot be answered as asked: the message says what to ask instead. */
 export class QueryError extends Error {}
@@ -930,6 +932,8 @@ function impact(S: CodeSymbols, start: number, depth: number): Map<number, numbe
 export interface SymbolOpts {
   limit?: number;
   references?: boolean;
+  /** Reference locations to skip, to page past the first answer (its `nextOffset`). */
+  referencesOffset?: number;
   impactDepth?: number;
 }
 
@@ -968,15 +972,19 @@ export function symbol(report: Report, Sx: CodeSymbols | undefined, s: number, o
   if (opts.references !== false) {
     const rows = neighbors(ix.refsOf, s);
     const limit = Math.max(max * 5, 50);
+    // Paged, because a rename needs every site: a symbol with 3,000 uses returned its first
+    // 2,500 and no way to ask for the rest.
+    const from = Math.min(opts.referencesOffset ?? 0, rows.length);
     const byFile: { path: string; at: string[] }[] = [];
-    for (const r of rows.slice(0, limit)) {
+    for (const r of rows.slice(from, from + limit)) {
       const path = report.files[S.refs.file[r]!]!.path;
       const pos = `${S.refs.line[r]! + 1}:${S.refs.col[r]! + 1} ${REF_KINDS[S.refs.kind[r]!]}`;
       const last = byFile[byFile.length - 1];
       if (last?.path === path) last.at.push(pos);
       else byFile.push({ path, at: [pos] });
     }
-    references = { total: t.refs[s]!, stored: rows.length, byFile, more: rows.length > limit ? rows.length - limit : undefined };
+    const left = rows.length - from - limit;
+    references = { total: t.refs[s]!, stored: rows.length, offset: from || undefined, byFile, more: left > 0 ? left : undefined, nextOffset: left > 0 ? from + limit : undefined };
   }
 
   let blast;
@@ -2122,3 +2130,577 @@ export function dependencies(report: Report, q: { ecosystem?: string; scope?: st
 
 /** Category names a files query accepts: the 16 categories and the 7 color groups. */
 export const CATEGORY_NAMES: string[] = [...new Set<string>([...(Object.keys(CATEGORY_GROUP) as Category[]), ...Object.values(CATEGORY_GROUP)])];
+
+// ─── Task-sized answers ──────────────────────────────────────────────────────────────────────
+//
+// Three questions that each used to take a round of calls: which directories matter
+// (mapCodebase), where a concept lives (locateCode), what a change can reach (changeImpact).
+// Each fits its rows to a token budget (text.ts fitBudget) and names one follow-up, because an
+// agent keeps a tool whose first answer was small and said what to do next.
+
+const some = <T,>(rows: T[]): T[] | undefined => (rows.length ? rows : undefined);
+
+/**
+ * Directories several levels deep, each with what it holds and how much attention it has had.
+ * Chosen breadth-first, so a budget cut drops the deepest rows and keeps every sibling near the
+ * top; printed as a tree, parents before children and the largest child first, because that is
+ * how a map is read.
+ */
+export function mapCodebase(report: Report, S: CodeSymbols | undefined, q: { path?: string; depth?: number; minFiles?: number; tokenBudget?: number } = {}) {
+  const root = dirId(report, q.path ?? "");
+  const base = report.dirs[root]!;
+  const maxDepth = q.depth ?? 3;
+  const bySize = (a: number, b: number) => report.dirs[b]!.totalCode - report.dirs[a]!.totalCode || a - b;
+  const selected: number[] = [root];
+  for (let i = 0; i < selected.length; i++) {
+    const d = report.dirs[selected[i]!]!;
+    if (d.depth - base.depth >= maxDepth || (d.id !== root && d.totalFiles < (q.minFiles ?? 5))) continue;
+    selected.push(...d.dirs.slice().sort(bySize));
+  }
+  type Aggregate = { languages: Map<string, number>; entries: FileRecord[]; hottest?: FileRecord; hub?: FileRecord; symbols: number[]; modified: number };
+  const aggregates = new Map(selected.map((id) => [id, { languages: new Map(), entries: [], symbols: [], modified: 0 } as Aggregate]));
+  const bestSymbols = new Map<number, number[]>();
+  if (S) {
+    const t = S.symbols;
+    for (let s = 0; s < t.name.length; s++) {
+      if (t.kind[s] === "module" || !(t.flags[s]! & SymbolFlag.exported) || report.files[t.file[s]!]!.secret) continue;
+      const best = bestSymbols.get(t.file[s]!) ?? [];
+      best.push(s);
+      best.sort((a, b) => t.refs[b]! - t.refs[a]! || a - b);
+      bestSymbols.set(t.file[s]!, best.slice(0, 2));
+    }
+  }
+  for (const id of filesUnder(report, root)) {
+    const f = report.files[id]!;
+    for (let d = f.dir; d >= 0; d = report.dirs[d]!.parent) {
+      const a = aggregates.get(d);
+      if (a) {
+        if (isOwnCode(f)) {
+          a.languages.set(f.language, (a.languages.get(f.language) ?? 0) + f.code);
+          if (!a.hottest || f.hotspot > a.hottest.hotspot) a.hottest = f;
+          if (!a.hub || f.rank > a.hub.rank) a.hub = f;
+          a.modified = Math.max(a.modified, f.git?.modified ?? 0);
+        }
+        // A .d.ts is an entry for the unused-export rule only; nothing starts there.
+        if (f.entry && f.entry !== "type declarations" && !f.secret) {
+          a.entries.push(f);
+          a.entries.sort((a, b) => b.fanIn - a.fanIn || a.id - b.id);
+          a.entries.length = Math.min(a.entries.length, 2);
+        }
+        if (S) {
+          a.symbols.push(...(bestSymbols.get(id) ?? []));
+          a.symbols.sort((a, b) => S.symbols.refs[b]! - S.symbols.refs[a]! || a - b);
+          a.symbols.length = Math.min(a.symbols.length, 2);
+        }
+      }
+      if (d === root) break;
+    }
+  }
+  const rows = selected.map((id) => {
+    const d = report.dirs[id]!;
+    const a = aggregates.get(id)!;
+    // Empty lists are left out: on a wide map they were a fifth of the answer.
+    return {
+      path: d.path || ".",
+      depth: d.depth - base.depth,
+      files: d.totalFiles,
+      code: d.totalCode,
+      languages: some([...a.languages].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0])).slice(0, 3).map(([language]) => language)),
+      commits: d.commits,
+      lastChanged: a.modified ? day(a.modified) : undefined,
+      entries: some(a.entries.map((f) => f.path)),
+      symbols: S ? some(a.symbols.map((s) => `${S.symbols.name[s]} (${symbolAt(report, S, s)}, ${S.symbols.refs[s]} refs)`)) : undefined,
+      hottest: a.hottest?.hotspot ? { path: a.hottest.path, hotspot: round(a.hottest.hotspot) } : undefined,
+      hub: a.hub?.fanIn ? a.hub.path : undefined,
+      collapsed: d.dirs.some((c) => !aggregates.has(c)) ? d.dirs.length : undefined,
+    };
+  });
+  const result = fitBudget(
+    {
+      path: base.path || ".",
+      directoryCount: selected.length,
+      rows,
+      notes: ["Directory totals include all files; languages and hotspot/hub samples use own code. Parent totals include children.", ...measurementNotes(report, S)],
+      next: rows.some((r) => r.collapsed)
+        ? { tool: "map_codebase", arguments: { path: rows.find((r) => r.collapsed)!.path, depth: Math.min(10, maxDepth + 1), min_files: 0 } as Record<string, unknown> }
+        : { tool: "files", arguments: { path: base.path, sort: "code", limit: 10 } as Record<string, unknown> },
+    },
+    [rows],
+    q.tokenBudget,
+  );
+  // A smaller directory listing can choose a branch when a wide map exhausted its budget.
+  if (result.budget.omittedRows) result.next = { tool: "dir", arguments: { path: base.path } };
+  // Tree order, after the cut: depth-first over the same sibling order the selection used.
+  const order = new Map<string, number>();
+  const visit = (id: number) => {
+    order.set(report.dirs[id]!.path || ".", order.size);
+    for (const c of report.dirs[id]!.dirs.slice().sort(bySize)) if (aggregates.has(c)) visit(c);
+  };
+  visit(root);
+  rows.sort((a, b) => order.get(a.path)! - order.get(b.path)!);
+  return result;
+}
+
+function measurementNotes(report: Report, S?: CodeSymbols): string[] {
+  return [
+    ...(!S ? ["No compiler symbols; symbol/reference/caller evidence is unavailable."] : S.stats.truncated ? ["Compiler references are capped; absence is not proof of no use."] : []),
+    ...(!report.git
+      ? ["No git history; ownership, co-change and churn are unavailable."]
+      : report.git.shallow || report.git.truncated || report.git.analyzedCommits < MIN_HISTORY
+        ? [`History is limited to ${report.git.analyzedCommits} analyzed commits${report.git.shallow ? " in a shallow clone" : ""}; owners, co-change and churn may be weak evidence.`]
+        : []),
+  ];
+}
+
+export interface LocateEvidence {
+  signal: "path" | "symbol" | "doc" | "commit" | "package" | "content";
+  text: string;
+  terms: string[];
+  at?: string;
+}
+
+export interface LocateQuery {
+  query: string;
+  path?: string;
+  limit?: number;
+  tokenBudget?: number;
+}
+
+/** How locate_code reads source: the snapshot's own reader, which never returns a secret file. */
+export interface ContentScan {
+  read(file: number): Promise<{ text: string; changed?: boolean } | { reason: string }>;
+  signal?: AbortSignal;
+}
+
+/**
+ * What one locate_code call may read. It is a question, not a crawl: the host has a grep for
+ * exhaustive text search, and what this adds is the evidence a grep cannot give. The answer
+ * says how much of the project the scan covered.
+ */
+const SCAN_FILES = 200;
+const SCAN_BYTES = 2 * 1024 * 1024;
+const SCAN_FILE_BYTES = 256 * 1024;
+
+const LOCATE_WEIGHT: Record<LocateEvidence["signal"], number> = { path: 4, symbol: 5, doc: 3, commit: 1, package: 2, content: 2 };
+
+/** Literal matches use the palette's scoring; subsequence matches make prose far too noisy. */
+function locateTerms(query: string, text: string): string[] {
+  const lower = text.toLowerCase();
+  return queryTerms(query).filter((term) => scoreTerm(term, lower, text, text.lastIndexOf("/") + 1) >= SUBSTRING_FLOOR);
+}
+
+/**
+ * Where a concept lives: files and directories ranked by every signal the analysis holds, each
+ * with the evidence that put it there. Signals are fused without letting a large directory or
+ * a much-committed file win by volume: one best example per signal per file.
+ */
+export async function locateCode(report: Report, S: CodeSymbols | undefined, q: LocateQuery, scan?: ContentScan) {
+  const terms = [...new Set(queryTerms(q.query))];
+  if (!terms.length) throw new QueryError('query needs a concept or terms, for example "invoice pdf"');
+  const scope = q.path === undefined ? undefined : filesMatching(report, q.path);
+  const eligible = (f: number) => {
+    const row = report.files[f]!;
+    return !row.secret && !row.generated && !row.vendored && (!scope || scope.has(f));
+  };
+  const evidence = new Map<number, LocateEvidence[]>();
+  const add = (f: number, signal: LocateEvidence["signal"], text: string, where?: string, hitTerms = locateTerms(q.query, text)) => {
+    if (!eligible(f) || !hitTerms.length) return;
+    const rows = evidence.get(f) ?? [];
+    // Keep the best example per signal, so 1,000 matching declarations still cost one row.
+    const prior = rows.findIndex((e) => e.signal === signal);
+    const row = { signal, text: clip(text, 160), terms: hitTerms, at: where };
+    if (prior < 0) rows.push(row);
+    else if (hitTerms.length > rows[prior]!.terms.length) rows[prior] = row;
+    evidence.set(f, rows);
+  };
+  for (const f of report.files) add(f.id, "path", f.path);
+  if (S) {
+    const t = S.symbols;
+    for (let s = 0; s < t.name.length; s++) {
+      if (t.kind[s] === "module") continue;
+      add(t.file[s]!, "symbol", t.name[s]!, symbolAt(report, S, s));
+      if (t.doc[s]) add(t.file[s]!, "doc", t.doc[s]!, symbolAt(report, S, s));
+    }
+  }
+  if (report.git) {
+    const c = report.git.commits;
+    // A sweep (a mass rename, a reformat) names its subject on hundreds of files that have
+    // nothing to do with it; coupling leaves the same commits out, by the same width.
+    const sweep = report.git.sweepFiles ?? SWEEP_MIN_FILES;
+    for (let r = 0; r < c.subject.length; r++) {
+      if ((c.width?.[r] ?? c.files[r]!.length) > sweep) continue;
+      const hits = locateTerms(q.query, c.subject[r]!);
+      if (!hits.length) continue;
+      for (const f of c.files[r]!) add(f, "commit", `${c.hash[r]} ${c.subject[r]}`, undefined, hits);
+    }
+  }
+  // The report keeps dependency counts and manifest paths, not which file imports a package,
+  // so metadata alone can only name the manifest; the scan below finds the importers it reads.
+  for (const dep of report.externals) {
+    for (const path of dep.declaredIn) {
+      const f = index(report).path.get(path);
+      if (f !== undefined) add(f, "package", `declares ${dep.name}`);
+    }
+  }
+
+  const rank = () =>
+    [...evidence]
+      .map(([id, rows]) => {
+        const matched = new Set(rows.flatMap((e) => e.terms));
+        return { id, score: matched.size * 10 + rows.reduce((n, e) => n + LOCATE_WEIGHT[e.signal] * e.terms.length, 0), matchedTerms: [...matched], evidence: rows };
+      })
+      .sort((a, b) => b.matchedTerms.length - a.matchedTerms.length || b.score - a.score || a.id - b.id);
+
+  let content: Record<string, unknown> = { searched: false };
+  if (scan) {
+    // Files the cheaper signals already point at are read first, so a capped scan confirms the
+    // leads before it goes looking for new ones; then code, in path order.
+    const leads = rank().map((r) => r.id);
+    const led = new Set(leads);
+    const rest = report.files.filter((f) => !led.has(f.id) && eligible(f.id)).sort((a, b) => Number(b.category === "code") - Number(a.category === "code") || a.id - b.id);
+    const queue = [...leads, ...rest.map((f) => f.id)].filter((id) => !report.files[id]!.binary && report.files[id]!.bytes <= SCAN_FILE_BYTES);
+    const packages = report.externals.filter((d) => locateTerms(q.query, d.name).length);
+    let bytes = 0;
+    let scanned = 0;
+    let unavailable = 0;
+    let changed = 0;
+    for (const id of queue) {
+      if (scan.signal?.aborted || scanned >= SCAN_FILES) break;
+      const f = report.files[id]!;
+      if (bytes + f.bytes > SCAN_BYTES) continue;
+      const got = await scan.read(id);
+      scanned++;
+      if ("reason" in got) {
+        unavailable++;
+        continue;
+      }
+      // The file may have grown since the analysis measured it.
+      const size = Buffer.byteLength(got.text);
+      if (size > SCAN_FILE_BYTES || bytes + size > SCAN_BYTES) {
+        unavailable++;
+        continue;
+      }
+      bytes += size;
+      if (got.changed) changed++;
+      let best: { text: string; line: number; terms: string[] } | undefined;
+      const lines = got.text.split(/\r?\n/);
+      for (let line = 0; line < lines.length; line++) {
+        const hit = locateTerms(q.query, lines[line]!);
+        if (hit.length && (!best || hit.length > best.terms.length)) best = { text: lines[line]!, line, terms: hit };
+      }
+      if (best) add(id, "content", best.text.trim(), at(f.path, best.line), best.terms);
+      if (packages.length) {
+        for (const imp of extractImports(f.path, got.text, f.language)) {
+          if (packages.some((d) => imp.spec === d.name || imp.spec.startsWith(d.name + "/") || imp.spec.startsWith(d.name + "."))) {
+            add(id, "package", imp.spec, at(f.path, imp.line));
+          }
+        }
+      }
+    }
+    content = {
+      searched: true,
+      scanned,
+      bytes,
+      unavailable,
+      changedSinceAnalysis: changed || undefined,
+      eligibleFiles: queue.length,
+      partial: scanned - unavailable < queue.length,
+      maxFiles: SCAN_FILES,
+      maxBytes: SCAN_BYTES,
+    };
+  }
+
+  const scored = rank();
+  const byDir = new Map<number, typeof scored>();
+  for (const row of scored) {
+    const d = report.files[row.id]!.dir;
+    const group = byDir.get(d) ?? [];
+    group.push(row);
+    byDir.set(d, group);
+  }
+  const max = q.limit ?? 8;
+  const dirs = [...byDir]
+    .map(([id, rows]) => ({
+      path: report.dirs[id]!.path || ".",
+      matchedFiles: rows.length,
+      score: rows[0]!.score + Math.min(3, rows.length - 1),
+      matchedTerms: [...new Set(rows.flatMap((r) => r.matchedTerms))],
+      examples: rows.slice(0, 2).map((r) => report.files[r.id]!.path),
+    }))
+    .sort((a, b) => b.matchedTerms.length - a.matchedTerms.length || b.score - a.score || a.path.localeCompare(b.path));
+  const files = scored.slice(0, max).map((r) => ({ path: report.files[r.id]!.path, score: r.score, matchedTerms: r.matchedTerms, evidence: r.evidence }));
+  const directories = dirs.slice(0, max);
+  return fitBudget(
+    {
+      query: q.query,
+      matchedFiles: scored.length,
+      matchedDirectories: dirs.length,
+      directories,
+      files,
+      content,
+      notes: ["Literal term evidence, not semantic search. Commit matches mean the commit touched the file, not that the file implements the concept.", ...measurementNotes(report, S)],
+      next: files[0] ? { tool: "file", arguments: { path: files[0].path } } : { tool: "files", arguments: { query: q.query, limit: max } },
+    },
+    [files, directories],
+    q.tokenBudget,
+  );
+}
+
+export interface ImpactQuery {
+  paths?: string[];
+  symbols?: { id?: number; name?: string; path?: string }[];
+  /** The uncommitted diff against HEAD (changes.ts): the selection for a review after editing. */
+  workingTree?: WorkingTree;
+  depth?: number;
+  limit?: number;
+  tokenBudget?: number;
+}
+
+/**
+ * Declarations a diff's line ranges fall in, innermost only. A changed method body also lies
+ * inside its class, and seeding the class would report everyone who names the type as affected
+ * by an edit to one method. Ranges are 1-based and inclusive; the table's lines are 0-based.
+ */
+function symbolsInRanges(S: CodeSymbols, ix: SymIndex, file: number, ranges: [number, number][]): number[] {
+  const t = S.symbols;
+  const hit = neighbors(ix.inFile, file).filter((s) => t.kind[s] !== "module" && ranges.some(([a, b]) => t.line[s]! + 1 <= b && t.endLine[s]! + 1 >= a));
+  const hitSet = new Set(hit);
+  const outer = new Set<number>();
+  for (const s of hit) for (let p = t.parent[s]!; p >= 0; p = t.parent[p]!) if (hitSet.has(p)) outer.add(p);
+  return hit.filter((s) => !outer.has(s));
+}
+
+/**
+ * One briefing for a change, before it or after it. Conservative file reach over imports and
+ * the narrower compiler users are shown apart, because they answer different questions: what
+ * could notice, and what names this code.
+ */
+export function changeImpact(report: Report, S: CodeSymbols | undefined, q: ImpactQuery) {
+  const ix = index(report);
+  const sx = S ? symIndex(S, report.files.length) : undefined;
+  const max = q.limit ?? 10;
+  const depth = q.depth ?? 3;
+  const selected = new Set<number>();
+  // Files whose every declaration is a seed: named paths, and changed files with no line ranges.
+  const whole = new Set<number>();
+  for (const path of q.paths ?? []) {
+    const matches = filesMatching(report, path);
+    if (!matches.size) throw new QueryError(`"${path}" matches no files`);
+    for (const id of matches) selected.add(id);
+  }
+  const targets = (q.symbols ?? []).map((ref) => resolveSymbol(report, S, ref));
+  if (S) for (const s of targets) selected.add(S.symbols.file[s]!);
+  // A named symbol narrows the question to itself, as it always has; without one, a named path
+  // means everything it declares.
+  if (!targets.length) for (const f of selected) whole.add(f);
+
+  const tree = q.workingTree;
+  const changedSymbols: number[] = [];
+  const changedFiles: number[] = [];
+  const notAnalyzed: string[] = [];
+  if (tree) {
+    for (const c of tree.files) {
+      const f = ix.path.get(c.path);
+      // Ignored by the analysis (.gitignore, an exclude), or written after it finished.
+      if (f === undefined) {
+        notAnalyzed.push(c.path);
+        continue;
+      }
+      selected.add(f);
+      changedFiles.push(f);
+      if (S && sx && c.ranges) changedSymbols.push(...symbolsInRanges(S, sx, f, c.ranges));
+      else whole.add(f);
+    }
+    if (!selected.size && !tree.deleted.length && !notAnalyzed.length) throw new QueryError("the working tree has no changes against HEAD; pass paths or symbols for a change you plan");
+  }
+  // Only deletions, or only files the analysis does not hold, still get an answer: it says so.
+  const traceable = selected.size > 0;
+  if (!traceable && !tree) throw new QueryError("pass paths and/or symbols for the change you plan, or working_tree: true to review uncommitted edits");
+
+  const reached = walk(ix.importedBy, selected, depth);
+  for (const f of selected) reached.delete(f);
+  const seedSet = new Set<number>([...targets, ...changedSymbols]);
+  if (S && sx) for (const f of whole) for (const s of neighbors(sx.inFile, f)) seedSet.add(s);
+  const seeds = S ? [...seedSet] : [];
+  const callerDepth = new Map<number, number>();
+  // Traverse all seeds together. Running one BFS for every declaration is quadratic in large subtrees.
+  if (S) {
+    const visited = new Set(seeds);
+    let frontier = seeds;
+    for (let d = 1; d <= depth && frontier.length; d++) {
+      const next: number[] = [];
+      for (const s of frontier) {
+        for (const e of [...callEdges(S, s, "incoming"), ...callsThroughBases(S, s).flatMap((g) => g.edges)]) {
+          if (visited.has(e.symbol)) continue;
+          visited.add(e.symbol);
+          next.push(e.symbol);
+          callerDepth.set(e.symbol, d);
+        }
+      }
+      frontier = next;
+    }
+  }
+  const tests = new Map<number, Set<string>>();
+  const testDistance = new Map<number, number>();
+  const test = (f: number, reason: string, distance = 1) => {
+    if (report.files[f]!.category !== "test" || !isOwnCode(report.files[f]!)) return;
+    const reasons = tests.get(f) ?? new Set();
+    reasons.add(reason);
+    tests.set(f, reasons);
+    testDistance.set(f, Math.min(testDistance.get(f) ?? Infinity, distance));
+  };
+  for (const f of selected) test(f, "selected test", 0);
+  for (const [f, d] of reached) test(f, `imports selected code within ${d} hop(s)`, d);
+  const modules = new Map<string, { files: Set<number>; callers: Set<number>; nearest: number }>();
+  const moduleOfFile = moduleMap(report, new Set(report.graph.modules.map((m) => m.dir)));
+  const group = (f: number, d: number, caller?: number) => {
+    if (selected.has(f)) return;
+    const module = report.dirs[moduleOfFile[f]!] ?? report.dirs[report.files[f]!.dir]!;
+    const path = module.path || ".";
+    const m = modules.get(path) ?? { files: new Set(), callers: new Set(), nearest: d };
+    m.files.add(f);
+    if (caller !== undefined) m.callers.add(caller);
+    m.nearest = Math.min(m.nearest, d);
+    modules.set(path, m);
+  };
+  for (const [f, d] of reached) group(f, d);
+  if (S && sx) {
+    for (const [s, d] of callerDepth) {
+      const f = S.symbols.file[s]!;
+      test(f, `compiler use within ${d} hop(s)`, d);
+      group(f, d, s);
+    }
+    // Top-level references, and host imports, do not always appear as function callers.
+    for (const s of seeds) {
+      for (const r of neighbors(sx.refsOf, s)) test(S.refs.file[r]!, "references selected declaration");
+      for (const h of hostUsesOf(S, s)) group(h.file, 1);
+    }
+  }
+  const owners = new Map<number, number>();
+  const api: { path: string; warning: string }[] = [];
+  const hot: { path: string; warning: string; hotspot: number }[] = [];
+  const sole = new Map<number, string[]>();
+  // In a repository one person wrote, "single owner" is true of every file and says nothing.
+  const severalAuthors = (report.git?.authors.filter((a) => !a.bot).length ?? 0) > 1;
+  for (const f of selected) {
+    const row = report.files[f]!;
+    if (row.git && row.git.owner >= 0 && !report.git?.authors[row.git.owner]?.bot) owners.set(row.git.owner, (owners.get(row.git.owner) ?? 0) + row.code);
+    if (row.publicApi) api.push({ path: row.path, warning: "public API: consumers outside this repository are not measured" });
+    else if (row.entry) api.push({ path: row.path, warning: "declared entry point: a runtime or tool loads it" });
+    if (row.hotspot >= 0.5) hot.push({ path: row.path, warning: `hotspot ${round(row.hotspot)}`, hotspot: row.hotspot });
+    if (severalAuthors && row.git?.ownership && row.git.ownership >= 0.9 && !report.git?.authors[row.git.owner]?.bot) sole.set(row.git.owner, [...(sole.get(row.git.owner) ?? []), row.path]);
+  }
+  // What an outside consumer or a loader depends on first, then the hottest files, then one
+  // row per person rather than one per file they own.
+  const warnings: { path?: string; warning: string; files?: number; examples?: string[] }[] = [
+    ...api,
+    ...hot.sort((a, b) => b.hotspot - a.hotspot || a.path.localeCompare(b.path)).map(({ path, warning }) => ({ path, warning })),
+    ...[...sole].sort((a, b) => b[1].length - a[1].length || a[0] - b[0]).map(([owner, paths]) => ({ warning: `single owner: ${authorName(report, owner)}`, files: paths.length, examples: paths.slice(0, 3) })),
+  ];
+  const symbolRow = (s: number) => ({ id: s, name: sx!.qualified[s], kind: S!.symbols.kind[s], at: symbolAt(report, S!, s) });
+  const pairs = (report.git?.coupling ?? []).filter((p) => selected.has(p.a) !== selected.has(p.b)).sort((a, b) => b.degree - a.degree || b.shared - a.shared || a.a - b.a || a.b - b.b);
+  const coChange = pairs.slice(0, max).map((p) => ({ selected: report.files[selected.has(p.a) ? p.a : p.b]!.path, also: report.files[selected.has(p.a) ? p.b : p.a]!.path, sharedCommits: p.shared, degree: round(p.degree) }));
+  const cycles = report.graph.cycles.filter((c) => c.files.some((f) => selected.has(f)));
+  const cycleRows = cycles.slice(0, max).map((c) => ({ files: c.files.slice(0, max).map((f) => report.files[f]!.path), total: c.files.length }));
+  const moduleRows = [...modules]
+    .sort((a, b) => a[1].nearest - b[1].nearest || b[1].files.size - a[1].files.size || a[0].localeCompare(b[0]))
+    .slice(0, max)
+    .map(([path, m]) => ({ path, files: m.files.size, compilerUsers: m.callers.size, nearest: m.nearest, examples: [...m.files].slice(0, 3).map((f) => report.files[f]!.path) }));
+  const testRows = [...tests]
+    .sort((a, b) => testDistance.get(a[0])! - testDistance.get(b[0])! || a[0] - b[0])
+    .slice(0, max)
+    .map(([f, why]) => ({ path: report.files[f]!.path, depth: testDistance.get(f), evidence: [...why] }));
+  const callerRows = S ? [...callerDepth].sort((a, b) => a[1] - b[1] || a[0] - b[0]).slice(0, max).map(([s, d]) => ({ id: s, name: sx!.qualified[s], at: symbolAt(report, S, s), depth: d })) : [];
+  const selectedRows = [...selected].slice(0, max).map((f) => report.files[f]!.path);
+  const warningRows = warnings.slice(0, max);
+
+  // After an edit: what the diff touched, the most depended-on declarations first, and what it
+  // may have left behind.
+  const changedRows = S
+    ? [...changedSymbols]
+        .sort((a, b) => S.symbols.callers[b]! - S.symbols.callers[a]! || a - b)
+        .slice(0, max)
+        .map((s) => ({ ...symbolRow(s), users: S.symbols.callers[s]! }))
+    : [];
+  // Unused exports among what the diff declared or rewrote come first: those are this change's
+  // own. Elsewhere in the changed files only the unreferenced ones are listed, since a caller
+  // this diff removed can orphan a declaration it never touched, and an export that was
+  // already used only inside its file is not news.
+  const unused: { name: string; at: string; unused: string; changed?: true }[] = [];
+  let unusedInChanged = 0;
+  if (tree && S && sx) {
+    const touched = new Set(changedSymbols);
+    for (const f of whole) if (changedFiles.includes(f)) for (const s of neighbors(sx.inFile, f)) touched.add(s);
+    const elsewhere: typeof unused = [];
+    for (const f of changedFiles) {
+      for (const s of neighbors(sx.inFile, f)) {
+        const kind = unusedKind(report, S, s);
+        if (kind !== "unreferenced" && kind !== "used-in-own-file") continue;
+        const row = { name: sx.qualified[s]!, at: symbolAt(report, S, s), unused: kind };
+        if (touched.has(s)) unused.push({ ...row, changed: true });
+        else if (kind === "unreferenced") elsewhere.push(row);
+      }
+    }
+    unusedInChanged = unused.length;
+    unused.sort((a, b) => Number(b.unused === "unreferenced") - Number(a.unused === "unreferenced"));
+    unused.push(...elsewhere);
+  }
+  const unusedRows = unused.slice(0, max);
+  const workingTree = tree
+    ? {
+        changed: changedFiles.length,
+        untracked: tree.files.filter((c) => c.status === "untracked").length || undefined,
+        deleted: some(tree.deleted.slice(0, max)),
+        deletedCount: tree.deleted.length || undefined,
+        notAnalyzed: some(notAnalyzed.slice(0, max)),
+        notAnalyzedCount: notAnalyzed.length || undefined,
+        changedSymbols: { count: changedSymbols.length, rows: changedRows },
+        unusedExports: {
+          count: unused.length,
+          inChangedDeclarations: unusedInChanged,
+          rows: unusedRows,
+          basis: "Exports nothing outside their file uses now: first those this diff declared or rewrote (changed), then unreferenced ones elsewhere in the changed files, which a removed caller may have orphaned.",
+        },
+      }
+    : undefined;
+
+  const first = traceable ? report.files[[...selected][0]!]!.path : undefined;
+  return fitBudget(
+    {
+      selected: { files: selected.size, paths: selectedRows, symbols: S ? targets.map((s) => ({ ...symbolRow(s), references: S.symbols.refs[s]!, inFiles: S.symbols.files[s]! })) : [] },
+      workingTree,
+      depth,
+      dependents: { files: reached.size, modules: modules.size, rows: moduleRows },
+      compilerUsers: { count: callerDepth.size, rows: callerRows },
+      tests: { count: tests.size, rows: testRows, basis: "Import/reference candidates, not runtime coverage or a complete test plan. Read the repository's test commands." },
+      coChange: { count: pairs.length, rows: coChange, basis: tree ? "Files that usually change with the changed ones and are not in this diff." : undefined },
+      cycles: { count: cycles.length, rows: cycleRows },
+      owners: [...owners]
+        .sort((a, b) => b[1] - a[1] || a[0] - b[0])
+        .slice(0, 3)
+        .map(([id, code]) => ({ name: authorName(report, id), code })),
+      warnings: { count: warnings.length, rows: warningRows },
+      notes: [
+        "Import reach includes type-only code imports; compiler users include reads and type uses as in the viewer. Dynamic consumers are not fully measured.",
+        ...(traceable ? [] : ["Nothing changed in a file the current analysis holds, so there is nothing to trace."]),
+        ...(tree?.deleted.length ? ["Deleted files are gone from the analysis, so what imported them is not measured: a remaining import fails the build."] : []),
+        ...(notAnalyzed.length ? ["Changed files outside the analysis are ignored by it or newer than it; open { reanalyze: true } if they should count."] : []),
+        ...measurementNotes(report, S),
+      ],
+      next:
+        tests.size > 100 && depth > 1
+          ? { tool: "change_impact", arguments: { paths: q.paths, symbols: q.symbols, working_tree: tree ? true : undefined, depth: 1, limit: max } }
+          : changedRows[0]
+            ? { tool: "symbol", arguments: { id: changedRows[0].id, impact_depth: 2 } }
+            : targets.length
+              ? // The briefing counts reach; a rename needs the sites themselves. An agent given only
+                // the counts went back to a text search for them.
+                { tool: "symbol", arguments: { id: targets[0], limit: 100 }, why: "every reference site by file, compiler-resolved and paged" }
+              : first !== undefined
+              ? { tool: "graph", arguments: { view: "dependents", path: first, depth: depth + 1, limit: max } }
+              : { tool: "overview", arguments: {} },
+    },
+    [selectedRows, moduleRows, testRows, coChange, cycleRows, callerRows, warningRows, changedRows, unusedRows],
+    q.tokenBudget,
+  );
+}

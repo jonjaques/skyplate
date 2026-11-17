@@ -66,7 +66,7 @@ class RepoIndex {
   readonly byBase = new Map<string, number[]>();
   readonly dirs = new Set<string>();
 
-  constructor(readonly paths: string[]) {
+  constructor(readonly paths: string[], private readonly diagnostic?: ResolveContext["onDiagnostic"]) {
     if (paths.length) this.dirs.add(""); // the root is a directory too (`require("..")`)
     paths.forEach((p, id) => {
       this.byPath.set(p, id);
@@ -124,6 +124,7 @@ class RepoIndex {
     const named = ids.find((id) => basename(this.paths[id]!).replace(/\.[^.]+$/, "") === stem);
     const main = ids.find((id) => /^(?:main|index|mod|lib|init)\.[^.]+$/.test(basename(this.paths[id]!)));
     const rep = named ?? main ?? ids.find((id) => !basename(this.paths[id]!).startsWith("doc.")) ?? ids[0]!;
+    if (ids.length - 1 > ALSO_CAP) this.diagnostic?.("package_sibling_cap", ids.length - 1 - ALSO_CAP);
     return { file: rep, also: ids.filter((id) => id !== rep).slice(0, ALSO_CAP) };
   }
 }
@@ -1292,7 +1293,7 @@ const JVM_LANGS = new Set(["java", "kotlin", "scala", "groovy", "gradle-kotlin-d
 const C_LANGS = new Set(["c", "c++", "objective-c", "objective-c++", "cuda", "metal", "hlsl", "glsl"]);
 
 export const createResolver: CreateResolver = (ctx) => {
-  const idx = new RepoIndex(ctx.paths);
+  const idx = new RepoIndex(ctx.paths, ctx.onDiagnostic);
   const lazy = <T>(make: () => T) => {
     let v: T | undefined;
     return () => (v ??= make());

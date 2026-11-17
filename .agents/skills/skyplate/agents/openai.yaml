@@ -1,0 +1,3 @@
+interface:
+  display_name: "Skyplate"
+  short_description: "Find code and check change impact before editing"

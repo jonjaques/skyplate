@@ -81,7 +81,7 @@ const INHERITED_REPO_VARS = [
   "GIT_REPLACE_REF_BASE",
 ];
 
-function gitEnv(): Record<string, string> {
+export function gitEnv(): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) if (v !== undefined) env[k] = v;
   for (const k of INHERITED_REPO_VARS) delete env[k];
@@ -274,6 +274,7 @@ export const mineGit: MineGit = async (input: GitInput): Promise<GitResult | nul
     const moved = await renameSources(root, prefix, limit);
     scope = ["HEAD", "--", ".", ...moved.sources.map((p) => `:(top,literal)${p}`)];
     if (!moved.complete) {
+      input.onDiagnostic?.("git_move_limit");
       warnings.push(
         "Not every file moved into this directory from elsewhere in the repository could be followed back, so for some of them history starts at the move.",
       );
@@ -335,7 +336,10 @@ export const mineGit: MineGit = async (input: GitInput): Promise<GitResult | nul
       parser,
     );
     const skipped = renameWarning(stderr);
-    if (skipped) warnings.push(skipped);
+    if (skipped) {
+      input.onDiagnostic?.("git_rename_limit");
+      warnings.push(skipped);
+    }
     // A failed count (or a pathspec count of 0 racing a new commit) falls back to the walk.
     if (totalCommits === 0) totalCommits = history.commitCount;
     input.onProgress?.(history.commitCount, Math.max(expected, history.commitCount));
@@ -351,6 +355,7 @@ export const mineGit: MineGit = async (input: GitInput): Promise<GitResult | nul
     horizon,
     exclude: input.exclude,
     warnings,
+    onDiagnostic: input.onDiagnostic,
   });
 };
 
@@ -456,6 +461,7 @@ async function streamGit(
 // ─── Assembly ────────────────────────────────────────────────────────────────────────────────
 
 interface Meta {
+  onDiagnostic?: GitInput["onDiagnostic"];
   branch: string;
   head: string;
   remote: string | undefined;
@@ -594,6 +600,7 @@ function summarize(h: History, meta: Meta): GitResult {
       h.width,
       h.fileCommits,
       sweep,
+      meta.onDiagnostic,
     ),
     sweepFiles: sweep,
     truckFactor: truckFactor(

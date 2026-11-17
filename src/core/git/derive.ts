@@ -6,6 +6,7 @@
  * Index reads use `!` for the reason given at the top of history.ts.
  */
 
+import type { DiagnosticSink } from "../bench/diagnostics";
 import type { CouplingPair, FileGit, GitSummary } from "../../shared/schema";
 import { clampTime, monthKey, monthStart } from "./history";
 
@@ -171,6 +172,7 @@ export function coupling(
   width: number[],
   fileCommits: Int32Array,
   maxFiles: number = SWEEP_MIN_FILES,
+  diagnostic?: DiagnosticSink,
 ): CouplingPair[] {
   const eligible: number[] = [];
   const perFile = new Int32Array(fileCount + 1);
@@ -185,6 +187,7 @@ export function coupling(
   for (const c of eligible) for (const f of files[c]!) index[start[f]!++] = c;
 
   const heap: Candidate[] = [];
+  let candidates = 0;
   const shared = new Int32Array(fileCount);
   const partners: number[] = [];
   for (let a = 0; a < fileCount; a++) {
@@ -203,10 +206,12 @@ export function coupling(
       shared[b] = 0;
       if (s < COUPLING_MIN_SHARED) continue;
       const degree = s / Math.min(fileCommits[a]!, fileCommits[b]!);
+      candidates++;
       offer(heap, { a, b, shared: s, degree, score: s * degree });
     }
     partners.length = 0;
   }
+  if (candidates > COUPLING_KEEP) diagnostic?.("git_coupling_cap", candidates - COUPLING_KEEP);
   heap.sort((x, y) => (better(x, y) ? -1 : better(y, x) ? 1 : 0));
   return heap.map(({ a, b, shared: s, degree }) => ({ a, b, shared: s, degree: round4(degree) }));
 }

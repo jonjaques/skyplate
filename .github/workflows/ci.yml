@@ -43,5 +43,8 @@ jobs:
           cat err.txt
           test -f report/index.html
           if grep -q 'note:' err.txt; then echo "an installed copy printed a note meant for checkouts"; exit 1; fi
+          # The benchmark ships in the same tarball and must run from it too.
+          ./node_modules/.bin/skyplate bench proj --out bench
+          test -f bench/benchmark.json && test -f bench/benchmark.md
           # The MCP server as a client starts it: real stdio, from the installed package.
           bun "$GITHUB_WORKSPACE/scripts/mcp-smoke.ts" ./node_modules/.bin/skyplate proj

@@ -22,6 +22,7 @@
  * Verify:    bun test test/pipeline.test.ts && bun check src/core/pipeline.ts
  */
 
+import type { AnalysisDiagnostics } from "./bench/diagnostics";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import pkg from "../../package.json" with { type: "json" };
@@ -70,6 +71,14 @@ export interface AnalyzeOptions {
   source: boolean;
   /** Run the TypeScript analysis. */
   symbols: boolean;
+  /**
+   * Compute the import-graph layout the viewer morphs to. Only a report needs it, and it was
+   * two thirds of a history-free analysis of a 32k-file repository (5.2 s of 7.7 s), so a caller
+   * that will never write this result as a report turns it off (the MCP server's structure
+   * pass). Off leaves `layout.graph` empty: such a result fails validateReport and must not be
+   * written.
+   */
+  layout: boolean;
   maxCommits: number;
   maxSourceFile: number;
   maxSourceTotal: number;
@@ -94,6 +103,7 @@ export const DEFAULT_OPTIONS: AnalyzeOptions = {
   git: true,
   source: true,
   symbols: true,
+  layout: true,
   maxCommits: 20_000,
   maxSourceFile: DEFAULT_MAX_SOURCE_FILE,
   maxSourceTotal: DEFAULT_MAX_SOURCE_TOTAL,
@@ -479,6 +489,7 @@ export async function analyzeProject(
   rootIn: string,
   options: Partial<AnalyzeOptions> = {},
   onProgress?: (e: ProgressEvent) => void,
+  diagnostics?: AnalysisDiagnostics,
 ): Promise<AnalysisResult> {
   const opts: AnalyzeOptions = { ...DEFAULT_OPTIONS, ...options };
   const totalStart = performance.now();
@@ -500,6 +511,7 @@ export async function analyzeProject(
   const paths = walked.map((f) => f.path);
   const abs = walked.map((f) => f.abs);
   warnings.push(...walk.warnings);
+  diagnostics?.add("unclassified_warning", walk.warnings.length);
   phases.end("walk", plural(n, "file"));
 
   const pool = new WorkerPool(opts.workers > 0 ? opts.workers : defaultPoolSize());
@@ -527,8 +539,8 @@ export async function analyzeProject(
     phases.end("detect", plural(n, "file"));
 
     // ── Git and TypeScript, in the background ──
-    const gitP = startGit(opts, walk.isGit, root, paths, detections, phases, warnings);
-    const tsP = startTypeScript(opts, root, paths, detections, phases, warnings);
+    const gitP = startGit(opts, walk.isGit, root, paths, detections, phases, warnings, diagnostics);
+    const tsP = startTypeScript(opts, root, paths, detections, phases, warnings, diagnostics);
 
     // ── Measure ──
     const plan = opts.source
@@ -545,7 +557,7 @@ export async function analyzeProject(
     const measured = new Array<MeasureResult>(n);
     const sources = new Map<number, string>();
     {
-      const jobs: MeasureJob[] = walked.map((f, id) => ({ id, abs: f.abs, path: f.path, detection: detections[id]!, embed: plan?.embed[id] ?? false }));
+      const jobs: MeasureJob[] = walked.map((f, id) => ({ id, abs: f.abs, path: f.path, detection: detections[id]!, diagnostics: !!diagnostics, embed: plan?.embed[id] ?? false }));
       let done = 0;
       await Promise.all(
         batches(jobs, pool.size, (j) => Math.min(walked[j.id]!.bytes, opts.maxReadBytes), 8 * 1024 * 1024).map(async (batch) => {
@@ -570,6 +582,7 @@ export async function analyzeProject(
     const unhashed: string[] = [];
     for (let id = 0; id < n; id++) {
       const m = measured[id]!;
+      for (const item of m.diagnostics ?? []) diagnostics?.add(item.code, item.count);
       const d = detections[id]!;
       if (m.error) unreadable.add(id);
       if (m.unmeasured) (d.binary ? unhashed : unmeasured).push(paths[id]!);
@@ -618,6 +631,9 @@ export async function analyzeProject(
       files[id] = rec;
       rawImports[id] = m.imports;
     }
+    diagnostics?.add("unreadable_file", unreadable.size);
+    diagnostics?.add("text_read_cap", unmeasured.length);
+    diagnostics?.add("binary_read_cap", unhashed.length);
     if (unreadable.size) {
       const sample = [...unreadable].slice(0, 3).map((id) => paths[id]).join(", ");
       warnings.push(`${plural(unreadable.size, "file")} could not be read and ${unreadable.size === 1 ? "is" : "are"} listed without measurements (${sample}${unreadable.size > 3 ? ", …" : ""})`);
@@ -657,6 +673,8 @@ export async function analyzeProject(
       return text;
     };
     const { manifests, dependencies } = readManifests(paths, readText);
+    const uninstalled = uninstalledManifests(root, manifests);
+    diagnostics?.add("uninstalled_manifests", uninstalled);
     const idOfPath = new Map(paths.map((p, i) => [p, i]));
     for (const [path, source] of findEntries(paths, readText)) files[idOfPath.get(path)!]!.entry = source;
     const info = readProjectInfo(paths, readText);
@@ -667,7 +685,7 @@ export async function analyzeProject(
     rollUpDirs(dirs, files);
 
     // ── Imports → edges and externals ──
-    const resolve = createResolver({ root, paths, manifests, readText });
+    const resolve = createResolver({ root, paths, manifests, readText, onDiagnostic: diagnostics?.add });
     const pairKind = new Map<number, number>(); // from * n + to → index into KIND_ORDER
     const externals = new Map<string, ExternalDependency>();
     const importers = new Map<string, Set<number>>();
@@ -703,6 +721,7 @@ export async function analyzeProject(
         try {
           r = resolve(id, imp, lang);
         } catch {
+          diagnostics?.add("resolver_failed");
           r = { unresolved: true };
         }
         const names = (imp as ExtractedImport).names;
@@ -710,6 +729,7 @@ export async function analyzeProject(
         // Doc links are edges, not import statements: they stay out of the counts, as they
         // stay out of the code graph.
         const counted = imp.kind !== LINK;
+        if (counted) diagnostics?.import(lang, "file" in r ? "internal" : "external" in r ? "external" : "unresolved", imp.spec);
         if ("file" in r) {
           if (counted) resolved++;
           if (names?.length) hostImports.push({ from: id, to: r.file, line: imp.line, names });
@@ -786,6 +806,7 @@ export async function analyzeProject(
       dirParent: dirs.map((d) => d.parent),
       dirDepth: dirs.map((d) => d.depth),
       packageDirs: [...new Set(packageDirs)],
+      onDiagnostic: diagnostics?.add,
     });
     for (let id = 0; id < n; id++) {
       const f = files[id]!;
@@ -797,7 +818,8 @@ export async function analyzeProject(
     phases.end("graph", `${plural(g.summary.connected, "connected file")}, ${plural(g.summary.cycles.length, "cycle")}`);
 
     // ── Layout, on a worker while git and TypeScript finish ──
-    phases.start("layout");
+    if (opts.layout) phases.start("layout");
+    else phases.skip("layout", "not requested");
     const layoutInput: LayoutInput = {
       fileCount: n,
       fileDir,
@@ -811,11 +833,13 @@ export async function analyzeProject(
       fanIn: files.map((f) => f.fanIn),
       rank: files.map((f) => f.rank),
     };
-    const layoutP = pool.run({ type: "layout", input: layoutInput }).then((res: WorkerResponse): Layouts => {
-      if (res.type !== "layout") throw new Error("analysis worker answered the layout job with " + res.type);
-      phases.end("layout", plural(n, "position"));
-      return res.layout;
-    });
+    const layoutP: Promise<Layouts> = !opts.layout
+      ? Promise.resolve({ graph: [], radius: 0 })
+      : pool.run({ type: "layout", input: layoutInput }).then((res: WorkerResponse): Layouts => {
+          if (res.type !== "layout") throw new Error("analysis worker answered the layout job with " + res.type);
+          phases.end("layout", plural(n, "position"));
+          return res.layout;
+        });
     // Awaited below, after git and TypeScript; without a handler attached now, a layout failure
     // during that wait would surface as an unhandled rejection instead of this run's error.
     layoutP.catch(() => {});
@@ -825,7 +849,6 @@ export async function analyzeProject(
 
     if (symbols) {
       applyHostImports(symbols, hostImports, hostFiles);
-      const uninstalled = uninstalledManifests(root, manifests);
       if (uninstalled > 0) {
         symbols.stats.uninstalledManifests = uninstalled;
         const { references, unresolved: missed } = symbols.stats;
@@ -834,6 +857,7 @@ export async function analyzeProject(
         // installing, left 29,129 unresolved beside 25,857 resolved; installed projects run
         // around 3%.
         if (missed > 0 && missed >= 0.1 * (references + missed)) {
+          diagnostics?.add("dependencies_missing", uninstalled);
           warnings.push(
             `Dependencies are not installed (${plural(uninstalled, "package.json", "package.json files")} without node_modules), so TypeScript could not resolve ${nf.format(missed)} names, against ${nf.format(references)} it did. Reference and caller counts are lower bounds and some exports flagged unused may be used; install the dependencies and re-run for complete code intelligence.`,
           );
@@ -845,6 +869,8 @@ export async function analyzeProject(
     if (gitResult) {
       git = gitResult.summary;
       warnings.push(...gitResult.warnings);
+      if (git.shallow) diagnostics?.add("git_shallow");
+      if (!git.shallow && git.analyzedCommits < git.totalCommits) diagnostics?.add("git_commit_cap", git.totalCommits - git.analyzedCommits);
       gitResult.perFile.forEach((fg, id) => {
         if (fg && files[id]) files[id]!.git = fg;
       });
@@ -863,6 +889,7 @@ export async function analyzeProject(
       });
       dirs.forEach((d, i) => (d.commits = commits[i]!));
       if (git.truncated) {
+        diagnostics?.add("history_boundary");
         warnings.push(
           `Growth and file ages start at the oldest ${git.shallow ? "fetched" : "analyzed"} commit, so the growth chart's line counts are relative to that point, not to the project's beginning.`,
         );
@@ -883,6 +910,7 @@ export async function analyzeProject(
       }
       if (maxHot > 0) for (const f of files) f.hotspot = round4(hot[f.id]! / maxHot);
     } else if (git) {
+      diagnostics?.add("history_insufficient");
       const more = git.shallow ? " Fetch more history (git fetch --unshallow) for hotspots." : git.truncated ? " Raise --max-commits for hotspots." : "";
       warnings.push(
         `Hotspot scores are all 0: ${plural(git.analyzedCommits, "commit")} of history ${git.analyzedCommits === 1 ? "was" : "were"} analyzed, and churn says nothing below ${MIN_HISTORY}.${more}`,
@@ -994,6 +1022,7 @@ export async function analyzeProject(
     // A throw above leaves git and tsgo running: neither module takes a cancellation signal
     // yet, so their subprocesses finish on their own (bin/skyplate.ts exits on failure
     // rather than waiting for them).
+    if (diagnostics) diagnostics.workers = { size: pool.size, ...pool.diagnostics };
     pool.close();
   }
 }
@@ -1008,6 +1037,7 @@ function startGit(
   detections: Detection[],
   phases: Phases,
   warnings: string[],
+  diagnostics?: AnalysisDiagnostics,
 ) {
   if (!opts.git) {
     phases.skip("git", "disabled (--no-git)");
@@ -1027,9 +1057,11 @@ function startGit(
     // coupling and the truck factor (see GitInput.exclude).
     exclude: detections.map((d) => d.category === "lockfile" || d.generated || d.vendored),
     onProgress: (done, total) => phases.update("git", done, total),
+    onDiagnostic: diagnostics?.add,
   }).then(
     (r) => {
       if (!r) {
+        diagnostics?.add("git_unavailable");
         phases.end("git", "no history");
         return null;
       }
@@ -1037,6 +1069,8 @@ function startGit(
       return r;
     },
     (e: unknown) => {
+      diagnostics?.failure(e, "git");
+      diagnostics?.add("git_failed");
       warnings.push(`Git history could not be read: ${errorMessage(e)}`);
       phases.end("git", "failed");
       return null;
@@ -1054,6 +1088,7 @@ function startTypeScript(
   detections: Detection[],
   phases: Phases,
   warnings: string[],
+  diagnostics?: AnalysisDiagnostics,
 ): Promise<CodeSymbols | null> {
   if (!opts.symbols) {
     phases.skip("typescript", "disabled (--no-symbols)");
@@ -1075,6 +1110,8 @@ function startTypeScript(
     configs: paths.filter((p) => CONFIG_FILE.test(p.slice(p.lastIndexOf("/") + 1)) && !IN_NODE_MODULES.test(p)),
     maxFiles: opts.tsMaxFiles,
     maxRefs: opts.tsMaxRefs,
+    onFailure: diagnostics ? (error) => diagnostics.failure(error, "typescript") : undefined,
+    onDiagnostic: diagnostics?.add,
     onProgress: (m) => {
       if (TS_PROBLEM.test(m)) warnings.push(m);
       phases.update("typescript", undefined, undefined, m.replace(/^TypeScript: /, ""));
@@ -1085,6 +1122,8 @@ function startTypeScript(
       return s;
     },
     (e: unknown) => {
+      diagnostics?.failure(e, "typescript");
+      diagnostics?.add("ts_failed");
       warnings.push(`TypeScript analysis failed: ${errorMessage(e)}`);
       phases.end("typescript", "failed");
       return null;

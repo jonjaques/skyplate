@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSyn
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { readReportFolder } from "../src/mcp/report";
-import { Job, Workspace } from "../src/mcp/workspace";
+import { defaultProjectPath, Job, Workspace } from "../src/mcp/workspace";
 
 const TMP = realpathSync(mkdtempSync(join(tmpdir(), "skyplate-workspace-")));
 afterAll(() => rmSync(TMP, { recursive: true, force: true }));
@@ -32,6 +32,28 @@ function git(root: string, args: string[]): string {
 }
 
 describe("workspace lifecycle", () => {
+  test("implicit project discovery needs a marker and rejects home/root, including links", async () => {
+    const root = fixture("implicit");
+    expect(defaultProjectPath(root)).toBeUndefined();
+    writeFileSync(join(root, "package.json"), '{"name":"implicit"}');
+    expect(defaultProjectPath(root)).toBe(root);
+    expect(defaultProjectPath(root, root)).toBeUndefined();
+    expect(defaultProjectPath("/")).toBeUndefined();
+    symlinkSync(root, join(TMP, "home-link"));
+    expect(defaultProjectPath(join(TMP, "home-link"), root)).toBeUndefined();
+    const ws = new Workspace(root, { options: { git: false, symbols: false } });
+    try {
+      const p = await ws.ensure();
+      expect(p.path).toBe(root);
+      expect(await ws.ensure()).toBe(p);
+      await p.job!.done;
+      expect(p.snapshot!.report.git).toBeUndefined();
+      const other = await ws.open(fixture("explicit-other"), { watch: false, options: { git: false, symbols: false } });
+      await other.job!.done;
+      expect(ws.ensure()).rejects.toThrow("2 projects are open");
+    } finally { ws.shutdown(); }
+  });
+
   test("concurrent opens share one project and analysis", async () => {
     const ws = new Workspace();
     try {

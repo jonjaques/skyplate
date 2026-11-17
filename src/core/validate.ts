@@ -15,10 +15,11 @@ import { REF_KINDS, type CodeSymbols, type EdgeKind, type Report } from "../shar
 const EDGE_KINDS = new Set<EdgeKind>(["import", "include", "require", "reference", "link"]);
 const PER_RULE = 5;
 
-export function validateReport(report: Report, symbols?: CodeSymbols): string[] {
+export function validateReport(report: Report, symbols?: CodeSymbols, onRule?: (rule: string) => void): string[] {
   const errors: string[] = [];
   const counts = new Map<string, number>();
   const fail = (rule: string, message: string) => {
+    onRule?.(rule);
     const c = (counts.get(rule) ?? 0) + 1;
     counts.set(rule, c);
     if (c <= PER_RULE) errors.push(message);

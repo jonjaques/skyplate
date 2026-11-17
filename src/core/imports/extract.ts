@@ -12,6 +12,7 @@
  * job. Line numbers are 0-based and point at the statement's first line.
  */
 
+import type { DiagnosticSink } from "../bench/diagnostics";
 import type { ExtractImports, RawImport } from "../contracts";
 import type { EdgeKind } from "../../shared/schema";
 import { scanWithRules, type Scan } from "../metrics";
@@ -46,6 +47,7 @@ export interface ExtractedImport extends RawImport {
 }
 
 interface Ctx {
+  onDiagnostic?: DiagnosticSink;
   text: string;
   mask: string;
   out: ExtractedImport[];
@@ -482,8 +484,9 @@ const RUST_USE = /(?<![\w#:])use\s+([^;]{1,4000});/g;
 const RUST_EXTERN = /\bextern[ \t]+crate[ \t]+(\w+)/g;
 
 /** Expand a use tree (`a::{b, c::{d, e}}`) into paths; capped so a huge std import stays sane. */
-export function expandUseTree(tree: string, cap = 32): string[] {
+export function expandUseTree(tree: string, cap = 32, onTruncated?: (count: number) => void): string[] {
   const out: string[] = [];
+  let dropped = 0;
   const walk = (prefix: string, s: string) => {
     s = s.trim();
     const brace = s.indexOf("{");
@@ -491,7 +494,10 @@ export function expandUseTree(tree: string, cap = 32): string[] {
       let p = s.replace(/\s+as\s+\w+$/, "").trim();
       if (p === "self") p = "";
       const full = prefix && p ? `${prefix}::${p}` : prefix || p;
-      if (full && full !== "*" && out.length < cap) out.push(full.replace(/::\*$/, ""));
+      if (full && full !== "*") {
+        if (out.length < cap) out.push(full.replace(/::\*$/, ""));
+        else dropped++;
+      }
       return;
     }
     const head = s.slice(0, brace).replace(/::\s*$/, "").trim();
@@ -511,12 +517,25 @@ export function expandUseTree(tree: string, cap = 32): string[] {
     }
   };
   walk("", tree.replace(/\s+/g, " "));
+  if (dropped) onTruncated?.(dropped);
   return out;
 }
 
 const RUST_INLINE_MOD = /\bmod[ \t]+(?:r#)?\w+[ \t]*\{/g;
 
 function extractRust(ctx: Ctx, start: number, end: number): void {
+  if (ctx.onDiagnostic) {
+    // Look past the bounded extractor once per statement, without an unbounded regex retry
+    // for every `use` in a huge malformed statement with no semicolon.
+    let scannedTo = -1;
+    each(ctx, /(?<![\w#:])use\s+/g, start, end, (m) => {
+      const from = m.index + m[0].length;
+      if (from <= scannedTo) return;
+      const semi = ctx.mask.indexOf(";", from);
+      scannedTo = semi < 0 ? end : semi;
+      if (semi >= 0 && semi < end && semi - from > 4000) ctx.onDiagnostic?.("rust_statement_cap");
+    });
+  }
   // Inline `mod tests { … }` blocks: inside one, `super::` means this file's module, not its
   // parent. Without this every `use super::*` in a test block becomes an edge to the parent
   // module and fabricates a cycle through the crate root.
@@ -536,7 +555,7 @@ function extractRust(ctx: Ctx, start: number, end: number): void {
   each(ctx, RUST_USE, start, end, (m) => {
     let nesting = 0;
     for (const [s, e] of inline) if (m.index > s && m.index < e) nesting++;
-    for (let path of expandUseTree(m[1]!)) {
+    for (let path of expandUseTree(m[1]!, 32, (count) => ctx.onDiagnostic?.("rust_use_cap", count))) {
       path = path.replace(/^::/, "");
       if (nesting > 0) {
         // Each leading `super` first climbs out of an inline module, staying in this file.
@@ -817,14 +836,14 @@ function segmentExtractor(rules: LexRules): Extractor | undefined {
 }
 
 // Typed through `satisfies` so callers see ExtractedImport and can read `typeOnly`.
-export const extractImports = ((_path: string, text: string, languageId: string): ExtractedImport[] => {
+export const extractImports = ((_path: string, text: string, languageId: string, onDiagnostic?: DiagnosticSink): ExtractedImport[] => {
   const markdown = languageId === "markdown" || languageId === "rmarkdown" || languageId === "mdx";
   const host = HOSTS.has(languageId);
   const extractor = BY_LANGUAGE[languageId];
   if (!extractor && !markdown && !host) return [];
   const rules = markdown ? undefined : getLexRules(languageId);
   const scan: Scan | undefined = rules ? scanWithRules(text, rules) : undefined;
-  const ctx: Ctx = { text, mask: scan?.mask ?? text, out: [], seen: new Map(), lineStarts: lineStartsOf(text), names: host || markdown };
+  const ctx: Ctx = { onDiagnostic, text, mask: scan?.mask ?? text, out: [], seen: new Map(), lineStarts: lineStartsOf(text), names: host || markdown };
   if (markdown) extractMarkdown(ctx, languageId === "mdx");
   else if (scan && scan.segments.length > 1) {
     // HTML-like files: scripts, styles and markup each get their own extractor.

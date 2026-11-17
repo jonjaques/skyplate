@@ -19,6 +19,8 @@ import { availableParallelism } from "node:os";
 import type { WorkerRequest, WorkerResponse } from "./worker";
 
 interface Pending {
+  queued: number;
+  started: number;
   request: WorkerRequest;
   resolve: (r: WorkerResponse) => void;
   reject: (e: Error) => void;
@@ -31,6 +33,7 @@ export function defaultPoolSize(): number {
 
 export class WorkerPool {
   readonly size: number;
+  readonly diagnostics = { submitted: 0, completed: 0, failed: 0, spawned: 0, queuePeak: 0, busyPeak: 0, waitMs: 0, runMs: 0 };
   private readonly workers: Worker[] = [];
   private readonly idle: Worker[] = [];
   private readonly busy = new Map<Worker, Pending>();
@@ -44,7 +47,9 @@ export class WorkerPool {
   run(request: WorkerRequest): Promise<WorkerResponse> {
     if (this.closed) return Promise.reject(new Error("worker pool is closed"));
     return new Promise((resolve, reject) => {
-      this.queue.push({ request, resolve, reject });
+      this.diagnostics.submitted++;
+      this.queue.push({ request, resolve, reject, queued: performance.now(), started: 0 });
+      this.diagnostics.queuePeak = Math.max(this.diagnostics.queuePeak, this.queue.length);
       this.pump();
     });
   }
@@ -65,6 +70,11 @@ export class WorkerPool {
     w.onmessage = (e: MessageEvent<WorkerResponse>) => {
       const p = this.busy.get(w);
       this.busy.delete(w);
+      if (p) {
+        this.diagnostics.runMs += performance.now() - p.started;
+        if (e.data.type === "error") this.diagnostics.failed++;
+        else this.diagnostics.completed++;
+      }
       this.idle.push(w);
       if (p) {
         if (e.data.type === "error") p.reject(new Error(`analysis worker failed: ${e.data.message}`));
@@ -80,9 +90,11 @@ export class WorkerPool {
       const i = this.workers.indexOf(w);
       if (i >= 0) this.workers.splice(i, 1);
       w.terminate();
+      this.diagnostics.failed++;
       p?.reject(new Error(`analysis worker crashed: ${e.message || "unknown error"}`));
       this.pump();
     };
+    this.diagnostics.spawned++;
     this.workers.push(w);
     return w;
   }
@@ -93,7 +105,10 @@ export class WorkerPool {
       if (!w && this.workers.length < this.size) w = this.spawn();
       if (!w) return;
       const p = this.queue.shift()!;
+      p.started = performance.now();
+      this.diagnostics.waitMs += p.started - p.queued;
       this.busy.set(w, p);
+      this.diagnostics.busyPeak = Math.max(this.diagnostics.busyPeak, this.busy.size);
       w.postMessage(p.request);
     }
   }

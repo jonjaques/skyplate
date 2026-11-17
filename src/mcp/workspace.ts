@@ -32,6 +32,7 @@ import { basename, join, resolve, sep } from "node:path";
 import { PHASE_LABEL, type CliPhase } from "../cli/progress";
 import { isReportDir, openInBrowser, startServer, type StaticServer } from "../cli/serve";
 import { slug } from "../cli/main";
+import { checkBenchmarkOut, defaultBenchmarkOut, runBenchmark, ToolRecorder, writeBenchmark } from "../core/bench";
 import { analyzeProject, DEFAULT_OPTIONS, type AnalysisResult, type AnalyzeOptions, type ProgressEvent } from "../core/pipeline";
 import { gitDirectories } from "../core/git";
 import { detectFile } from "../core/languages/detect";
@@ -63,6 +64,12 @@ export interface Snapshot {
   mtimeMs?: number;
   /** Paths of every file and directory the analysis covered, for the watcher's filter. */
   known: Set<string>;
+  /**
+   * The structure pass of a first analysis (see STRUCTURE_GRACE_MS): files, languages, imports
+   * and the graph are complete, and there is no history and no symbols yet. Never written as a
+   * report and never reused by a build.
+   */
+  partial?: true;
 }
 
 /** Files over this are not read back for a source request; nothing reads 16 MB of one file. */
@@ -113,7 +120,7 @@ function knownPaths(report: Report): Set<string> {
 
 // ─── Jobs ────────────────────────────────────────────────────────────────────────────────────
 
-export type JobKind = "analyze" | "load" | "build";
+export type JobKind = "analyze" | "load" | "build" | "benchmark";
 export type JobEvent = ProgressEvent | { phase: "write"; status: "start" | "done"; ms?: number; message?: string };
 
 interface PhaseState {
@@ -231,6 +238,12 @@ export class Project {
   watchNote?: string;
   closed = false;
   lastBuild?: string;
+  /** Settles when a first analysis has its structure snapshot (or has ended without one). */
+  structure?: Promise<void>;
+  /** When that snapshot landed (ms), which is where the grace is counted from. */
+  structureAt?: number;
+  /** How long the structure pass took (ms), which is what the grace shrinks by. */
+  structureMs?: number;
   /** Debounce timer for refresh "on_change". */
   timer?: ReturnType<typeof setTimeout>;
 
@@ -256,12 +269,15 @@ export class Project {
 
   view() {
     const s = this.snapshot;
+    // A structure snapshot is not an analysis being refreshed, and not one that finished.
+    const whole = !!s && !s.partial;
     return {
       id: this.id,
       kind: this.kind,
       path: this.path,
       name: s?.report.project.name,
-      state: this.busy ? (s ? "refreshing" : "analyzing") : s ? (this.stale ? "stale" : "ready") : this.job?.state === "failed" ? "failed" : "idle",
+      state: this.busy ? (whole ? "refreshing" : "analyzing") : whole ? (this.stale ? "stale" : "ready") : this.job?.state === "failed" ? "failed" : "idle",
+      partial: s?.partial ? PARTIAL_WARNING : undefined,
       files: s?.report.totals.files,
       analyzed: s ? new Date(s.finishedAt).toISOString() : undefined,
       generated: this.kind === "report" ? s?.report.generatedAt : undefined,
@@ -275,14 +291,16 @@ export class Project {
 
 /**
  * A change worth re-analyzing for: a path the analysis covered, a new entry in a folder it
- * listed, or HEAD and refs moving (a commit, a checkout). Everything else (node_modules, build
+ * listed, or HEAD and branch refs moving (a commit, a checkout). Everything else (node_modules, build
  * output in an ignored folder, .git's object store, report folders) would re-run an analysis
  * that comes out the same.
  */
 export function relevantChange(rel: string, known: Set<string> | undefined, git: boolean): boolean {
   const parts = rel.split("/");
   if (parts[parts.length - 1] === ".DS_Store") return false;
-  if (parts[0] === ".git") return git && (rel === ".git/HEAD" || rel === ".git/packed-refs" || rel.startsWith(".git/refs/"));
+  // Agent checkpoints and stash refs can move on every tool call without changing HEAD.
+  // Watching all refs caused a question to invalidate its own analysis in T3 worktrees.
+  if (parts[0] === ".git") return git && (rel === ".git/HEAD" || rel === ".git/packed-refs" || rel.startsWith(".git/refs/heads/"));
   // Report folders and their staging siblings (".x.skyplate.tmp-…", ".x.skyplate.old-…").
   if (parts.some((p) => p === "node_modules" || /\.(?:skyplate|starchart)(?:\.(?:tmp|old)-.*)?$/.test(p))) return false;
   if (!known) return true; // first analysis still running: anything may matter
@@ -316,6 +334,44 @@ function effective(o: AnalysisOverrides): string {
 /** A debounce for "on_change": one burst of saves, one analysis. */
 const SETTLE_MS = 1500;
 
+/**
+ * A first analysis answers in two steps. Files, languages, imports and the graph take seconds
+ * at any size; git history and the compiler pass take minutes on a large repository (measured
+ * on Kubernetes, 32k files: 2.5 s against 509 s, nearly all of it the history walk). An agent
+ * that waits eight minutes for its first answer does not ask a second question, so the
+ * structure pass runs first, on its own, and becomes a snapshot the tools that need only
+ * structure can answer from while the rest runs.
+ *
+ * The grace is how long such a question still waits for the full analysis once the structure
+ * pass has landed: on a small project the whole analysis arrives inside it and nobody ever sees
+ * a partial answer. It shrinks by twice what the structure pass took, because the full analysis
+ * has to do that work again before it starts on history: when the structure alone took two
+ * seconds there is nothing a wait could catch. Measured cold on Kubernetes (32k files, 17.5k
+ * commits): first answer at 6.2 s with a fixed four seconds, 2.1 s with this.
+ *
+ * The cost is that walk, measure and imports run twice on a first open, about a third of a
+ * small analysis and a rounding error of a large one. One run that published its structure
+ * half-way would avoid that; it needs the pipeline to assemble a report before git and the
+ * compiler return, which it does not do today.
+ */
+const STRUCTURE_GRACE_MS = 4000;
+
+const PARTIAL_WARNING =
+  "Structure pass only: files, languages, imports and the graph are complete. Git history (hotspots, owners, co-change) and compiler symbols are still being analyzed.";
+
+/** Whether an analysis with these options has a pass worth answering ahead of. */
+function slowPasses(o: AnalysisOverrides): boolean {
+  return (o.git ?? DEFAULT_OPTIONS.git) || (o.symbols ?? DEFAULT_OPTIONS.symbols);
+}
+
+/** Only an explicit project marker permits implicit analysis; never scan a home or root. */
+export function defaultProjectPath(cwd: string, home = homedir()): string | undefined {
+  const root = realPath(resolve(cwd));
+  if (root === realPath(home) || resolve(root, "..") === root) return undefined;
+  const markers = [".git", "package.json", "pyproject.toml", "Cargo.toml", "go.mod", "pom.xml", "build.gradle", "build.gradle.kts", "Gemfile", "composer.json", "mix.exs", "Package.swift", "CMakeLists.txt"];
+  return markers.some((m) => existsSync(join(root, m)) && (m === ".git" || statSync(join(root, m)).isFile())) ? root : undefined;
+}
+
 export class Workspace {
   private readonly projects = new Map<string, Project>();
   private readonly jobs: Job[] = [];
@@ -323,6 +379,19 @@ export class Workspace {
   /** Report folders this server wrote, kept out of every later analysis of a project holding one. */
   private readonly outs = new Set<string>();
   private queue: Promise<void> = Promise.resolve();
+  /**
+   * How this server's tools have been used since it started: tool names, durations, answer
+   * sizes, error codes and which argument keys were present, never an argument's value or
+   * anything from a project (src/core/bench/recorder.ts). It stays in memory and leaves only
+   * inside a benchmark the user asked for.
+   */
+  readonly usage = new ToolRecorder();
+
+  constructor(
+    private readonly cwd = process.cwd(),
+    /** structureGraceMs is for tests, which cannot wait four seconds to see a partial answer. */
+    private readonly defaults: { options?: AnalysisOverrides; refresh?: RefreshMode; structureGraceMs?: number } = {},
+  ) {}
 
   // ── Lookup ──
 
@@ -360,6 +429,10 @@ export class Workspace {
       return this.resolve(ref);
     } catch (e) {
       if (ref && existsSync(ref) && statSync(ref).isDirectory()) return this.open(ref);
+      if (!ref && this.projects.size === 0) {
+        const path = defaultProjectPath(this.cwd);
+        if (path) return this.open(path, this.defaults);
+      }
       throw e;
     }
   }
@@ -457,20 +530,40 @@ export class Workspace {
     }
     const job = this.track(new Job("analyze", `${reason} ${p.path}`, p.id));
     p.job = job;
+    // Only a first analysis is staged: a refresh already has a whole snapshot to answer from.
+    const staged = !p.snapshot && slowPasses(p.options);
+    let landed: () => void = () => {};
+    p.structure = staged ? new Promise<void>((done) => (landed = done)) : undefined;
+    p.structureAt = undefined;
+    p.structureMs = undefined;
     this.enqueue(job, async () => {
-      if (p.closed) return { skipped: "project closed" };
-      const startedAt = Date.now();
-      // Changes seen before this run are what it picks up; ones during it still count after.
-      const seen = p.changes;
-      const options = p.options;
-      const exclude = this.excludesFor(p.path, options.exclude ?? []);
-      const result = await analyzeProject(p.path, { ...options, exclude }, (e) => job.event(e));
-      if (p.closed) return { skipped: "project closed" };
-      p.snapshot = liveSnapshot(result, startedAt);
-      p.snapshot.options = effective(options);
-      p.changes -= seen;
-      if (p.refresh === "on_change" && p.stale) this.schedule(p);
-      return { files: result.report.totals.files, ms: result.report.timings.total };
+      try {
+        if (p.closed) return { skipped: "project closed" };
+        const startedAt = Date.now();
+        // Changes seen before this run are what it picks up; ones during it still count after.
+        const seen = p.changes;
+        const options = p.options;
+        const exclude = this.excludesFor(p.path, options.exclude ?? []);
+        if (staged && !p.snapshot) {
+          const first = await analyzeProject(p.path, { ...options, exclude, git: false, symbols: false, source: false, layout: false }, (e) => job.event(e));
+          if (p.closed) return { skipped: "project closed" };
+          first.report.warnings.unshift(PARTIAL_WARNING);
+          p.snapshot = { ...liveSnapshot(first, startedAt), partial: true };
+          p.structureAt = Date.now();
+          p.structureMs = p.structureAt - startedAt;
+          landed();
+        }
+        const result = await analyzeProject(p.path, { ...options, exclude }, (e) => job.event(e));
+        if (p.closed) return { skipped: "project closed" };
+        p.snapshot = liveSnapshot(result, startedAt);
+        p.snapshot.options = effective(options);
+        p.changes -= seen;
+        if (p.refresh === "on_change" && p.stale) this.schedule(p);
+        return { files: result.report.totals.files, ms: result.report.timings.total };
+      } finally {
+        // A run that failed or was closed before its structure pass must not leave a question waiting on it.
+        landed();
+      }
     });
     return job;
   }
@@ -562,16 +655,63 @@ export class Workspace {
   }
 
   /**
+   * Wait on a first analysis the way a structure question should: for the whole of it if that
+   * comes soon, and otherwise only until the structure pass has landed and the grace has run.
+   */
+  private async waitForStructure(p: Project, ms: number, onLine?: (line: string) => void, signal?: AbortSignal): Promise<void> {
+    const early = new AbortController();
+    const stop = () => early.abort();
+    let over = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    signal?.addEventListener("abort", stop, { once: true });
+    if (signal?.aborted) stop();
+    void p.structure!.then(() => {
+      if (over) return;
+      // Counted from when the pass landed, so only the first question after it waits at all.
+      const grace = this.defaults.structureGraceMs ?? Math.max(0, STRUCTURE_GRACE_MS - 2 * (p.structureMs ?? 0));
+      timer = setTimeout(stop, Math.max(0, (p.structureAt ?? Date.now()) + grace - Date.now()));
+    });
+    try {
+      await this.wait(p.job!, ms, onLine, early.signal);
+    } finally {
+      over = true;
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", stop);
+    }
+  }
+
+  /**
    * The snapshot to answer from, refreshing first when it is stale and the project refreshes
    * on read. Returns a note when the answer comes from older data than the project holds now,
    * and no snapshot at all while a first analysis is still running.
    */
-  async ready(p: Project, ms: number, onLine?: (line: string) => void, signal?: AbortSignal): Promise<{ snapshot?: Snapshot; note?: string; job?: Job }> {
+  async ready(
+    p: Project,
+    ms: number,
+    onLine?: (line: string) => void,
+    signal?: AbortSignal,
+    /** "structure": this question needs no history and no symbols, so a first analysis's structure pass can answer it. */
+    needs: "structure" | "all" = "all",
+  ): Promise<{ snapshot?: Snapshot; note?: string; job?: Job }> {
     if (!p.busy && p.stale && (p.kind === "report" || p.refresh === "on_read")) this.start(p, "refresh");
-    if (p.busy) await this.wait(p.job!, ms, onLine, signal);
-    if (!p.snapshot) {
+    if (p.busy) {
+      if (needs === "structure" && p.structure) await this.waitForStructure(p, ms, onLine, signal);
+      else await this.wait(p.job!, ms, onLine, signal);
+    }
+    // A question about history or symbols has nothing to read in a structure snapshot: to it,
+    // the first analysis is simply still running.
+    if (!p.snapshot || (p.snapshot.partial && needs === "all")) {
       if (p.job?.state === "failed") throw new QueryError(`analysis of ${p.path} failed: ${p.job.error}`);
       return { job: p.job };
+    }
+    if (p.snapshot.partial) {
+      // The structure pass succeeded and the rest did not: its warnings say what is missing.
+      if (!p.busy) return { snapshot: p.snapshot, note: `the full analysis failed (${p.job?.error ?? "no error recorded"}); answered from the structure pass, with no git history and no compiler symbols` };
+      return {
+        snapshot: p.snapshot,
+        note: `answered from the structure pass: files, languages, imports and the graph are complete; git history (hotspots, owners, co-change) and compiler symbols are still being analyzed (${p.job!.id}, ${p.job!.view().elapsed}). Ask again later, or call status with project and wait_seconds`,
+        job: p.job,
+      };
     }
     if (p.busy) return { snapshot: p.snapshot, note: `answered from the previous analysis; a refresh is still running (${p.job!.id}, ${p.job!.view().elapsed})`, job: p.job };
     if (p.job?.state === "failed") return { snapshot: p.snapshot, note: `the latest refresh failed (${p.job.error}); answered from the previous analysis` };
@@ -582,6 +722,39 @@ export class Workspace {
       return { snapshot: p.snapshot, note: `${p.changes} change(s) since this analysis (last: ${p.lastChange}); ${next}` };
     }
     return { snapshot: p.snapshot };
+  }
+
+  // ── Benchmarks ──
+
+  /**
+   * Measure one analysis of a live project and write an anonymous benchmark (src/core/bench):
+   * two files in a new folder outside the project. A job, because it analyzes again: the
+   * timings it reports have to be of a whole run, which a finished snapshot no longer has.
+   */
+  benchmark(opts: { project: Project; out?: string; skeleton?: boolean }): Job {
+    const p = opts.project;
+    if (p.kind !== "live") throw new QueryError(`${p.id} is a report folder; a benchmark measures an analysis as it runs, so open the project directory`);
+    const out = opts.out ? resolve(opts.out) : defaultBenchmarkOut();
+    // Refused now, not after the analysis: a bad folder should cost nothing.
+    try {
+      checkBenchmarkOut(out, p.path);
+    } catch (e) {
+      throw new QueryError(e instanceof Error ? e.message : String(e));
+    }
+    const job = this.track(new Job("benchmark", `benchmark ${p.path}`, p.id));
+    this.enqueue(job, async () => {
+      const benchmark = await runBenchmark(p.path, { analysis: { ...p.options, exclude: this.excludesFor(p.path, p.options.exclude ?? []) }, skeleton: opts.skeleton, recorder: this.usage });
+      const paths = await writeBenchmark(benchmark, out, p.path);
+      return {
+        json: paths.json,
+        markdown: paths.markdown,
+        level: benchmark.privacy.level,
+        anomalies: [...new Set(benchmark.anomalies.map((a) => a.code))],
+        analysisFailed: benchmark.failures.length > 0 || undefined,
+        next: "nothing was uploaded: tell the user where these files are, and that benchmark.md is the whole content for them to read before sharing",
+      };
+    });
+    return job;
   }
 
   // ── Builds and servers ──

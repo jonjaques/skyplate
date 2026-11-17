@@ -41,6 +41,7 @@
     "dist/viewer",
     "!dist/viewer/**/*.map",
     "docs/brand",
+    "docs/benchmark.md",
     "LICENSE",
     "NOTICE",
     "THIRD_PARTY_NOTICES",

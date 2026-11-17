@@ -17,6 +17,7 @@
  */
 
 import { closeSync, fstatSync, openSync, readSync } from "node:fs";
+import type { DiagnosticCode } from "./bench/diagnostics";
 import type { Detection, RawImport } from "./contracts";
 import type { FileFacts, Layouts } from "../shared/schema";
 import { detectFile } from "./languages/detect";
@@ -41,6 +42,7 @@ export interface DetectResult {
 }
 
 export interface MeasureJob {
+  diagnostics?: boolean;
   id: number;
   abs: string;
   path: string;
@@ -50,6 +52,7 @@ export interface MeasureJob {
 }
 
 export interface MeasureResult {
+  diagnostics?: { code: DiagnosticCode; count: number }[];
   id: number;
   lines: number;
   code: number;
@@ -259,8 +262,9 @@ function measureOne(job: MeasureJob, maxRead: number): MeasureResult {
     const text = decode(bytes);
     const m = measureText(job.path, text, d.language);
     let imports: RawImport[] = [];
+    const diagnostics: { code: DiagnosticCode; count: number }[] = [];
     // A credentials file has no imports worth an edge, and its text is never handed on.
-    if (!d.secret) imports = extractImports(job.path, text, d.language);
+    if (!d.secret) imports = extractImports(job.path, text, d.language, job.diagnostics ? (code, count = 1) => diagnostics.push({ code, count }) : undefined);
     const out: MeasureResult = {
       id: job.id,
       lines: m.lines,
@@ -277,6 +281,7 @@ function measureOne(job: MeasureJob, maxRead: number): MeasureResult {
       hash: d.secret ? "" : m.hash,
       imports,
     };
+    if (diagnostics.length) out.diagnostics = diagnostics;
     if (m.facts) out.facts = m.facts;
     if (job.embed && !d.secret) out.text = text;
     return out;
